@@ -12,6 +12,7 @@ protocol HTTPClient {
         endpoint: String,
         method: HTTPMethod,
         parameters: [String: String]?,
+        headers: [String: String]?,
         body: Data?
     ) async throws -> T
 }
@@ -37,6 +38,7 @@ final class URLSessionHTTPClient: HTTPClient {
         endpoint: String,
         method: HTTPMethod = .get,
         parameters: [String: String]? = nil,
+        headers: [String: String]? = nil,
         body: Data? = nil
     ) async throws -> T {
         
@@ -60,6 +62,13 @@ final class URLSessionHTTPClient: HTTPClient {
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         request.timeoutInterval = 30
+        
+        // Add custom headers
+        if let headers = headers {
+            for (key, value) in headers {
+                request.setValue(value, forHTTPHeaderField: key)
+            }
+        }
         
         if let body = body {
             request.httpBody = body

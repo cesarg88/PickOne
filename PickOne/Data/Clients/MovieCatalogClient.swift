@@ -25,6 +25,12 @@ final class MovieCatalogClient: MovieCatalogClientProtocol {
         self.apiKey = apiKey
     }
     
+    // MARK: - Private Helpers
+    
+    private var authHeaders: [String: String] {
+        return ["Authorization": "Bearer \(apiKey)"]
+    }
+    
     // MARK: - Public Methods
     
     func getTopRated(page: Int = 1) async throws -> MovieListResponseDTO {
@@ -32,10 +38,10 @@ final class MovieCatalogClient: MovieCatalogClientProtocol {
             endpoint: "/movie/top_rated",
             method: .get,
             parameters: [
-                "api_key": apiKey,
                 "page": "\(page)",
                 "language": "en-US"
             ],
+            headers: authHeaders,
             body: nil
         )
     }
@@ -45,9 +51,9 @@ final class MovieCatalogClient: MovieCatalogClientProtocol {
             endpoint: "/movie/\(id)",
             method: .get,
             parameters: [
-                "api_key": apiKey,
                 "language": "en-US"
             ],
+            headers: authHeaders,
             body: nil
         )
     }
@@ -57,10 +63,10 @@ final class MovieCatalogClient: MovieCatalogClientProtocol {
             endpoint: "/movie/\(id)/similar",
             method: .get,
             parameters: [
-                "api_key": apiKey,
                 "page": "\(page)",
                 "language": "en-US"
             ],
+            headers: authHeaders,
             body: nil
         )
     }
@@ -70,11 +76,11 @@ final class MovieCatalogClient: MovieCatalogClientProtocol {
             endpoint: "/search/movie",
             method: .get,
             parameters: [
-                "api_key": apiKey,
                 "query": query,
                 "page": "\(page)",
                 "language": "en-US"
             ],
+            headers: authHeaders,
             body: nil
         )
     }
@@ -83,9 +89,8 @@ final class MovieCatalogClient: MovieCatalogClientProtocol {
         return try await httpClient.request(
             endpoint: "/movie/\(id)/credits",
             method: .get,
-            parameters: [
-                "api_key": apiKey
-            ],
+            parameters: nil,
+            headers: authHeaders,
             body: nil
         )
     }

@@ -16,8 +16,7 @@ struct AppConfiguration {
     /// The Movie Database API Key
     /// Get your key at: https://developer.themoviedb.org/reference/getting-started
     static let tmdbAPIKey: String = {
-        // TODO: Replace with actual API key when provided
-        return "YOUR_TMDB_API_KEY_HERE"
+        return "eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiIwNDk2MzZjZjBmMGY0MWRhOGM0N2M3OTI1MzBkZDJhOSIsIm5iZiI6MTc2ODgzNDQ4My4zMDQsInN1YiI6IjY5NmU0NWIzNDY0NjY0N2FhZDhmZDZiOCIsInNjb3BlcyI6WyJhcGlfcmVhZCJdLCJ2ZXJzaW9uIjoxfQ.hqWuv0vLZRuthU2u3o946zKK7cfSbwIUI2WBa1wxO0A"
     }()
     
     static let tmdbBaseURL = "https://api.themoviedb.org/3"
@@ -34,7 +33,7 @@ struct AppConfiguration {
         case backdropSmall = "w300"
         case backdropMedium = "w780"
         case backdropLarge = "w1280"
-        case backdropOriginal = "original"
+        case backdropOriginal = "original_"
     }
     
     // MARK: - Cache Configuration

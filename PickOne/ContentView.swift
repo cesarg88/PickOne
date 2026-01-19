@@ -32,11 +32,11 @@ struct ContentView: View {
                     Text("🚧 MVP in Development")
                         .font(.headline)
                     
-                    Text("Phase 0: Setup Complete ✅")
+                    Text("Phase 1: Data Layer Integration ✅")
                         .font(.caption)
                         .foregroundStyle(.green)
                     
-                    Text("Next: Data Layer Integration with TMDB")
+                    Text("Next: Repositories + Use Cases")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
