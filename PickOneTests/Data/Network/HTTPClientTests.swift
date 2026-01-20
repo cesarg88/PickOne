@@ -21,7 +21,6 @@ struct HTTPClientTests {
     /// Creates a System Under Test with a mock URLSession.
     /// Resets MockURLProtocol state before each test to ensure isolation.
     private func makeSUT(baseURL: String = TestData.testBaseURL) -> URLSessionHTTPClient {
-        // Reset mock state before creating SUT to ensure test isolation
         MockURLProtocol.reset()
         
         let session = MockURLProtocol.createMockSession()
@@ -42,9 +41,7 @@ struct HTTPClientTests {
             method: .get,
             parameters: nil,
             headers: nil,
-            body: nil,
-            timeout: nil,
-            contentType: nil
+            timeout: nil
         )
         
         // Then
@@ -65,9 +62,7 @@ struct HTTPClientTests {
             method: .get,
             parameters: nil,
             headers: nil,
-            body: nil,
-            timeout: nil,
-            contentType: nil
+            timeout: nil
         )
         
         // Then - is_active in JSON should map to isActive in Swift
@@ -88,9 +83,7 @@ struct HTTPClientTests {
             method: .get,
             parameters: nil,
             headers: nil,
-            body: nil,
-            timeout: nil,
-            contentType: nil
+            timeout: nil
         )
         
         // Then
@@ -113,9 +106,7 @@ struct HTTPClientTests {
             method: .get,
             parameters: ["page": "1", "language": "en-US"],
             headers: nil,
-            body: nil,
-            timeout: nil,
-            contentType: nil
+            timeout: nil
         )
         
         // Then
@@ -141,9 +132,7 @@ struct HTTPClientTests {
             method: .get,
             parameters: nil,
             headers: ["Authorization": "Bearer test-token"],
-            body: nil,
-            timeout: nil,
-            contentType: nil
+            timeout: nil
         )
         
         // Then
@@ -165,9 +154,7 @@ struct HTTPClientTests {
             method: .get,
             parameters: nil,
             headers: nil,
-            body: nil,
-            timeout: nil,
-            contentType: nil
+            timeout: nil
         )
         
         // Then
@@ -189,9 +176,7 @@ struct HTTPClientTests {
             method: .get,
             parameters: nil,
             headers: nil,
-            body: nil,
-            timeout: nil,
-            contentType: nil
+            timeout: nil
         )
         
         // Then
@@ -220,9 +205,7 @@ struct HTTPClientTests {
             method: method,
             parameters: nil,
             headers: nil,
-            body: nil,
-            timeout: nil,
-            contentType: nil
+            timeout: nil
         )
         
         // Then - use .last to get the most recent request from this test
@@ -245,9 +228,7 @@ struct HTTPClientTests {
                 method: .get,
                 parameters: nil,
                 headers: nil,
-                body: nil,
-                timeout: nil,
-                contentType: nil
+                timeout: nil
             )
         }
     }
@@ -265,9 +246,7 @@ struct HTTPClientTests {
                 method: .get,
                 parameters: nil,
                 headers: nil,
-                body: nil,
-                timeout: nil,
-                contentType: nil
+                timeout: nil
             )
         }
     }
@@ -285,9 +264,7 @@ struct HTTPClientTests {
                 method: .get,
                 parameters: nil,
                 headers: nil,
-                body: nil,
-                timeout: nil,
-                contentType: nil
+                timeout: nil
             )
         }
     }
@@ -305,9 +282,7 @@ struct HTTPClientTests {
                 method: .get,
                 parameters: nil,
                 headers: nil,
-                body: nil,
-                timeout: nil,
-                contentType: nil
+                timeout: nil
             )
         }
     }
@@ -325,9 +300,7 @@ struct HTTPClientTests {
                 method: .get,
                 parameters: nil,
                 headers: nil,
-                body: nil,
-                timeout: nil,
-                contentType: nil
+                timeout: nil
             )
         }
     }
@@ -346,9 +319,7 @@ struct HTTPClientTests {
                 method: .get,
                 parameters: nil,
                 headers: nil,
-                body: nil,
-                timeout: nil,
-                contentType: nil
+                timeout: nil
             )
         }
     }
@@ -367,9 +338,7 @@ struct HTTPClientTests {
             method: .get,
             parameters: nil,
             headers: nil,
-            body: nil,
-            timeout: nil,
-            contentType: nil
+            timeout: nil
         )
         
         // Then - should NOT have double slash
@@ -392,9 +361,7 @@ struct HTTPClientTests {
             method: .get,
             parameters: nil,
             headers: nil,
-            body: nil,
-            timeout: nil,
-            contentType: nil
+            timeout: nil
         )
         
         // Then
@@ -417,9 +384,7 @@ struct HTTPClientTests {
             method: .get,
             parameters: nil,
             headers: nil,
-            body: nil,
-            timeout: nil,
-            contentType: nil
+            timeout: nil
         )
         let url1 = MockURLProtocol.capturedRequests.last?.url?.absoluteString
         
@@ -432,9 +397,7 @@ struct HTTPClientTests {
             method: .get,
             parameters: nil,
             headers: nil,
-            body: nil,
-            timeout: nil,
-            contentType: nil
+            timeout: nil
         )
         let url2 = MockURLProtocol.capturedRequests.last?.url?.absoluteString
         
@@ -456,9 +419,7 @@ struct HTTPClientTests {
             method: .get,
             parameters: ["query": "hello world"],
             headers: nil,
-            body: nil,
-            timeout: nil,
-            contentType: nil
+            timeout: nil
         )
         
         // Then
@@ -481,9 +442,7 @@ struct HTTPClientTests {
             method: .get,
             parameters: ["name": "José", "filter": "a&b=c"],
             headers: nil,
-            body: nil,
-            timeout: nil,
-            contentType: nil
+            timeout: nil
         )
         
         // Then
@@ -508,12 +467,11 @@ struct HTTPClientTests {
     
     // MARK: - Timeout Tests
     
-    @Test("Custom timeout is applied to request")
-    func customTimeoutIsApplied() async throws {
+    @Test("Default timeout is applied to all requests")
+    func defaultTimeoutIsApplied() async throws {
         // Given
         let sut = makeSUT()
         MockURLProtocol.setSuccessResponse(data: TestData.simpleResponseJSON)
-        let customTimeout: TimeInterval = 60.0
         
         // When
         let _: TestData.SimpleResponse = try await sut.request(
@@ -521,35 +479,32 @@ struct HTTPClientTests {
             method: .get,
             parameters: nil,
             headers: nil,
-            body: nil,
-            timeout: customTimeout,
-            contentType: nil
+            timeout: nil
+        )
+        
+        // Then
+        let capturedRequest = try #require(MockURLProtocol.capturedRequests.last)
+        #expect(capturedRequest.timeoutInterval == AppConfiguration.defaultRequestTimeout)
+    }
+    
+    @Test("Custom timeout is applied when provided")
+    func customTimeoutIsApplied() async throws {
+        // Given
+        let sut = makeSUT()
+        MockURLProtocol.setSuccessResponse(data: TestData.simpleResponseJSON)
+        let customTimeout: TimeInterval = 5.0
+        
+        // When
+        let _: TestData.SimpleResponse = try await sut.request(
+            endpoint: TestData.testEndpoint,
+            method: .get,
+            parameters: nil,
+            headers: nil,
+            timeout: customTimeout
         )
         
         // Then
         let capturedRequest = try #require(MockURLProtocol.capturedRequests.last)
         #expect(capturedRequest.timeoutInterval == customTimeout)
-    }
-    
-    @Test("Nil timeout uses default value")
-    func nilTimeoutUsesDefault() async throws {
-        // Given
-        let sut = makeSUT()
-        MockURLProtocol.setSuccessResponse(data: TestData.simpleResponseJSON)
-        
-        // When
-        let _: TestData.SimpleResponse = try await sut.request(
-            endpoint: TestData.testEndpoint,
-            method: .get,
-            parameters: nil,
-            headers: nil,
-            body: nil,
-            timeout: nil,
-            contentType: nil
-        )
-        
-        // Then - should use AppConfiguration.defaultRequestTimeout
-        let capturedRequest = try #require(MockURLProtocol.capturedRequests.last)
-        #expect(capturedRequest.timeoutInterval == AppConfiguration.defaultRequestTimeout)
     }
 }

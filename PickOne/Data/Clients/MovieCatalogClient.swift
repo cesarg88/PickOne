@@ -1,10 +1,3 @@
-//
-//  MovieCatalogClient.swift
-//  PickOne
-//
-//  Client for TMDB API - executes HTTP requests and returns raw DTOs
-//
-
 import Foundation
 
 protocol MovieCatalogClientProtocol {
@@ -15,93 +8,110 @@ protocol MovieCatalogClientProtocol {
     func getMovieCredits(id: Int) async throws -> CreditsResponseDTO
 }
 
-final class MovieCatalogClient: MovieCatalogClientProtocol {
+final class MovieCatalogClient {
+    
+    private enum Endpoint {
+        case topRated
+        case movieDetail(id: Int)
+        case similarMovies(id: Int)
+        case search
+        case credits(id: Int)
+        
+        var path: String {
+            switch self {
+            case .topRated:
+                return "movie/top_rated"
+            case .movieDetail(let id):
+                return "movie/\(id)"
+            case .similarMovies(let id):
+                return "movie/\(id)/similar"
+            case .search:
+                return "search/movie"
+            case .credits(let id):
+                return "movie/\(id)/credits"
+            }
+        }
+    }
     
     private let httpClient: HTTPClient
     private let apiKey: String
+    private let language: String
     
-    init(httpClient: HTTPClient, apiKey: String) {
+    init(httpClient: HTTPClient, apiKey: String, language: String = "en-US") {
         self.httpClient = httpClient
         self.apiKey = apiKey
+        self.language = language
     }
-    
-    // MARK: - Private Helpers
-    
-    private var authHeaders: [String: String] {
-        return ["Authorization": "Bearer \(apiKey)"]
-    }
-    
-    // MARK: - Public Methods
-    
-    func getTopRated(page: Int = 1) async throws -> MovieListResponseDTO {
+}
+
+extension MovieCatalogClient: MovieCatalogClientProtocol {
+    func getTopRated(page: Int) async throws -> MovieListResponseDTO {
         return try await httpClient.request(
-            endpoint: "/movie/top_rated",
+            endpoint: Endpoint.topRated.path,
             method: .get,
-            parameters: [
-                "page": "\(page)",
-                "language": "en-US"
-            ],
+            parameters: buildParameters(page: page),
             headers: authHeaders,
-            body: nil,
-            timeout: nil,
-            contentType: nil
+            timeout: nil
         )
     }
     
     func getMovieDetail(id: Int) async throws -> MovieDetailDTO {
         return try await httpClient.request(
-            endpoint: "/movie/\(id)",
+            endpoint: Endpoint.movieDetail(id: id).path,
             method: .get,
-            parameters: [
-                "language": "en-US"
-            ],
+            parameters: buildParameters(),
             headers: authHeaders,
-            body: nil,
-            timeout: nil,
-            contentType: nil
+            timeout: nil
         )
     }
     
-    func getSimilarMovies(id: Int, page: Int = 1) async throws -> MovieListResponseDTO {
+    func getSimilarMovies(id: Int, page: Int) async throws -> MovieListResponseDTO {
         return try await httpClient.request(
-            endpoint: "/movie/\(id)/similar",
+            endpoint: Endpoint.similarMovies(id: id).path,
             method: .get,
-            parameters: [
-                "page": "\(page)",
-                "language": "en-US"
-            ],
+            parameters: buildParameters(page: page),
             headers: authHeaders,
-            body: nil,
-            timeout: nil,
-            contentType: nil
+            timeout: nil
         )
     }
     
-    func searchMovies(query: String, page: Int = 1) async throws -> SearchResponseDTO {
+    func searchMovies(query: String, page: Int) async throws -> SearchResponseDTO {
         return try await httpClient.request(
-            endpoint: "/search/movie",
+            endpoint: Endpoint.search.path,
             method: .get,
-            parameters: [
-                "query": query,
-                "page": "\(page)",
-                "language": "en-US"
-            ],
+            parameters: buildParameters(query: query, page: page),
             headers: authHeaders,
-            body: nil,
-            timeout: nil,
-            contentType: nil
+            timeout: nil
         )
     }
     
     func getMovieCredits(id: Int) async throws -> CreditsResponseDTO {
         return try await httpClient.request(
-            endpoint: "/movie/\(id)/credits",
+            endpoint: Endpoint.credits(id: id).path,
             method: .get,
-            parameters: nil,
+            parameters: buildParameters(),
             headers: authHeaders,
-            body: nil,
-            timeout: nil,
-            contentType: nil
+            timeout: nil
         )
+    }
+    
+    private var authHeaders: [String: String] {
+        ["Authorization": "Bearer \(apiKey)"]
+    }
+    
+    private func buildParameters(query: String? = nil, page: Int? = nil) -> [String: String] {
+        var params: [String: String] = [:]
+        
+        params["language"] = language
+        
+        if let query = query {
+            params["query"] = query
+        }
+        
+        if let page = page {
+            params["page"] = "\(page)"
+        }
+        
+        return params
     }
 }

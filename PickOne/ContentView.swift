@@ -97,18 +97,15 @@ struct ContentView: View {
         
         Task {
             do {
-                // Create HTTP Client with refactored code
                 let httpClient = URLSessionHTTPClient(
                     baseURL: AppConfiguration.tmdbBaseURL
                 )
                 
-                // Create TMDB Client
                 let tmdbClient = MovieCatalogClient(
                     httpClient: httpClient,
                     apiKey: AppConfiguration.tmdbAPIKey
                 )
                 
-                // Test API call (check console for DEBUG logs!)
                 let response = try await tmdbClient.getTopRated(page: 1)
                 
                 print("✅ Test successful! Received \(response.results.count) movies")

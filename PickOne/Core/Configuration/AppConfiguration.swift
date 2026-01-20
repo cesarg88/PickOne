@@ -65,8 +65,8 @@ struct AppConfiguration {
     
     // MARK: - Network Configuration
     
-    static let defaultRequestTimeout: TimeInterval = 30 // 30 seconds
-    static let uploadRequestTimeout: TimeInterval = 60 // 60 seconds for uploads
+    static let defaultRequestTimeout: TimeInterval = 10
+    static let uploadRequestTimeout: TimeInterval = 60
     
     // MARK: - UI Configuration
     

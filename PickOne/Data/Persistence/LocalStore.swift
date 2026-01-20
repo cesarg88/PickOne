@@ -7,10 +7,7 @@
 
 import Foundation
 
-/// Protocol for local persistence operations
-/// Isolated to MainActor since it's used for UI state persistence
-@MainActor
-protocol LocalStoreProtocol: Sendable {
+protocol LocalStoreProtocol {
     func getWatchlistIDs() -> [Int]
     func saveWatchlistIDs(_ ids: [Int])
     
@@ -26,9 +23,6 @@ protocol LocalStoreProtocol: Sendable {
     func clearSearchHistory()
 }
 
-/// UserDefaults-based implementation of LocalStoreProtocol
-/// MainActor isolated for safe UI state management
-@MainActor
 final class UserDefaultsLocalStore: LocalStoreProtocol {
     
     private let userDefaults: UserDefaults
