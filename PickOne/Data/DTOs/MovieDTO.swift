@@ -3,6 +3,7 @@
 //  PickOne
 //
 //  Data Transfer Objects for TMDB API responses
+//  Note: No CodingKeys needed - JSONDecoder uses convertFromSnakeCase strategy
 //
 
 import Foundation
@@ -14,12 +15,6 @@ struct MovieListResponseDTO: Codable {
     let results: [MovieListItemDTO]
     let totalPages: Int
     let totalResults: Int
-    
-    enum CodingKeys: String, CodingKey {
-        case page, results
-        case totalPages = "total_pages"
-        case totalResults = "total_results"
-    }
 }
 
 // MARK: - Movie List Item (used in lists/search)
@@ -39,21 +34,6 @@ struct MovieListItemDTO: Codable {
     let video: Bool
     let voteAverage: Double
     let voteCount: Int
-    
-    enum CodingKeys: String, CodingKey {
-        case adult
-        case backdropPath = "backdrop_path"
-        case genreIds = "genre_ids"
-        case id
-        case originalLanguage = "original_language"
-        case originalTitle = "original_title"
-        case overview, popularity
-        case posterPath = "poster_path"
-        case releaseDate = "release_date"
-        case title, video
-        case voteAverage = "vote_average"
-        case voteCount = "vote_count"
-    }
 }
 
 // MARK: - Movie Detail Response
@@ -80,21 +60,6 @@ struct MovieDetailDTO: Codable {
     let video: Bool
     let voteAverage: Double
     let voteCount: Int
-    
-    enum CodingKeys: String, CodingKey {
-        case adult
-        case backdropPath = "backdrop_path"
-        case budget, genres, homepage, id
-        case imdbId = "imdb_id"
-        case originalLanguage = "original_language"
-        case originalTitle = "original_title"
-        case overview, popularity
-        case posterPath = "poster_path"
-        case releaseDate = "release_date"
-        case revenue, runtime, status, tagline, title, video
-        case voteAverage = "vote_average"
-        case voteCount = "vote_count"
-    }
 }
 
 // MARK: - Genre
@@ -125,19 +90,6 @@ struct CastMemberDTO: Codable {
     let character: String
     let creditId: String
     let order: Int
-    
-    enum CodingKeys: String, CodingKey {
-        case adult, gender, id
-        case knownForDepartment = "known_for_department"
-        case name
-        case originalName = "original_name"
-        case popularity
-        case profilePath = "profile_path"
-        case castId = "cast_id"
-        case character
-        case creditId = "credit_id"
-        case order
-    }
 }
 
 struct CrewMemberDTO: Codable {
@@ -152,17 +104,6 @@ struct CrewMemberDTO: Codable {
     let creditId: String
     let department: String
     let job: String
-    
-    enum CodingKeys: String, CodingKey {
-        case adult, gender, id
-        case knownForDepartment = "known_for_department"
-        case name
-        case originalName = "original_name"
-        case popularity
-        case profilePath = "profile_path"
-        case creditId = "credit_id"
-        case department, job
-    }
 }
 
 // MARK: - Search Response
@@ -172,10 +113,4 @@ struct SearchResponseDTO: Codable {
     let results: [MovieListItemDTO]
     let totalPages: Int
     let totalResults: Int
-    
-    enum CodingKeys: String, CodingKey {
-        case page, results
-        case totalPages = "total_pages"
-        case totalResults = "total_results"
-    }
 }

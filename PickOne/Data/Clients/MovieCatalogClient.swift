@@ -42,7 +42,9 @@ final class MovieCatalogClient: MovieCatalogClientProtocol {
                 "language": "en-US"
             ],
             headers: authHeaders,
-            body: nil
+            body: nil,
+            timeout: nil,
+            contentType: nil
         )
     }
     
@@ -54,7 +56,9 @@ final class MovieCatalogClient: MovieCatalogClientProtocol {
                 "language": "en-US"
             ],
             headers: authHeaders,
-            body: nil
+            body: nil,
+            timeout: nil,
+            contentType: nil
         )
     }
     
@@ -67,7 +71,9 @@ final class MovieCatalogClient: MovieCatalogClientProtocol {
                 "language": "en-US"
             ],
             headers: authHeaders,
-            body: nil
+            body: nil,
+            timeout: nil,
+            contentType: nil
         )
     }
     
@@ -81,7 +87,9 @@ final class MovieCatalogClient: MovieCatalogClientProtocol {
                 "language": "en-US"
             ],
             headers: authHeaders,
-            body: nil
+            body: nil,
+            timeout: nil,
+            contentType: nil
         )
     }
     
@@ -91,7 +99,9 @@ final class MovieCatalogClient: MovieCatalogClientProtocol {
             method: .get,
             parameters: nil,
             headers: authHeaders,
-            body: nil
+            body: nil,
+            timeout: nil,
+            contentType: nil
         )
     }
 }

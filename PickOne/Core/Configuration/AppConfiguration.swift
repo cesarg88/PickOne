@@ -42,6 +42,11 @@ struct AppConfiguration {
     static let movieDetailCacheTTL: TimeInterval = 7 * 24 * 60 * 60 // 7 days
     static let searchCacheTTL: TimeInterval = 10 * 60 // 10 minutes
     
+    // MARK: - Network Configuration
+    
+    static let defaultRequestTimeout: TimeInterval = 30 // 30 seconds
+    static let uploadRequestTimeout: TimeInterval = 60 // 60 seconds for uploads
+    
     // MARK: - UI Configuration
     
     static let searchDebounceDelay: TimeInterval = 0.3 // 300ms
