@@ -13,7 +13,8 @@ protocol HTTPClient {
         method: HTTPMethod,
         parameters: [String: String]?,
         headers: [String: String]?,
-        timeout: TimeInterval?
+        timeout: TimeInterval?,
+        body: Encodable?
     ) async throws -> T
 }
 
@@ -42,11 +43,13 @@ final class URLSessionHTTPClient {
     private let session: URLSession
     private let baseURL: URL
     private let responseMapper: ResponseMapper
+    private let defaultTimeout: TimeInterval
     
     init(
         baseURL: String,
         session: URLSession = .shared,
-        responseMapper: ResponseMapper = JSONResponseMapper()
+        responseMapper: ResponseMapper = JSONResponseMapper(),
+        defaultTimeout: TimeInterval = 10
     ) {
         guard let url = URL(string: baseURL) else {
             preconditionFailure("Invalid base URL: \(baseURL). This is a programmer error.")
@@ -54,6 +57,7 @@ final class URLSessionHTTPClient {
         self.baseURL = url
         self.session = session
         self.responseMapper = responseMapper
+        self.defaultTimeout = defaultTimeout
     }
 }
 
@@ -65,13 +69,20 @@ extension URLSessionHTTPClient: HTTPClient {
         method: HTTPMethod,
         parameters: [String: String]?,
         headers: [String: String]?,
-        timeout: TimeInterval?
+        timeout: TimeInterval?,
+        body: Encodable?
     ) async throws -> T {
         let url = buildURL(endpoint: endpoint, parameters: parameters)
         
         var request = URLRequest(url: url)
         request.httpMethod = method.rawValue
-        request.timeoutInterval = timeout ?? AppConfiguration.defaultRequestTimeout
+        request.timeoutInterval = timeout ?? defaultTimeout
+        if let body {
+            request.httpBody = try encodeBody(body)
+            if request.value(forHTTPHeaderField: Header.contentType) == nil {
+                request.setValue(MIMEType.json, forHTTPHeaderField: Header.contentType)
+            }
+        }
         
         if let headers {
             for (key, value) in headers {
@@ -162,6 +173,14 @@ private extension URLSessionHTTPClient {
         }
     }
     
+    func encodeBody(_ body: Encodable) throws -> Data {
+        do {
+            return try JSONEncoder().encode(AnyEncodable(body))
+        } catch {
+            throw NetworkError.encodingError(error)
+        }
+    }
+    
     // MARK: - Debug Logging
     
     #if DEBUG
@@ -177,4 +196,16 @@ private extension URLSessionHTTPClient {
         print("\(statusEmoji) Response: \(response.statusCode) - \(data.count) bytes")
     }
     #endif
+}
+
+private struct AnyEncodable: Encodable {
+    private let encodeBlock: (Encoder) throws -> Void
+    
+    init(_ value: Encodable) {
+        self.encodeBlock = value.encode(to:)
+    }
+    
+    func encode(to encoder: Encoder) throws {
+        try encodeBlock(encoder)
+    }
 }

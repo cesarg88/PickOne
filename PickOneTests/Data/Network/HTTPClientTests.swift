@@ -41,7 +41,8 @@ struct HTTPClientTests {
             method: .get,
             parameters: nil,
             headers: nil,
-            timeout: nil
+            timeout: nil,
+            body: nil
         )
         
         // Then
@@ -62,7 +63,8 @@ struct HTTPClientTests {
             method: .get,
             parameters: nil,
             headers: nil,
-            timeout: nil
+            timeout: nil,
+            body: nil
         )
         
         // Then - is_active in JSON should map to isActive in Swift
@@ -83,7 +85,8 @@ struct HTTPClientTests {
             method: .get,
             parameters: nil,
             headers: nil,
-            timeout: nil
+            timeout: nil,
+            body: nil
         )
         
         // Then
@@ -106,7 +109,8 @@ struct HTTPClientTests {
             method: .get,
             parameters: ["page": "1", "language": "en-US"],
             headers: nil,
-            timeout: nil
+            timeout: nil,
+            body: nil
         )
         
         // Then
@@ -132,7 +136,8 @@ struct HTTPClientTests {
             method: .get,
             parameters: nil,
             headers: ["Authorization": "Bearer test-token"],
-            timeout: nil
+            timeout: nil,
+            body: nil
         )
         
         // Then
@@ -154,7 +159,8 @@ struct HTTPClientTests {
             method: .get,
             parameters: nil,
             headers: nil,
-            timeout: nil
+            timeout: nil,
+            body: nil
         )
         
         // Then
@@ -176,7 +182,8 @@ struct HTTPClientTests {
             method: .get,
             parameters: nil,
             headers: nil,
-            timeout: nil
+            timeout: nil,
+            body: nil
         )
         
         // Then
@@ -205,7 +212,8 @@ struct HTTPClientTests {
             method: method,
             parameters: nil,
             headers: nil,
-            timeout: nil
+            timeout: nil,
+            body: nil
         )
         
         // Then - use .last to get the most recent request from this test
@@ -228,7 +236,8 @@ struct HTTPClientTests {
                 method: .get,
                 parameters: nil,
                 headers: nil,
-                timeout: nil
+                timeout: nil,
+                body: nil
             )
         }
     }
@@ -246,7 +255,8 @@ struct HTTPClientTests {
                 method: .get,
                 parameters: nil,
                 headers: nil,
-                timeout: nil
+                timeout: nil,
+                body: nil
             )
         }
     }
@@ -264,7 +274,8 @@ struct HTTPClientTests {
                 method: .get,
                 parameters: nil,
                 headers: nil,
-                timeout: nil
+                timeout: nil,
+                body: nil
             )
         }
     }
@@ -282,7 +293,8 @@ struct HTTPClientTests {
                 method: .get,
                 parameters: nil,
                 headers: nil,
-                timeout: nil
+                timeout: nil,
+                body: nil
             )
         }
     }
@@ -300,7 +312,8 @@ struct HTTPClientTests {
                 method: .get,
                 parameters: nil,
                 headers: nil,
-                timeout: nil
+                timeout: nil,
+                body: nil
             )
         }
     }
@@ -319,7 +332,8 @@ struct HTTPClientTests {
                 method: .get,
                 parameters: nil,
                 headers: nil,
-                timeout: nil
+                timeout: nil,
+                body: nil
             )
         }
     }
@@ -338,7 +352,8 @@ struct HTTPClientTests {
             method: .get,
             parameters: nil,
             headers: nil,
-            timeout: nil
+            timeout: nil,
+            body: nil
         )
         
         // Then - should NOT have double slash
@@ -361,7 +376,8 @@ struct HTTPClientTests {
             method: .get,
             parameters: nil,
             headers: nil,
-            timeout: nil
+            timeout: nil,
+            body: nil
         )
         
         // Then
@@ -384,7 +400,8 @@ struct HTTPClientTests {
             method: .get,
             parameters: nil,
             headers: nil,
-            timeout: nil
+            timeout: nil,
+            body: nil
         )
         let url1 = MockURLProtocol.capturedRequests.last?.url?.absoluteString
         
@@ -397,7 +414,8 @@ struct HTTPClientTests {
             method: .get,
             parameters: nil,
             headers: nil,
-            timeout: nil
+            timeout: nil,
+            body: nil
         )
         let url2 = MockURLProtocol.capturedRequests.last?.url?.absoluteString
         
@@ -419,7 +437,8 @@ struct HTTPClientTests {
             method: .get,
             parameters: ["query": "hello world"],
             headers: nil,
-            timeout: nil
+            timeout: nil,
+            body: nil
         )
         
         // Then
@@ -442,7 +461,8 @@ struct HTTPClientTests {
             method: .get,
             parameters: ["name": "José", "filter": "a&b=c"],
             headers: nil,
-            timeout: nil
+            timeout: nil,
+            body: nil
         )
         
         // Then
@@ -479,12 +499,13 @@ struct HTTPClientTests {
             method: .get,
             parameters: nil,
             headers: nil,
-            timeout: nil
+            timeout: nil,
+            body: nil
         )
         
         // Then
         let capturedRequest = try #require(MockURLProtocol.capturedRequests.last)
-        #expect(capturedRequest.timeoutInterval == AppConfiguration.defaultRequestTimeout)
+        #expect(capturedRequest.timeoutInterval == 10)
     }
     
     @Test("Custom timeout is applied when provided")
@@ -500,7 +521,8 @@ struct HTTPClientTests {
             method: .get,
             parameters: nil,
             headers: nil,
-            timeout: customTimeout
+            timeout: customTimeout,
+            body: nil
         )
         
         // Then

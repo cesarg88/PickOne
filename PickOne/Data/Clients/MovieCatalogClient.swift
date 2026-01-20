@@ -51,7 +51,8 @@ extension MovieCatalogClient: MovieCatalogClientProtocol {
             method: .get,
             parameters: buildParameters(page: page),
             headers: authHeaders,
-            timeout: nil
+            timeout: nil,
+            body: nil
         )
     }
     
@@ -61,7 +62,8 @@ extension MovieCatalogClient: MovieCatalogClientProtocol {
             method: .get,
             parameters: buildParameters(),
             headers: authHeaders,
-            timeout: nil
+            timeout: nil,
+            body: nil
         )
     }
     
@@ -71,7 +73,8 @@ extension MovieCatalogClient: MovieCatalogClientProtocol {
             method: .get,
             parameters: buildParameters(page: page),
             headers: authHeaders,
-            timeout: nil
+            timeout: nil,
+            body: nil
         )
     }
     
@@ -81,7 +84,8 @@ extension MovieCatalogClient: MovieCatalogClientProtocol {
             method: .get,
             parameters: buildParameters(query: query, page: page),
             headers: authHeaders,
-            timeout: nil
+            timeout: nil,
+            body: nil
         )
     }
     
@@ -91,7 +95,8 @@ extension MovieCatalogClient: MovieCatalogClientProtocol {
             method: .get,
             parameters: buildParameters(),
             headers: authHeaders,
-            timeout: nil
+            timeout: nil,
+            body: nil
         )
     }
     

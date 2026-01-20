@@ -11,6 +11,7 @@ enum NetworkError: Error, LocalizedError {
     case invalidURL
     case noData
     case decodingError(Error)
+    case encodingError(Error)
     case httpError(statusCode: Int)
     case apiError(message: String)
     case timeout
@@ -25,6 +26,8 @@ enum NetworkError: Error, LocalizedError {
             return "No data received"
         case .decodingError(let error):
             return "Failed to decode response: \(error.localizedDescription)"
+        case .encodingError(let error):
+            return "Failed to encode request body: \(error.localizedDescription)"
         case .httpError(let statusCode):
             return "HTTP error: \(statusCode)"
         case .apiError(let message):
