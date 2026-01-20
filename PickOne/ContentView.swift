@@ -120,8 +120,8 @@ struct ContentView: View {
                         movies: response.results.prefix(5).map { movie in
                             MovieInfo(
                                 title: movie.title,
-                                year: String(movie.releaseDate.prefix(4)),
-                                rating: movie.voteAverage
+                                year: releaseDate(movie: movie),
+                                rating: movie.voteAverage ?? 8.5
                             )
                         }
                     )
@@ -138,6 +138,12 @@ struct ContentView: View {
                 }
             }
         }
+    }
+    
+    private func releaseDate(movie: MovieListItemDTO) -> String {
+        guard let year = movie.releaseDate else { return "1980" }
+        return year
+        
     }
 }
 

@@ -19,47 +19,50 @@ struct MovieListResponseDTO: Codable {
 
 // MARK: - Movie List Item (used in lists/search)
 
+/// Note: Several fields are optional because TMDB may return null/empty
+/// depending on the movie, language, or region settings
 struct MovieListItemDTO: Codable {
     let adult: Bool
     let backdropPath: String?
-    let genreIds: [Int]
+    let genreIds: [Int]?          // May be missing for some entries
     let id: Int
-    let originalLanguage: String
-    let originalTitle: String
-    let overview: String
-    let popularity: Double
+    let originalLanguage: String?
+    let originalTitle: String?
+    let overview: String?         // Can be empty/null for some languages
+    let popularity: Double?
     let posterPath: String?
-    let releaseDate: String
+    let releaseDate: String?      // Can be empty for unreleased/unknown dates
     let title: String
-    let video: Bool
-    let voteAverage: Double
-    let voteCount: Int
+    let video: Bool?
+    let voteAverage: Double?
+    let voteCount: Int?
 }
 
 // MARK: - Movie Detail Response
 
+/// Note: Several fields are optional for robustness against TMDB variations
 struct MovieDetailDTO: Codable {
     let adult: Bool
     let backdropPath: String?
-    let budget: Int
-    let genres: [GenreDTO]
+    let budget: Int?              // May be 0 or missing for some movies
+    let genres: [GenreDTO]?       // Usually present but play safe
     let homepage: String?
     let id: Int
     let imdbId: String?
-    let originalLanguage: String
-    let originalTitle: String
-    let overview: String
-    let popularity: Double
+    let originalLanguage: String?
+    let originalTitle: String?
+    let overview: String?         // Can be empty for some languages
+    let popularity: Double?
     let posterPath: String?
-    let releaseDate: String
-    let revenue: Int
+    let releaseDate: String?      // Can be empty for unreleased movies
+    let revenue: Int?             // May be 0 or missing
     let runtime: Int?
-    let status: String
+    let status: String?
     let tagline: String?
     let title: String
-    let video: Bool
-    let voteAverage: Double
-    let voteCount: Int
+    let video: Bool?
+    let voteAverage: Double?
+    let voteCount: Int?
 }
 
 // MARK: - Genre
@@ -78,32 +81,32 @@ struct CreditsResponseDTO: Codable {
 }
 
 struct CastMemberDTO: Codable {
-    let adult: Bool
+    let adult: Bool?
     let gender: Int?
     let id: Int
-    let knownForDepartment: String
+    let knownForDepartment: String?
     let name: String
-    let originalName: String
-    let popularity: Double
+    let originalName: String?
+    let popularity: Double?
     let profilePath: String?
-    let castId: Int
-    let character: String
-    let creditId: String
-    let order: Int
+    let castId: Int?              // May be missing in some responses
+    let character: String?        // Can be empty for uncredited roles
+    let creditId: String?
+    let order: Int?
 }
 
 struct CrewMemberDTO: Codable {
-    let adult: Bool
+    let adult: Bool?
     let gender: Int?
     let id: Int
-    let knownForDepartment: String
+    let knownForDepartment: String?
     let name: String
-    let originalName: String
-    let popularity: Double
+    let originalName: String?
+    let popularity: Double?
     let profilePath: String?
-    let creditId: String
-    let department: String
-    let job: String
+    let creditId: String?
+    let department: String?
+    let job: String?
 }
 
 // MARK: - Search Response

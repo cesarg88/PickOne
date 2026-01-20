@@ -57,9 +57,10 @@ final class URLSessionHTTPClient: HTTPClient {
         self.session = session
         
         // Configure JSON decoder with best practices
+        // Note: No dateDecodingStrategy - TMDB returns dates as "YYYY-MM-DD" strings.
+        // DTOs should use String for dates, and mappers convert to Date/year as needed.
         self.decoder = JSONDecoder()
         self.decoder.keyDecodingStrategy = .convertFromSnakeCase
-        self.decoder.dateDecodingStrategy = .iso8601
     }
     
     // MARK: - Public Methods
@@ -161,8 +162,12 @@ final class URLSessionHTTPClient: HTTPClient {
     // MARK: - Private Helpers
     
     private func buildURL(endpoint: String, parameters: [String: String]?) -> URL {
+        // Normalize endpoint: remove leading slash to avoid double slashes
+        // Convention: endpoints should NOT have leading slash (e.g., "3/movie/top_rated")
+        let normalizedEndpoint = endpoint.hasPrefix("/") ? String(endpoint.dropFirst()) : endpoint
+        
         // Use appending(path:) for proper path construction
-        let url = baseURL.appending(path: endpoint)
+        let url = baseURL.appending(path: normalizedEndpoint)
         
         // Add query parameters if provided
         guard let parameters, !parameters.isEmpty else {

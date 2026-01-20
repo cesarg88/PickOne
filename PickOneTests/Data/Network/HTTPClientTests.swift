@@ -352,4 +352,204 @@ struct HTTPClientTests {
             )
         }
     }
+    
+    // MARK: - Endpoint Normalization Tests
+    
+    @Test("Endpoint with leading slash is normalized correctly")
+    func endpointWithLeadingSlashNormalized() async throws {
+        // Given
+        let sut = makeSUT(baseURL: "https://api.example.com")
+        MockURLProtocol.setSuccessResponse(data: TestData.simpleResponseJSON)
+        
+        // When - endpoint WITH leading slash
+        let _: TestData.SimpleResponse = try await sut.request(
+            endpoint: "/movies/top_rated",
+            method: .get,
+            parameters: nil,
+            headers: nil,
+            body: nil,
+            timeout: nil,
+            contentType: nil
+        )
+        
+        // Then - should NOT have double slash
+        let capturedRequest = try #require(MockURLProtocol.capturedRequests.last)
+        let url = try #require(capturedRequest.url)
+        
+        #expect(!url.absoluteString.contains("//movies"))
+        #expect(url.absoluteString.contains("/movies/top_rated"))
+    }
+    
+    @Test("Endpoint without leading slash works correctly")
+    func endpointWithoutLeadingSlashWorks() async throws {
+        // Given
+        let sut = makeSUT(baseURL: "https://api.example.com")
+        MockURLProtocol.setSuccessResponse(data: TestData.simpleResponseJSON)
+        
+        // When - endpoint WITHOUT leading slash
+        let _: TestData.SimpleResponse = try await sut.request(
+            endpoint: "movies/top_rated",
+            method: .get,
+            parameters: nil,
+            headers: nil,
+            body: nil,
+            timeout: nil,
+            contentType: nil
+        )
+        
+        // Then
+        let capturedRequest = try #require(MockURLProtocol.capturedRequests.last)
+        let url = try #require(capturedRequest.url)
+        
+        #expect(url.absoluteString.contains("/movies/top_rated"))
+    }
+    
+    @Test("Endpoints with and without leading slash produce same URL")
+    func endpointNormalizationProducesSameURL() async throws {
+        // Given
+        let sut1 = makeSUT(baseURL: "https://api.example.com")
+        let sut2 = makeSUT(baseURL: "https://api.example.com")
+        MockURLProtocol.setSuccessResponse(data: TestData.simpleResponseJSON)
+        
+        // When - with leading slash
+        let _: TestData.SimpleResponse = try await sut1.request(
+            endpoint: "/movies/top_rated",
+            method: .get,
+            parameters: nil,
+            headers: nil,
+            body: nil,
+            timeout: nil,
+            contentType: nil
+        )
+        let url1 = MockURLProtocol.capturedRequests.last?.url?.absoluteString
+        
+        // Reset and test without leading slash
+        MockURLProtocol.reset()
+        MockURLProtocol.setSuccessResponse(data: TestData.simpleResponseJSON)
+        
+        let _: TestData.SimpleResponse = try await sut2.request(
+            endpoint: "movies/top_rated",
+            method: .get,
+            parameters: nil,
+            headers: nil,
+            body: nil,
+            timeout: nil,
+            contentType: nil
+        )
+        let url2 = MockURLProtocol.capturedRequests.last?.url?.absoluteString
+        
+        // Then - both should produce the same URL
+        #expect(url1 == url2)
+    }
+    
+    // MARK: - Percent Encoding Tests
+    
+    @Test("Query parameters with spaces are percent-encoded")
+    func queryParamsWithSpacesAreEncoded() async throws {
+        // Given
+        let sut = makeSUT()
+        MockURLProtocol.setSuccessResponse(data: TestData.simpleResponseJSON)
+        
+        // When
+        let _: TestData.SimpleResponse = try await sut.request(
+            endpoint: TestData.testEndpoint,
+            method: .get,
+            parameters: ["query": "hello world"],
+            headers: nil,
+            body: nil,
+            timeout: nil,
+            contentType: nil
+        )
+        
+        // Then
+        let capturedRequest = try #require(MockURLProtocol.capturedRequests.last)
+        let urlString = try #require(capturedRequest.url?.absoluteString)
+        
+        // Space should be encoded as %20 or +
+        #expect(urlString.contains("hello%20world") || urlString.contains("hello+world"))
+    }
+    
+    @Test("Query parameters with special characters are percent-encoded")
+    func queryParamsWithSpecialCharsAreEncoded() async throws {
+        // Given
+        let sut = makeSUT()
+        MockURLProtocol.setSuccessResponse(data: TestData.simpleResponseJSON)
+        
+        // When
+        let _: TestData.SimpleResponse = try await sut.request(
+            endpoint: TestData.testEndpoint,
+            method: .get,
+            parameters: ["name": "José", "filter": "a&b=c"],
+            headers: nil,
+            body: nil,
+            timeout: nil,
+            contentType: nil
+        )
+        
+        // Then
+        let capturedRequest = try #require(MockURLProtocol.capturedRequests.last)
+        let url = try #require(capturedRequest.url)
+        
+        // Parse query items to verify encoding worked correctly
+        let components = URLComponents(url: url, resolvingAgainstBaseURL: false)
+        let queryItems = components?.queryItems ?? []
+        
+        // Verify values are correctly decoded back (proves encoding worked)
+        let nameValue = queryItems.first { $0.name == "name" }?.value
+        let filterValue = queryItems.first { $0.name == "filter" }?.value
+        
+        #expect(nameValue == "José")
+        #expect(filterValue == "a&b=c")
+        
+        // Also verify raw URL string doesn't contain unencoded special chars
+        let urlString = url.absoluteString
+        #expect(!urlString.contains("a&b=c")) // Raw ampersand should be encoded
+    }
+    
+    // MARK: - Timeout Tests
+    
+    @Test("Custom timeout is applied to request")
+    func customTimeoutIsApplied() async throws {
+        // Given
+        let sut = makeSUT()
+        MockURLProtocol.setSuccessResponse(data: TestData.simpleResponseJSON)
+        let customTimeout: TimeInterval = 60.0
+        
+        // When
+        let _: TestData.SimpleResponse = try await sut.request(
+            endpoint: TestData.testEndpoint,
+            method: .get,
+            parameters: nil,
+            headers: nil,
+            body: nil,
+            timeout: customTimeout,
+            contentType: nil
+        )
+        
+        // Then
+        let capturedRequest = try #require(MockURLProtocol.capturedRequests.last)
+        #expect(capturedRequest.timeoutInterval == customTimeout)
+    }
+    
+    @Test("Nil timeout uses default value")
+    func nilTimeoutUsesDefault() async throws {
+        // Given
+        let sut = makeSUT()
+        MockURLProtocol.setSuccessResponse(data: TestData.simpleResponseJSON)
+        
+        // When
+        let _: TestData.SimpleResponse = try await sut.request(
+            endpoint: TestData.testEndpoint,
+            method: .get,
+            parameters: nil,
+            headers: nil,
+            body: nil,
+            timeout: nil,
+            contentType: nil
+        )
+        
+        // Then - should use AppConfiguration.defaultRequestTimeout
+        let capturedRequest = try #require(MockURLProtocol.capturedRequests.last)
+        #expect(capturedRequest.timeoutInterval == AppConfiguration.defaultRequestTimeout)
+    }
 }

@@ -14,9 +14,31 @@ struct AppConfiguration {
     // MARK: - TMDB Configuration
     
     /// The Movie Database API Key
+    /// Loaded from environment variable (configured in Xcode Scheme)
     /// Get your key at: https://developer.themoviedb.org/reference/getting-started
     static let tmdbAPIKey: String = {
-        return "eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiIwNDk2MzZjZjBmMGY0MWRhOGM0N2M3OTI1MzBkZDJhOSIsIm5iZiI6MTc2ODgzNDQ4My4zMDQsInN1YiI6IjY5NmU0NWIzNDY0NjY0N2FhZDhmZDZiOCIsInNjb3BlcyI6WyJhcGlfcmVhZCJdLCJ2ZXJzaW9uIjoxfQ.hqWuv0vLZRuthU2u3o946zKK7cfSbwIUI2WBa1wxO0A"
+        if let envKey = ProcessInfo.processInfo.environment["TMDB_API_KEY"],
+           !envKey.isEmpty {
+            return envKey
+        }
+        
+        #if DEBUG
+        fatalError("""
+            ❌ TMDB API Key not found!
+            
+            Setup:
+              1. In Xcode: Product → Scheme → Edit Scheme (⌘<)
+              2. Select "Run" → "Arguments" tab
+              3. Under "Environment Variables", add:
+                 Name: TMDB_API_KEY
+                 Value: your_bearer_token
+            
+            Get your token at: https://developer.themoviedb.org
+            Use the "API Read Access Token" (Bearer token), NOT the API Key.
+            """)
+        #else
+        return ""
+        #endif
     }()
     
     static let tmdbBaseURL = "https://api.themoviedb.org/3"
@@ -33,7 +55,6 @@ struct AppConfiguration {
         case backdropSmall = "w300"
         case backdropMedium = "w780"
         case backdropLarge = "w1280"
-        case backdropOriginal = "original_"
     }
     
     // MARK: - Cache Configuration

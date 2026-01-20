@@ -90,12 +90,11 @@ fastlane/test_output
 iOSInjectionProject/
 
 # API Keys & Secrets
-# Note: AppConfiguration.swift is tracked with placeholder values
-# NEVER commit real API keys - only placeholder text
+# API keys are loaded from environment variables (configured in Xcode Scheme)
+# NEVER commit real API keys!
 .env
 secrets.json
 config.json
-*.plist
 
 # macOS
 .DS_Store

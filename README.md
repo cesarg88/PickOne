@@ -140,9 +140,14 @@ UI updates
 
 ### TMDB API Key Setup
 
-1. Get your API key from: https://developer.themoviedb.org/reference/getting-started
-2. Open `Core/Configuration/AppConfiguration.swift`
-3. Replace `"YOUR_TMDB_API_KEY_HERE"` with your actual key
+1. Get your **API Read Access Token** (Bearer token) from: https://developer.themoviedb.org/reference/getting-started
+2. In Xcode: **Product → Scheme → Edit Scheme** (⌘<)
+3. Select **Run → Arguments** tab
+4. Under **Environment Variables**, add:
+   - **Name:** `TMDB_API_KEY`
+   - **Value:** your Bearer token
+
+> ⚠️ The app will crash on launch with clear instructions if this is not configured.
 
 ---
 
