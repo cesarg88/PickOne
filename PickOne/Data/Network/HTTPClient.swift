@@ -163,7 +163,7 @@ final class URLSessionHTTPClient: HTTPClient {
     
     private func buildURL(endpoint: String, parameters: [String: String]?) -> URL {
         // Normalize endpoint: remove leading slash to avoid double slashes
-        // Convention: endpoints should NOT have leading slash (e.g., "3/movie/top_rated")
+        // Convention: endpoints should NOT have leading slash (e.g., "movie/top_rated")
         let normalizedEndpoint = endpoint.hasPrefix("/") ? String(endpoint.dropFirst()) : endpoint
         
         // Use appending(path:) for proper path construction
