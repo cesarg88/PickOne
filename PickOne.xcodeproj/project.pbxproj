@@ -40,11 +40,6 @@
 			path = PickOneTests;
 			sourceTree = "<group>";
 		};
-		9A4CE15A2F1E813F0028C2DF /* PickOneUITests */ = {
-			isa = PBXFileSystemSynchronizedRootGroup;
-			path = PickOneUITests;
-			sourceTree = "<group>";
-		};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -77,7 +72,6 @@
 			children = (
 				9A4CE1402F1E813D0028C2DF /* PickOne */,
 				9A4CE1502F1E813F0028C2DF /* PickOneTests */,
-				9A4CE15A2F1E813F0028C2DF /* PickOneUITests */,
 				9A4CE13F2F1E813D0028C2DF /* Products */,
 			);
 			sourceTree = "<group>";
@@ -152,9 +146,6 @@
 			);
 			dependencies = (
 				9A4CE1592F1E813F0028C2DF /* PBXTargetDependency */,
-			);
-			fileSystemSynchronizedGroups = (
-				9A4CE15A2F1E813F0028C2DF /* PickOneUITests */,
 			);
 			name = PickOneUITests;
 			packageProductDependencies = (
