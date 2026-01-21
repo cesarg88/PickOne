@@ -31,7 +31,15 @@ final class MovieDetailViewModel {
                 state = .loaded(MovieDetailPresentationMapper.map(snapshot: refreshed.value))
             }
         } catch {
-            state = .error(error.localizedDescription)
+            state = .error(errorMessage(for: error))
         }
+    }
+
+    private func errorMessage(for error: Error) -> String {
+        #if DEBUG
+        return error.localizedDescription
+        #else
+        return "Service unavailable"
+        #endif
     }
 }

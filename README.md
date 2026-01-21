@@ -140,6 +140,7 @@ UI updates
 
 ### TMDB API Key Setup
 
+**Debug builds**
 1. Get your **API Read Access Token** (Bearer token) from: https://developer.themoviedb.org/reference/getting-started
 2. In Xcode: **Product → Scheme → Edit Scheme** (⌘<)
 3. Select **Run → Arguments** tab
@@ -147,7 +148,18 @@ UI updates
    - **Name:** `TMDB_API_KEY`
    - **Value:** your Bearer token
 
-> ⚠️ The app will crash on launch with clear instructions if this is not configured.
+If the key is missing in Debug, the app shows a setup screen with retry and logs a warning.
+
+**Release builds**
+- Configure `TMDB_API_KEY` via Release `.xcconfig`.
+- The app should never prompt end users for a key.
+
+---
+
+## 🧠 Cache Policy (MVP)
+
+- Cache is **in-memory only** and **session-only**.
+- No disk cache or persistence between launches in the MVP.
 
 ---
 

@@ -1,5 +1,6 @@
 import Foundation
 
+// In-memory, session-only cache (no disk persistence).
 actor MemoryCacheStore: CacheStore {
     private struct AnyCacheEntry {
         let value: Any

@@ -10,10 +10,10 @@ final class ImagePipeline: ImageLoading {
         cache: ImageCache = ImageCache(),
         urlCache: URLCache = URLCache(
             memoryCapacity: 50 * 1024 * 1024,
-            diskCapacity: 200 * 1024 * 1024
+            diskCapacity: 0
         )
     ) {
-        let configuration = URLSessionConfiguration.default
+        let configuration = URLSessionConfiguration.ephemeral
         configuration.urlCache = urlCache
         configuration.requestCachePolicy = .returnCacheDataElseLoad
         self.session = URLSession(configuration: configuration)

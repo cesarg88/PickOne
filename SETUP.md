@@ -66,34 +66,26 @@
 ### Step 1: Get Your API Key
 1. Go to: https://developer.themoviedb.org/reference/getting-started
 2. Sign up / Log in
-3. Generate an API key (v3)
+3. Generate an **API Read Access Token** (Bearer token)
 
-### Step 2: Add API Key to Project
-Open `PickOne/Core/Configuration/AppConfiguration.swift` and replace:
+### Step 2: Add API Key (Debug)
+In Xcode: **Product → Scheme → Edit Scheme** (⌘<) → **Run → Arguments**
+Add an environment variable:
+- **Name:** `TMDB_API_KEY`
+- **Value:** your Bearer token
 
-```swift
-static let tmdbAPIKey: String = {
-    return "YOUR_TMDB_API_KEY_HERE"  // ⬅️ Replace this
-}()
-```
+> Do not hardcode secrets in the repo.
 
-With your actual key:
+### Step 3: Release Builds
+Configure `TMDB_API_KEY` in the Release `.xcconfig` used by the app target.
 
-```swift
-static let tmdbAPIKey: String = {
-    return "eyJhbGciOiJIUzI1NiJ9..."  // Your real key
-}()
-```
-
-### Step 3: Verify Setup
+### Step 4: Verify Setup
 Build the project in Xcode:
 ```bash
 ⌘ + B (Build)
 ```
 
-You should see:
-- ✅ No compilation errors
-- ✅ ContentView renders with "Phase 0: Setup Complete"
+If the key is missing in Debug, the app shows a setup screen with a Retry button.
 
 ---
 

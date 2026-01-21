@@ -13,7 +13,9 @@ final class ImageCache {
     }
     
     func insert(_ image: UIImage, for url: URL) {
-        let cost = image.pngData()?.count ?? 0
+        let pixelWidth = Int(image.size.width * image.scale)
+        let pixelHeight = Int(image.size.height * image.scale)
+        let cost = max(0, pixelWidth * pixelHeight * 4)
         cache.setObject(image, forKey: url as NSURL, cost: cost)
     }
 }

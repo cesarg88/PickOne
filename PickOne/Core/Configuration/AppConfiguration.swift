@@ -23,10 +23,7 @@ struct AppConfiguration {
         }
         
         #if DEBUG
-        print("""
-            ⚠️ TMDB API Key not found.
-            Configure TMDB_API_KEY in the Run Scheme environment variables.
-            """)
+        print("⚠️ TMDB API Key missing (DEBUG).")
         #endif
         
         return ""
