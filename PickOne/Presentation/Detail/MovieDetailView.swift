@@ -62,10 +62,11 @@ struct MovieDetailView: View {
                         text: snapshot.movie.overview
                     )
                     
-                    if !snapshot.similar.isEmpty {
+                    if !snapshot.similar.isEmpty || snapshot.isSimilarUnavailable {
                         SimilarMoviesSection(
                             movies: snapshot.similar,
-                            pipeline: imagePipeline
+                            pipeline: imagePipeline,
+                            isUnavailable: snapshot.isSimilarUnavailable
                         )
                     }
                     
@@ -121,11 +122,18 @@ private struct ExpandableText: View {
 private struct SimilarMoviesSection: View {
     let movies: [MovieSummary]
     let pipeline: ImagePipeline
+    let isUnavailable: Bool
     
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("Similar Movies")
                 .font(.headline)
+            
+            if isUnavailable {
+                Text("Similar movies are unavailable right now.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
             
             ScrollView(.horizontal, showsIndicators: false) {
                 LazyHStack(spacing: 12) {

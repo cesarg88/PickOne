@@ -33,6 +33,8 @@ struct MovieDetailSnapshot: Equatable {
     let isWatched: Bool
     let director: Person?
     let topCast: [Person]
+    let isSimilarUnavailable: Bool
+    let isCreditsUnavailable: Bool
     let asOf: Date
 }
 
