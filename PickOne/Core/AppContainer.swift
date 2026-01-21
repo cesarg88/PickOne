@@ -5,7 +5,7 @@ final class AppContainer {
     let imagePipeline: ImagePipeline
     let getDiscoveryFeed: GetDiscoveryFeedUseCase
     let getMovieDetail: GetMovieDetailUseCase
-    let discoveryModel: DiscoveryModel
+    let discoveryViewModel: DiscoveryViewModel
     
     init() {
         let httpClient = URLSessionHTTPClient(
@@ -35,6 +35,6 @@ final class AppContainer {
         self.getDiscoveryFeed = GetDiscoveryFeed(repository: movieRepository)
         self.getMovieDetail = GetMovieDetail(repository: movieRepository)
         self.imagePipeline = ImagePipeline()
-        self.discoveryModel = DiscoveryModel(getDiscoveryFeed: self.getDiscoveryFeed)
+        self.discoveryViewModel = DiscoveryViewModel(getDiscoveryFeed: self.getDiscoveryFeed)
     }
 }

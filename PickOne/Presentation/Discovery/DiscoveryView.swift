@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct DiscoveryView: View {
-    let model: DiscoveryModel
+    let model: DiscoveryViewModel
     let getMovieDetail: GetMovieDetailUseCase
     let imagePipeline: ImagePipeline
     
@@ -10,30 +10,31 @@ struct DiscoveryView: View {
     var body: some View {
         NavigationStack {
             Group {
-                if model.isLoading && model.snapshot.movies.isEmpty {
+                switch model.state {
+                case .idle, .loading:
                     ProgressView("Loading picks...")
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
-                } else if let errorMessage = model.errorMessage {
+                case .error(let errorMessage):
                     EmptyStateView(
                         title: "Couldn't load movies",
                         message: errorMessage,
                         actionTitle: "Retry",
                         action: { Task { await model.loadInitial() } }
                     )
-                } else if model.snapshot.movies.isEmpty {
+                case .loaded(let data) where data.movies.isEmpty:
                     EmptyStateView(
                         title: "No movies yet",
                         message: "Try again in a moment.",
                         actionTitle: "Reload",
                         action: { Task { await model.loadInitial() } }
                     )
-                } else {
+                case .loaded(let data):
                     ScrollView {
                         LazyVGrid(columns: columns, spacing: 12) {
-                            ForEach(model.snapshot.movies) { movie in
+                            ForEach(data.movies) { movie in
                                 NavigationLink {
                                     MovieDetailView(
-                                        model: MovieDetailModel(
+                                        model: MovieDetailViewModel(
                                             movieId: movie.id,
                                             getMovieDetail: getMovieDetail
                                         ),
@@ -51,7 +52,7 @@ struct DiscoveryView: View {
                         .padding(.horizontal)
                         .padding(.top, 12)
                         
-                        if model.isLoadingNextPage {
+                        if data.isLoadingNextPage {
                             ProgressView()
                                 .padding()
                         }
@@ -67,14 +68,14 @@ struct DiscoveryView: View {
 }
 
 private struct PosterCardView: View {
-    let movie: MovieSummary
+    let movie: DiscoveryMovieItem
     let pipeline: ImagePipeline
     
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             RemoteImageView(
-                url: ImageURLBuilder.posterURL(path: movie.posterPath, size: .posterMedium),
-                pipeline: pipeline,
+                url: movie.posterURL,
+                loader: pipeline,
                 contentMode: .fill,
                 accessibilityLabel: movie.title
             )
@@ -88,8 +89,8 @@ private struct PosterCardView: View {
                     .lineLimit(2)
                     .foregroundStyle(.primary)
                 
-                if let year = movie.releaseYear {
-                    Text(String(year))
+                if let year = movie.releaseYearText {
+                    Text(year)
                         .font(.caption2)
                         .foregroundStyle(.secondary)
                 }

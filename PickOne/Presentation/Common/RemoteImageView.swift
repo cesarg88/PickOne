@@ -9,7 +9,7 @@ struct RemoteImageView: View {
     }
     
     let url: URL?
-    let pipeline: ImagePipeline
+    let loader: any ImageLoading
     let contentMode: ContentMode
     let accessibilityLabel: String
     
@@ -51,7 +51,7 @@ struct RemoteImageView: View {
         }
         phase = .loading
         do {
-            let uiImage = try await pipeline.loadImage(from: url)
+            let uiImage = try await loader.loadImage(from: url)
             phase = .success(Image(uiImage: uiImage))
         } catch {
             phase = .failure

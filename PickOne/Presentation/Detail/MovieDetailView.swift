@@ -1,46 +1,47 @@
 import SwiftUI
 
 struct MovieDetailView: View {
-    let model: MovieDetailModel
+    let model: MovieDetailViewModel
     let imagePipeline: ImagePipeline
     
     var body: some View {
         ScrollView {
-            if model.isLoading && model.snapshot == nil {
+            switch model.state {
+            case .idle, .loading:
                 ProgressView("Loading details...")
                     .frame(maxWidth: .infinity, minHeight: 200)
-            } else if let errorMessage = model.errorMessage {
+            case .error(let errorMessage):
                 EmptyStateView(
                     title: "Couldn't load details",
                     message: errorMessage,
                     actionTitle: "Retry",
                     action: { Task { await model.load() } }
                 )
-            } else if let snapshot = model.snapshot {
+            case .loaded(let data):
                 VStack(alignment: .leading, spacing: 16) {
                     RemoteImageView(
-                        url: ImageURLBuilder.backdropURL(path: snapshot.movie.backdropPath, size: .backdropLarge),
-                        pipeline: imagePipeline,
+                        url: data.backdropURL,
+                        loader: imagePipeline,
                         contentMode: .fill,
-                        accessibilityLabel: snapshot.movie.title
+                        accessibilityLabel: data.title
                     )
                     .frame(height: 220)
                     .clipped()
                     .cornerRadius(12)
                     
                     VStack(alignment: .leading, spacing: 8) {
-                        Text(snapshot.movie.title)
+                        Text(data.title)
                             .font(.title2)
                             .fontWeight(.semibold)
                         
                         HStack(spacing: 12) {
-                            if let year = snapshot.movie.releaseYear {
-                                Text(String(year))
+                            if let year = data.releaseYearText {
+                                Text(year)
                                     .font(.subheadline)
                                     .foregroundStyle(.secondary)
                             }
                             
-                            if let runtime = snapshot.movie.runtimeFormatted {
+                            if let runtime = data.runtimeText {
                                 Text(runtime)
                                     .font(.subheadline)
                                     .foregroundStyle(.secondary)
@@ -50,7 +51,7 @@ struct MovieDetailView: View {
                                 Image(systemName: "star.fill")
                                     .font(.caption)
                                     .foregroundStyle(.yellow)
-                                Text(String(format: "%.1f", snapshot.movie.rating))
+                                Text(data.ratingText)
                                     .font(.subheadline)
                                     .foregroundStyle(.secondary)
                             }
@@ -59,14 +60,20 @@ struct MovieDetailView: View {
                     
                     ExpandableText(
                         title: "Synopsis",
-                        text: snapshot.movie.overview
+                        text: data.overview
                     )
                     
-                    if !snapshot.similar.isEmpty || snapshot.isSimilarUnavailable {
+                    CreditsSection(
+                        directorName: data.directorName,
+                        topCastNames: data.topCastNames,
+                        isUnavailable: data.isCreditsUnavailable
+                    )
+                    
+                    if !data.similar.isEmpty || data.isSimilarUnavailable {
                         SimilarMoviesSection(
-                            movies: snapshot.similar,
+                            movies: data.similar,
                             pipeline: imagePipeline,
-                            isUnavailable: snapshot.isSimilarUnavailable
+                            isUnavailable: data.isSimilarUnavailable
                         )
                     }
                     
@@ -89,6 +96,42 @@ struct MovieDetailView: View {
         .task {
             await model.load()
         }
+    }
+}
+
+private struct CreditsSection: View {
+    let directorName: String?
+    let topCastNames: [String]
+    let isUnavailable: Bool
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Cast & Crew")
+                .font(.headline)
+            
+            if isUnavailable {
+                Text("Credits are unavailable right now.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            } else {
+                if let directorName, !directorName.isEmpty {
+                    HStack(spacing: 6) {
+                        Text("Director:")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        Text(directorName)
+                            .font(.subheadline)
+                    }
+                }
+                
+                if !topCastNames.isEmpty {
+                    Text("Top cast: \(topCastNames.joined(separator: ", "))")
+                        .font(.subheadline)
+                        .foregroundStyle(.primary)
+                }
+            }
+        }
+        .accessibilityElement(children: .combine)
     }
 }
 
@@ -120,7 +163,7 @@ private struct ExpandableText: View {
 }
 
 private struct SimilarMoviesSection: View {
-    let movies: [MovieSummary]
+    let movies: [SimilarMovieItem]
     let pipeline: ImagePipeline
     let isUnavailable: Bool
     
@@ -140,8 +183,8 @@ private struct SimilarMoviesSection: View {
                     ForEach(movies) { movie in
                         VStack(alignment: .leading, spacing: 4) {
                             RemoteImageView(
-                                url: ImageURLBuilder.posterURL(path: movie.posterPath, size: .posterSmall),
-                                pipeline: pipeline,
+                                url: movie.posterURL,
+                                loader: pipeline,
                                 contentMode: .fill,
                                 accessibilityLabel: movie.title
                             )

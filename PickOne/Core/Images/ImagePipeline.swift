@@ -1,7 +1,7 @@
 import Foundation
 import UIKit
 
-final class ImagePipeline {
+final class ImagePipeline: ImageLoading {
     private let session: URLSession
     private let cache: ImageCache
     private let urlCache: URLCache

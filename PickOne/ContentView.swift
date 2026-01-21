@@ -5,7 +5,7 @@ struct ContentView: View {
         
     var body: some View {
         DiscoveryView(
-            model: container.discoveryModel,
+            model: container.discoveryViewModel,
             getMovieDetail: container.getMovieDetail,
             imagePipeline: container.imagePipeline
         )
