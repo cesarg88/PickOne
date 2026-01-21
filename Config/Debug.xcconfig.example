@@ -1,0 +1,5 @@
+// Debug Configuration Template
+// Copy this file to Debug.xcconfig and add your TMDB API key
+// DO NOT commit Debug.xcconfig to version control
+
+TMDB_API_KEY = YOUR_TMDB_API_KEY_HERE

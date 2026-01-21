@@ -1,0 +1,6 @@
+// Release Configuration Template
+// Copy this file to Release.xcconfig and add your TMDB API key
+// For CI/CD: inject TMDB_API_KEY from environment secrets
+// DO NOT commit Release.xcconfig to version control
+
+TMDB_API_KEY = YOUR_TMDB_API_KEY_HERE
