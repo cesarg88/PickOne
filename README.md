@@ -140,14 +140,35 @@ UI updates
 
 ### TMDB API Key Setup
 
-1. Get your **API Read Access Token** (Bearer token) from: https://developer.themoviedb.org/reference/getting-started
-2. In Xcode: **Product → Scheme → Edit Scheme** (⌘<)
-3. Select **Run → Arguments** tab
-4. Under **Environment Variables**, add:
-   - **Name:** `TMDB_API_KEY`
-   - **Value:** your Bearer token
+This project uses xcconfig files for secure API key management. The API key is **never** committed to the repository.
 
-> ⚠️ The app will crash on launch with clear instructions if this is not configured.
+#### Local Development
+
+1. Get your **API Read Access Token** (Bearer token) from: https://developer.themoviedb.org/reference/getting-started
+
+2. Copy the example config files:
+   ```bash
+   cp Config/Debug.xcconfig.example Config/Debug.xcconfig
+   cp Config/Release.xcconfig.example Config/Release.xcconfig
+   ```
+
+3. Edit `Config/Debug.xcconfig` and replace the placeholder:
+   ```
+   TMDB_API_KEY = your_actual_api_key_here
+   ```
+
+4. Build and run the project in Xcode
+
+#### CI/CD Setup
+
+For automated builds (GitHub Actions, Xcode Cloud, etc.):
+- Store `TMDB_API_KEY` as a secret in your CI environment
+- Generate the xcconfig file during the build:
+  ```bash
+  echo "TMDB_API_KEY = $TMDB_API_KEY" > Config/Release.xcconfig
+  ```
+
+> **Note:** The app will crash on launch with clear instructions if the API key is missing or not configured.
 
 ---
 

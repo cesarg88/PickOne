@@ -27,6 +27,8 @@
 		9A4CE13E2F1E813D0028C2DF /* PickOne.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = PickOne.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		9A4CE14D2F1E813F0028C2DF /* PickOneTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = PickOneTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		9A4CE1572F1E813F0028C2DF /* PickOneUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = PickOneUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		E1B2C3D4E5F6A7B8C9D0E1F2 /* Debug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Debug.xcconfig; sourceTree = "<group>"; };
+		E1B2C3D4E5F6A7B8C9D0E1F3 /* Release.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Release.xcconfig; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -70,10 +72,20 @@
 		9A4CE1352F1E813D0028C2DF = {
 			isa = PBXGroup;
 			children = (
+				E1B2C3D4E5F6A7B8C9D0E1F0 /* Config */,
 				9A4CE1402F1E813D0028C2DF /* PickOne */,
 				9A4CE1502F1E813F0028C2DF /* PickOneTests */,
 				9A4CE13F2F1E813D0028C2DF /* Products */,
 			);
+			sourceTree = "<group>";
+		};
+		E1B2C3D4E5F6A7B8C9D0E1F0 /* Config */ = {
+			isa = PBXGroup;
+			children = (
+				E1B2C3D4E5F6A7B8C9D0E1F2 /* Debug.xcconfig */,
+				E1B2C3D4E5F6A7B8C9D0E1F3 /* Release.xcconfig */,
+			);
+			path = Config;
 			sourceTree = "<group>";
 		};
 		9A4CE13F2F1E813D0028C2DF /* Products */ = {
@@ -262,6 +274,7 @@
 /* Begin XCBuildConfiguration section */
 		9A4CE15F2F1E813F0028C2DF /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = E1B2C3D4E5F6A7B8C9D0E1F2 /* Debug.xcconfig */;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
@@ -326,6 +339,7 @@
 		};
 		9A4CE1602F1E813F0028C2DF /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = E1B2C3D4E5F6A7B8C9D0E1F3 /* Release.xcconfig */;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
@@ -391,6 +405,7 @@
 				DEVELOPMENT_TEAM = CJ9NP9YS93;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Info.plist;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -424,6 +439,7 @@
 				DEVELOPMENT_TEAM = CJ9NP9YS93;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Info.plist;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;

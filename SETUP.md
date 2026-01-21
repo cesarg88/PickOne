@@ -63,29 +63,33 @@
 
 ## 🔧 Next Steps: Configure TMDB API Key
 
+This project uses **xcconfig files** for secure API key management. The API key is injected at build time and never committed to version control.
+
 ### Step 1: Get Your API Key
 1. Go to: https://developer.themoviedb.org/reference/getting-started
 2. Sign up / Log in
-3. Generate an API key (v3)
+3. Generate an **API Read Access Token** (Bearer token)
 
-### Step 2: Add API Key to Project
-Open `PickOne/Core/Configuration/AppConfiguration.swift` and replace:
+### Step 2: Create Your Config File
 
-```swift
-static let tmdbAPIKey: String = {
-    return "YOUR_TMDB_API_KEY_HERE"  // ⬅️ Replace this
-}()
+Copy the example config file:
+
+```bash
+cp Config/Debug.xcconfig.example Config/Debug.xcconfig
 ```
 
-With your actual key:
+### Step 3: Add Your API Key
 
-```swift
-static let tmdbAPIKey: String = {
-    return "eyJhbGciOiJIUzI1NiJ9..."  // Your real key
-}()
+Edit `Config/Debug.xcconfig` and replace the placeholder:
+
+```
+TMDB_API_KEY = eyJhbGciOiJIUzI1NiJ9...  # Your actual Bearer token
 ```
 
-### Step 3: Verify Setup
+> ⚠️ **Important:** Never commit `Config/Debug.xcconfig` or `Config/Release.xcconfig` — they are gitignored.
+
+### Step 4: Verify Setup
+
 Build the project in Xcode:
 ```bash
 ⌘ + B (Build)
@@ -94,6 +98,14 @@ Build the project in Xcode:
 You should see:
 - ✅ No compilation errors
 - ✅ ContentView renders with "Phase 0: Setup Complete"
+
+### For CI/CD (GitHub Actions, Xcode Cloud, etc.)
+
+1. Store your API key as a secret (e.g., `TMDB_API_KEY`)
+2. Generate the config file during build:
+   ```bash
+   echo "TMDB_API_KEY = $TMDB_API_KEY" > Config/Release.xcconfig
+   ```
 
 ---
 

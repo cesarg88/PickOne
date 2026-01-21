@@ -14,27 +14,30 @@ struct AppConfiguration {
     // MARK: - TMDB Configuration
     
     /// The Movie Database API Key
-    /// Loaded from environment variable (configured in Xcode Scheme)
+    /// Loaded from Info.plist (injected via xcconfig at build time)
     /// Get your key at: https://developer.themoviedb.org/reference/getting-started
     static let tmdbAPIKey: String = {
-        if let envKey = ProcessInfo.processInfo.environment["TMDB_API_KEY"],
-           !envKey.isEmpty {
-            return envKey
-        }
+        let key = (Bundle.main.object(
+            forInfoDictionaryKey: "TMDBApiKey"
+        ) as? String)?
+        .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         
-        #if DEBUG
-        print("""
-            ⚠️ TMDB API Key not found.
-            Configure TMDB_API_KEY in the Run Scheme environment variables.
-            """)
-        #endif
+        precondition(
+            !key.isEmpty && key != "YOUR_TMDB_API_KEY_HERE",
+            """
+            TMDB API Key is missing or not configured.
+            
+            To fix this:
+            1. Copy Config/Debug.xcconfig.example → Config/Debug.xcconfig
+            2. Replace YOUR_TMDB_API_KEY_HERE with your actual TMDB API key
+            3. Rebuild the project
+            
+            Get your key at: https://developer.themoviedb.org/reference/getting-started
+            """
+        )
         
-        return ""
+        return key
     }()
-    
-    static var isTMDBAPIKeyConfigured: Bool {
-        !tmdbAPIKey.isEmpty
-    }
     
     static let tmdbBaseURL = "https://api.themoviedb.org/3"
     static let tmdbImageBaseURL = "https://image.tmdb.org/t/p"
