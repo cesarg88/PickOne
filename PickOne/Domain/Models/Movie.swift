@@ -50,6 +50,18 @@ struct MovieSummary: Identifiable, Equatable {
     let rating: Double
 }
 
+// MARK: - MoviePage
+
+struct MoviePage: Equatable {
+    let page: Int
+    let totalPages: Int
+    let movies: [MovieSummary]
+    
+    var hasMorePages: Bool {
+        page < totalPages
+    }
+}
+
 // MARK: - Genre
 
 struct Genre: Identifiable, Equatable {
@@ -71,4 +83,11 @@ enum PersonRole: Equatable {
     case director
     case writer
     case other(job: String)
+}
+
+// MARK: - Credits
+
+struct Credits: Equatable {
+    let director: Person?
+    let topCast: [Person]
 }

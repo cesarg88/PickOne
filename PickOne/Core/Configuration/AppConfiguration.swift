@@ -23,23 +23,18 @@ struct AppConfiguration {
         }
         
         #if DEBUG
-        fatalError("""
-            ❌ TMDB API Key not found!
-            
-            Setup:
-              1. In Xcode: Product → Scheme → Edit Scheme (⌘<)
-              2. Select "Run" → "Arguments" tab
-              3. Under "Environment Variables", add:
-                 Name: TMDB_API_KEY
-                 Value: your_bearer_token
-            
-            Get your token at: https://developer.themoviedb.org
-            Use the "API Read Access Token" (Bearer token), NOT the API Key.
+        print("""
+            ⚠️ TMDB API Key not found.
+            Configure TMDB_API_KEY in the Run Scheme environment variables.
             """)
-        #else
-        return ""
         #endif
+        
+        return ""
     }()
+    
+    static var isTMDBAPIKeyConfigured: Bool {
+        !tmdbAPIKey.isEmpty
+    }
     
     static let tmdbBaseURL = "https://api.themoviedb.org/3"
     static let tmdbImageBaseURL = "https://image.tmdb.org/t/p"
