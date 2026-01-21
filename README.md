@@ -29,7 +29,7 @@ PickOne follows a strict **3-layer architecture** with clear boundaries:
 PickOne/
 ├── Core/
 │   └── Configuration/
-│       └── AppConfiguration.swift       # API keys, environment config
+│       └── AppConfiguration.swift       # API keys, build config
 │
 ├── Data/                                # DATA LAYER
 │   ├── DTOs/
@@ -140,19 +140,14 @@ UI updates
 
 ### TMDB API Key Setup
 
-**Debug builds**
-1. Get your **API Read Access Token** (Bearer token) from: https://developer.themoviedb.org/reference/getting-started
-2. In Xcode: **Product → Scheme → Edit Scheme** (⌘<)
-3. Select **Run → Arguments** tab
-4. Under **Environment Variables**, add:
-   - **Name:** `TMDB_API_KEY`
-   - **Value:** your Bearer token
+1. Copy the template config:
+   - `Config/Debug.xcconfig.example` → `Config/Debug.xcconfig`
+2. Add your TMDB key to `Config/Debug.xcconfig`:
+   - `TMDB_API_KEY = YOUR_TMDB_API_KEY_HERE`
 
-If the key is missing in Debug, the app shows a setup screen with retry and logs a warning.
-
-**Release builds**
-- Configure `TMDB_API_KEY` via Release `.xcconfig`.
-- The app should never prompt end users for a key.
+**Release / CI**
+- Use `Config/Release.xcconfig` with secrets injected by CI.
+- Never commit real keys to the repo.
 
 ---
 

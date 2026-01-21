@@ -53,7 +53,7 @@ final class DiscoveryViewModel {
                 data.isLoadingNextPage = false
                 state = .loaded(data)
             } else {
-                state = .error(errorMessage(for: error))
+                state = .error(error.localizedDescription)
             }
         }
     }
@@ -92,11 +92,4 @@ final class DiscoveryViewModel {
         return data
     }
     
-    private func errorMessage(for error: Error) -> String {
-        #if DEBUG
-        return error.localizedDescription
-        #else
-        return "Service unavailable"
-        #endif
-    }
 }

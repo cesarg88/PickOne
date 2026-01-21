@@ -68,24 +68,27 @@
 2. Sign up / Log in
 3. Generate an **API Read Access Token** (Bearer token)
 
-### Step 2: Add API Key (Debug)
-In Xcode: **Product → Scheme → Edit Scheme** (⌘<) → **Run → Arguments**
-Add an environment variable:
-- **Name:** `TMDB_API_KEY`
-- **Value:** your Bearer token
+### Step 2: Create your local xcconfig
+Copy the template and set your key:
 
-> Do not hardcode secrets in the repo.
+```
+cp Config/Debug.xcconfig.example Config/Debug.xcconfig
+```
 
-### Step 3: Release Builds
-Configure `TMDB_API_KEY` in the Release `.xcconfig` used by the app target.
+Open `Config/Debug.xcconfig` and set:
+```
+TMDB_API_KEY = YOUR_TMDB_API_KEY_HERE
+```
+
+### Step 3: Release / CI
+Use `Config/Release.xcconfig` in CI or local Release builds.
+Do not commit real keys to the repo.
 
 ### Step 4: Verify Setup
 Build the project in Xcode:
 ```bash
 ⌘ + B (Build)
 ```
-
-If the key is missing in Debug, the app shows a setup screen with a Retry button.
 
 ---
 

@@ -17,21 +17,14 @@ struct AppConfiguration {
     /// Loaded from environment variable (configured in Xcode Scheme)
     /// Get your key at: https://developer.themoviedb.org/reference/getting-started
     static let tmdbAPIKey: String = {
-        if let envKey = ProcessInfo.processInfo.environment["TMDB_API_KEY"],
-           !envKey.isEmpty {
-            return envKey
-        }
-        
-        #if DEBUG
-        print("⚠️ TMDB API Key missing (DEBUG).")
-        #endif
-        
-        return ""
+        let rawValue = (Bundle.main.object(forInfoDictionaryKey: "TMDBApiKey") as? String) ?? ""
+        let key = rawValue.trimmingCharacters(in: .whitespacesAndNewlines)
+        precondition(
+            !key.isEmpty,
+            "TMDB API Key is missing. Check TMDBApiKey in Info.plist and TMDB_API_KEY in xcconfig."
+        )
+        return key
     }()
-    
-    static var isTMDBAPIKeyConfigured: Bool {
-        !tmdbAPIKey.isEmpty
-    }
     
     static let tmdbBaseURL = "https://api.themoviedb.org/3"
     static let tmdbImageBaseURL = "https://image.tmdb.org/t/p"

@@ -27,6 +27,11 @@
 		9A4CE13E2F1E813D0028C2DF /* PickOne.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = PickOne.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		9A4CE14D2F1E813F0028C2DF /* PickOneTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = PickOneTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		9A4CE1572F1E813F0028C2DF /* PickOneUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = PickOneUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		3F36AA4C2F1F3C2A00112233 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		3F36AA4D2F1F3C2A00112233 /* Debug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Debug.xcconfig; sourceTree = "<group>"; };
+		3F36AA4E2F1F3C2A00112233 /* Release.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Release.xcconfig; sourceTree = "<group>"; };
+		3F36AA4F2F1F3C2A00112233 /* Debug.xcconfig.example */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Debug.xcconfig.example; sourceTree = "<group>"; };
+		3F36AA502F1F3C2A00112233 /* Release.xcconfig.example */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Release.xcconfig.example; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -66,14 +71,48 @@
 		};
 /* End PBXFrameworksBuildPhase section */
 
+/* Begin PBXShellScriptBuildPhase section */
+		3F36AA512F1F3C2A00112233 /* Validate TMDB API Key */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Validate TMDB API Key";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "if [ -z \"${TMDB_API_KEY}\" ]; then\\n  echo \"error: TMDB_API_KEY is missing. Set it in Config/*.xcconfig\"\\n  exit 1\\nfi\\n";
+		};
+/* End PBXShellScriptBuildPhase section */
+
 /* Begin PBXGroup section */
 		9A4CE1352F1E813D0028C2DF = {
 			isa = PBXGroup;
 			children = (
 				9A4CE1402F1E813D0028C2DF /* PickOne */,
+				3F36AA4B2F1F3C2A00112233 /* Config */,
 				9A4CE1502F1E813F0028C2DF /* PickOneTests */,
 				9A4CE13F2F1E813D0028C2DF /* Products */,
 			);
+			sourceTree = "<group>";
+		};
+		3F36AA4B2F1F3C2A00112233 /* Config */ = {
+			isa = PBXGroup;
+			children = (
+				3F36AA4D2F1F3C2A00112233 /* Debug.xcconfig */,
+				3F36AA4E2F1F3C2A00112233 /* Release.xcconfig */,
+				3F36AA4F2F1F3C2A00112233 /* Debug.xcconfig.example */,
+				3F36AA502F1F3C2A00112233 /* Release.xcconfig.example */,
+			);
+			path = Config;
 			sourceTree = "<group>";
 		};
 		9A4CE13F2F1E813D0028C2DF /* Products */ = {
@@ -93,6 +132,7 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = 9A4CE1612F1E813F0028C2DF /* Build configuration list for PBXNativeTarget "PickOne" */;
 			buildPhases = (
+				3F36AA512F1F3C2A00112233 /* Validate TMDB API Key */,
 				9A4CE13A2F1E813D0028C2DF /* Sources */,
 				9A4CE13B2F1E813D0028C2DF /* Frameworks */,
 				9A4CE13C2F1E813D0028C2DF /* Resources */,
@@ -386,11 +426,13 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				BASE_CONFIGURATION_REFERENCE = 3F36AA4D2F1F3C2A00112233 /* Debug.xcconfig */;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = CJ9NP9YS93;
 				ENABLE_PREVIEWS = YES;
-				GENERATE_INFOPLIST_FILE = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = PickOne/Info.plist;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -419,11 +461,13 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				BASE_CONFIGURATION_REFERENCE = 3F36AA4E2F1F3C2A00112233 /* Release.xcconfig */;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = CJ9NP9YS93;
 				ENABLE_PREVIEWS = YES;
-				GENERATE_INFOPLIST_FILE = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = PickOne/Info.plist;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
