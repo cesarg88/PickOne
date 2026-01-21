@@ -1,6 +1,6 @@
 import Foundation
 
-final class MovieRepository {
+final class DefaultMovieRepository {
     private let client: MovieCatalogClientProtocol
     private let cacheStore: CacheStore
     private let ttl: CacheTTL
@@ -13,7 +13,7 @@ final class MovieRepository {
     }
 }
 
-extension MovieRepository: MovieRepositoryProtocol {
+extension DefaultMovieRepository: MovieRepository {
     func getTopRated(page: Int, policy: CachePolicy) async throws -> CacheResult<MoviePage> {
         let key = CacheKey(rawValue: "discovery.topRated.page.\(page)")
         if policy == .returnCacheElseLoad,
@@ -74,7 +74,7 @@ extension MovieRepository: MovieRepositoryProtocol {
         return CacheResult(value: fresh, isStale: false)
     }
 }
-private extension MovieRepository {
+private extension DefaultMovieRepository {
     func fetchTopRated(page: Int, cacheKey: CacheKey) async throws -> MoviePage {
         let response = try await client.getTopRated(page: page)
         let pageValue = MoviePage(

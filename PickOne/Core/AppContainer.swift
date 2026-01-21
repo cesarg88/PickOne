@@ -26,7 +26,7 @@ final class AppContainer {
             credits: AppConfiguration.movieDetailCacheTTL
         )
         
-        let movieRepository = MovieRepository(
+        let movieRepository = DefaultMovieRepository(
             client: movieClient,
             cacheStore: cacheStore,
             ttl: ttl

@@ -7,14 +7,14 @@ struct MovieRepositoryTests {
     private func makeSUT(
         client: MockMovieCatalogClient = MockMovieCatalogClient(),
         cacheStore: TestCacheStore = TestCacheStore()
-    ) -> (MovieRepository, MockMovieCatalogClient, TestCacheStore) {
+    ) -> (DefaultMovieRepository, MockMovieCatalogClient, TestCacheStore) {
         let ttl = CacheTTL(
             discovery: 60,
             detail: 60,
             similar: 60,
             credits: 60
         )
-        let repo = MovieRepository(
+        let repo = DefaultMovieRepository(
             client: client,
             cacheStore: cacheStore,
             ttl: ttl

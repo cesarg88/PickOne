@@ -5,9 +5,9 @@ protocol GetDiscoveryFeedUseCase {
 }
 
 final class GetDiscoveryFeed: GetDiscoveryFeedUseCase {
-    private let repository: MovieRepositoryProtocol
+    private let repository: MovieRepository
     
-    init(repository: MovieRepositoryProtocol) {
+    init(repository: MovieRepository) {
         self.repository = repository
     }
     

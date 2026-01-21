@@ -5,9 +5,9 @@ protocol GetMovieDetailUseCase {
 }
 
 final class GetMovieDetail: GetMovieDetailUseCase {
-    private let repository: MovieRepositoryProtocol
+    private let repository: MovieRepository
     
-    init(repository: MovieRepositoryProtocol) {
+    init(repository: MovieRepository) {
         self.repository = repository
     }
     
