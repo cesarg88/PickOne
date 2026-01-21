@@ -1,165 +1,90 @@
-# PickOne — Setup Instructions
+# PickOne — Setup
 
-## ✅ Phase 0: Setup COMPLETE
-
-### What's Been Created
-
-#### 1. **Configuration Layer**
-- `Core/Configuration/AppConfiguration.swift`
-  - Centralized config for API keys
-  - Cache TTL settings
-  - UI constants
-
-#### 2. **Data Layer — Foundation**
-
-**DTOs (Data Transfer Objects):**
-- `Data/DTOs/MovieDTO.swift`
-  - Complete TMDB response models
-  - Proper snake_case → camelCase mapping
-
-**Network Infrastructure:**
-- `Data/Network/HTTPClient.swift` — Generic async HTTP client
-- `Data/Network/NetworkError.swift` — Error types with handling
-
-**Clients:**
-- `Data/Clients/MovieCatalogClient.swift`
-  - `getTopRated(page:)`
-  - `getMovieDetail(id:)`
-  - `getSimilarMovies(id:page:)`
-  - `searchMovies(query:page:)`
-  - `getMovieCredits(id:)`
-
-**Persistence:**
-- `Data/Persistence/LocalStore.swift`
-  - UserDefaults wrapper
-  - Watchlist IDs management
-  - Watched status tracking
-  - Search history
-
-#### 3. **Domain Layer — Models**
-
-**Core Models:**
-- `Domain/Models/Movie.swift`
-  - `Movie` (full detail)
-  - `MovieSummary` (for lists)
-  - `Genre`, `Person`, `PersonRole`
-
-- `Domain/Models/Watchlist.swift`
-  - `WatchlistItem`
-  - `WatchlistStatus`
-
-- `Domain/Models/Snapshots.swift`
-  - `DiscoverySnapshot`
-  - `MovieDetailSnapshot`
-  - `WatchlistSnapshot`
-  - `ChatRecommendationSnapshot`
-  - `SearchSnapshot`
-
-#### 4. **Presentation Layer — Template**
-- `ContentView.swift` — Temporary placeholder
-- `PickOneApp.swift` — Clean app entry point
+This document explains how to configure and run the PickOne project locally using Xcode.
 
 ---
 
-## 🔧 Next Steps: Configure TMDB API Key
+## Requirements
 
-This project uses **xcconfig files** for secure API key management. The API key is injected at build time and never committed to version control.
+- macOS with Xcode 15+
+- iOS 17+ Simulator or physical device
+- A TMDB (The Movie Database) account
 
-### Step 1: Get Your API Key
+---
+
+## Step 1: Get a TMDB API Key
+
 1. Go to: https://developer.themoviedb.org/reference/getting-started
-2. Sign up / Log in
-3. Generate an **API Read Access Token** (Bearer token)
+2. Sign up or log in.
+3. Generate an **API Read Access Token (Bearer token)**.
 
-### Step 2: Create Your Config File
+You will use this token in the next step.
 
-Copy the example config file:
+---
 
-```bash
-cp Config/Debug.xcconfig.example Config/Debug.xcconfig
-```
+## Step 2: Configure the API Key (Local Development)
 
-### Step 3: Add Your API Key
+This project uses **xcconfig files** to inject the TMDB API key at build time.  
+The API key is **not committed** to the repository.
 
-Edit `Config/Debug.xcconfig` and replace the placeholder:
+1. Copy the example configuration file:
 
-```
-TMDB_API_KEY = eyJhbGciOiJIUzI1NiJ9...  # Your actual Bearer token
-```
-
-> ⚠️ **Important:** Never commit `Config/Debug.xcconfig` or `Config/Release.xcconfig` — they are gitignored.
-
-### Step 4: Verify Setup
-
-Build the project in Xcode:
-```bash
-⌘ + B (Build)
-```
-
-You should see:
-- ✅ No compilation errors
-- ✅ ContentView renders with "Phase 0: Setup Complete"
-
-### For CI/CD (GitHub Actions, Xcode Cloud, etc.)
-
-1. Store your API key as a secret (e.g., `TMDB_API_KEY`)
-2. Generate the config file during build:
    ```bash
-   echo "TMDB_API_KEY = $TMDB_API_KEY" > Config/Release.xcconfig
-   ```
+   cp Config/Debug.xcconfig.example Config/Debug.xcconfig
+
+	2.	Open Config/Debug.xcconfig and replace the placeholder:
+
+TMDB_API_KEY = YOUR_TMDB_API_KEY_HERE
+
+
+	3.	Save the file.
+
+⚠️ Do not commit Debug.xcconfig or Release.xcconfig.
+These files are intentionally ignored by git.
+
+⸻
+
+Step 3: Open the Project in Xcode
+	1.	Open PickOne.xcodeproj in Xcode.
+	2.	Select the PickOne scheme.
+	3.	Choose an iOS Simulator or a physical device.
+
+⸻
+
+Step 4: Build and Run
+	1.	Press ⌘ + B to build the project.
+	2.	Press ⌘ + R to run the app.
+
+If the TMDB API key is correctly configured, the app will launch normally.
+
+If the key is missing or invalid, the app will fail fast at launch with a clear configuration error.
+
+⸻
+
+CI / Release Builds (Optional)
+
+For automated builds (e.g. GitHub Actions, Xcode Cloud):
+	1.	Store TMDB_API_KEY as a secret in your CI environment.
+	2.	Generate the Release config during the build:
+
+echo "TMDB_API_KEY = $TMDB_API_KEY" > Config/Release.xcconfig
+
+
+
+No API keys should ever be committed to the repository.
+
+⸻
+
+Troubleshooting
+	•	App fails at launch
+Ensure TMDB_API_KEY is set correctly in Debug.xcconfig.
+	•	401 Unauthorized responses
+Verify that you are using the API Read Access Token (Bearer token), not the legacy v3 API key.
+
+⸻
+
+Notes
+	•	API keys are injected at build time via xcconfig.
+	•	For production-scale usage, the TMDB API should be accessed through a backend proxy.
 
 ---
-
-## 📁 Folder Structure Created
-
-```
-PickOne/
-├── Core/
-│   └── Configuration/
-│       └── AppConfiguration.swift ✅
-│
-├── Data/
-│   ├── DTOs/
-│   │   └── MovieDTO.swift ✅
-│   ├── Network/
-│   │   ├── HTTPClient.swift ✅
-│   │   └── NetworkError.swift ✅
-│   ├── Clients/
-│   │   └── MovieCatalogClient.swift ✅
-│   └── Persistence/
-│       └── LocalStore.swift ✅
-│
-├── Domain/
-│   └── Models/
-│       ├── Movie.swift ✅
-│       ├── Watchlist.swift ✅
-│       └── Snapshots.swift ✅
-│
-└── Presentation/
-    ├── ContentView.swift ✅
-    └── PickOneApp.swift ✅
-```
-
----
-
-## 🚀 Ready for Phase 1
-
-Once your API key is configured, we're ready to proceed with:
-
-**Phase 1: Data Layer Foundation**
-- Implement repositories
-- Add caching logic
-- Test TMDB integration
-- Validate DTO parsing
-
----
-
-## 📝 Notes
-
-- SwiftData removed (not needed for MVP)
-- UserDefaults used for local persistence
-- Architecture follows strict layering (Data → Domain → Presentation)
-- No third-party dependencies yet (pure Swift/SwiftUI)
-
----
-
-**Status:** 🟢 Phase 0 Complete — Waiting for API Key
