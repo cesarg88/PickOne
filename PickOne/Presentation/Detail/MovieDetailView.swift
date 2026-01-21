@@ -3,6 +3,7 @@ import SwiftUI
 struct MovieDetailView: View {
     let model: MovieDetailViewModel
     let imagePipeline: ImagePipeline
+    let getMovieDetail: GetMovieDetailUseCase
     
     var body: some View {
         ScrollView {
@@ -73,7 +74,8 @@ struct MovieDetailView: View {
                         SimilarMoviesSection(
                             movies: data.similar,
                             pipeline: imagePipeline,
-                            isUnavailable: data.isSimilarUnavailable
+                            isUnavailable: data.isSimilarUnavailable,
+                            getMovieDetail: getMovieDetail
                         )
                     }
                     
@@ -166,6 +168,7 @@ private struct SimilarMoviesSection: View {
     let movies: [SimilarMovieItem]
     let pipeline: ImagePipeline
     let isUnavailable: Bool
+    let getMovieDetail: GetMovieDetailUseCase
     
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -181,23 +184,35 @@ private struct SimilarMoviesSection: View {
             ScrollView(.horizontal, showsIndicators: false) {
                 LazyHStack(spacing: 12) {
                     ForEach(movies) { movie in
-                        VStack(alignment: .leading, spacing: 4) {
-                            RemoteImageView(
-                                url: movie.posterURL,
-                                loader: pipeline,
-                                contentMode: .fill,
-                                accessibilityLabel: movie.title
+                        NavigationLink {
+                            MovieDetailView(
+                                model: MovieDetailViewModel(
+                                    movieId: movie.id,
+                                    getMovieDetail: getMovieDetail
+                                ),
+                                imagePipeline: pipeline,
+                                getMovieDetail: getMovieDetail
                             )
-                            .frame(width: 100, height: 150)
-                            .clipped()
-                            .cornerRadius(8)
-                            
-                            Text(movie.title)
-                                .font(.caption2)
-                                .lineLimit(2)
-                                .frame(width: 100, alignment: .leading)
+                        } label: {
+                            VStack(alignment: .leading, spacing: 4) {
+                                RemoteImageView(
+                                    url: movie.posterURL,
+                                    loader: pipeline,
+                                    contentMode: .fill,
+                                    accessibilityLabel: movie.title
+                                )
+                                .frame(width: 100, height: 150)
+                                .clipped()
+                                .cornerRadius(8)
+                                
+                                Text(movie.title)
+                                    .font(.caption2)
+                                    .lineLimit(2)
+                                    .frame(width: 100, alignment: .leading)
+                            }
+                            .accessibilityElement(children: .combine)
                         }
-                        .accessibilityElement(children: .combine)
+                        .buttonStyle(.plain)
                     }
                 }
             }

@@ -1,0 +1,27 @@
+---
+name: commit-guidelines
+description: This is a new rule
+---
+
+# Overview
+
+## Scope (recommended)
+
+The scope should indicate the area of the codebase affected:
+- Module name (e.g., `auth`, `profile`, `events`)
+- Feature name (e.g., `notifications`, `payments`)
+- Component name (e.g., `HomeViewController`, `EventCell`)
+
+## Subject (required)
+
+- Use imperative mood: "add" not "added" or "adds"
+- Don't capitalize first letter
+- No period (.) at the end
+- Limit to 50 characters
+
+## Body (optional)
+
+- Explain the "what" and "why" vs. "how"
+- Use imperative mood
+- Wrap at 72 characters
+- Separate from subject with blank line

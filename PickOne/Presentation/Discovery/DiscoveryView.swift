@@ -38,7 +38,8 @@ struct DiscoveryView: View {
                                             movieId: movie.id,
                                             getMovieDetail: getMovieDetail
                                         ),
-                                        imagePipeline: imagePipeline
+                                        imagePipeline: imagePipeline,
+                                        getMovieDetail: getMovieDetail
                                     )
                                 } label: {
                                     PosterCardView(movie: movie, pipeline: imagePipeline)
