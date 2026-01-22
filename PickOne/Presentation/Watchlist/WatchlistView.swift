@@ -56,12 +56,17 @@ struct WatchlistView: View {
     @ViewBuilder
     private func emptyView(for filter: WatchlistFilter) -> some View {
         let (title, message) = emptyStateContent(for: filter)
-        EmptyStateView(
-            title: title,
-            message: message,
-            actionTitle: nil,
-            action: nil
-        )
+        VStack {
+            EmptyStateView(
+                title: title,
+                message: message,
+                actionTitle: nil,
+                action: nil
+            )
+            .padding(.top, 40)
+            
+            Spacer()
+        }
     }
     
     private func emptyStateContent(for filter: WatchlistFilter) -> (title: String, message: String) {

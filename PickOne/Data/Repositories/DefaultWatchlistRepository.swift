@@ -18,21 +18,7 @@ final class DefaultWatchlistRepository: WatchlistRepository, @unchecked Sendable
     // MARK: - WatchlistRepository
     
     func getAllItems() -> [WatchlistItem] {
-        let persisted = localStore.getWatchlistItems()
-        return persisted.map { item in
-            WatchlistItem(
-                id: item.movieId,
-                addedAt: item.addedAt,
-                isWatched: item.isWatched,
-                movie: MovieSummary(
-                    id: item.movieId,
-                    title: item.title,
-                    posterPath: item.posterPath,
-                    releaseYear: item.releaseYear,
-                    rating: item.rating
-                )
-            )
-        }
+        localStore.getWatchlistItems().map(WatchlistItemMapper.toDomain)
     }
     
     func add(movie: MovieSummary) throws {
@@ -41,17 +27,8 @@ final class DefaultWatchlistRepository: WatchlistRepository, @unchecked Sendable
             throw WatchlistError.movieAlreadyInWatchlist
         }
         
-        let item = PersistedWatchlistItem(
-            movieId: movie.id,
-            title: movie.title,
-            posterPath: movie.posterPath,
-            releaseYear: movie.releaseYear,
-            rating: movie.rating,
-            addedAt: Date(),
-            isWatched: false
-        )
-        
-        localStore.saveWatchlistItem(item)
+        let persisted = WatchlistItemMapper.toPersisted(movie: movie)
+        localStore.saveWatchlistItem(persisted)
     }
     
     func remove(movieId: Int) throws {

@@ -65,7 +65,7 @@ struct GetMovieDetailTests {
     }
 }
 
-private final class MockMovieRepository: MovieRepository {
+private final class MockMovieRepository: MovieRepository, @unchecked Sendable {
     var detailResult: Result<CacheResult<Movie>, Error> = .success(CacheResult(value: TestFixtures.movie, isStale: false))
     var similarResult: Result<CacheResult<MoviePage>, Error> = .success(CacheResult(value: TestFixtures.similarPage, isStale: false))
     var creditsResult: Result<CacheResult<Credits>, Error> = .success(CacheResult(value: TestFixtures.credits, isStale: false))
@@ -84,6 +84,10 @@ private final class MockMovieRepository: MovieRepository {
     
     func getCredits(id: Int, policy: CachePolicy) async throws -> CacheResult<Credits> {
         try creditsResult.get()
+    }
+    
+    func searchMovies(query: String, page: Int) async throws -> MoviePage {
+        MoviePage(page: 1, totalPages: 1, movies: [])
     }
 }
 

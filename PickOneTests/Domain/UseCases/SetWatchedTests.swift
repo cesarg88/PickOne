@@ -1,0 +1,74 @@
+//
+//  SetWatchedTests.swift
+//  PickOneTests
+//
+//  Tests for SetWatched use case
+//
+
+import Testing
+import Foundation
+@testable import PickOne
+
+@Suite("SetWatched Tests", .serialized)
+struct SetWatchedTests {
+    
+    @Test("execute sets watched to true when in watchlist as toWatch")
+    func executeSetsWatchedTrue() throws {
+        let repository = MockWatchlistRepository()
+        repository.statusResult = .toWatch // Movie is in watchlist, not watched
+        let sut = SetWatched(repository: repository)
+        
+        try sut.execute(movieId: 1, isWatched: true)
+        
+        #expect(repository.setWatchedCallCount == 1)
+        #expect(repository.lastSetWatchedMovieId == 1)
+        #expect(repository.lastSetWatchedValue == true)
+    }
+    
+    @Test("execute sets watched to false when in watchlist as watched")
+    func executeSetsWatchedFalse() throws {
+        let repository = MockWatchlistRepository()
+        repository.statusResult = .watched // Movie is in watchlist, already watched
+        let sut = SetWatched(repository: repository)
+        
+        try sut.execute(movieId: 1, isWatched: false)
+        
+        #expect(repository.setWatchedCallCount == 1)
+        #expect(repository.lastSetWatchedValue == false)
+    }
+    
+    @Test("execute throws when movie not in watchlist")
+    func executePropagatesError() {
+        let repository = MockWatchlistRepository()
+        repository.statusResult = .notInWatchlist
+        let sut = SetWatched(repository: repository)
+        
+        #expect(throws: WatchlistError.movieNotInWatchlist) {
+            try sut.execute(movieId: 999, isWatched: true)
+        }
+    }
+    
+    @Test("execute is idempotent - no-op when already in desired state")
+    func executeIsIdempotentWhenAlreadyInState() throws {
+        let repository = MockWatchlistRepository()
+        repository.statusResult = .watched // Already watched
+        let sut = SetWatched(repository: repository)
+        
+        // Calling with isWatched: true when already watched should be a no-op
+        try sut.execute(movieId: 1, isWatched: true)
+        
+        #expect(repository.setWatchedCallCount == 0) // No call needed, already in state
+    }
+    
+    @Test("execute propagates repository error on actual update")
+    func executePropagatesRepositoryError() {
+        let repository = MockWatchlistRepository()
+        repository.statusResult = .toWatch // In watchlist
+        repository.setWatchedError = WatchlistError.movieNotInWatchlist
+        let sut = SetWatched(repository: repository)
+        
+        #expect(throws: WatchlistError.movieNotInWatchlist) {
+            try sut.execute(movieId: 1, isWatched: true)
+        }
+    }
+}
