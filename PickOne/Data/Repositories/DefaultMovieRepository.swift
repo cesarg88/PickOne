@@ -73,6 +73,15 @@ extension DefaultMovieRepository: MovieRepository {
         let fresh = try await fetchCreditsDedup(id: id, cacheKey: key)
         return CacheResult(value: fresh, isStale: false)
     }
+    
+    func searchMovies(query: String, page: Int) async throws -> MoviePage {
+        let response = try await client.searchMovies(query: query, page: page)
+        return MoviePage(
+            page: response.page,
+            totalPages: response.totalPages,
+            movies: response.results.map(MovieMapper.mapSummary)
+        )
+    }
 }
 private extension DefaultMovieRepository {
     func fetchTopRated(page: Int, cacheKey: CacheKey) async throws -> MoviePage {

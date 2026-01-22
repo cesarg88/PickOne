@@ -25,7 +25,7 @@ struct WatchlistItem: Identifiable, Equatable {
 
 // MARK: - WatchlistStatus
 
-enum WatchlistStatus {
+enum WatchlistStatus: Equatable {
     case notInWatchlist
     case toWatch
     case watched

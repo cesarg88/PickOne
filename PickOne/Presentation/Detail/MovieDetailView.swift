@@ -4,6 +4,36 @@ struct MovieDetailView: View {
     let model: MovieDetailViewModel
     let imagePipeline: ImagePipeline
     let getMovieDetail: GetMovieDetailUseCase
+    let setMembership: SetWatchlistMembershipUseCase?
+    let setWatched: SetWatchedUseCase?
+    
+    /// Convenience initializer for backwards compatibility
+    init(
+        model: MovieDetailViewModel,
+        imagePipeline: ImagePipeline,
+        getMovieDetail: GetMovieDetailUseCase
+    ) {
+        self.model = model
+        self.imagePipeline = imagePipeline
+        self.getMovieDetail = getMovieDetail
+        self.setMembership = nil
+        self.setWatched = nil
+    }
+    
+    /// Full initializer with watchlist support
+    init(
+        model: MovieDetailViewModel,
+        imagePipeline: ImagePipeline,
+        getMovieDetail: GetMovieDetailUseCase,
+        setMembership: SetWatchlistMembershipUseCase?,
+        setWatched: SetWatchedUseCase?
+    ) {
+        self.model = model
+        self.imagePipeline = imagePipeline
+        self.getMovieDetail = getMovieDetail
+        self.setMembership = setMembership
+        self.setWatched = setWatched
+    }
     
     var body: some View {
         ScrollView {
@@ -36,7 +66,7 @@ struct MovieDetailView: View {
                             .fontWeight(.semibold)
                         
                         HStack(spacing: 12) {
-                            if let year = data.releaseYearText {
+                            if let year = data.releaseYear {
                                 Text(year)
                                     .font(.subheadline)
                                     .foregroundStyle(.secondary)
@@ -52,12 +82,20 @@ struct MovieDetailView: View {
                                 Image(systemName: "star.fill")
                                     .font(.caption)
                                     .foregroundStyle(.yellow)
-                                Text(data.ratingText)
+                                Text(data.rating)
                                     .font(.subheadline)
                                     .foregroundStyle(.secondary)
                             }
                         }
                     }
+                    
+                    // Watchlist Actions
+                    WatchlistActionsView(
+                        isInWatchlist: data.isInWatchlist,
+                        isWatched: data.isWatched,
+                        onToggleWatchlist: { model.toggleWatchlist() },
+                        onToggleWatched: { model.toggleWatched() }
+                    )
                     
                     ExpandableText(
                         title: "Synopsis",
@@ -75,20 +113,11 @@ struct MovieDetailView: View {
                             movies: data.similar,
                             pipeline: imagePipeline,
                             isUnavailable: data.isSimilarUnavailable,
-                            getMovieDetail: getMovieDetail
+                            getMovieDetail: getMovieDetail,
+                            setMembership: setMembership,
+                            setWatched: setWatched
                         )
                     }
-                    
-                    HStack(spacing: 12) {
-                        Button("Add to Watchlist") {}
-                            .buttonStyle(.borderedProminent)
-                            .disabled(true)
-                        
-                        Button("Mark as Watched") {}
-                            .buttonStyle(.bordered)
-                            .disabled(true)
-                    }
-                    .accessibilityHint("Available in a later milestone")
                 }
                 .padding()
             }
@@ -97,6 +126,43 @@ struct MovieDetailView: View {
         .navigationBarTitleDisplayMode(.inline)
         .task {
             await model.load()
+        }
+    }
+}
+
+// MARK: - Watchlist Actions
+
+private struct WatchlistActionsView: View {
+    let isInWatchlist: Bool
+    let isWatched: Bool
+    let onToggleWatchlist: () -> Void
+    let onToggleWatched: () -> Void
+    
+    var body: some View {
+        HStack(spacing: 12) {
+            Button {
+                onToggleWatchlist()
+            } label: {
+                Label(
+                    isInWatchlist ? "In Watchlist" : "Add to Watchlist",
+                    systemImage: isInWatchlist ? "bookmark.fill" : "bookmark"
+                )
+            }
+            .buttonStyle(.borderedProminent)
+            .tint(isInWatchlist ? .green : .accentColor)
+            
+            if isInWatchlist {
+                Button {
+                    onToggleWatched()
+                } label: {
+                    Label(
+                        isWatched ? "Watched" : "Mark Watched",
+                        systemImage: isWatched ? "eye.fill" : "eye"
+                    )
+                }
+                .buttonStyle(.bordered)
+                .tint(isWatched ? .orange : nil)
+            }
         }
     }
 }
@@ -169,6 +235,8 @@ private struct SimilarMoviesSection: View {
     let pipeline: ImagePipeline
     let isUnavailable: Bool
     let getMovieDetail: GetMovieDetailUseCase
+    let setMembership: SetWatchlistMembershipUseCase?
+    let setWatched: SetWatchedUseCase?
     
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -188,10 +256,14 @@ private struct SimilarMoviesSection: View {
                             MovieDetailView(
                                 model: MovieDetailViewModel(
                                     movieId: movie.id,
-                                    getMovieDetail: getMovieDetail
+                                    getMovieDetail: getMovieDetail,
+                                    setMembership: setMembership,
+                                    setWatched: setWatched
                                 ),
                                 imagePipeline: pipeline,
-                                getMovieDetail: getMovieDetail
+                                getMovieDetail: getMovieDetail,
+                                setMembership: setMembership,
+                                setWatched: setWatched
                             )
                         } label: {
                             VStack(alignment: .leading, spacing: 4) {

@@ -5,11 +5,13 @@ enum MovieDetailPresentationMapper {
     static func map(snapshot: MovieDetailSnapshot) -> MovieDetailPresentationModel {
         let movie = snapshot.movie
         return MovieDetailPresentationModel(
+            id: movie.id,
             title: movie.title,
-            releaseYearText: movie.releaseYear.map(String.init),
+            releaseYear: movie.releaseYear.map(String.init),
             runtimeText: movie.runtimeFormatted,
-            ratingText: String(format: "%.1f", movie.rating),
+            rating: formatRating(movie.rating, voteCount: movie.voteCount),
             overview: movie.overview,
+            posterURL: ImageURLBuilder.posterURL(path: movie.posterPath, size: .posterMedium),
             backdropURL: ImageURLBuilder.backdropURL(path: movie.backdropPath, size: .backdropLarge),
             similar: snapshot.similar.map { movie in
                 SimilarMovieItem(
@@ -25,5 +27,13 @@ enum MovieDetailPresentationMapper {
             isInWatchlist: snapshot.isInWatchlist,
             isWatched: snapshot.isWatched
         )
+    }
+    
+    private static func formatRating(_ rating: Double, voteCount: Int) -> String {
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .decimal
+        formatter.maximumFractionDigits = 0
+        let votesFormatted = formatter.string(from: NSNumber(value: voteCount)) ?? "\(voteCount)"
+        return String(format: "%.1f (%@)", rating, votesFormatted)
     }
 }

@@ -2,12 +2,29 @@ import Foundation
 
 @MainActor
 final class AppContainer {
+    // MARK: - Infrastructure
     let imagePipeline: ImagePipeline
+    
+    // MARK: - Use Cases - Discovery
     let getDiscoveryFeed: GetDiscoveryFeedUseCase
     let getMovieDetail: GetMovieDetailUseCase
+    
+    // MARK: - Use Cases - Watchlist
+    let getWatchlist: GetWatchlistUseCase
+    let setWatchlistMembership: SetWatchlistMembershipUseCase
+    let setWatched: SetWatchedUseCase
+    
+    // MARK: - Use Cases - Search
+    let searchMovies: SearchMoviesUseCase
+    let searchHistory: SearchHistoryUseCase
+    
+    // MARK: - ViewModels
     let discoveryViewModel: DiscoveryViewModel
+    let watchlistViewModel: WatchlistViewModel
+    let searchViewModel: SearchViewModel
     
     init() {
+        // MARK: - Network Layer
         let httpClient = URLSessionHTTPClient(
             baseURL: AppConfiguration.tmdbBaseURL,
             defaultTimeout: AppConfiguration.defaultRequestTimeout
@@ -18,6 +35,8 @@ final class AppContainer {
             apiKey: AppConfiguration.tmdbAPIKey
         )
         
+        // MARK: - Persistence Layer
+        let localStore = UserDefaultsLocalStore()
         let cacheStore = MemoryCacheStore()
         let ttl = CacheTTL(
             discovery: AppConfiguration.discoveryFeedCacheTTL,
@@ -26,15 +45,57 @@ final class AppContainer {
             credits: AppConfiguration.movieDetailCacheTTL
         )
         
+        // MARK: - Repositories
         let movieRepository = DefaultMovieRepository(
             client: movieClient,
             cacheStore: cacheStore,
             ttl: ttl
         )
         
+        let watchlistRepository = DefaultWatchlistRepository(
+            localStore: localStore
+        )
+        
+        let searchHistoryRepository = DefaultSearchHistoryRepository(
+            localStore: localStore
+        )
+        
+        // MARK: - Use Cases - Discovery
         self.getDiscoveryFeed = GetDiscoveryFeed(repository: movieRepository)
-        self.getMovieDetail = GetMovieDetail(repository: movieRepository)
+        self.getMovieDetail = GetMovieDetail(
+            repository: movieRepository,
+            watchlistRepository: watchlistRepository
+        )
+        
+        // MARK: - Use Cases - Watchlist
+        self.getWatchlist = GetWatchlist(repository: watchlistRepository)
+        self.setWatchlistMembership = SetWatchlistMembership(repository: watchlistRepository)
+        self.setWatched = SetWatched(repository: watchlistRepository)
+        
+        // MARK: - Use Cases - Search
+        self.searchMovies = SearchMovies(
+            movieRepository: movieRepository,
+            searchHistoryRepository: searchHistoryRepository
+        )
+        self.searchHistory = SearchHistory(repository: searchHistoryRepository)
+        
+        // MARK: - Infrastructure
         self.imagePipeline = ImagePipeline()
-        self.discoveryViewModel = DiscoveryViewModel(getDiscoveryFeed: self.getDiscoveryFeed)
+        
+        // MARK: - ViewModels
+        self.discoveryViewModel = DiscoveryViewModel(
+            getDiscoveryFeed: self.getDiscoveryFeed
+        )
+        
+        self.watchlistViewModel = WatchlistViewModel(
+            getWatchlist: self.getWatchlist,
+            setMembership: self.setWatchlistMembership,
+            setWatched: self.setWatched
+        )
+        
+        self.searchViewModel = SearchViewModel(
+            searchMovies: self.searchMovies,
+            searchHistory: self.searchHistory
+        )
     }
 }
