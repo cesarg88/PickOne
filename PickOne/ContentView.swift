@@ -7,6 +7,8 @@ struct ContentView: View {
         DiscoveryView(
             model: container.discoveryViewModel,
             getMovieDetail: container.getMovieDetail,
+            setMembership: container.setWatchlistMembership,
+            setWatched: container.setWatched,
             imagePipeline: container.imagePipeline
         )
     }

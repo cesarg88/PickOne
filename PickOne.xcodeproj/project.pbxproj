@@ -79,15 +79,6 @@
 			);
 			sourceTree = "<group>";
 		};
-		E1B2C3D4E5F6A7B8C9D0E1F0 /* Config */ = {
-			isa = PBXGroup;
-			children = (
-				E1B2C3D4E5F6A7B8C9D0E1F2 /* Debug.xcconfig */,
-				E1B2C3D4E5F6A7B8C9D0E1F3 /* Release.xcconfig */,
-			);
-			path = Config;
-			sourceTree = "<group>";
-		};
 		9A4CE13F2F1E813D0028C2DF /* Products */ = {
 			isa = PBXGroup;
 			children = (
@@ -96,6 +87,15 @@
 				9A4CE1572F1E813F0028C2DF /* PickOneUITests.xctest */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		E1B2C3D4E5F6A7B8C9D0E1F0 /* Config */ = {
+			isa = PBXGroup;
+			children = (
+				E1B2C3D4E5F6A7B8C9D0E1F2 /* Debug.xcconfig */,
+				E1B2C3D4E5F6A7B8C9D0E1F3 /* Release.xcconfig */,
+			);
+			path = Config;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */

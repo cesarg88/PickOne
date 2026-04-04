@@ -13,7 +13,7 @@ struct PickOneApp: App {
     
     var body: some Scene {
         WindowGroup {
-            ContentView(container: container)
+            MainTabView(container: container)
         }
     }
 }

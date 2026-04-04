@@ -1,14 +1,16 @@
 import Foundation
 
-protocol GetMovieDetailUseCase {
+protocol GetMovieDetailUseCase: Sendable {
     func execute(id: Int, policy: CachePolicy) async throws -> CacheResult<MovieDetailSnapshot>
 }
 
-final class GetMovieDetail: GetMovieDetailUseCase {
+final class GetMovieDetail: GetMovieDetailUseCase, Sendable {
     private let repository: MovieRepository
+    private let watchlistRepository: WatchlistRepository?
     
-    init(repository: MovieRepository) {
+    init(repository: MovieRepository, watchlistRepository: WatchlistRepository? = nil) {
         self.repository = repository
+        self.watchlistRepository = watchlistRepository
     }
     
     func execute(id: Int, policy: CachePolicy) async throws -> CacheResult<MovieDetailSnapshot> {
@@ -80,11 +82,16 @@ final class GetMovieDetail: GetMovieDetailUseCase {
             isCreditsUnavailable = true
         }
         
+        // Get watchlist status
+        let watchlistStatus = watchlistRepository?.getStatus(movieId: id) ?? .notInWatchlist
+        let isInWatchlist = watchlistStatus != .notInWatchlist
+        let isWatched = watchlistStatus == .watched
+        
         let snapshot = MovieDetailSnapshot(
             movie: detailResult.value,
             similar: similar,
-            isInWatchlist: false,
-            isWatched: false,
+            isInWatchlist: isInWatchlist,
+            isWatched: isWatched,
             director: credits.director,
             topCast: credits.topCast,
             isSimilarUnavailable: isSimilarUnavailable,

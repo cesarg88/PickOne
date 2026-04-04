@@ -74,11 +74,19 @@ struct Recommendation: Identifiable, Equatable {
 struct SearchSnapshot: Equatable {
     let query: String
     let results: [MovieSummary]
+    let currentPage: Int
+    let totalPages: Int
     let asOf: Date
+    
+    var hasMorePages: Bool {
+        currentPage < totalPages
+    }
     
     static let empty = SearchSnapshot(
         query: "",
         results: [],
+        currentPage: 0,
+        totalPages: 0,
         asOf: Date()
     )
 }

@@ -3,6 +3,8 @@ import SwiftUI
 struct DiscoveryView: View {
     let model: DiscoveryViewModel
     let getMovieDetail: GetMovieDetailUseCase
+    let setMembership: SetWatchlistMembershipUseCase
+    let setWatched: SetWatchedUseCase
     let imagePipeline: ImagePipeline
     
     private let columns = Array(repeating: GridItem(.flexible(), spacing: 12), count: 3)
@@ -36,10 +38,14 @@ struct DiscoveryView: View {
                                     MovieDetailView(
                                         model: MovieDetailViewModel(
                                             movieId: movie.id,
-                                            getMovieDetail: getMovieDetail
+                                            getMovieDetail: getMovieDetail,
+                                            setMembership: setMembership,
+                                            setWatched: setWatched
                                         ),
                                         imagePipeline: imagePipeline,
-                                        getMovieDetail: getMovieDetail
+                                        getMovieDetail: getMovieDetail,
+                                        setMembership: setMembership,
+                                        setWatched: setWatched
                                     )
                                 } label: {
                                     PosterCardView(movie: movie, pipeline: imagePipeline)
