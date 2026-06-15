@@ -69,6 +69,12 @@ struct Recommendation: Identifiable, Equatable {
     let reason: String?
 }
 
+struct ChatRecommendationResult: Equatable {
+    let query: String
+    let recommendations: [Recommendation]
+    let explanation: String
+}
+
 // MARK: - SearchSnapshot
 
 struct SearchSnapshot: Equatable {
