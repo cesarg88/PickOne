@@ -85,6 +85,8 @@ Verify that you are using the API Read Access Token (Bearer token), not the lega
 
 Notes
 	•	API keys are injected at build time via xcconfig.
+	•	Never add API keys to shared Xcode schemes or source files.
+	•	Run `Scripts/check-secrets.sh` before committing security-sensitive changes.
 	•	For production-scale usage, the TMDB API should be accessed through a backend proxy.
 
 ---
