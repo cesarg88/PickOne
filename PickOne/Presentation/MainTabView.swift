@@ -34,6 +34,17 @@ struct MainTabView: View {
                 Label("Search", systemImage: "magnifyingglass")
             }
             
+            RecommendationView(
+                model: container.recommendationViewModel,
+                getMovieDetail: container.getMovieDetail,
+                setMembership: container.setWatchlistMembership,
+                setWatched: container.setWatched,
+                imagePipeline: container.imagePipeline
+            )
+            .tabItem {
+                Label("Ask", systemImage: "sparkles")
+            }
+            
             WatchlistView(
                 model: container.watchlistViewModel,
                 getMovieDetail: container.getMovieDetail,
