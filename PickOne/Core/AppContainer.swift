@@ -18,10 +18,14 @@ final class AppContainer {
     let searchMovies: SearchMoviesUseCase
     let searchHistory: SearchHistoryUseCase
     
+    // MARK: - Use Cases - Recommendations
+    let getChatRecommendations: GetChatRecommendationsUseCase
+    
     // MARK: - ViewModels
     let discoveryViewModel: DiscoveryViewModel
     let watchlistViewModel: WatchlistViewModel
     let searchViewModel: SearchViewModel
+    let recommendationViewModel: RecommendationViewModel
     
     init() {
         // MARK: - Network Layer
@@ -60,6 +64,8 @@ final class AppContainer {
             localStore: localStore
         )
         
+        let recommendationRepository = UnconfiguredRecommendationRepository()
+        
         // MARK: - Use Cases - Discovery
         self.getDiscoveryFeed = GetDiscoveryFeed(repository: movieRepository)
         self.getMovieDetail = GetMovieDetail(
@@ -79,6 +85,13 @@ final class AppContainer {
         )
         self.searchHistory = SearchHistory(repository: searchHistoryRepository)
         
+        // MARK: - Use Cases - Recommendations
+        self.getChatRecommendations = GetChatRecommendations(
+            repository: recommendationRepository,
+            minResults: AppConfiguration.minAIRecommendations,
+            maxAllowedResults: AppConfiguration.maxAIRecommendations
+        )
+        
         // MARK: - Infrastructure
         self.imagePipeline = ImagePipeline()
         
@@ -97,5 +110,26 @@ final class AppContainer {
             searchMovies: self.searchMovies,
             searchHistory: self.searchHistory
         )
+        
+        self.recommendationViewModel = RecommendationViewModel(
+            getChatRecommendations: self.getChatRecommendations
+        )
+    }
+}
+
+private struct UnconfiguredRecommendationRepository: RecommendationRepository {
+    func getRecommendations(
+        query: String,
+        maxResults: Int
+    ) async throws -> ChatRecommendationResult {
+        throw RecommendationBackendConfigurationError.missingConfiguration
+    }
+}
+
+private enum RecommendationBackendConfigurationError: LocalizedError {
+    case missingConfiguration
+    
+    var errorDescription: String? {
+        "Recommendation backend is not configured yet."
     }
 }

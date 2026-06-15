@@ -1,7 +1,7 @@
 import Foundation
 
 enum RecommendationMapper {
-    static func mapResult(
+    nonisolated static func mapResult(
         query: String,
         response: AIRecommendationResponseDTO
     ) -> ChatRecommendationResult {
@@ -12,7 +12,7 @@ enum RecommendationMapper {
         )
     }
     
-    private static func mapRecommendation(
+    nonisolated private static func mapRecommendation(
         from dto: AIRecommendationItemDTO
     ) -> Recommendation? {
         guard let id = dto.id, id > 0 else {

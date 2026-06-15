@@ -2,6 +2,7 @@ import Testing
 import Foundation
 @testable import PickOne
 
+@MainActor
 @Suite("RecommendationRepository Tests", .serialized)
 struct RecommendationRepositoryTests {
     @Test("maps valid recommendations into domain result")
