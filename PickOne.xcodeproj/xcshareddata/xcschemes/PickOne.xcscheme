@@ -74,13 +74,6 @@
             ReferencedContainer = "container:PickOne.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
-      <EnvironmentVariables>
-         <EnvironmentVariable
-            key = "TMDB_API_KEY"
-            value = "eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiJlNzAzMGI3NjI3YzU2MWI1Njc2OThiMGI4Y2VlZTNmNCIsIm5iZiI6MTc2ODgzNDQ4My4zMDQsInN1YiI6IjY5NmU0NWIzNDY0NjY0N2FhZDhmZDZiOCIsInNjb3BlcyI6WyJhcGlfcmVhZCJdLCJ2ZXJzaW9uIjoxfQ.kYCDdWUoBCc1DCIkKUBUI47aQlDVq9b70CyhutSuXW8"
-            isEnabled = "YES">
-         </EnvironmentVariable>
-      </EnvironmentVariables>
    </LaunchAction>
    <ProfileAction
       buildConfiguration = "Release"
