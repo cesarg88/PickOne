@@ -74,3 +74,11 @@ Suggested delivery order:
 - add fake or stub implementation for iteration
 - add data integration
 - add presentation flow and tests
+
+Suggested PR sequence:
+
+- PR 1: product and backend contract docs
+- PR 2: domain models, repository protocol, and use case
+- PR 3: fake repository plus view model and screen state
+- PR 4: backend client, repository implementation, and integration
+- PR 5: polish, tests, and failure handling

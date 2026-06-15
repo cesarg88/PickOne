@@ -19,6 +19,7 @@ Ship a realistic first version of PickOne with clear movie discovery, list manag
 - system returns a short set of movie recommendations
 - each recommendation includes a reason
 - recommendations resolve to TMDB-backed movie summaries where possible
+- the app talks to a PickOne backend or proxy, not directly to an AI provider
 - failures degrade clearly without breaking the rest of the app
 
 ## Out of Scope
