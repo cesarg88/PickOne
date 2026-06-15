@@ -64,7 +64,7 @@ final class AppContainer {
             localStore: localStore
         )
         
-        let recommendationRepository = UnconfiguredRecommendationRepository()
+        let recommendationRepository = StubRecommendationRepository()
         
         // MARK: - Use Cases - Discovery
         self.getDiscoveryFeed = GetDiscoveryFeed(repository: movieRepository)
@@ -114,22 +114,5 @@ final class AppContainer {
         self.recommendationViewModel = RecommendationViewModel(
             getChatRecommendations: self.getChatRecommendations
         )
-    }
-}
-
-private struct UnconfiguredRecommendationRepository: RecommendationRepository {
-    func getRecommendations(
-        query: String,
-        maxResults: Int
-    ) async throws -> ChatRecommendationResult {
-        throw RecommendationBackendConfigurationError.missingConfiguration
-    }
-}
-
-private enum RecommendationBackendConfigurationError: LocalizedError {
-    case missingConfiguration
-    
-    var errorDescription: String? {
-        "Recommendation backend is not configured yet."
     }
 }

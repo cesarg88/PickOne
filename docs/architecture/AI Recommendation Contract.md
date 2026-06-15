@@ -107,6 +107,15 @@ For MVP:
 - return domain snapshots from use cases
 - map snapshot to presentation state in the view model
 
+## Current Milestone 3 Execution Mode
+
+Until the recommendation UX is validated and the AI strategy is defined:
+
+- use a local stub or mock as the recommendation source
+- keep the existing contract unchanged
+- do not add server infrastructure assumptions to the app
+- do not add deployment, authentication, or provider dependencies yet
+
 ## Known Codebase Adjustment
 
 The current `AIRecommendationClient` skeleton accepts an `apiKey`.
