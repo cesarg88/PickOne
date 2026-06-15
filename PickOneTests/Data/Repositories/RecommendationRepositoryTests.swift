@@ -5,8 +5,8 @@ import Foundation
 @MainActor
 @Suite("RecommendationRepository Tests", .serialized)
 struct RecommendationRepositoryTests {
-    @Test("maps valid recommendations into domain result")
-    func mapsValidRecommendationsIntoDomainResult() async throws {
+    @Test("maps valid recommendations into candidate result")
+    func mapsValidRecommendationsIntoCandidateResult() async throws {
         let client = MockAIRecommendationClient()
         client.response = AIRecommendationResponseDTO(
             recommendations: [
@@ -36,11 +36,11 @@ struct RecommendationRepositoryTests {
         #expect(client.capturedRequest?.query == "smart sci-fi")
         #expect(client.capturedRequest?.maxResults == 5)
         #expect(result.query == "smart sci-fi")
-        #expect(result.recommendations.count == 2)
-        #expect(result.recommendations[0].id == 157336)
-        #expect(result.recommendations[0].movie.title == "Interstellar")
-        #expect(result.recommendations[0].movie.releaseYear == 2014)
-        #expect(result.recommendations[0].reason == "Epic science fiction with emotional stakes.")
+        #expect(result.candidates.count == 2)
+        #expect(result.candidates[0].id == 157336)
+        #expect(result.candidates[0].title == "Interstellar")
+        #expect(result.candidates[0].year == 2014)
+        #expect(result.candidates[0].reason == "Epic science fiction with emotional stakes.")
         #expect(result.explanation == "A tight set of cerebral sci-fi recommendations.")
     }
     
@@ -84,10 +84,10 @@ struct RecommendationRepositoryTests {
             maxResults: 3
         )
         
-        #expect(result.recommendations.count == 1)
-        #expect(result.recommendations[0].id == 603)
-        #expect(result.recommendations[0].movie.title == "The Matrix")
-        #expect(result.recommendations[0].reason == "A landmark sci-fi action film.")
+        #expect(result.candidates.count == 1)
+        #expect(result.candidates[0].id == 603)
+        #expect(result.candidates[0].title == "The Matrix")
+        #expect(result.candidates[0].reason == "A landmark sci-fi action film.")
     }
     
     @Test("propagates client failure")

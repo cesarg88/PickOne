@@ -10,7 +10,7 @@ final class DefaultRecommendationRepository: RecommendationRepository, @unchecke
     func getRecommendations(
         query: String,
         maxResults: Int
-    ) async throws -> ChatRecommendationResult {
+    ) async throws -> ChatRecommendationCandidateResult {
         let response = try await client.getRecommendations(
             request: AIRecommendationRequestDTO(
                 query: query,

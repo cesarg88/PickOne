@@ -4,13 +4,13 @@ struct StubRecommendationRepository: RecommendationRepository, Sendable {
     nonisolated func getRecommendations(
         query: String,
         maxResults: Int
-    ) async throws -> ChatRecommendationResult {
+    ) async throws -> ChatRecommendationCandidateResult {
         let scenario = RecommendationStubCatalog.scenario(for: query)
-        let recommendations = Array(scenario.recommendations.prefix(maxResults))
+        let candidates = Array(scenario.candidates.prefix(maxResults))
         
-        return ChatRecommendationResult(
+        return ChatRecommendationCandidateResult(
             query: query,
-            recommendations: recommendations,
+            candidates: candidates,
             explanation: scenario.explanation
         )
     }
@@ -37,30 +37,35 @@ private enum RecommendationStubCatalog {
     
     nonisolated static let sciFi = RecommendationScenario(
         explanation: "These picks lean into intelligent science fiction with emotional stakes and a strong sense of atmosphere.",
-        recommendations: [
-            Recommendation(
+        candidates: [
+            RecommendationCandidate(
                 id: 157336,
-                movie: MovieSummary(id: 157336, title: "Interstellar", posterPath: nil, releaseYear: 2014, rating: 8.4),
+                title: "Interstellar",
+                year: 2014,
                 reason: "Large-scale science fiction with emotional depth."
             ),
-            Recommendation(
+            RecommendationCandidate(
                 id: 329865,
-                movie: MovieSummary(id: 329865, title: "Arrival", posterPath: nil, releaseYear: 2016, rating: 7.9),
+                title: "Arrival",
+                year: 2016,
                 reason: "Thoughtful and intimate sci-fi grounded in character."
             ),
-            Recommendation(
+            RecommendationCandidate(
                 id: 335984,
-                movie: MovieSummary(id: 335984, title: "Blade Runner 2049", posterPath: nil, releaseYear: 2017, rating: 8.0),
+                title: "Blade Runner 2049",
+                year: 2017,
                 reason: "Patient, atmospheric science fiction with striking visuals."
             ),
-            Recommendation(
+            RecommendationCandidate(
                 id: 264660,
-                movie: MovieSummary(id: 264660, title: "Ex Machina", posterPath: nil, releaseYear: 2014, rating: 7.6),
+                title: "Ex Machina",
+                year: 2014,
                 reason: "A tense AI story with sharp ideas and minimalism."
             ),
-            Recommendation(
+            RecommendationCandidate(
                 id: 62,
-                movie: MovieSummary(id: 62, title: "2001: A Space Odyssey", posterPath: nil, releaseYear: 1968, rating: 8.1),
+                title: "2001: A Space Odyssey",
+                year: 1968,
                 reason: "Classic cerebral sci-fi with a sense of awe."
             )
         ]
@@ -68,30 +73,35 @@ private enum RecommendationStubCatalog {
     
     nonisolated static let comedy = RecommendationScenario(
         explanation: "These recommendations favor witty, personality-driven comedies over broad or disposable humor.",
-        recommendations: [
-            Recommendation(
+        candidates: [
+            RecommendationCandidate(
                 id: 496243,
-                movie: MovieSummary(id: 496243, title: "Parasite", posterPath: nil, releaseYear: 2019, rating: 8.5),
+                title: "Parasite",
+                year: 2019,
                 reason: "Darkly funny, sharp, and constantly surprising."
             ),
-            Recommendation(
+            RecommendationCandidate(
                 id: 13,
-                movie: MovieSummary(id: 13, title: "Forrest Gump", posterPath: nil, releaseYear: 1994, rating: 8.5),
+                title: "Forrest Gump",
+                year: 1994,
                 reason: "Warm, funny, and easy to connect with."
             ),
-            Recommendation(
+            RecommendationCandidate(
                 id: 10625,
-                movie: MovieSummary(id: 10625, title: "Mean Girls", posterPath: nil, releaseYear: 2004, rating: 7.0),
+                title: "Mean Girls",
+                year: 2004,
                 reason: "Fast, quotable comedy with real bite."
             ),
-            Recommendation(
+            RecommendationCandidate(
                 id: 772071,
-                movie: MovieSummary(id: 772071, title: "Bottoms", posterPath: nil, releaseYear: 2023, rating: 6.8),
+                title: "Bottoms",
+                year: 2023,
                 reason: "Chaotic and specific in a way that feels fresh."
             ),
-            Recommendation(
+            RecommendationCandidate(
                 id: 115,
-                movie: MovieSummary(id: 115, title: "The Big Lebowski", posterPath: nil, releaseYear: 1998, rating: 7.8),
+                title: "The Big Lebowski",
+                year: 1998,
                 reason: "Offbeat comedy with a famously relaxed vibe."
             )
         ]
@@ -99,30 +109,35 @@ private enum RecommendationStubCatalog {
     
     nonisolated static let thriller = RecommendationScenario(
         explanation: "These picks focus on tension, momentum, and strong hooks without drifting too far into action spectacle.",
-        recommendations: [
-            Recommendation(
+        candidates: [
+            RecommendationCandidate(
                 id: 274,
-                movie: MovieSummary(id: 274, title: "The Silence of the Lambs", posterPath: nil, releaseYear: 1991, rating: 8.3),
+                title: "The Silence of the Lambs",
+                year: 1991,
                 reason: "A gripping thriller with iconic performances."
             ),
-            Recommendation(
+            RecommendationCandidate(
                 id: 807,
-                movie: MovieSummary(id: 807, title: "Se7en", posterPath: nil, releaseYear: 1995, rating: 8.4),
+                title: "Se7en",
+                year: 1995,
                 reason: "Bleak, tense, and relentlessly compelling."
             ),
-            Recommendation(
+            RecommendationCandidate(
                 id: 680,
-                movie: MovieSummary(id: 680, title: "Pulp Fiction", posterPath: nil, releaseYear: 1994, rating: 8.5),
+                title: "Pulp Fiction",
+                year: 1994,
                 reason: "Crime-driven tension with unforgettable dialogue."
             ),
-            Recommendation(
+            RecommendationCandidate(
                 id: 11324,
-                movie: MovieSummary(id: 11324, title: "Shutter Island", posterPath: nil, releaseYear: 2010, rating: 8.2),
+                title: "Shutter Island",
+                year: 2010,
                 reason: "A moody psychological thriller with escalating paranoia."
             ),
-            Recommendation(
+            RecommendationCandidate(
                 id: 49026,
-                movie: MovieSummary(id: 49026, title: "The Dark Knight Rises", posterPath: nil, releaseYear: 2012, rating: 7.8),
+                title: "The Dark Knight Rises",
+                year: 2012,
                 reason: "High-stakes tension with strong forward momentum."
             )
         ]
@@ -130,30 +145,35 @@ private enum RecommendationStubCatalog {
     
     nonisolated static let general = RecommendationScenario(
         explanation: "These are broad, high-confidence picks meant to cover a few different tones while staying easy to choose from.",
-        recommendations: [
-            Recommendation(
+        candidates: [
+            RecommendationCandidate(
                 id: 278,
-                movie: MovieSummary(id: 278, title: "The Shawshank Redemption", posterPath: nil, releaseYear: 1994, rating: 8.7),
+                title: "The Shawshank Redemption",
+                year: 1994,
                 reason: "A universally loved drama with strong emotional payoff."
             ),
-            Recommendation(
+            RecommendationCandidate(
                 id: 238,
-                movie: MovieSummary(id: 238, title: "The Godfather", posterPath: nil, releaseYear: 1972, rating: 8.7),
+                title: "The Godfather",
+                year: 1972,
                 reason: "A classic if you want something weighty and absorbing."
             ),
-            Recommendation(
+            RecommendationCandidate(
                 id: 155,
-                movie: MovieSummary(id: 155, title: "The Dark Knight", posterPath: nil, releaseYear: 2008, rating: 8.5),
+                title: "The Dark Knight",
+                year: 2008,
                 reason: "Accessible, polished, and consistently engaging."
             ),
-            Recommendation(
+            RecommendationCandidate(
                 id: 550,
-                movie: MovieSummary(id: 550, title: "Fight Club", posterPath: nil, releaseYear: 1999, rating: 8.4),
+                title: "Fight Club",
+                year: 1999,
                 reason: "A bold pick if you want intensity and attitude."
             ),
-            Recommendation(
+            RecommendationCandidate(
                 id: 603,
-                movie: MovieSummary(id: 603, title: "The Matrix", posterPath: nil, releaseYear: 1999, rating: 8.2),
+                title: "The Matrix",
+                year: 1999,
                 reason: "A crowd-pleasing choice with a smart high concept."
             )
         ]
@@ -162,5 +182,5 @@ private enum RecommendationStubCatalog {
 
 private struct RecommendationScenario: Sendable {
     let explanation: String
-    let recommendations: [Recommendation]
+    let candidates: [RecommendationCandidate]
 }

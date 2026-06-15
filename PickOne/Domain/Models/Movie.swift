@@ -50,6 +50,18 @@ struct MovieSummary: Identifiable, Equatable {
     let rating: Double
 }
 
+extension Movie {
+    var summary: MovieSummary {
+        MovieSummary(
+            id: id,
+            title: title,
+            posterPath: posterPath,
+            releaseYear: releaseYear,
+            rating: rating
+        )
+    }
+}
+
 // MARK: - MoviePage
 
 struct MoviePage: Equatable {

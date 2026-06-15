@@ -4,5 +4,5 @@ protocol RecommendationRepository: Sendable {
     func getRecommendations(
         query: String,
         maxResults: Int
-    ) async throws -> ChatRecommendationResult
+    ) async throws -> ChatRecommendationCandidateResult
 }

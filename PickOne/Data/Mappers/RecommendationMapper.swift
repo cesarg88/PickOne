@@ -4,17 +4,17 @@ enum RecommendationMapper {
     nonisolated static func mapResult(
         query: String,
         response: AIRecommendationResponseDTO
-    ) -> ChatRecommendationResult {
-        ChatRecommendationResult(
+    ) -> ChatRecommendationCandidateResult {
+        ChatRecommendationCandidateResult(
             query: query,
-            recommendations: response.recommendations.compactMap(mapRecommendation),
+            candidates: response.recommendations.compactMap(mapCandidate),
             explanation: response.explanation
         )
     }
     
-    nonisolated private static func mapRecommendation(
+    nonisolated private static func mapCandidate(
         from dto: AIRecommendationItemDTO
-    ) -> Recommendation? {
+    ) -> RecommendationCandidate? {
         guard let id = dto.id, id > 0 else {
             return nil
         }
@@ -29,15 +29,10 @@ enum RecommendationMapper {
         let reason = dto.reason?
             .trimmingCharacters(in: .whitespacesAndNewlines)
         
-        return Recommendation(
+        return RecommendationCandidate(
             id: id,
-            movie: MovieSummary(
-                id: id,
-                title: title,
-                posterPath: nil,
-                releaseYear: dto.year,
-                rating: 0
-            ),
+            title: title,
+            year: dto.year,
             reason: reason?.isEmpty == true ? nil : reason
         )
     }
