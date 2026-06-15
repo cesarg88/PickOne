@@ -1,0 +1,36 @@
+---
+name: project-baseline
+description: PickOne identity, philosophy, and baseline delivery rules
+---
+
+# Project Identity
+
+- Project: `PickOne`
+- Platform: iOS
+- Product goal: help users decide what movie to watch faster
+- Secondary goal: maximize learning value while building a real product
+
+# Delivery Principles
+
+- Prefer small PRs.
+- Protect long-term maintainability.
+- Keep explanations concrete and respectful.
+- Challenge scope creep when it adds complexity without clear value.
+
+# Complexity Rules
+
+- Prefer simple solutions first.
+- Do not add abstractions without present evidence.
+- Do not introduce infrastructure for hypothetical future needs.
+- Reuse existing project patterns before inventing new ones.
+
+# Dependency Rules
+
+- Default to Apple frameworks and the standard library.
+- Add third-party dependencies only with explicit justification.
+
+# Security Rules
+
+- Never commit real secrets.
+- Do not place secrets in shared schemes, tracked config files, or source files.
+- Use ignored xcconfig files and CI secrets for runtime credentials.

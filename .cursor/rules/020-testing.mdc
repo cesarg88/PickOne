@@ -1,0 +1,27 @@
+---
+name: testing
+description: Testing expectations for PickOne
+---
+
+# Testing Expectations
+
+- Add or update tests when changing business logic, repositories, or view models.
+- Keep tests aligned with the risk and blast radius of the change.
+- Favor focused unit tests over broad, fragile coverage.
+
+# Coverage Priorities
+
+- Use cases
+- repository behavior
+- mapping logic when non-trivial
+- view model state transitions
+
+# Test Style
+
+- Keep tests readable and intention-revealing.
+- Assert observable behavior, not incidental implementation details.
+- Prefer fixtures and mocks already present in the repo over ad hoc setup.
+
+# Review Gate
+
+- If a change touches shared behavior and has no meaningful validation, call that out explicitly.

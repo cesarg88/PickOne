@@ -1,0 +1,39 @@
+---
+name: ios-architecture
+description: Layer boundaries and architectural rules for PickOne
+---
+
+# Layering
+
+The application must preserve this dependency direction:
+
+`Presentation -> Domain -> Data`
+
+# Presentation Rules
+
+- Views, view models, and presentation models live here.
+- Presentation depends on use cases only.
+- Presentation must not import or depend directly on repository implementations, DTOs, persistence, or API clients.
+
+# Domain Rules
+
+- Domain contains entities, snapshots, repository protocols, and use cases.
+- Domain owns business rules.
+- Domain must not know about SwiftUI, DTOs, UserDefaults, or networking details.
+
+# Data Rules
+
+- Data implements repository protocols and adapts external/storage models into domain models.
+- DTOs must not leak outside Data.
+- Mapping belongs in Data or Presentation, depending on the boundary being crossed.
+
+# Snapshot Rules
+
+- Use cases return immutable domain snapshots where screen state requires them.
+- Snapshots are not presentation models.
+- View models transform snapshots into UI state.
+
+# View State Rules
+
+- Views should render explicit state.
+- Avoid hidden behavior in views when that behavior belongs in a view model or use case.
