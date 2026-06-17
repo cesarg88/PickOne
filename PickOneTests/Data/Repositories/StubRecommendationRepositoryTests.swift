@@ -14,8 +14,8 @@ struct StubRecommendationRepositoryTests {
             maxResults: 3
         )
         
-        #expect(result.recommendations.count == 3)
-        #expect(result.recommendations.first?.movie.title == "Interstellar")
+        #expect(result.candidates.count == 3)
+        #expect(result.candidates.first?.title == "Interstellar")
         #expect(result.explanation.contains("science fiction"))
     }
     
@@ -28,8 +28,8 @@ struct StubRecommendationRepositoryTests {
             maxResults: 4
         )
         
-        #expect(result.recommendations.count == 4)
-        #expect(result.recommendations.first?.movie.title == "Parasite")
+        #expect(result.candidates.count == 4)
+        #expect(result.candidates.first?.title == "Parasite")
     }
     
     @Test("falls back to general scenario")
@@ -41,7 +41,7 @@ struct StubRecommendationRepositoryTests {
             maxResults: 5
         )
         
-        #expect(result.recommendations.count == 5)
-        #expect(result.recommendations.first?.movie.title == "The Shawshank Redemption")
+        #expect(result.candidates.count == 5)
+        #expect(result.candidates.first?.title == "The Shawshank Redemption")
     }
 }

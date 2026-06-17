@@ -61,6 +61,13 @@ struct ChatRecommendationSnapshot: Equatable {
     let asOf: Date
 }
 
+struct RecommendationCandidate: Identifiable, Equatable {
+    let id: Int
+    let title: String?
+    let year: Int?
+    let reason: String?
+}
+
 // MARK: - Recommendation
 
 struct Recommendation: Identifiable, Equatable {
@@ -69,9 +76,9 @@ struct Recommendation: Identifiable, Equatable {
     let reason: String?
 }
 
-struct ChatRecommendationResult: Equatable {
+struct ChatRecommendationCandidateResult: Equatable {
     let query: String
-    let recommendations: [Recommendation]
+    let candidates: [RecommendationCandidate]
     let explanation: String
 }
 

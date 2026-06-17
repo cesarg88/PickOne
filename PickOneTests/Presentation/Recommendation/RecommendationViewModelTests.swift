@@ -89,6 +89,42 @@ struct RecommendationViewModelTests {
         #expect(useCase.callCount == 1)
         #expect(useCase.capturedQuery == "mind-bending")
     }
+    
+    @Test("older request cannot overwrite newer results")
+    func olderRequestCannotOverwriteNewerResults() async throws {
+        let useCase = ControlledGetChatRecommendationsUseCase()
+        let sut = RecommendationViewModel(getChatRecommendations: useCase)
+        
+        sut.query = "first"
+        let firstTask = Task { await sut.submit() }
+        await useCase.waitUntilStarted(query: "first")
+        
+        sut.query = "second"
+        let secondTask = Task { await sut.submit() }
+        await useCase.waitUntilStarted(query: "second")
+        
+        await useCase.complete(query: "second", with: .success(TestFixtures.secondSnapshot))
+        await secondTask.value
+        
+        guard case .loaded(let loadedAfterSecond) = sut.state else {
+            Issue.record("Expected loaded state after second request")
+            return
+        }
+        
+        #expect(loadedAfterSecond.query == "second")
+        #expect(loadedAfterSecond.items.first?.title == "Arrival")
+        
+        await useCase.complete(query: "first", with: .success(TestFixtures.snapshot))
+        await firstTask.value
+        
+        guard case .loaded(let finalLoaded) = sut.state else {
+            Issue.record("Expected loaded state to remain on latest request")
+            return
+        }
+        
+        #expect(finalLoaded.query == "second")
+        #expect(finalLoaded.items.first?.title == "Arrival")
+    }
 }
 
 @MainActor
@@ -144,4 +180,50 @@ private enum TestFixtures {
         explanation: "These picks focus on emotionally rich science fiction.",
         asOf: Date()
     )
+    
+    static let secondSnapshot = ChatRecommendationSnapshot(
+        query: "second",
+        recommendations: [
+            Recommendation(
+                id: 329865,
+                movie: MovieSummary(
+                    id: 329865,
+                    title: "Arrival",
+                    posterPath: nil,
+                    releaseYear: 2016,
+                    rating: 7.6
+                ),
+                reason: "Thoughtful sci-fi grounded in character."
+            )
+        ],
+        explanation: "Second request wins.",
+        asOf: Date()
+    )
+}
+
+private actor ControlledGetChatRecommendationsUseCase: GetChatRecommendationsUseCase {
+    private var continuations: [String: CheckedContinuation<ChatRecommendationSnapshot, Error>] = [:]
+    private var startedQueries: Set<String> = []
+    
+    func execute(query: String, maxResults: Int) async throws -> ChatRecommendationSnapshot {
+        startedQueries.insert(query)
+        
+        return try await withCheckedThrowingContinuation { continuation in
+            continuations[query] = continuation
+        }
+    }
+    
+    func waitUntilStarted(query: String) async {
+        while startedQueries.contains(query) == false {
+            await Task.yield()
+        }
+    }
+    
+    func complete(query: String, with result: Result<ChatRecommendationSnapshot, Error>) {
+        guard let continuation = continuations.removeValue(forKey: query) else {
+            return
+        }
+        
+        continuation.resume(with: result)
+    }
 }

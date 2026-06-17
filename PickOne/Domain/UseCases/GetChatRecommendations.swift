@@ -6,15 +6,18 @@ protocol GetChatRecommendationsUseCase: Sendable {
 
 final class GetChatRecommendations: GetChatRecommendationsUseCase, Sendable {
     private let repository: RecommendationRepository
+    private let movieRepository: MovieRepository
     private let minResults: Int
     private let maxAllowedResults: Int
     
     init(
         repository: RecommendationRepository,
+        movieRepository: MovieRepository,
         minResults: Int = 3,
         maxAllowedResults: Int = 5
     ) {
         self.repository = repository
+        self.movieRepository = movieRepository
         self.minResults = minResults
         self.maxAllowedResults = maxAllowedResults
     }
@@ -36,16 +39,49 @@ final class GetChatRecommendations: GetChatRecommendationsUseCase, Sendable {
             maxResults: clampedMaxResults
         )
         
-        guard !result.recommendations.isEmpty else {
+        let recommendations = try await enrichCandidates(result.candidates)
+        
+        guard !recommendations.isEmpty else {
             throw ChatRecommendationError.noRecommendations
         }
         
         return ChatRecommendationSnapshot(
             query: result.query,
-            recommendations: result.recommendations,
+            recommendations: recommendations,
             explanation: result.explanation,
             asOf: Date()
         )
+    }
+    
+    private func enrichCandidates(
+        _ candidates: [RecommendationCandidate]
+    ) async throws -> [Recommendation] {
+        var recommendations: [Recommendation] = []
+        recommendations.reserveCapacity(candidates.count)
+        
+        for candidate in candidates {
+            try Task.checkCancellation()
+            
+            do {
+                let movie = try await movieRepository
+                    .getMovieDetail(id: candidate.id, policy: .returnCacheElseLoad)
+                    .value
+                
+                recommendations.append(
+                    Recommendation(
+                        id: candidate.id,
+                        movie: movie.summary,
+                        reason: candidate.reason
+                    )
+                )
+            } catch is CancellationError {
+                throw CancellationError()
+            } catch {
+                continue
+            }
+        }
+        
+        return recommendations
     }
 }
 

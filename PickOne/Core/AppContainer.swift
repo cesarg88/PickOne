@@ -88,6 +88,7 @@ final class AppContainer {
         // MARK: - Use Cases - Recommendations
         self.getChatRecommendations = GetChatRecommendations(
             repository: recommendationRepository,
+            movieRepository: movieRepository,
             minResults: AppConfiguration.minAIRecommendations,
             maxAllowedResults: AppConfiguration.maxAIRecommendations
         )

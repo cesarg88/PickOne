@@ -14,6 +14,8 @@ enum RecommendationViewState: Equatable {
 final class RecommendationViewModel {
     private let getChatRecommendations: GetChatRecommendationsUseCase
     private let maxResults: Int
+    private var currentTask: Task<ChatRecommendationSnapshot, Error>?
+    private var latestRequestID: Int = 0
     
     var state: RecommendationViewState = .idle
     var query: String = ""
@@ -35,31 +37,57 @@ final class RecommendationViewModel {
         }
         
         query = trimmedQuery
+        currentTask?.cancel()
+        latestRequestID += 1
+        let requestID = latestRequestID
         state = .loading
         
-        do {
-            let snapshot = try await getChatRecommendations.execute(
+        let task = Task {
+            try await getChatRecommendations.execute(
                 query: trimmedQuery,
                 maxResults: maxResults
             )
+        }
+        currentTask = task
+        
+        do {
+            let snapshot = try await task.value
+            
+            guard requestID == latestRequestID else {
+                return
+            }
             
             if snapshot.recommendations.isEmpty {
                 state = .empty(query: trimmedQuery)
             } else {
                 state = .loaded(RecommendationPresentationMapper.map(snapshot: snapshot))
             }
+            currentTask = nil
+        } catch is CancellationError {
+            guard requestID == latestRequestID else {
+                return
+            }
+            currentTask = nil
         } catch let error as ChatRecommendationError {
+            guard requestID == latestRequestID else {
+                return
+            }
             switch error {
             case .emptyQuery:
                 state = .idle
             case .noRecommendations:
                 state = .empty(query: trimmedQuery)
             }
+            currentTask = nil
         } catch {
+            guard requestID == latestRequestID else {
+                return
+            }
             state = .error(
                 query: trimmedQuery,
                 message: error.localizedDescription
             )
+            currentTask = nil
         }
     }
     
@@ -68,6 +96,8 @@ final class RecommendationViewModel {
     }
     
     func clear() {
+        currentTask?.cancel()
+        currentTask = nil
         query = ""
         state = .idle
     }
