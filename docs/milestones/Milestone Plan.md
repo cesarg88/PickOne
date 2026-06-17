@@ -54,7 +54,7 @@ Policies locked in this phase:
 
 ## Milestone 3
 
-Status: planned
+Status: completed
 
 Objective:
 
@@ -82,3 +82,52 @@ Suggested PR sequence:
 - PR 3: fake repository plus view model and screen state
 - PR 4: backend client, repository implementation, and integration
 - PR 5: polish, tests, and failure handling
+
+Delivered:
+
+- recommendation MVP contract and architecture notes
+- `RecommendationRepository` domain boundary and `GetChatRecommendations` use case
+- `StubRecommendationRepository` as the active iteration source
+- Ask tab recommendation flow and navigation to movie detail
+- add-to-watchlist support from recommendations
+- enrichment of recommendation candidates through `MovieRepository`
+- protection against out-of-order recommendation responses in the view model
+- targeted unit coverage for domain, data, and presentation layers
+
+Notes:
+
+- Milestone 3 shipped with a local stub/mock source only
+- no backend, authentication, or deployment infrastructure was introduced
+- recommendation candidates are treated as source data and resolved through the movie domain layer before display
+
+## Milestone 3.2
+
+Status: planned
+
+Objective:
+
+Polish the recommendation experience and close the remaining UX gaps before introducing any real backend integration.
+
+Scope:
+
+- improve Ask screen onboarding and empty-state guidance
+- add suggested starter prompts for faster first use
+- tighten recommendation-specific copy for loading, empty, and failure states
+- review recommendation card polish without changing the current architecture
+- keep the stub/mock recommendation source as the active implementation
+
+Out of scope:
+
+- real backend or proxy integration
+- authentication
+- streaming responses
+- multi-turn chat memory
+- recommendation history
+- provider-specific controls
+
+Success criteria:
+
+- a first-time user understands what to ask without guessing
+- empty and error states feel intentional and actionable
+- the recommendation flow remains fast and deterministic with the local stub
+- no architecture boundary regressions are introduced while polishing UX
