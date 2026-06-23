@@ -1,5 +1,7 @@
 # Conversational Recommendation MVP
 
+Status: implemented with local stub/mock source
+
 ## Goal
 
 Help the user go from "I do not know what to watch" to a short, actionable set of movie options with minimal effort.
@@ -74,6 +76,23 @@ If the backend returns recommendation text but cannot resolve some movies to TMD
 - the user can navigate to detail from a recommendation
 - the user can add a recommendation to the watchlist
 - failures are explicit and do not affect the rest of the app
+
+## Current Implementation Notes
+
+- the Ask flow is live in the app with a local stub/mock recommendation source
+- recommendation candidates are enriched through the existing movie domain layer before display
+- unresolved candidates are dropped
+- if no candidates can be resolved, the flow shows an empty/failure outcome instead of text-only results
+- the view model protects the UI from stale out-of-order responses
+
+## Next UX Iteration
+
+The next iteration should improve usability rather than infrastructure:
+
+- clearer onboarding for the first Ask interaction
+- better suggested prompts
+- tighter empty/loading/error copy
+- recommendation card polish where it helps confidence and clarity
 
 ## Suggested First Screen State Model
 
