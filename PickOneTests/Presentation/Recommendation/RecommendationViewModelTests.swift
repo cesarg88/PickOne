@@ -90,6 +90,34 @@ struct RecommendationViewModelTests {
         #expect(useCase.capturedQuery == "mind-bending")
     }
     
+    @Test("submit suggested prompt updates query and loads")
+    func submitSuggestedPromptUpdatesQueryAndLoads() async throws {
+        let useCase = MockGetChatRecommendationsUseCase()
+        let sut = RecommendationViewModel(getChatRecommendations: useCase)
+        
+        await sut.submitSuggestedPrompt("Something funny but not dumb")
+        
+        #expect(sut.query == "Something funny but not dumb")
+        #expect(useCase.capturedQuery == "Something funny but not dumb")
+    }
+    
+    @Test("clear invalidates in-flight request")
+    func clearInvalidatesInFlightRequest() async throws {
+        let useCase = ControlledGetChatRecommendationsUseCase()
+        let sut = RecommendationViewModel(getChatRecommendations: useCase)
+        
+        sut.query = "first"
+        let task = Task { await sut.submit() }
+        await useCase.waitUntilStarted(query: "first")
+        
+        sut.clear()
+        await useCase.complete(query: "first", with: .success(TestFixtures.snapshot))
+        await task.value
+        
+        #expect(sut.query.isEmpty)
+        #expect(sut.state == .idle)
+    }
+    
     @Test("older request cannot overwrite newer results")
     func olderRequestCannotOverwriteNewerResults() async throws {
         let useCase = ControlledGetChatRecommendationsUseCase()
@@ -124,6 +152,22 @@ struct RecommendationViewModelTests {
         
         #expect(finalLoaded.query == "second")
         #expect(finalLoaded.items.first?.title == "Arrival")
+    }
+    
+    @Test("canSubmit is false while loading")
+    func canSubmitIsFalseWhileLoading() async throws {
+        let useCase = ControlledGetChatRecommendationsUseCase()
+        let sut = RecommendationViewModel(getChatRecommendations: useCase)
+        
+        sut.query = "loading query"
+        let task = Task { await sut.submit() }
+        await useCase.waitUntilStarted(query: "loading query")
+        
+        #expect(sut.isLoading)
+        #expect(sut.canSubmit == false)
+        
+        await useCase.complete(query: "loading query", with: .success(TestFixtures.snapshot))
+        await task.value
     }
 }
 

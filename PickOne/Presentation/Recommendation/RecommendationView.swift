@@ -17,26 +17,39 @@ struct RecommendationView: View {
                     case .idle:
                         idleView
                     case .loading:
-                        ProgressView("Finding recommendations...")
-                            .frame(maxWidth: .infinity, minHeight: 180)
+                        loadingView
                     case .loaded(let data):
                         loadedView(data: data)
                     case .empty(let query):
-                        EmptyStateView(
-                            title: "No recommendations",
-                            message: "We couldn't find usable picks for \"\(query)\".",
-                            actionTitle: "Try again",
-                            action: { Task { await model.retry() } }
-                        )
-                        .frame(maxWidth: .infinity, minHeight: 180)
+                        VStack(alignment: .leading, spacing: 16) {
+                            EmptyStateView(
+                                title: "No usable picks yet",
+                                message: "We couldn't resolve recommendations for \"\(query)\". Try being more specific about mood, genre, or era.",
+                                actionTitle: "Try again",
+                                action: { Task { await model.retry() } }
+                            )
+                            .frame(maxWidth: .infinity, minHeight: 180)
+                            
+                            suggestedPromptsSection(
+                                title: "Try one of these prompts",
+                                subtitle: "These examples work well with the current stubbed recommendation flow."
+                            )
+                        }
                     case .error(let query, let message):
-                        EmptyStateView(
-                            title: "Recommendation failed",
-                            message: "\(message)\n\nPrompt: \"\(query)\"",
-                            actionTitle: "Retry",
-                            action: { Task { await model.retry() } }
-                        )
-                        .frame(maxWidth: .infinity, minHeight: 180)
+                        VStack(alignment: .leading, spacing: 16) {
+                            EmptyStateView(
+                                title: "We couldn't finish that request",
+                                message: "Prompt: \"\(query)\"\n\n\(message)",
+                                actionTitle: "Retry",
+                                action: { Task { await model.retry() } }
+                            )
+                            .frame(maxWidth: .infinity, minHeight: 180)
+                            
+                            suggestedPromptsSection(
+                                title: "Need a quick reset?",
+                                subtitle: "Start from a prompt that already matches the current recommendation catalog."
+                            )
+                        }
                     }
                 }
                 .padding()
@@ -47,12 +60,14 @@ struct RecommendationView: View {
     
     private var promptComposer: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Describe what you feel like watching")
-                .font(.headline)
-            
-            Text("Try things like “smart sci-fi like Arrival” or “something funny but not dumb”.")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Describe what you feel like watching")
+                    .font(.headline)
+                
+                Text("Keep it simple: mood, genre, pace, decade, or a movie reference is enough.")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            }
             
             TextField(
                 "A tense sci-fi movie with emotional depth",
@@ -73,6 +88,7 @@ struct RecommendationView: View {
                     Label("Get Picks", systemImage: "sparkles")
                 }
                 .buttonStyle(.borderedProminent)
+                .disabled(model.canSubmit == false)
                 
                 if !model.query.isEmpty {
                     Button("Clear") {
@@ -88,35 +104,41 @@ struct RecommendationView: View {
         VStack(alignment: .leading, spacing: 16) {
             EmptyStateView(
                 title: "Need inspiration?",
-                message: "Describe a mood, genre, or vibe and PickOne will return a short set of movie options.",
+                message: "Describe a mood, genre, or vibe and PickOne will return a short list of movie options you can act on quickly.",
                 actionTitle: nil,
                 action: nil
             )
+            .frame(maxWidth: .infinity, minHeight: 180)
             
+            suggestedPromptsSection(
+                title: "Starter prompts",
+                subtitle: "Tap one to see how the recommendation flow behaves."
+            )
+        }
+    }
+    
+    private var loadingView: some View {
+        VStack(alignment: .leading, spacing: 16) {
             VStack(alignment: .leading, spacing: 8) {
-                Text("Examples")
-                    .font(.headline)
-                
-                ForEach(samplePrompts, id: \.self) { prompt in
-                    Button {
-                        model.query = prompt
-                        Task { await model.submit() }
-                    } label: {
-                        HStack(alignment: .top, spacing: 8) {
-                            Image(systemName: "quote.bubble")
-                                .foregroundStyle(.secondary)
-                            Text(prompt)
-                                .foregroundStyle(.primary)
-                                .multilineTextAlignment(.leading)
-                            Spacer()
-                        }
-                        .padding(12)
-                        .background(Color(uiColor: .secondarySystemBackground))
-                        .clipShape(RoundedRectangle(cornerRadius: 12))
-                    }
-                    .buttonStyle(.plain)
+                HStack(spacing: 12) {
+                    ProgressView()
+                    Text("Finding recommendations...")
+                        .font(.headline)
                 }
+                
+                Text("We’re resolving the best available matches from the current recommendation source.")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding()
+            .background(Color(uiColor: .secondarySystemBackground))
+            .clipShape(RoundedRectangle(cornerRadius: 16))
+            
+            suggestedPromptsSection(
+                title: "Good prompt ingredients",
+                subtitle: "Mood, genre, era, or a reference title usually works best."
+            )
         }
     }
     
@@ -131,6 +153,19 @@ struct RecommendationView: View {
                     .foregroundStyle(.secondary)
             }
             
+            HStack(spacing: 8) {
+                Label("\(data.items.count) picks", systemImage: "checkmark.seal")
+                    .font(.subheadline.weight(.medium))
+                    .foregroundStyle(.secondary)
+                
+                Text("Open any card for detail or save it to your watchlist.")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            }
+            .padding()
+            .background(Color(uiColor: .secondarySystemBackground))
+            .clipShape(RoundedRectangle(cornerRadius: 16))
+            
             LazyVStack(spacing: 16) {
                 ForEach(data.items) { item in
                     RecommendationCard(
@@ -141,6 +176,42 @@ struct RecommendationView: View {
                         imagePipeline: imagePipeline
                     )
                 }
+            }
+        }
+    }
+    
+    private func suggestedPromptsSection(
+        title: String,
+        subtitle: String
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(title)
+                    .font(.headline)
+                
+                Text(subtitle)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            }
+            
+            ForEach(samplePrompts, id: \.self) { prompt in
+                Button {
+                    Task { await model.submitSuggestedPrompt(prompt) }
+                } label: {
+                    HStack(alignment: .top, spacing: 8) {
+                        Image(systemName: "sparkle.magnifyingglass")
+                            .foregroundStyle(.secondary)
+                        Text(prompt)
+                            .foregroundStyle(.primary)
+                            .multilineTextAlignment(.leading)
+                        Spacer()
+                    }
+                    .padding(12)
+                    .background(Color(uiColor: .secondarySystemBackground))
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                }
+                .buttonStyle(.plain)
+                .disabled(model.isLoading)
             }
         }
     }
@@ -165,6 +236,10 @@ private struct RecommendationCard: View {
     
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
+            Text("Why it fits")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+            
             NavigationLink {
                 MovieDetailView(
                     model: MovieDetailViewModel(
