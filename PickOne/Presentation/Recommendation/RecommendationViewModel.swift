@@ -20,6 +20,18 @@ final class RecommendationViewModel {
     var state: RecommendationViewState = .idle
     var query: String = ""
     
+    var isLoading: Bool {
+        if case .loading = state {
+            return true
+        }
+        
+        return false
+    }
+    
+    var canSubmit: Bool {
+        query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false && isLoading == false
+    }
+    
     init(
         getChatRecommendations: GetChatRecommendationsUseCase,
         maxResults: Int? = nil
@@ -95,7 +107,13 @@ final class RecommendationViewModel {
         await submit()
     }
     
+    func submitSuggestedPrompt(_ prompt: String) async {
+        query = prompt
+        await submit()
+    }
+    
     func clear() {
+        latestRequestID += 1
         currentTask?.cancel()
         currentTask = nil
         query = ""
