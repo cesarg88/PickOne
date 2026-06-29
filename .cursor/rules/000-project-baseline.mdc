@@ -9,7 +9,7 @@ description: PickOne project identity, strategic state, and baseline constraints
 - Product: iOS app for helping users decide what to watch faster
 - UI stack: SwiftUI
 - Concurrency model: Swift Concurrency
-- Deployment target: iOS 17+
+- Deployment target: iOS 18+
 
 # Current Strategic State
 
