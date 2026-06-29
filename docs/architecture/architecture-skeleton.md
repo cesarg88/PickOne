@@ -1,10 +1,15 @@
 # PickOne Architecture Skeleton
 
-## Layers
+## Status
+Active
 
-The app uses a strict layered architecture:
+## Core Structure
 
-Presentation -> Domain -> Data
+PickOne uses a strict 3-layer architecture:
+
+`Presentation -> Domain -> Data`
+
+Dependencies only move downward.
 
 ## Presentation
 
@@ -13,16 +18,14 @@ Contains:
 - SwiftUI views
 - view models
 - presentation models
-- view state enums
+- explicit view state enums
 
-Presentation depends only on domain use cases.
+Rules:
 
-Presentation must not depend directly on:
-
-- repositories
-- data sources
-- DTOs
-- persistence
+- Presentation talks only to use cases.
+- Presentation does not talk directly to repositories.
+- Presentation does not depend on DTOs, API clients, or persistence details.
+- View models map domain entities and snapshots into presentation state.
 
 ## Domain
 
@@ -33,14 +36,11 @@ Contains:
 - use cases
 - repository protocols
 
-Domain owns business rules and app behavior.
+Rules:
 
-Domain must not know about:
-
-- SwiftUI
-- networking implementations
-- persistence implementations
-- DTOs
+- Domain owns orchestration and business rules.
+- Domain must not know about SwiftUI, UserDefaults, HTTP clients, or DTOs.
+- Use cases coordinate repository calls and enforce product behavior.
 
 ## Data
 
@@ -52,13 +52,15 @@ Contains:
 - persistence
 - mappers
 
-Data adapts external and stored data into domain models.
+Rules:
 
-## Core Patterns
+- Data adapts external and stored representations into domain models.
+- DTOs never enter Domain.
+- Persistence details never enter Presentation.
 
-### Snapshots
+## Snapshots vs View State
 
-Snapshots are immutable domain-state payloads returned by use cases.
+Snapshots are immutable domain payloads returned by use cases when a screen needs coordinated state.
 
 Examples:
 
@@ -68,18 +70,17 @@ Examples:
 - `SearchSnapshot`
 - `ChatRecommendationSnapshot`
 
-### View State
+Snapshots are not UI state.
 
-Views render explicit state owned by view models.
+Views render explicit view state owned by view models.
+View models are responsible for transforming snapshots into presentation models and state transitions.
 
-View models transform domain snapshots into presentation state and presentation models.
+## Recommendation Boundary
 
-### Repositories
+Recommendation source output is not treated as final UI-ready movie data.
 
-Repositories return domain entities and domain state.
+Current rule:
 
-Repositories do not return:
-
-- SwiftUI models
-- view state
-- UI-specific snapshots
+- recommendation sources return candidates
+- Domain orchestrates enrichment
+- final recommendations are produced only after candidate resolution through `MovieRepository`
