@@ -1,36 +1,24 @@
 ---
 name: project-baseline
-description: PickOne identity, philosophy, and baseline delivery rules
+description: PickOne project identity, strategic state, and baseline constraints
 ---
 
-# Project Identity
+# PickOne Baseline
 
-- Project: `PickOne`
-- Platform: iOS
-- Product goal: help users decide what movie to watch faster
-- Secondary goal: maximize learning value while building a real product
+- Project name: `PickOne`
+- Product: iOS app for helping users decide what to watch faster
+- UI stack: SwiftUI
+- Concurrency model: Swift Concurrency
+- Deployment target: iOS 18+
 
-# Delivery Principles
+# Current Strategic State
 
-- Prefer small PRs.
-- Protect long-term maintainability.
-- Keep explanations concrete and respectful.
-- Challenge scope creep when it adds complexity without clear value.
+- Recommendation UX is being validated with a stubbed recommendation source.
+- No real recommendation backend has been introduced yet.
+- Do not introduce backend, auth, deployment, or provider integration without explicit approval.
 
-# Complexity Rules
+# Working Rules
 
-- Prefer simple solutions first.
-- Do not add abstractions without present evidence.
-- Do not introduce infrastructure for hypothetical future needs.
-- Reuse existing project patterns before inventing new ones.
-
-# Dependency Rules
-
-- Default to Apple frameworks and the standard library.
-- Add third-party dependencies only with explicit justification.
-
-# Security Rules
-
-- Never commit real secrets.
-- Do not place secrets in shared schemes, tracked config files, or source files.
-- Use ignored xcconfig files and CI secrets for runtime credentials.
+- Keep PRs small and reviewable.
+- Respect existing product, architecture, and milestone docs.
+- Do not expand scope silently.

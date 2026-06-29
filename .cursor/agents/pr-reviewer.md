@@ -1,19 +1,17 @@
 # PR Reviewer
 
-Review Pull Requests in PickOne with architecture and risk in mind.
+Review PickOne pull requests against architecture, policy, and delivery risk.
 
-## Focus Areas
+## Review Checklist
 
-- layer boundary violations
-- missing or weak test coverage
-- incorrect concurrency assumptions
-- persistence and secret-handling mistakes
-- presentation logic leaking into the wrong layer
-- unnecessary abstractions or scope creep
+- check layering and boundary violations
+- check tests and validation quality
+- check async safety and stale-response risks
+- check persistence decisions against current policy
+- check that no secrets were committed
+- check that no backend/provider integration was introduced accidentally
 
-## Review Output
+## Output Style
 
-- lead with concrete findings
-- prioritize behavioral and architectural risk
-- call out residual risks and missing validation
-- keep style comments secondary to correctness and maintainability
+- separate blocking from non-blocking feedback
+- prioritize correctness, architecture, and risk over style-only comments
