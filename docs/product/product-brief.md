@@ -30,6 +30,7 @@ Users often spend too much time browsing and comparing titles before making a de
 - watchlist
 - search
 - search history
+- Ask tab with conversational recommendations
 
 ## Product Principles
 

@@ -1,5 +1,13 @@
 # AI Recommendation Contract
 
+## Status
+
+Future
+
+This document describes the future backend contract for production recommendations.
+
+It is intentionally not implemented yet. The current application still runs against the local stub/mock recommendation source while PickOne moves through Intelligence planning.
+
 ## Decision
 
 PickOne will not call an AI provider directly from the iOS app.
@@ -107,9 +115,9 @@ For MVP:
 - return domain snapshots from use cases
 - map snapshot to presentation state in the view model
 
-## Current Milestone 3 Execution Mode
+## Current Execution Mode
 
-Until the recommendation UX is validated and the AI strategy is defined:
+Until the future backend contract is implemented:
 
 - use a local stub or mock as the recommendation source
 - keep the existing contract unchanged
