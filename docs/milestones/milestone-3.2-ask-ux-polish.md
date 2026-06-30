@@ -4,7 +4,7 @@
 Complete / Merged
 
 ## Goal
-Polish the Ask recommendation experience so the stubbed flow is clearer and more usable before any backend strategy work begins.
+Polish the Ask recommendation experience so the stubbed flow is clearer and more usable before the project moves into Intelligence work.
 
 ## Delivered Scope
 
@@ -34,5 +34,5 @@ Polish the Ask recommendation experience so the stubbed flow is clearer and more
 
 ## Notes / Follow-ups
 
-- Recommendation Strategy v1 has not started yet
-- the next strategic step should be discussed explicitly before introducing real AI/backend work
+Recommendation Strategy v1 has been accepted.
+The next phase of the project moves into Intelligence, beginning with Decision Engine v1.
