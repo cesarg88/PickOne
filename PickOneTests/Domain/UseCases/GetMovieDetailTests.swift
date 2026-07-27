@@ -7,10 +7,11 @@ import Foundation
 struct GetMovieDetailTests {
     @Test("detail ok + similar fail returns snapshot with unavailable")
     func detailOkSimilarFailReturnsUnavailableSnapshot() async throws {
-        let repository = MockMovieRepository()
-        repository.detailResult = .success(CacheResult(value: TestFixtures.movie, isStale: false))
-        repository.similarResult = .failure(TestError.similarFailed)
-        repository.creditsResult = .success(CacheResult(value: TestFixtures.credits, isStale: false))
+        let repository = MockMovieRepository(
+            detail: .success(CacheResult(value: TestFixtures.movie, isStale: false)),
+            similar: .failure(.similarFailed),
+            credits: .success(CacheResult(value: TestFixtures.credits, isStale: false))
+        )
         
         let sut = GetMovieDetail(repository: repository)
         let result = try await sut.execute(id: 1, policy: .returnCacheElseLoad)
@@ -24,10 +25,11 @@ struct GetMovieDetailTests {
     
     @Test("credits fail but similar ok returns unavailable credits")
     func creditsFailSimilarOkReturnsUnavailableCredits() async throws {
-        let repository = MockMovieRepository()
-        repository.detailResult = .success(CacheResult(value: TestFixtures.movie, isStale: false))
-        repository.similarResult = .success(CacheResult(value: TestFixtures.similarPage, isStale: false))
-        repository.creditsResult = .failure(TestError.creditsFailed)
+        let repository = MockMovieRepository(
+            detail: .success(CacheResult(value: TestFixtures.movie, isStale: false)),
+            similar: .success(CacheResult(value: TestFixtures.similarPage, isStale: false)),
+            credits: .failure(.creditsFailed)
+        )
         
         let sut = GetMovieDetail(repository: repository)
         let result = try await sut.execute(id: 1, policy: .returnCacheElseLoad)
@@ -39,10 +41,16 @@ struct GetMovieDetailTests {
     
     @Test("detail fail throws error")
     func detailFailThrows() async throws {
-        let repository = MockMovieRepository()
-        repository.detailResult = .failure(TestError.detailFailed)
-        repository.similarResult = .success(CacheResult(value: MoviePage(page: 1, totalPages: 1, movies: []), isStale: false))
-        repository.creditsResult = .success(CacheResult(value: TestFixtures.credits, isStale: false))
+        let repository = MockMovieRepository(
+            detail: .failure(.detailFailed),
+            similar: .success(
+                CacheResult(
+                    value: MoviePage(page: 1, totalPages: 1, movies: []),
+                    isStale: false
+                )
+            ),
+            credits: .success(CacheResult(value: TestFixtures.credits, isStale: false))
+        )
         
         let sut = GetMovieDetail(repository: repository)
         
@@ -53,10 +61,11 @@ struct GetMovieDetailTests {
     
     @Test("stale semantics use OR across successful results")
     func staleSemanticsUseOrAcrossResults() async throws {
-        let repository = MockMovieRepository()
-        repository.detailResult = .success(CacheResult(value: TestFixtures.movie, isStale: false))
-        repository.similarResult = .success(CacheResult(value: TestFixtures.similarPage, isStale: true))
-        repository.creditsResult = .success(CacheResult(value: TestFixtures.credits, isStale: false))
+        let repository = MockMovieRepository(
+            detail: .success(CacheResult(value: TestFixtures.movie, isStale: false)),
+            similar: .success(CacheResult(value: TestFixtures.similarPage, isStale: true)),
+            credits: .success(CacheResult(value: TestFixtures.credits, isStale: false))
+        )
         
         let sut = GetMovieDetail(repository: repository)
         let result = try await sut.execute(id: 1, policy: .returnCacheElseLoad)
@@ -65,25 +74,39 @@ struct GetMovieDetailTests {
     }
 }
 
-private final class MockMovieRepository: MovieRepository, @unchecked Sendable {
-    var detailResult: Result<CacheResult<Movie>, Error> = .success(CacheResult(value: TestFixtures.movie, isStale: false))
-    var similarResult: Result<CacheResult<MoviePage>, Error> = .success(CacheResult(value: TestFixtures.similarPage, isStale: false))
-    var creditsResult: Result<CacheResult<Credits>, Error> = .success(CacheResult(value: TestFixtures.credits, isStale: false))
+private enum MockResult<Value: Sendable>: Sendable {
+    case success(CacheResult<Value>)
+    case failure(TestError)
+
+    func get() throws -> CacheResult<Value> {
+        switch self {
+        case .success(let value):
+            return value
+        case .failure(let error):
+            throw error
+        }
+    }
+}
+
+private struct MockMovieRepository: MovieRepository {
+    let detail: MockResult<Movie>
+    let similar: MockResult<MoviePage>
+    let credits: MockResult<Credits>
     
     func getTopRated(page: Int, policy: CachePolicy) async throws -> CacheResult<MoviePage> {
         CacheResult(value: MoviePage(page: 1, totalPages: 1, movies: []), isStale: false)
     }
     
     func getMovieDetail(id: Int, policy: CachePolicy) async throws -> CacheResult<Movie> {
-        try detailResult.get()
+        try detail.get()
     }
     
     func getSimilarMovies(id: Int, page: Int, policy: CachePolicy) async throws -> CacheResult<MoviePage> {
-        try similarResult.get()
+        try similar.get()
     }
     
     func getCredits(id: Int, policy: CachePolicy) async throws -> CacheResult<Credits> {
-        try creditsResult.get()
+        try credits.get()
     }
     
     func searchMovies(query: String, page: Int) async throws -> MoviePage {
@@ -91,7 +114,7 @@ private final class MockMovieRepository: MovieRepository, @unchecked Sendable {
     }
 }
 
-private enum TestError: Error {
+private enum TestError: Error, Sendable {
     case detailFailed
     case similarFailed
     case creditsFailed

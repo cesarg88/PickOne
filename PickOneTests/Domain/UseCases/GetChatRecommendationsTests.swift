@@ -6,16 +6,16 @@ import Testing
 struct GetChatRecommendationsTests {
     @Test("trims query and clamps max results")
     func trimsQueryAndClampsMaxResults() async throws {
-        let repository = MockRecommendationRepository()
-        let movieRepository = MockMovieRepository()
-        repository.result = .success(
+        let repository = MockRecommendationRepository(outcome: .success(
             ChatRecommendationCandidateResult(
                 query: "smart sci-fi",
                 candidates: RecommendationFixtures.candidates,
                 explanation: "A focused set of intelligent science fiction picks."
             )
+        ))
+        let movieRepository = MockMovieRepository(
+            movieDetails: RecommendationFixtures.movieDetails
         )
-        movieRepository.movieDetails = RecommendationFixtures.movieDetails
         let sut = GetChatRecommendations(
             repository: repository,
             movieRepository: movieRepository
@@ -26,9 +26,9 @@ struct GetChatRecommendationsTests {
             maxResults: 10
         )
         
-        #expect(repository.capturedQuery == "smart sci-fi")
-        #expect(repository.capturedMaxResults == 5)
-        #expect(movieRepository.capturedIDs == [157336, 329865])
+        #expect(await repository.capturedQuery == "smart sci-fi")
+        #expect(await repository.capturedMaxResults == 5)
+        #expect(await movieRepository.capturedIDs == [157336, 329865])
         #expect(snapshot.query == "smart sci-fi")
         #expect(snapshot.recommendations.count == 2)
         #expect(snapshot.recommendations[0].movie.rating == 8.4)
@@ -36,16 +36,16 @@ struct GetChatRecommendationsTests {
     
     @Test("uses minimum result clamp when value is too small")
     func usesMinimumClampWhenValueTooSmall() async throws {
-        let repository = MockRecommendationRepository()
-        let movieRepository = MockMovieRepository()
-        repository.result = .success(
+        let repository = MockRecommendationRepository(outcome: .success(
             ChatRecommendationCandidateResult(
                 query: "thriller",
                 candidates: RecommendationFixtures.candidates,
                 explanation: "Tense thrillers with clear hooks."
             )
+        ))
+        let movieRepository = MockMovieRepository(
+            movieDetails: RecommendationFixtures.movieDetails
         )
-        movieRepository.movieDetails = RecommendationFixtures.movieDetails
         let sut = GetChatRecommendations(
             repository: repository,
             movieRepository: movieRepository
@@ -53,7 +53,7 @@ struct GetChatRecommendationsTests {
         
         _ = try await sut.execute(query: "thriller", maxResults: 1)
         
-        #expect(repository.capturedMaxResults == 3)
+        #expect(await repository.capturedMaxResults == 3)
     }
     
     @Test("throws for empty query")
@@ -69,14 +69,13 @@ struct GetChatRecommendationsTests {
             _ = try await sut.execute(query: "   ", maxResults: 3)
         }
         
-        #expect(repository.callCount == 0)
+        #expect(await repository.callCount == 0)
     }
     
     @Test("propagates repository failures")
     func propagatesRepositoryFailures() async throws {
-        let repository = MockRecommendationRepository()
+        let repository = MockRecommendationRepository(outcome: .failure)
         let movieRepository = MockMovieRepository()
-        repository.result = .failure(TestError.fetchFailed)
         let sut = GetChatRecommendations(
             repository: repository,
             movieRepository: movieRepository
@@ -89,18 +88,18 @@ struct GetChatRecommendationsTests {
     
     @Test("drops unresolved candidates and keeps resolved ones")
     func dropsUnresolvedCandidatesAndKeepsResolvedOnes() async throws {
-        let repository = MockRecommendationRepository()
-        let movieRepository = MockMovieRepository()
-        repository.result = .success(
+        let repository = MockRecommendationRepository(outcome: .success(
             ChatRecommendationCandidateResult(
                 query: "crime",
                 candidates: RecommendationFixtures.candidates,
                 explanation: "Mixed resolvable picks."
             )
+        ))
+        let movieRepository = MockMovieRepository(
+            movieDetails: [
+                157336: RecommendationFixtures.movieDetails[157336]
+            ].compactMapValues { $0 }
         )
-        movieRepository.movieDetails = [
-            157336: RecommendationFixtures.movieDetails[157336]
-        ].compactMapValues { $0 }
         let sut = GetChatRecommendations(
             repository: repository,
             movieRepository: movieRepository
@@ -115,15 +114,14 @@ struct GetChatRecommendationsTests {
     
     @Test("throws when no candidates can be enriched")
     func throwsWhenNoCandidatesCanBeEnriched() async throws {
-        let repository = MockRecommendationRepository()
-        let movieRepository = MockMovieRepository()
-        repository.result = .success(
+        let repository = MockRecommendationRepository(outcome: .success(
             ChatRecommendationCandidateResult(
                 query: "crime",
                 candidates: RecommendationFixtures.candidates,
                 explanation: "No resolvable picks."
             )
-        )
+        ))
+        let movieRepository = MockMovieRepository()
         let sut = GetChatRecommendations(
             repository: repository,
             movieRepository: movieRepository
@@ -135,17 +133,28 @@ struct GetChatRecommendationsTests {
     }
 }
 
-private final class MockRecommendationRepository: RecommendationRepository, @unchecked Sendable {
-    var result: Result<ChatRecommendationCandidateResult, Error> = .success(
-        ChatRecommendationCandidateResult(
-            query: "smart sci-fi",
-            candidates: RecommendationFixtures.candidates,
-            explanation: "A focused set of intelligent science fiction picks."
+private actor MockRecommendationRepository: RecommendationRepository {
+    enum Outcome: Sendable {
+        case success(ChatRecommendationCandidateResult)
+        case failure
+    }
+
+    private let outcome: Outcome
+    private(set) var capturedQuery: String?
+    private(set) var capturedMaxResults: Int?
+    private(set) var callCount = 0
+
+    init(
+        outcome: Outcome = .success(
+            ChatRecommendationCandidateResult(
+                query: "smart sci-fi",
+                candidates: RecommendationFixtures.candidates,
+                explanation: "A focused set of intelligent science fiction picks."
+            )
         )
-    )
-    var capturedQuery: String?
-    var capturedMaxResults: Int?
-    var callCount = 0
+    ) {
+        self.outcome = outcome
+    }
     
     func getRecommendations(
         query: String,
@@ -154,13 +163,22 @@ private final class MockRecommendationRepository: RecommendationRepository, @unc
         callCount += 1
         capturedQuery = query
         capturedMaxResults = maxResults
-        return try result.get()
+        switch outcome {
+        case .success(let result):
+            return result
+        case .failure:
+            throw TestError.fetchFailed
+        }
     }
 }
 
-private final class MockMovieRepository: MovieRepository, @unchecked Sendable {
-    var movieDetails: [Int: Movie] = [:]
-    var capturedIDs: [Int] = []
+private actor MockMovieRepository: MovieRepository {
+    private let movieDetails: [Int: Movie]
+    private(set) var capturedIDs: [Int] = []
+
+    init(movieDetails: [Int: Movie] = [:]) {
+        self.movieDetails = movieDetails
+    }
     
     func getTopRated(page: Int, policy: CachePolicy) async throws -> CacheResult<MoviePage> {
         fatalError("Unused in test")
@@ -189,7 +207,7 @@ private final class MockMovieRepository: MovieRepository, @unchecked Sendable {
     }
 }
 
-private enum TestError: Error {
+private enum TestError: Error, Sendable {
     case fetchFailed
 }
 

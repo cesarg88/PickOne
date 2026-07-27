@@ -8,14 +8,13 @@ struct RecommendationViewModelTests {
     @Test("submit trims query and loads recommendations")
     func submitTrimsQueryAndLoadsRecommendations() async throws {
         let useCase = MockGetChatRecommendationsUseCase()
-        useCase.result = .success(TestFixtures.snapshot)
         let sut = RecommendationViewModel(getChatRecommendations: useCase)
         sut.query = "  smart sci-fi  "
         
         await sut.submit()
         
-        #expect(useCase.capturedQuery == "smart sci-fi")
-        #expect(useCase.capturedMaxResults == AppConfiguration.maxAIRecommendations)
+        #expect(await useCase.capturedQuery == "smart sci-fi")
+        #expect(await useCase.capturedMaxResults == AppConfiguration.maxAIRecommendations)
         
         guard case .loaded(let model) = sut.state else {
             Issue.record("Expected loaded state")
@@ -38,13 +37,12 @@ struct RecommendationViewModelTests {
         await sut.submit()
         
         #expect(sut.state == .idle)
-        #expect(useCase.callCount == 0)
+        #expect(await useCase.callCount == 0)
     }
     
     @Test("no recommendations maps to empty state")
     func noRecommendationsMapsToEmptyState() async throws {
-        let useCase = MockGetChatRecommendationsUseCase()
-        useCase.result = .failure(ChatRecommendationError.noRecommendations)
+        let useCase = MockGetChatRecommendationsUseCase(outcome: .noRecommendations)
         let sut = RecommendationViewModel(getChatRecommendations: useCase)
         sut.query = "crime thrillers"
         
@@ -60,8 +58,7 @@ struct RecommendationViewModelTests {
     
     @Test("failure maps to error and preserves query")
     func failureMapsToErrorAndPreservesQuery() async throws {
-        let useCase = MockGetChatRecommendationsUseCase()
-        useCase.result = .failure(TestError.requestFailed)
+        let useCase = MockGetChatRecommendationsUseCase(outcome: .requestFailed)
         let sut = RecommendationViewModel(getChatRecommendations: useCase)
         sut.query = "funny movies"
         
@@ -80,14 +77,13 @@ struct RecommendationViewModelTests {
     @Test("retry resubmits current query")
     func retryResubmitsCurrentQuery() async throws {
         let useCase = MockGetChatRecommendationsUseCase()
-        useCase.result = .success(TestFixtures.snapshot)
         let sut = RecommendationViewModel(getChatRecommendations: useCase)
         sut.query = "mind-bending"
         
         await sut.retry()
         
-        #expect(useCase.callCount == 1)
-        #expect(useCase.capturedQuery == "mind-bending")
+        #expect(await useCase.callCount == 1)
+        #expect(await useCase.capturedQuery == "mind-bending")
     }
     
     @Test("submit suggested prompt updates query and loads")
@@ -98,7 +94,7 @@ struct RecommendationViewModelTests {
         await sut.submitSuggestedPrompt("Something funny but not dumb")
         
         #expect(sut.query == "Something funny but not dumb")
-        #expect(useCase.capturedQuery == "Something funny but not dumb")
+        #expect(await useCase.capturedQuery == "Something funny but not dumb")
     }
     
     @Test("clear invalidates in-flight request")
@@ -171,18 +167,34 @@ struct RecommendationViewModelTests {
     }
 }
 
-@MainActor
-private final class MockGetChatRecommendationsUseCase: GetChatRecommendationsUseCase {
-    var result: Result<ChatRecommendationSnapshot, Error> = .success(TestFixtures.snapshot)
-    var capturedQuery: String?
-    var capturedMaxResults: Int?
-    var callCount = 0
+private actor MockGetChatRecommendationsUseCase: GetChatRecommendationsUseCase {
+    enum Outcome: Sendable {
+        case success
+        case noRecommendations
+        case requestFailed
+    }
+
+    private let outcome: Outcome
+    private(set) var capturedQuery: String?
+    private(set) var capturedMaxResults: Int?
+    private(set) var callCount = 0
+
+    init(outcome: Outcome = .success) {
+        self.outcome = outcome
+    }
     
     func execute(query: String, maxResults: Int) async throws -> ChatRecommendationSnapshot {
         callCount += 1
         capturedQuery = query
         capturedMaxResults = maxResults
-        return try result.get()
+        switch outcome {
+        case .success:
+            return TestFixtures.snapshot
+        case .noRecommendations:
+            throw ChatRecommendationError.noRecommendations
+        case .requestFailed:
+            throw TestError.requestFailed
+        }
     }
 }
 

@@ -7,22 +7,45 @@
 //
 
 import Foundation
+import Synchronization
 
 final class MockURLProtocol: URLProtocol {
-    
+    typealias RequestHandler =
+        @Sendable (URLRequest) throws -> (HTTPURLResponse, Data)
+
+    private struct State: Sendable {
+        var requestHandler: RequestHandler?
+        var capturedRequests: [URLRequest] = []
+    }
+
+    private static let state = Mutex(
+        State(requestHandler: nil)
+    )
+
     // MARK: - Mock Configuration
     
     /// The handler that processes intercepted requests and returns mock responses.
     /// Set this before running tests to define expected behavior.
-    static var requestHandler: ((URLRequest) throws -> (HTTPURLResponse, Data))?
+    static var requestHandler: RequestHandler? {
+        get {
+            state.withLock { $0.requestHandler }
+        }
+        set {
+            state.withLock { $0.requestHandler = newValue }
+        }
+    }
     
     /// Tracks all requests made during tests for verification.
-    static var capturedRequests: [URLRequest] = []
+    static var capturedRequests: [URLRequest] {
+        state.withLock { $0.capturedRequests }
+    }
     
     /// Resets all mock state. Call this in test teardown.
     static func reset() {
-        requestHandler = nil
-        capturedRequests = []
+        state.withLock {
+            $0.requestHandler = nil
+            $0.capturedRequests = []
+        }
     }
     
     // MARK: - URLProtocol Overrides
@@ -37,10 +60,12 @@ final class MockURLProtocol: URLProtocol {
     }
     
     override func startLoading() {
-        // Capture the request for later verification
-        MockURLProtocol.capturedRequests.append(request)
-        
-        guard let handler = MockURLProtocol.requestHandler else {
+        let handler = MockURLProtocol.state.withLock { state in
+            state.capturedRequests.append(request)
+            return state.requestHandler
+        }
+
+        guard let handler else {
             fatalError("MockURLProtocol.requestHandler not set. Set it before running tests.")
         }
         
@@ -92,7 +117,7 @@ extension MockURLProtocol {
     }
     
     /// Convenience method to set up an error response.
-    static func setErrorResponse(_ error: Error) {
+    static func setErrorResponse(_ error: any Error & Sendable) {
         requestHandler = { _ in
             throw error
         }

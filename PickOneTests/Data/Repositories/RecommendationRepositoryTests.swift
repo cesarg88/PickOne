@@ -7,8 +7,7 @@ import Foundation
 struct RecommendationRepositoryTests {
     @Test("maps valid recommendations into candidate result")
     func mapsValidRecommendationsIntoCandidateResult() async throws {
-        let client = MockAIRecommendationClient()
-        client.response = AIRecommendationResponseDTO(
+        let client = MockAIRecommendationClient(response: AIRecommendationResponseDTO(
             recommendations: [
                 AIRecommendationItemDTO(
                     id: 157336,
@@ -24,7 +23,7 @@ struct RecommendationRepositoryTests {
                 )
             ],
             explanation: "A tight set of cerebral sci-fi recommendations."
-        )
+        ))
         
         let sut = DefaultRecommendationRepository(client: client)
         
@@ -33,8 +32,9 @@ struct RecommendationRepositoryTests {
             maxResults: 5
         )
         
-        #expect(client.capturedRequest?.query == "smart sci-fi")
-        #expect(client.capturedRequest?.maxResults == 5)
+        let capturedRequest = await client.capturedRequest
+        #expect(capturedRequest?.query == "smart sci-fi")
+        #expect(capturedRequest?.maxResults == 5)
         #expect(result.query == "smart sci-fi")
         #expect(result.candidates.count == 2)
         #expect(result.candidates[0].id == 157336)
@@ -46,8 +46,7 @@ struct RecommendationRepositoryTests {
     
     @Test("filters unusable recommendations without tmdb identity")
     func filtersUnusableRecommendationsWithoutTMDBIdentity() async throws {
-        let client = MockAIRecommendationClient()
-        client.response = AIRecommendationResponseDTO(
+        let client = MockAIRecommendationClient(response: AIRecommendationResponseDTO(
             recommendations: [
                 AIRecommendationItemDTO(
                     id: nil,
@@ -75,7 +74,7 @@ struct RecommendationRepositoryTests {
                 )
             ],
             explanation: "Only resolvable results should survive."
-        )
+        ))
         
         let sut = DefaultRecommendationRepository(client: client)
         
@@ -92,8 +91,7 @@ struct RecommendationRepositoryTests {
     
     @Test("propagates client failure")
     func propagatesClientFailure() async throws {
-        let client = MockAIRecommendationClient()
-        client.error = NetworkError.timeout
+        let client = MockAIRecommendationClient(error: .timeout)
         let sut = DefaultRecommendationRepository(client: client)
         
         await #expect(throws: NetworkError.self) {
@@ -105,21 +103,33 @@ struct RecommendationRepositoryTests {
     }
 }
 
-private final class MockAIRecommendationClient: AIRecommendationClientProtocol {
-    var response = AIRecommendationResponseDTO(
-        recommendations: [],
-        explanation: ""
-    )
-    var error: Error?
-    var capturedRequest: AIRecommendationRequestDTO?
+private actor MockAIRecommendationClient: AIRecommendationClientProtocol {
+    enum MockError: Equatable, Sendable {
+        case timeout
+    }
+
+    private let response: AIRecommendationResponseDTO
+    private let error: MockError?
+    private(set) var capturedRequest: AIRecommendationRequestDTO?
+
+    init(
+        response: AIRecommendationResponseDTO = AIRecommendationResponseDTO(
+            recommendations: [],
+            explanation: ""
+        ),
+        error: MockError? = nil
+    ) {
+        self.response = response
+        self.error = error
+    }
     
     func getRecommendations(
         request: AIRecommendationRequestDTO
     ) async throws -> AIRecommendationResponseDTO {
         capturedRequest = request
         
-        if let error {
-            throw error
+        if error == .timeout {
+            throw NetworkError.timeout
         }
         
         return response

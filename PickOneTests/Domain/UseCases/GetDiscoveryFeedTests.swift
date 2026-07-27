@@ -7,8 +7,7 @@ import Foundation
 struct GetDiscoveryFeedTests {
     @Test("maps repository page into snapshot")
     func mapsPageIntoSnapshot() async throws {
-        let repository = MockMovieRepository()
-        repository.topRatedResult = .success(CacheResult(value: TestFixtures.page, isStale: false))
+        let repository = MockMovieRepository(outcome: .success(isStale: false))
         
         let sut = GetDiscoveryFeed(repository: repository)
         let result = try await sut.execute(page: 1, policy: .returnCacheElseLoad)
@@ -21,8 +20,7 @@ struct GetDiscoveryFeedTests {
     
     @Test("propagates stale flag")
     func propagatesStaleFlag() async throws {
-        let repository = MockMovieRepository()
-        repository.topRatedResult = .success(CacheResult(value: TestFixtures.page, isStale: true))
+        let repository = MockMovieRepository(outcome: .success(isStale: true))
         
         let sut = GetDiscoveryFeed(repository: repository)
         let result = try await sut.execute(page: 1, policy: .returnCacheElseLoad)
@@ -32,8 +30,7 @@ struct GetDiscoveryFeedTests {
     
     @Test("throws when repository fails")
     func throwsWhenRepositoryFails() async throws {
-        let repository = MockMovieRepository()
-        repository.topRatedResult = .failure(TestError.fetchFailed)
+        let repository = MockMovieRepository(outcome: .failure)
         
         let sut = GetDiscoveryFeed(repository: repository)
         
@@ -43,11 +40,21 @@ struct GetDiscoveryFeedTests {
     }
 }
 
-private final class MockMovieRepository: MovieRepository, @unchecked Sendable {
-    var topRatedResult: Result<CacheResult<MoviePage>, Error> = .success(CacheResult(value: TestFixtures.page, isStale: false))
+private struct MockMovieRepository: MovieRepository {
+    enum Outcome: Sendable {
+        case success(isStale: Bool)
+        case failure
+    }
+
+    let outcome: Outcome
     
     func getTopRated(page: Int, policy: CachePolicy) async throws -> CacheResult<MoviePage> {
-        try topRatedResult.get()
+        switch outcome {
+        case .success(let isStale):
+            return CacheResult(value: TestFixtures.page, isStale: isStale)
+        case .failure:
+            throw TestError.fetchFailed
+        }
     }
     
     func getMovieDetail(id: Int, policy: CachePolicy) async throws -> CacheResult<Movie> {
@@ -67,7 +74,7 @@ private final class MockMovieRepository: MovieRepository, @unchecked Sendable {
     }
 }
 
-private enum TestError: Error {
+private enum TestError: Error, Sendable {
     case fetchFailed
 }
 

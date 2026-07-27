@@ -7,10 +7,9 @@ import Foundation
 struct DiscoveryViewModelTests {
     @Test("loadInitial maps and sets loaded state")
     func loadInitialMapsAndSetsLoadedState() async throws {
-        let useCase = MockGetDiscoveryFeedUseCase()
-        useCase.results = [
+        let useCase = MockGetDiscoveryFeedUseCase(results: [
             .success(CacheResult(value: TestFixtures.snapshotPage1, isStale: false))
-        ]
+        ])
         
         let sut = DiscoveryViewModel(getDiscoveryFeed: useCase)
         await sut.loadInitial()
@@ -28,10 +27,9 @@ struct DiscoveryViewModelTests {
     
     @Test("loadInitial error sets error state")
     func loadInitialErrorSetsErrorState() async throws {
-        let useCase = MockGetDiscoveryFeedUseCase()
-        useCase.results = [
+        let useCase = MockGetDiscoveryFeedUseCase(results: [
             .failure(TestError.fetchFailed)
-        ]
+        ])
         
         let sut = DiscoveryViewModel(getDiscoveryFeed: useCase)
         await sut.loadInitial()
@@ -44,11 +42,10 @@ struct DiscoveryViewModelTests {
     
     @Test("loadNextPageIfNeeded appends results")
     func loadNextPageAppendsResults() async throws {
-        let useCase = MockGetDiscoveryFeedUseCase()
-        useCase.results = [
+        let useCase = MockGetDiscoveryFeedUseCase(results: [
             .success(CacheResult(value: TestFixtures.snapshotPage1, isStale: false)),
             .success(CacheResult(value: TestFixtures.snapshotPage2, isStale: false))
-        ]
+        ])
         
         let sut = DiscoveryViewModel(getDiscoveryFeed: useCase)
         await sut.loadInitial()
@@ -72,10 +69,13 @@ struct DiscoveryViewModelTests {
     }
 }
 
-@MainActor
-private final class MockGetDiscoveryFeedUseCase: GetDiscoveryFeedUseCase {
-    var results: [Result<CacheResult<DiscoverySnapshot>, Error>] = []
+private actor MockGetDiscoveryFeedUseCase: GetDiscoveryFeedUseCase {
+    private let results: [Result<CacheResult<DiscoverySnapshot>, Error>]
     private var callIndex = 0
+
+    init(results: [Result<CacheResult<DiscoverySnapshot>, Error>]) {
+        self.results = results
+    }
     
     func execute(page: Int, policy: CachePolicy) async throws -> CacheResult<DiscoverySnapshot> {
         defer { callIndex += 1 }

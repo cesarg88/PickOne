@@ -6,89 +6,142 @@
 //
 
 import Foundation
+import Synchronization
 @testable import PickOne
 
-final class MockWatchlistRepository: WatchlistRepository, @unchecked Sendable {
-    
-    // MARK: - Stub Results
-    
-    var getAllItemsResult: [WatchlistItem] = []
-    var addError: Error?
-    var removeError: Error?
-    var setWatchedError: Error?
-    var statusResult: WatchlistStatus = .notInWatchlist
-    
-    // MARK: - Call Tracking
-    
-    private(set) var getAllItemsCallCount = 0
-    private(set) var addCallCount = 0
-    private(set) var removeCallCount = 0
-    private(set) var setWatchedCallCount = 0
-    private(set) var getStatusCallCount = 0
-    
-    private(set) var lastAddedMovie: MovieSummary?
-    private(set) var lastRemovedMovieId: Int?
-    private(set) var lastSetWatchedMovieId: Int?
-    private(set) var lastSetWatchedValue: Bool?
-    private(set) var lastGetStatusMovieId: Int?
+final class MockWatchlistRepository: WatchlistRepository {
+    private struct State: Sendable {
+        var getAllItemsResult: [WatchlistItem] = []
+        var addError: WatchlistError?
+        var removeError: WatchlistError?
+        var setWatchedError: WatchlistError?
+        var statusResult: WatchlistStatus = .notInWatchlist
+        var getAllItemsCallCount = 0
+        var addCallCount = 0
+        var removeCallCount = 0
+        var setWatchedCallCount = 0
+        var getStatusCallCount = 0
+        var lastAddedMovie: MovieSummary?
+        var lastRemovedMovieId: Int?
+        var lastSetWatchedMovieId: Int?
+        var lastSetWatchedValue: Bool?
+        var lastGetStatusMovieId: Int?
+    }
+
+    private let state = Mutex(State())
+
+    var getAllItemsResult: [WatchlistItem] {
+        get { state.withLock { $0.getAllItemsResult } }
+        set { state.withLock { $0.getAllItemsResult = newValue } }
+    }
+    var addError: WatchlistError? {
+        get { state.withLock { $0.addError } }
+        set { state.withLock { $0.addError = newValue } }
+    }
+    var removeError: WatchlistError? {
+        get { state.withLock { $0.removeError } }
+        set { state.withLock { $0.removeError = newValue } }
+    }
+    var setWatchedError: WatchlistError? {
+        get { state.withLock { $0.setWatchedError } }
+        set { state.withLock { $0.setWatchedError = newValue } }
+    }
+    var statusResult: WatchlistStatus {
+        get { state.withLock { $0.statusResult } }
+        set { state.withLock { $0.statusResult = newValue } }
+    }
+    private(set) var getAllItemsCallCount: Int {
+        get { state.withLock { $0.getAllItemsCallCount } }
+        set { state.withLock { $0.getAllItemsCallCount = newValue } }
+    }
+    private(set) var addCallCount: Int {
+        get { state.withLock { $0.addCallCount } }
+        set { state.withLock { $0.addCallCount = newValue } }
+    }
+    private(set) var removeCallCount: Int {
+        get { state.withLock { $0.removeCallCount } }
+        set { state.withLock { $0.removeCallCount = newValue } }
+    }
+    private(set) var setWatchedCallCount: Int {
+        get { state.withLock { $0.setWatchedCallCount } }
+        set { state.withLock { $0.setWatchedCallCount = newValue } }
+    }
+    private(set) var getStatusCallCount: Int {
+        get { state.withLock { $0.getStatusCallCount } }
+        set { state.withLock { $0.getStatusCallCount = newValue } }
+    }
+    private(set) var lastAddedMovie: MovieSummary? {
+        get { state.withLock { $0.lastAddedMovie } }
+        set { state.withLock { $0.lastAddedMovie = newValue } }
+    }
+    private(set) var lastRemovedMovieId: Int? {
+        get { state.withLock { $0.lastRemovedMovieId } }
+        set { state.withLock { $0.lastRemovedMovieId = newValue } }
+    }
+    private(set) var lastSetWatchedMovieId: Int? {
+        get { state.withLock { $0.lastSetWatchedMovieId } }
+        set { state.withLock { $0.lastSetWatchedMovieId = newValue } }
+    }
+    private(set) var lastSetWatchedValue: Bool? {
+        get { state.withLock { $0.lastSetWatchedValue } }
+        set { state.withLock { $0.lastSetWatchedValue = newValue } }
+    }
+    private(set) var lastGetStatusMovieId: Int? {
+        get { state.withLock { $0.lastGetStatusMovieId } }
+        set { state.withLock { $0.lastGetStatusMovieId = newValue } }
+    }
     
     // MARK: - WatchlistRepository
     
     func getAllItems() -> [WatchlistItem] {
-        getAllItemsCallCount += 1
-        return getAllItemsResult
+        state.withLock {
+            $0.getAllItemsCallCount += 1
+            return $0.getAllItemsResult
+        }
     }
     
     func add(movie: MovieSummary) throws {
-        addCallCount += 1
-        lastAddedMovie = movie
-        if let error = addError {
-            throw error
+        try state.withLock {
+            $0.addCallCount += 1
+            $0.lastAddedMovie = movie
+            if let error = $0.addError {
+                throw error
+            }
         }
     }
     
     func remove(movieId: Int) throws {
-        removeCallCount += 1
-        lastRemovedMovieId = movieId
-        if let error = removeError {
-            throw error
+        try state.withLock {
+            $0.removeCallCount += 1
+            $0.lastRemovedMovieId = movieId
+            if let error = $0.removeError {
+                throw error
+            }
         }
     }
     
     func setWatched(movieId: Int, isWatched: Bool) throws {
-        setWatchedCallCount += 1
-        lastSetWatchedMovieId = movieId
-        lastSetWatchedValue = isWatched
-        if let error = setWatchedError {
-            throw error
+        try state.withLock {
+            $0.setWatchedCallCount += 1
+            $0.lastSetWatchedMovieId = movieId
+            $0.lastSetWatchedValue = isWatched
+            if let error = $0.setWatchedError {
+                throw error
+            }
         }
     }
     
     func getStatus(movieId: Int) -> WatchlistStatus {
-        getStatusCallCount += 1
-        lastGetStatusMovieId = movieId
-        return statusResult
+        state.withLock {
+            $0.getStatusCallCount += 1
+            $0.lastGetStatusMovieId = movieId
+            return $0.statusResult
+        }
     }
     
     // MARK: - Test Helpers
     
     func reset() {
-        getAllItemsResult = []
-        addError = nil
-        removeError = nil
-        setWatchedError = nil
-        statusResult = .notInWatchlist
-        
-        getAllItemsCallCount = 0
-        addCallCount = 0
-        removeCallCount = 0
-        setWatchedCallCount = 0
-        getStatusCallCount = 0
-        
-        lastAddedMovie = nil
-        lastRemovedMovieId = nil
-        lastSetWatchedMovieId = nil
-        lastSetWatchedValue = nil
-        lastGetStatusMovieId = nil
+        state.withLock { $0 = State() }
     }
 }
