@@ -1,26 +1,32 @@
 # PickOne
 
-PickOne is an iOS app focused on helping users decide what movie to watch, faster.
+PickOne is an iOS app focused on helping people decide what movie to watch, faster.
 
-This repository is currently under active development.
+The name is currently a product codename. The app is in a private two-person
+pilot and remains under active development.
 
 ---
 
 ## Requirements
 
-- macOS with Xcode 16+
-- iOS 18+
+- macOS with Xcode 26.4.1+
+- iOS 18.0+
 - TMDB API key (API Read Access Token)
 
 ---
 
 ## Setup
 
-See [SETUP.md](SETUP.md) for instructions on how to configure and run the project locally.
+See [SETUP.md](SETUP.md) for local configuration, tests, and pilot installation.
 
 ---
 
 ## Notes
 
-- The TMDB API key is injected at build time and is not committed to the repository.
+- Debug and Release credentials are injected through ignored xcconfig files.
+- Pull requests run secret scanning, tests, static analysis, a Release build,
+  and app-bundle inspection.
+- `PickOne Pilot` installs an optimized Release build from Xcode.
+- Ask still uses a local recommendation stub; the pilot validates product
+  stability, not recommendation quality.
 - This project is being developed incrementally and may change significantly over time.

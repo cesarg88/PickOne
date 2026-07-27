@@ -31,7 +31,7 @@ final class MockLocalStore: LocalStoreProtocol, @unchecked Sendable {
         watchlistItems.sorted { $0.addedAt > $1.addedAt }
     }
     
-    func saveWatchlistItem(_ item: PersistedWatchlistItem) {
+    func saveWatchlistItem(_ item: PersistedWatchlistItem) throws {
         saveWatchlistItemCallCount += 1
         lastSavedItem = item
         
@@ -40,13 +40,13 @@ final class MockLocalStore: LocalStoreProtocol, @unchecked Sendable {
         watchlistItems.append(item)
     }
     
-    func removeWatchlistItem(movieId: Int) {
+    func removeWatchlistItem(movieId: Int) throws {
         removeWatchlistItemCallCount += 1
         lastRemovedMovieId = movieId
         watchlistItems.removeAll { $0.movieId == movieId }
     }
     
-    func updateWatchedStatus(movieId: Int, isWatched: Bool) {
+    func updateWatchedStatus(movieId: Int, isWatched: Bool) throws {
         updateWatchedStatusCallCount += 1
         lastUpdatedMovieId = movieId
         lastUpdatedWatchedStatus = isWatched

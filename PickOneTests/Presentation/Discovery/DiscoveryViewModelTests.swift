@@ -16,7 +16,7 @@ struct DiscoveryViewModelTests {
         await sut.loadInitial()
         
         guard case .loaded(let data) = sut.state else {
-            #expect(false, "Expected loaded state")
+            Issue.record("Expected loaded state")
             return
         }
         
@@ -37,7 +37,7 @@ struct DiscoveryViewModelTests {
         await sut.loadInitial()
         
         guard case .error = sut.state else {
-            #expect(false, "Expected error state")
+            Issue.record("Expected error state")
             return
         }
     }
@@ -54,7 +54,7 @@ struct DiscoveryViewModelTests {
         await sut.loadInitial()
         
         guard case .loaded(let initial) = sut.state else {
-            #expect(false, "Expected loaded state")
+            Issue.record("Expected loaded state")
             return
         }
         
@@ -62,7 +62,7 @@ struct DiscoveryViewModelTests {
         await sut.loadNextPageIfNeeded(current: lastMovie)
         
         guard case .loaded(let appended) = sut.state else {
-            #expect(false, "Expected loaded state after append")
+            Issue.record("Expected loaded state after append")
             return
         }
         

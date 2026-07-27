@@ -48,6 +48,19 @@ struct WatchlistView: View {
             .onAppear {
                 model.load()
             }
+            .alert(
+                "Watchlist update failed",
+                isPresented: Binding(
+                    get: { model.actionErrorMessage != nil },
+                    set: { if !$0 { model.actionErrorMessage = nil } }
+                )
+            ) {
+                Button("OK") {
+                    model.actionErrorMessage = nil
+                }
+            } message: {
+                Text(model.actionErrorMessage ?? "Please try again.")
+            }
         }
     }
     

@@ -25,11 +25,11 @@ struct PersistedWatchlistItem: Codable, Equatable {
 protocol LocalStoreProtocol: Sendable {
     // Watchlist with persisted summaries
     func getWatchlistItems() -> [PersistedWatchlistItem]
-    func saveWatchlistItem(_ item: PersistedWatchlistItem)
-    func removeWatchlistItem(movieId: Int)
-    func updateWatchedStatus(movieId: Int, isWatched: Bool)
+    func saveWatchlistItem(_ item: PersistedWatchlistItem) throws
+    func removeWatchlistItem(movieId: Int) throws
+    func updateWatchedStatus(movieId: Int, isWatched: Bool) throws
     func getWatchlistStatus(movieId: Int) -> (isInWatchlist: Bool, isWatched: Bool)
-    
+
     // Search history
     func getSearchHistory() -> [String]
     func addSearchQuery(_ query: String)
@@ -37,7 +37,7 @@ protocol LocalStoreProtocol: Sendable {
 }
 
 final class UserDefaultsLocalStore: LocalStoreProtocol, @unchecked Sendable {
-    
+
     private let userDefaults: UserDefaults
     private let encoder = JSONEncoder()
     private let decoder = JSONDecoder()
@@ -54,20 +54,11 @@ final class UserDefaultsLocalStore: LocalStoreProtocol, @unchecked Sendable {
     // MARK: - Watchlist Items
     
     func getWatchlistItems() -> [PersistedWatchlistItem] {
-        guard let data = userDefaults.data(forKey: Keys.watchlistItems) else {
-            return []
-        }
-        do {
-            let items = try decoder.decode([PersistedWatchlistItem].self, from: data)
-            // Return sorted by addedAt descending (most recent first)
-            return items.sorted { $0.addedAt > $1.addedAt }
-        } catch {
-            return []
-        }
+        (try? loadWatchlistItems()) ?? []
     }
     
-    func saveWatchlistItem(_ item: PersistedWatchlistItem) {
-        var items = getWatchlistItems()
+    func saveWatchlistItem(_ item: PersistedWatchlistItem) throws {
+        var items = try loadWatchlistItems()
         
         // Remove existing if present (to update)
         items.removeAll { $0.movieId == item.movieId }
@@ -75,22 +66,22 @@ final class UserDefaultsLocalStore: LocalStoreProtocol, @unchecked Sendable {
         // Add new item
         items.append(item)
         
-        persistWatchlistItems(items)
+        try persistWatchlistItems(items)
     }
     
-    func removeWatchlistItem(movieId: Int) {
-        var items = getWatchlistItems()
+    func removeWatchlistItem(movieId: Int) throws {
+        var items = try loadWatchlistItems()
         items.removeAll { $0.movieId == movieId }
-        persistWatchlistItems(items)
+        try persistWatchlistItems(items)
     }
     
-    func updateWatchedStatus(movieId: Int, isWatched: Bool) {
-        var items = getWatchlistItems()
+    func updateWatchedStatus(movieId: Int, isWatched: Bool) throws {
+        var items = try loadWatchlistItems()
         guard let index = items.firstIndex(where: { $0.movieId == movieId }) else {
             return
         }
         items[index].isWatched = isWatched
-        persistWatchlistItems(items)
+        try persistWatchlistItems(items)
     }
     
     func getWatchlistStatus(movieId: Int) -> (isInWatchlist: Bool, isWatched: Bool) {
@@ -130,12 +121,39 @@ final class UserDefaultsLocalStore: LocalStoreProtocol, @unchecked Sendable {
     
     // MARK: - Private
     
-    private func persistWatchlistItems(_ items: [PersistedWatchlistItem]) {
+    private func loadWatchlistItems() throws -> [PersistedWatchlistItem] {
+        guard let data = userDefaults.data(forKey: Keys.watchlistItems) else {
+            return []
+        }
+        do {
+            let items = try decoder.decode([PersistedWatchlistItem].self, from: data)
+            // Return sorted by addedAt descending (most recent first)
+            return items.sorted { $0.addedAt > $1.addedAt }
+        } catch {
+            throw LocalStoreError.corruptedWatchlist
+        }
+    }
+
+    private func persistWatchlistItems(_ items: [PersistedWatchlistItem]) throws {
         do {
             let data = try encoder.encode(items)
             userDefaults.set(data, forKey: Keys.watchlistItems)
         } catch {
-            // Silently fail - persistence error shouldn't crash the app
+            throw LocalStoreError.encodingFailed
+        }
+    }
+}
+
+enum LocalStoreError: Error, LocalizedError, Equatable {
+    case corruptedWatchlist
+    case encodingFailed
+
+    var errorDescription: String? {
+        switch self {
+        case .corruptedWatchlist:
+            return "Saved watchlist data could not be read. Your existing data was preserved."
+        case .encodingFailed:
+            return "The watchlist could not be saved. Please try again."
         }
     }
 }

@@ -165,7 +165,7 @@ private actor MockMovieCatalogClient: MovieCatalogClientProtocol {
 }
 
 private enum TestFixtures {
-    static let movieSummaryA = MovieSummary(
+    nonisolated static let movieSummaryA = MovieSummary(
         id: 1,
         title: "Movie A",
         posterPath: "/posterA.jpg",
@@ -173,7 +173,7 @@ private enum TestFixtures {
         rating: 8.1
     )
     
-    static let movieSummaryB = MovieSummary(
+    nonisolated static let movieSummaryB = MovieSummary(
         id: 2,
         title: "Movie B",
         posterPath: "/posterB.jpg",
@@ -181,13 +181,13 @@ private enum TestFixtures {
         rating: 7.4
     )
     
-    static let topRatedPage = MoviePage(
+    nonisolated static let topRatedPage = MoviePage(
         page: 1,
         totalPages: 2,
         movies: [movieSummaryA, movieSummaryB]
     )
     
-    static let topRatedDTO = MovieListResponseDTO(
+    nonisolated static let topRatedDTO = MovieListResponseDTO(
         page: 1,
         results: [
             MovieListItemDTO(
@@ -227,7 +227,7 @@ private enum TestFixtures {
         totalResults: 20
     )
     
-    static let detailDTO = MovieDetailDTO(
+    nonisolated static let detailDTO = MovieDetailDTO(
         adult: false,
         backdropPath: "/backdrop.jpg",
         budget: nil,
@@ -251,7 +251,7 @@ private enum TestFixtures {
         voteCount: 1200
     )
     
-    static let creditsDTO = CreditsResponseDTO(
+    nonisolated static let creditsDTO = CreditsResponseDTO(
         id: 1,
         cast: [
             CastMemberDTO(

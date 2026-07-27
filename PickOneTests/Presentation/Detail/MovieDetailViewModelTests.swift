@@ -16,7 +16,7 @@ struct MovieDetailViewModelTests {
         await sut.load()
         
         guard case .loaded(let data) = sut.state else {
-            #expect(false, "Expected loaded state")
+            Issue.record("Expected loaded state")
             return
         }
         
@@ -36,7 +36,7 @@ struct MovieDetailViewModelTests {
         await sut.load()
         
         guard case .loaded(let data) = sut.state else {
-            #expect(false, "Expected loaded state")
+            Issue.record("Expected loaded state")
             return
         }
         
@@ -54,7 +54,7 @@ struct MovieDetailViewModelTests {
         await sut.load()
         
         guard case .error = sut.state else {
-            #expect(false, "Expected error state")
+            Issue.record("Expected error state")
             return
         }
     }

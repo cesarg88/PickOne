@@ -1,92 +1,71 @@
-# PickOne — Setup
-
-This document explains how to configure and run the PickOne project locally using Xcode.
-
----
+# PickOne — Setup and Pilot Installation
 
 ## Requirements
 
-- macOS with Xcode 15+
-- iOS 17+ Simulator or physical device
-- A TMDB (The Movie Database) account
+- macOS with Xcode 26.4.1 or newer
+- An iOS 18.0 or newer simulator or physical iPhone
+- A TMDB API Read Access Token
 
----
+## Configure TMDB
 
-## Step 1: Get a TMDB API Key
+Create both ignored local configuration files:
 
-1. Go to: https://developer.themoviedb.org/reference/getting-started
-2. Sign up or log in.
-3. Generate an **API Read Access Token (Bearer token)**.
+```bash
+cp Config/Debug.xcconfig.example Config/Debug.xcconfig
+cp Config/Release.xcconfig.example Config/Release.xcconfig
+```
 
-You will use this token in the next step.
+Replace `YOUR_TMDB_API_KEY_HERE` in each file with the TMDB API Read Access
+Token. Do not commit either generated file.
 
----
+The app target validates this setting before compilation and fails without
+printing the credential when it is missing or still contains the placeholder.
 
-## Step 2: Configure the API Key (Local Development)
+## Run locally
 
-This project uses **xcconfig files** to inject the TMDB API key at build time.  
-The API key is **not committed** to the repository.
+1. Open `PickOne.xcodeproj`.
+2. Select the `PickOne` scheme.
+3. Select an iOS 18.0 or newer simulator.
+4. Build and run with `Command-R`.
 
-1. Copy the example configuration file:
+A `401 Unauthorized` response normally means that the configured value is not
+an API Read Access Token.
 
-   ```bash
-   cp Config/Debug.xcconfig.example Config/Debug.xcconfig
+## Run the complete test suite
 
-	2.	Open Config/Debug.xcconfig and replace the placeholder:
+Select the `PickOne` scheme and use `Command-U`, or run:
 
-TMDB_API_KEY = YOUR_TMDB_API_KEY_HERE
+```bash
+xcodebuild test \
+  -project PickOne.xcodeproj \
+  -scheme PickOne \
+  -destination 'platform=iOS Simulator,name=iPhone 17 Pro,OS=latest' \
+  -parallel-testing-enabled NO
+```
 
+The main scheme includes unit tests and the UI smoke test. `PickOneTests`
+alone is not the release gate.
 
-	3.	Save the file.
+## Install a pilot build on an iPhone
 
-⚠️ Do not commit Debug.xcconfig or Release.xcconfig.
-These files are intentionally ignored by git.
+1. Connect and trust the iPhone, then enable Developer Mode if Xcode requests it.
+2. Confirm the signing team for the `PickOne` target.
+3. Select the shared `PickOne Pilot` scheme.
+4. Select the physical iPhone and run the app.
+5. Repeat for the second pilot device.
 
-⸻
+`PickOne Pilot` uses the optimized Release configuration and version `0.1.0`.
+Increment `CURRENT_PROJECT_VERSION` for each replacement build.
 
-Step 3: Open the Project in Xcode
-	1.	Open PickOne.xcodeproj in Xcode.
-	2.	Select the PickOne scheme.
-	3.	Choose an iOS Simulator or a physical device.
+After installation, verify discovery, search, details, Ask, watchlist
+persistence after force-quit, offline degradation, About, and installation of a
+new build over the existing one.
 
-⸻
+## Security boundary
 
-Step 4: Build and Run
-	1.	Press ⌘ + B to build the project.
-	2.	Press ⌘ + R to run the app.
+`Scripts/check-secrets.sh` checks tracked source before commits and in CI.
+The local xcconfig files remain ignored.
 
-If the TMDB API key is correctly configured, the app will launch normally.
-
-If the key is missing or invalid, the app will fail fast at launch with a clear configuration error.
-
-⸻
-
-CI / Release Builds (Optional)
-
-For automated builds (e.g. GitHub Actions, Xcode Cloud):
-	1.	Store TMDB_API_KEY as a secret in your CI environment.
-	2.	Generate the Release config during the build:
-
-echo "TMDB_API_KEY = $TMDB_API_KEY" > Config/Release.xcconfig
-
-
-
-No API keys should ever be committed to the repository.
-
-⸻
-
-Troubleshooting
-	•	App fails at launch
-Ensure TMDB_API_KEY is set correctly in Debug.xcconfig.
-	•	401 Unauthorized responses
-Verify that you are using the API Read Access Token (Bearer token), not the legacy v3 API key.
-
-⸻
-
-Notes
-	•	API keys are injected at build time via xcconfig.
-	•	Never add API keys to shared Xcode schemes or source files.
-	•	Run `Scripts/check-secrets.sh` before committing security-sensitive changes.
-	•	For production-scale usage, the TMDB API should be accessed through a backend proxy.
-
----
+Build-time injection keeps the credential out of Git, but it does not make a
+credential embedded in an iOS client secret. TMDB access must move behind the
+future backend before external distribution.

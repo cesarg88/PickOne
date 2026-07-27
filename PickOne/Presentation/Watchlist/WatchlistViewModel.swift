@@ -28,6 +28,7 @@ final class WatchlistViewModel {
     
     var state: WatchlistViewState = .idle
     var currentFilter: WatchlistFilter = .all
+    var actionErrorMessage: String?
     
     init(
         getWatchlist: GetWatchlistUseCase,
@@ -58,7 +59,7 @@ final class WatchlistViewModel {
             try setWatched.execute(movieId: movieId, isWatched: !item.isWatched)
             load()
         } catch {
-            // Silently fail - item might have been removed
+            actionErrorMessage = error.localizedDescription
         }
     }
     
@@ -69,7 +70,7 @@ final class WatchlistViewModel {
             try setMembership.execute(movie: item.movieSummary, isInWatchlist: false)
             load()
         } catch {
-            // Silently fail - item might have been removed
+            actionErrorMessage = error.localizedDescription
         }
     }
     
