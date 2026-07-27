@@ -21,6 +21,9 @@ default global isolation from non-UI code, isolate mutable stores explicitly,
 enable Swift 6 language mode and complete concurrency checking, and replace
 existing unchecked conformances with proven isolation.
 
+That migration is now planned as
+[Milestone 3.4](../milestones/milestone-3.4-swift-6-concurrency.md).
+
 ## Consequences
 
 - the pilot baseline stays small and low risk

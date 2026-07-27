@@ -2,7 +2,7 @@
 
 ## Status
 
-Implementation Complete / Physical Device Validation Pending
+Complete — Basic Two-Device Pilot Passed
 
 ## Goal
 
@@ -48,3 +48,12 @@ two-person pilot installed directly from Xcode.
 Ask remains backed by a deterministic local stub. This pilot can reveal
 stability and usability problems, but it cannot validate recommendation quality
 or product-market fit.
+
+## Pilot Outcome
+
+The build was installed and exercised successfully on both target iPhones.
+This closes the basic physical-device validation required by this milestone.
+
+Exhaustive device, accessibility, localization, performance, and long-duration
+testing remains intentionally deferred until the product surface is closer to
+external beta scope.

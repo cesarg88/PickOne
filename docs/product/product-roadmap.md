@@ -1,5 +1,11 @@
 # PickOne Product Roadmap
 
+Pending product and engineering recommendations are tracked in
+[Product & Engineering Improvement Backlog](improvement-backlog.md).
+
+Product decisions and delegated implementation follow the
+[Product-Led Agent Delivery Model](../process/agent-delivery-model.md).
+
 ## Status
 
 Current Phase:
@@ -58,12 +64,25 @@ Recommendation Strategy v1 accepted.
 Repository & Pilot Release Health
 
 Status:
-Implementation Complete / Physical Device Validation Pending
+Complete — Basic Two-Device Pilot Passed
 
 Purpose:
 
 Establish reproducible builds, a green full test suite, release-bundle hygiene,
 and a reliable two-person device pilot before continuing Intelligence work.
+
+### Milestone 3.4
+
+[Swift 6 Concurrency Migration](../milestones/milestone-3.4-swift-6-concurrency.md)
+
+Status:
+Planned
+
+Purpose:
+
+Move the project to Swift 6 strict concurrency before backend and provider work
+adds more asynchronous complexity. This milestone must not change product
+behavior.
 
 ### Epic 2.2
 

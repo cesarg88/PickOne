@@ -1,5 +1,13 @@
 # Two-Person Pilot Checklist
 
+## Outcome
+
+Status: Basic pilot passed on both target iPhones.
+
+The initial installation and product smoke validation succeeded. The unchecked
+items below remain as the reusable exhaustive regression checklist for later
+builds; they are not required to reopen Milestone 3.3.
+
 Run this checklist on both iPhones for the first build and again after installing
 a replacement build over it.
 
