@@ -104,6 +104,8 @@ navigation, persistence semantics, or user-facing copy.
 The implementing agent must:
 
 - treat this document and ADR-008 as authoritative
+- follow `AGENTS.md` and
+  `docs/process/github-app-authentication.md` before any GitHub write
 - avoid unrelated cleanup and product changes
 - keep commits reviewable by migration phase
 - explain the ownership model chosen for each mutable dependency

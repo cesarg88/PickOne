@@ -37,6 +37,8 @@ The repository, not a long-running chat, is the durable source of truth.
 - runs the required automated checks
 - opens a reviewable PR with evidence and unresolved questions
 - does not invent product behavior or broaden architecture independently
+- uses only the `Cesar-IA-Agent` identity for GitHub writes
+- stops instead of falling back to a personal or work GitHub account
 
 ## Sources of Truth
 
@@ -51,6 +53,9 @@ Use this order when documents appear to conflict:
 
 Chat conclusions must be promoted into the repository before they are treated
 as durable decisions.
+
+All GitHub operations must also follow the mandatory
+[GitHub App Authentication Policy](github-app-authentication.md).
 
 ## Definition of Ready for Autonomous Implementation
 
