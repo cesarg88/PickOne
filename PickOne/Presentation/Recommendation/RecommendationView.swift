@@ -32,7 +32,7 @@ struct RecommendationView: View {
                             
                             suggestedPromptsSection(
                                 title: "Try one of these prompts",
-                                subtitle: "These examples work well with the current stubbed recommendation flow."
+                                subtitle: "Start with one of these, or describe your own movie mood."
                             )
                         }
                     case .error(let query, let message):
@@ -233,6 +233,7 @@ private struct RecommendationCard: View {
     let imagePipeline: ImagePipeline
     
     @State private var didAddToWatchlist = false
+    @State private var actionErrorMessage: String?
     
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -319,6 +320,19 @@ private struct RecommendationCard: View {
         .padding()
         .background(Color(uiColor: .secondarySystemBackground))
         .clipShape(RoundedRectangle(cornerRadius: 16))
+        .alert(
+            "Couldn't update watchlist",
+            isPresented: Binding(
+                get: { actionErrorMessage != nil },
+                set: { if !$0 { actionErrorMessage = nil } }
+            )
+        ) {
+            Button("OK") {
+                actionErrorMessage = nil
+            }
+        } message: {
+            Text(actionErrorMessage ?? "Please try again.")
+        }
     }
     
     private func addToWatchlist() {
@@ -326,6 +340,7 @@ private struct RecommendationCard: View {
             try setMembership.execute(movie: item.movieSummary, isInWatchlist: true)
             didAddToWatchlist = true
         } catch {
+            actionErrorMessage = error.localizedDescription
         }
     }
 }

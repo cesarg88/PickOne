@@ -53,6 +53,18 @@ Outcome:
 
 Recommendation Strategy v1 accepted.
 
+### Milestone 3.3
+
+Repository & Pilot Release Health
+
+Status:
+Implementation Complete / Physical Device Validation Pending
+
+Purpose:
+
+Establish reproducible builds, a green full test suite, release-bundle hygiene,
+and a reliable two-person device pilot before continuing Intelligence work.
+
 ### Epic 2.2
 
 Decision Engine v1

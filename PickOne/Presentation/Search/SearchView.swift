@@ -51,7 +51,7 @@ struct SearchView: View {
                     get: { model.query },
                     set: { model.onQueryChange($0) }
                 ),
-                prompt: "Movies, actors, directors..."
+                prompt: "Movie titles"
             )
             .onAppear {
                 model.loadHistory()
@@ -66,7 +66,7 @@ struct SearchView: View {
         if history.isEmpty {
             EmptyStateView(
                 title: "Search for movies",
-                message: "Find movies by title, actor, or director",
+                message: "Find a movie by title",
                 actionTitle: nil,
                 action: nil
             )

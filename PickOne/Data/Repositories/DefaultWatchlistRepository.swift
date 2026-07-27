@@ -28,7 +28,7 @@ final class DefaultWatchlistRepository: WatchlistRepository, @unchecked Sendable
         }
         
         let persisted = WatchlistItemMapper.toPersisted(movie: movie)
-        localStore.saveWatchlistItem(persisted)
+        try localStore.saveWatchlistItem(persisted)
     }
     
     func remove(movieId: Int) throws {
@@ -37,7 +37,7 @@ final class DefaultWatchlistRepository: WatchlistRepository, @unchecked Sendable
             throw WatchlistError.movieNotInWatchlist
         }
         
-        localStore.removeWatchlistItem(movieId: movieId)
+        try localStore.removeWatchlistItem(movieId: movieId)
     }
     
     func setWatched(movieId: Int, isWatched: Bool) throws {
@@ -46,7 +46,7 @@ final class DefaultWatchlistRepository: WatchlistRepository, @unchecked Sendable
             throw WatchlistError.movieNotInWatchlist
         }
         
-        localStore.updateWatchedStatus(movieId: movieId, isWatched: isWatched)
+        try localStore.updateWatchedStatus(movieId: movieId, isWatched: isWatched)
     }
     
     func getStatus(movieId: Int) -> WatchlistStatus {

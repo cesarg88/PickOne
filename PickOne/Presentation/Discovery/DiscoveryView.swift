@@ -6,6 +6,7 @@ struct DiscoveryView: View {
     let setMembership: SetWatchlistMembershipUseCase
     let setWatched: SetWatchedUseCase
     let imagePipeline: ImagePipeline
+    @State private var isShowingAbout = false
     
     private let columns = Array(repeating: GridItem(.flexible(), spacing: 12), count: 3)
     
@@ -67,7 +68,20 @@ struct DiscoveryView: View {
                 }
             }
             .navigationTitle("PickOne")
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        isShowingAbout = true
+                    } label: {
+                        Label("About", systemImage: "info.circle")
+                    }
+                }
+            }
+            .sheet(isPresented: $isShowingAbout) {
+                AboutView()
+            }
             .task {
+                guard !AppConfiguration.isUITesting else { return }
                 await model.loadInitial()
             }
         }
@@ -107,4 +121,3 @@ private struct PosterCardView: View {
         .accessibilityHint("Open movie details")
     }
 }
-

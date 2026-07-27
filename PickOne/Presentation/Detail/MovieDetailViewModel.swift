@@ -17,6 +17,7 @@ final class MovieDetailViewModel {
     private let setWatched: SetWatchedUseCase?
     
     var state: MovieDetailViewState = .idle
+    var actionErrorMessage: String?
     
     /// Convenience initializer for backwards compatibility
     init(movieId: Int, getMovieDetail: GetMovieDetailUseCase) {
@@ -79,7 +80,7 @@ final class MovieDetailViewModel {
             }
             state = .loaded(model)
         } catch {
-            // Silently fail
+            actionErrorMessage = error.localizedDescription
         }
     }
     
@@ -93,7 +94,7 @@ final class MovieDetailViewModel {
             model.isWatched.toggle()
             state = .loaded(model)
         } catch {
-            // Silently fail
+            actionErrorMessage = error.localizedDescription
         }
     }
     

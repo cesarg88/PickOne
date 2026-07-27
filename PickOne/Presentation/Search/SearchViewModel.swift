@@ -23,7 +23,7 @@ enum SearchViewState: Equatable {
 @MainActor
 @Observable
 final class SearchViewModel {
-    
+
     private let searchMovies: SearchMoviesUseCase
     private let searchHistory: SearchHistoryUseCase
     
@@ -33,6 +33,7 @@ final class SearchViewModel {
     private var currentPage: Int = 1
     private var currentQuery: String = ""
     private var searchTask: Task<Void, Never>?
+    private var activeRequestID = UUID()
     
     init(
         searchMovies: SearchMoviesUseCase,
@@ -54,6 +55,7 @@ final class SearchViewModel {
         
         // Cancel previous search
         searchTask?.cancel()
+        let requestID = invalidateActiveRequest()
         
         let trimmed = newQuery.trimmingCharacters(in: .whitespacesAndNewlines)
         
@@ -67,7 +69,12 @@ final class SearchViewModel {
             try? await Task.sleep(for: .milliseconds(300))
             
             guard !Task.isCancelled else { return }
-            await performSearch(query: trimmed, page: 1, append: false)
+            await performSearch(
+                query: trimmed,
+                page: 1,
+                append: false,
+                requestID: requestID
+            )
         }
     }
     
@@ -75,8 +82,14 @@ final class SearchViewModel {
         query = historyQuery
         
         searchTask?.cancel()
+        let requestID = invalidateActiveRequest()
         searchTask = Task {
-            await performSearch(query: historyQuery, page: 1, append: false)
+            await performSearch(
+                query: historyQuery,
+                page: 1,
+                append: false,
+                requestID: requestID
+            )
         }
     }
     
@@ -96,24 +109,46 @@ final class SearchViewModel {
         data.isLoadingNextPage = true
         state = .results(data)
         
-        await performSearch(query: currentQuery, page: currentPage + 1, append: true)
+        let requestID = invalidateActiveRequest()
+        await performSearch(
+            query: currentQuery,
+            page: currentPage + 1,
+            append: true,
+            requestID: requestID
+        )
     }
     
     func clearSearch() {
         query = ""
         searchTask?.cancel()
+        _ = invalidateActiveRequest()
         loadHistory()
     }
     
     // MARK: - Private
     
-    private func performSearch(query: String, page: Int, append: Bool) async {
+    @discardableResult
+    private func invalidateActiveRequest() -> UUID {
+        let requestID = UUID()
+        activeRequestID = requestID
+        return requestID
+    }
+
+    private func performSearch(
+        query: String,
+        page: Int,
+        append: Bool,
+        requestID: UUID
+    ) async {
         if !append {
             state = .searching
         }
         
         do {
             let snapshot = try await searchMovies.execute(query: query, page: page)
+            guard activeRequestID == requestID, !Task.isCancelled else {
+                return
+            }
             
             if snapshot.results.isEmpty && page == 1 {
                 state = .empty(query: query)
@@ -144,6 +179,9 @@ final class SearchViewModel {
             state = .results(model)
             
         } catch {
+            guard activeRequestID == requestID, !Task.isCancelled else {
+                return
+            }
             if !append {
                 state = .error(error.localizedDescription)
             } else if case .results(var data) = state {
