@@ -10,7 +10,7 @@ import Foundation
 
 // MARK: - DiscoverySnapshot
 
-struct DiscoverySnapshot: Equatable {
+struct DiscoverySnapshot: Equatable, Sendable {
     let movies: [MovieSummary]
     let currentPage: Int
     let hasMorePages: Bool
@@ -26,7 +26,7 @@ struct DiscoverySnapshot: Equatable {
 
 // MARK: - MovieDetailSnapshot
 
-struct MovieDetailSnapshot: Equatable {
+struct MovieDetailSnapshot: Equatable, Sendable {
     let movie: Movie
     let similar: [MovieSummary]
     let isInWatchlist: Bool
@@ -40,7 +40,7 @@ struct MovieDetailSnapshot: Equatable {
 
 // MARK: - WatchlistSnapshot
 
-struct WatchlistSnapshot: Equatable {
+struct WatchlistSnapshot: Equatable, Sendable {
     let toWatch: [WatchlistItem]
     let watched: [WatchlistItem]
     let asOf: Date
@@ -54,14 +54,14 @@ struct WatchlistSnapshot: Equatable {
 
 // MARK: - ChatRecommendationSnapshot
 
-struct ChatRecommendationSnapshot: Equatable {
+struct ChatRecommendationSnapshot: Equatable, Sendable {
     let query: String
     let recommendations: [Recommendation]
     let explanation: String
     let asOf: Date
 }
 
-struct RecommendationCandidate: Identifiable, Equatable {
+struct RecommendationCandidate: Identifiable, Equatable, Sendable {
     let id: Int
     let title: String?
     let year: Int?
@@ -70,13 +70,13 @@ struct RecommendationCandidate: Identifiable, Equatable {
 
 // MARK: - Recommendation
 
-struct Recommendation: Identifiable, Equatable {
+struct Recommendation: Identifiable, Equatable, Sendable {
     let id: Int
     let movie: MovieSummary
     let reason: String?
 }
 
-struct ChatRecommendationCandidateResult: Equatable {
+struct ChatRecommendationCandidateResult: Equatable, Sendable {
     let query: String
     let candidates: [RecommendationCandidate]
     let explanation: String
@@ -84,7 +84,7 @@ struct ChatRecommendationCandidateResult: Equatable {
 
 // MARK: - SearchSnapshot
 
-struct SearchSnapshot: Equatable {
+struct SearchSnapshot: Equatable, Sendable {
     let query: String
     let results: [MovieSummary]
     let currentPage: Int

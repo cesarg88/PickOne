@@ -7,6 +7,7 @@
 
 import SwiftUI
 
+@MainActor
 struct SearchView: View {
     let model: SearchViewModel
     let getMovieDetail: GetMovieDetailUseCase
@@ -145,6 +146,7 @@ struct SearchView: View {
 
 // MARK: - Row
 
+@MainActor
 private struct SearchResultRow: View {
     let item: SearchMovieItem
     let imagePipeline: ImagePipeline

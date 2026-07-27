@@ -1,5 +1,6 @@
 import SwiftUI
 
+@MainActor
 struct AboutView: View {
     @Environment(\.dismiss) private var dismiss
 

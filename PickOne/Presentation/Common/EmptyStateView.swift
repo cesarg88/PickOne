@@ -1,5 +1,6 @@
 import SwiftUI
 
+@MainActor
 struct EmptyStateView: View {
     let title: String
     let message: String

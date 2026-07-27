@@ -1,6 +1,6 @@
 import Foundation
 
-enum CachePolicy {
+enum CachePolicy: Sendable {
     case returnCacheElseLoad
     case refresh
 }

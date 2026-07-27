@@ -10,7 +10,7 @@ import Foundation
 
 // MARK: - Movie List Response (Top Rated, Popular, etc.)
 
-struct MovieListResponseDTO: Codable {
+struct MovieListResponseDTO: Codable, Sendable {
     let page: Int
     let results: [MovieListItemDTO]
     let totalPages: Int
@@ -21,7 +21,7 @@ struct MovieListResponseDTO: Codable {
 
 /// Note: Several fields are optional because TMDB may return null/empty
 /// depending on the movie, language, or region settings
-struct MovieListItemDTO: Codable {
+struct MovieListItemDTO: Codable, Sendable {
     let adult: Bool
     let backdropPath: String?
     let genreIds: [Int]?          // May be missing for some entries
@@ -41,7 +41,7 @@ struct MovieListItemDTO: Codable {
 // MARK: - Movie Detail Response
 
 /// Note: Several fields are optional for robustness against TMDB variations
-struct MovieDetailDTO: Codable {
+struct MovieDetailDTO: Codable, Sendable {
     let adult: Bool
     let backdropPath: String?
     let budget: Int?              // May be 0 or missing for some movies
@@ -67,20 +67,20 @@ struct MovieDetailDTO: Codable {
 
 // MARK: - Genre
 
-struct GenreDTO: Codable {
+struct GenreDTO: Codable, Sendable {
     let id: Int
     let name: String
 }
 
 // MARK: - Credits Response
 
-struct CreditsResponseDTO: Codable {
+struct CreditsResponseDTO: Codable, Sendable {
     let id: Int
     let cast: [CastMemberDTO]
     let crew: [CrewMemberDTO]
 }
 
-struct CastMemberDTO: Codable {
+struct CastMemberDTO: Codable, Sendable {
     let adult: Bool?
     let gender: Int?
     let id: Int
@@ -95,7 +95,7 @@ struct CastMemberDTO: Codable {
     let order: Int?
 }
 
-struct CrewMemberDTO: Codable {
+struct CrewMemberDTO: Codable, Sendable {
     let adult: Bool?
     let gender: Int?
     let id: Int
@@ -111,7 +111,7 @@ struct CrewMemberDTO: Codable {
 
 // MARK: - Search Response
 
-struct SearchResponseDTO: Codable {
+struct SearchResponseDTO: Codable, Sendable {
     let page: Int
     let results: [MovieListItemDTO]
     let totalPages: Int

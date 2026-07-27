@@ -9,7 +9,7 @@ import Foundation
 
 // MARK: - WatchlistItem
 
-struct WatchlistItem: Identifiable, Equatable {
+struct WatchlistItem: Identifiable, Equatable, Sendable {
     let id: Int // Movie ID
     let addedAt: Date
     let isWatched: Bool
@@ -30,7 +30,7 @@ struct WatchlistItem: Identifiable, Equatable {
 
 // MARK: - WatchlistStatus
 
-enum WatchlistStatus: Equatable {
+enum WatchlistStatus: Equatable, Sendable {
     case notInWatchlist
     case toWatch
     case watched

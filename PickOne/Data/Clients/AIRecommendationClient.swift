@@ -1,6 +1,6 @@
 import Foundation
 
-protocol AIRecommendationClientProtocol {
+protocol AIRecommendationClientProtocol: Sendable {
     func getRecommendations(
         request: AIRecommendationRequestDTO
     ) async throws -> AIRecommendationResponseDTO

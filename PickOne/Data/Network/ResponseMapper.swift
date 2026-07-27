@@ -1,20 +1,14 @@
 import Foundation
 
-protocol ResponseMapper {
+protocol ResponseMapper: Sendable {
     func map<T: Decodable>(_ data: Data, to type: T.Type) throws -> T
 }
 
-final class JSONResponseMapper: ResponseMapper {
-    
-    private let decoder: JSONDecoder
-    
-    init() {
-        self.decoder = JSONDecoder()
-        self.decoder.keyDecodingStrategy = .convertFromSnakeCase
-    }
-    
+struct JSONResponseMapper: ResponseMapper {
     func map<T: Decodable>(_ data: Data, to type: T.Type) throws -> T {
         do {
+            let decoder = JSONDecoder()
+            decoder.keyDecodingStrategy = .convertFromSnakeCase
             return try decoder.decode(T.self, from: data)
         } catch {
             #if DEBUG

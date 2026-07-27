@@ -1,5 +1,6 @@
 import SwiftUI
 
+@MainActor
 struct RecommendationView: View {
     let model: RecommendationViewModel
     let getMovieDetail: GetMovieDetailUseCase
@@ -225,6 +226,7 @@ struct RecommendationView: View {
     }
 }
 
+@MainActor
 private struct RecommendationCard: View {
     let item: RecommendationMovieItem
     let getMovieDetail: GetMovieDetailUseCase

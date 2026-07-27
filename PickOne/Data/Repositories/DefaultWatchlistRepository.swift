@@ -7,7 +7,7 @@
 
 import Foundation
 
-final class DefaultWatchlistRepository: WatchlistRepository, @unchecked Sendable {
+final class DefaultWatchlistRepository: WatchlistRepository {
     
     private let localStore: LocalStoreProtocol
     

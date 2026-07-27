@@ -7,7 +7,7 @@
 
 import Foundation
 
-final class DefaultSearchHistoryRepository: SearchHistoryRepository, @unchecked Sendable {
+final class DefaultSearchHistoryRepository: SearchHistoryRepository {
     
     private let localStore: LocalStoreProtocol
     

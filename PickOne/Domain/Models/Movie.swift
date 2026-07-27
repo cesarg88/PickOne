@@ -9,7 +9,7 @@ import Foundation
 
 // MARK: - Movie (Full Detail)
 
-struct Movie: Identifiable, Equatable {
+struct Movie: Identifiable, Equatable, Sendable {
     let id: Int
     let title: String
     let originalTitle: String
@@ -42,7 +42,7 @@ struct Movie: Identifiable, Equatable {
 
 // MARK: - MovieSummary (For lists/grids)
 
-struct MovieSummary: Identifiable, Equatable {
+struct MovieSummary: Identifiable, Equatable, Sendable {
     let id: Int
     let title: String
     let posterPath: String?
@@ -64,7 +64,7 @@ extension Movie {
 
 // MARK: - MoviePage
 
-struct MoviePage: Equatable {
+struct MoviePage: Equatable, Sendable {
     let page: Int
     let totalPages: Int
     let movies: [MovieSummary]
@@ -76,21 +76,21 @@ struct MoviePage: Equatable {
 
 // MARK: - Genre
 
-struct Genre: Identifiable, Equatable {
+struct Genre: Identifiable, Equatable, Sendable {
     let id: Int
     let name: String
 }
 
 // MARK: - Person
 
-struct Person: Identifiable, Equatable {
+struct Person: Identifiable, Equatable, Sendable {
     let id: Int
     let name: String
     let profilePath: String?
     let role: PersonRole
 }
 
-enum PersonRole: Equatable {
+enum PersonRole: Equatable, Sendable {
     case cast(character: String)
     case director
     case writer
@@ -99,7 +99,7 @@ enum PersonRole: Equatable {
 
 // MARK: - Credits
 
-struct Credits: Equatable {
+struct Credits: Equatable, Sendable {
     let director: Person?
     let topCast: [Person]
 }

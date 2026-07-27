@@ -85,7 +85,7 @@ final class GetChatRecommendations: GetChatRecommendationsUseCase, Sendable {
     }
 }
 
-enum ChatRecommendationError: Error, LocalizedError {
+enum ChatRecommendationError: Error, LocalizedError, Sendable {
     case emptyQuery
     case noRecommendations
     
