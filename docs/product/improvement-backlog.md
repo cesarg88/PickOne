@@ -1,5 +1,8 @@
 # PickOne Product & Engineering Improvement Backlog
 
+The product itself is defined canonically in [`PRODUCT.md`](../../PRODUCT.md).
+This file tracks work; it must not become a competing product definition.
+
 ## Purpose
 
 This is the living follow-up document for the product and engineering
@@ -13,12 +16,14 @@ Last reviewed: 2026-07-27, after PR #12.
 
 ## Product Direction
 
-PickOne should not become another movie catalog. Its differentiating promise is:
+PickOne should not become another movie catalog. Its differentiating promise is
+to:
 
-> Turn an imprecise intention into a concrete, fast, and trustworthy decision
-> about what to watch.
+> Give people a few personalized movie recommendations they can actually watch,
+> so they can stop browsing and start watching.
 
-Ask is the primary product surface. Discovery, Search, Detail, and Watchlist
+Recommendation-first Home is the primary product surface. Onboarding,
+availability, Detail, Watchlist, Search, Discovery, and the later Ask experience
 support that decision.
 
 ## Status and Priority
@@ -84,31 +89,38 @@ Priorities:
 - Why: provider integration should implement an accepted product reasoning
   model rather than define the product accidentally.
 - Implementation:
+  - define stable preference, current-context, region, subscription,
+    availability, and watched-state inputs
   - define supported intent dimensions: mood, genre, pace, runtime, company,
     era, references, and exclusions
-  - define behavior for vague, specific, conflicting, and impossible prompts
+  - define behavior for sparse, conflicting, and impossible constraints
   - default to three strong recommendations
   - define how one item becomes the best choice
   - specify diversity, constraint, duplicate, and already-watched policies
-  - turn the strategy into executable acceptance cases
+  - turn Home, quick-context, and future Ask strategy into executable
+    acceptance cases
 - Done when:
   - representative prompt fixtures and expected decisions are documented
   - the rules can be tested independently of an AI provider
 
-### IMP-003 — Make Ask the primary entry experience
+### IMP-003 — Make recommendations the primary Home experience
 
 - Status: `Proposed`
 - Priority: `P0`
 - Why: opening on a generic Top Rated grid communicates that PickOne is a
-  catalog instead of a decision product.
+  catalog, while opening on Ask requires effort before the product demonstrates
+  value.
 - Implementation:
-  - make the first screen ask what the user feels like watching
-  - decide whether Ask becomes the first tab or a new Home surface
+  - introduce onboarding for region, subscriptions, and taste calibration
+  - make persistent `Three for Tonight` recommendations the first screen
+  - add a visible `Give me three more` action
+  - provide optional quick context without requiring free text
   - keep Discovery and Search available as supporting paths
   - design first-use, returning-use, loading, empty, and failure states
 - Done when:
   - a fresh launch exposes the core decision proposition immediately
-  - a user can begin a recommendation request with one obvious action
+  - a returning user receives three eligible recommendations without composing
+    a request
 
 ### IMP-004 — Add explicit decision and feedback actions
 
@@ -118,9 +130,10 @@ Priorities:
   decide.
 - Implementation:
   - identify one result as `Best pick` or equivalent product copy
-  - add an explicit `Choose this` / `Watch tonight` action
-  - add `Already watched`, `Not in the mood`, and `More like this`
-  - define what each action changes in the current session
+  - add explicit `Watch this`, `Save for later`, `Not tonight`,
+    `Not interested`, and `Already watched` actions
+  - define which actions affect temporary context and which affect stable taste
+  - confirm viewing later without treating intention as verified consumption
   - preserve a small result set instead of expanding into an infinite feed
 - Done when:
   - the product can distinguish recommendation impressions from decisions
@@ -134,9 +147,11 @@ Priorities:
   criteria.
 - Implementation:
   - define time-to-decision
-  - measure sessions ending in `Choose this`
-  - measure Detail opens and Watchlist additions originating from Ask
-  - measure retries, refinements, and negative feedback
+  - measure sessions ending in `Watch this`
+  - measure confirmed viewing after a decision
+  - measure Detail, trailer, and Watchlist actions originating from Home
+  - measure new-set requests, context refinements, and distinct negative
+    feedback
   - record unresolved candidates, duplicates, already-watched results, and
     violated constraints
   - define latency and cost budgets before integrating a provider
@@ -214,12 +229,16 @@ Priorities:
   the user's country or services.
 - Implementation:
   - define how the active country/region is selected and changed
+  - collect and maintain the user's selected subscription services
   - evaluate TMDB watch-provider data and its attribution requirements
   - show availability with freshness and coverage caveats
-  - prefer available titles when appropriate without hiding better matches
+  - require subscription-included regional availability for primary
+    first-version recommendations
+  - distinguish included, ads, free, rent, and buy availability
   - provide a clear next action to open an available service when supported
 - Done when:
-  - recommendation decisions can account for the active region
+  - recommendation decisions enforce active region, selected provider, and
+    accepted monetization type
   - the user can understand where a selected movie may be watched
 
 ### IMP-010 — Implement privacy-safe analytics and operational observability
@@ -362,12 +381,17 @@ the added complexity.
 ## Suggested Sequence
 
 1. Run the Swift 6 migration as the next isolated technical milestone.
-2. In parallel, define Decision Engine v1 and the measurement contract.
-3. Make Ask the primary surface and add explicit decision actions.
-4. Fix recommendation Watchlist state and Detail domain preservation.
-5. Build one real backend/provider vertical with operational limits.
-6. Add regional availability, feedback, analytics, and observability.
-7. Complete distribution, accessibility, and persistence hardening as the
+2. Define the first-version onboarding, Home, availability, feedback, and
+   measurement specifications from `PRODUCT.md`.
+3. Define Decision Engine v1 against preferences, viewing context, and
+   availability.
+4. Implement onboarding, regional subscription eligibility, persistent
+   `Three for Tonight`, and explicit decision actions in bounded milestones.
+5. Fix recommendation Watchlist state and Detail domain preservation.
+6. Build one real backend/provider vertical only where the accepted decision
+   strategy needs it.
+7. Add privacy-safe analytics and operational observability.
+8. Complete distribution, accessibility, and persistence hardening as the
    audience expands.
 
 ## Update Rules

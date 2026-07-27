@@ -1,5 +1,9 @@
 # PickOne Product Roadmap
 
+The canonical definition of the product and its accepted behavioral decisions
+live in [`PRODUCT.md`](../../PRODUCT.md). This roadmap tracks delivery only and
+must not redefine that product.
+
 Pending product and engineering recommendations are tracked in
 [Product & Engineering Improvement Backlog](improvement-backlog.md).
 
@@ -94,7 +98,9 @@ Planned
 
 Purpose:
 
-Define the product reasoning model that transforms user intent into recommendation decisions.
+Define the product reasoning model that combines stable preferences, current
+viewing context, active region, subscriptions, watched state, and availability
+into three recommendation decisions.
 
 No provider-specific implementation.
 

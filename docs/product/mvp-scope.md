@@ -1,5 +1,11 @@
 # PickOne MVP Scope
 
+Status: `Historical implementation baseline`
+
+This document records the scope used to build the current application. It does
+not define the next product version. The canonical product direction is
+[`PRODUCT.md`](../../PRODUCT.md).
+
 ## Goal
 
 Ship a realistic first version of PickOne with clear movie discovery, list management, search, and a narrow AI recommendation flow.
