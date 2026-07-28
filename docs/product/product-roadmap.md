@@ -13,7 +13,7 @@ Product decisions and delegated implementation follow the
 ## Status
 
 Current Phase:
-Phase 2 — Intelligence
+Phase 3 — Decision Product MVP
 
 ## Phase 1 — MVP
 
@@ -46,7 +46,7 @@ Ask UX Polish
 ## Phase 2 — Intelligence
 
 Status:
-In Progress
+Complete
 
 ### Epic 2.1
 
@@ -80,7 +80,7 @@ and a reliable two-person device pilot before continuing Intelligence work.
 [Swift 6 Concurrency Migration](../milestones/milestone-3.4-swift-6-concurrency.md)
 
 Status:
-Planned
+Complete — merged in PR #13
 
 Purpose:
 
@@ -88,45 +88,79 @@ Move the project to Swift 6 strict concurrency before backend and provider work
 adds more asynchronous complexity. This milestone must not change product
 behavior.
 
-### Epic 2.2
+### SPIKE-001
 
-Decision Engine v1
+[TMDB Spain Streaming Availability](../research/tmdb-es-streaming-availability-findings.md)
 
 Status:
-
-Planned
+Complete — documented in PR #15
 
 Purpose:
 
-Define the product reasoning model that combines stable preferences, current
-viewing context, active region, subscriptions, watched state, and availability
-into three recommendation decisions.
+Validate whether TMDB can support Spain-specific, exact-provider subscription
+eligibility for the first pilot.
 
-No provider-specific implementation.
+Outcome:
 
-### Epic 2.3
+Viable for the pilot with exact-provider movie-level verification and explicit
+trust restrictions.
 
-AI Provider Abstraction
+## Phase 3 — Decision Product MVP
 
 Status:
+Planning
 
-Planned
+### Milestone 4
+
+Availability Foundation
 
 Purpose:
 
-Define repository boundaries, interfaces and contracts for future providers.
+Add the allowlisted Spain providers, TMDB candidate discovery, exact
+movie-level eligibility verification, freshness handling, attribution, and
+fallback watch-page handoff.
 
-### Epic 2.4
+### Milestone 5
 
-First Real Provider
-
-Status:
-
-Planned
+Viewer Profile & Onboarding
 
 Purpose:
 
-Connect PickOne to its first production recommendation backend.
+Collect region, selected services and plans, title-based taste calibration, and
+persist one editable local profile per installation.
+
+### Milestone 6
+
+Three for Tonight
+
+Purpose:
+
+Define and implement the first deterministic decision engine, a persistent
+three-title Home set, honest smaller sets, reasons, and explicit refresh.
+
+### Milestone 7
+
+Decision Feedback
+
+Purpose:
+
+Add `Watch this`, `Save for later`, `Not tonight`, `Not interested`, and
+`Already watched` with their accepted learning semantics.
+
+### Milestone 8
+
+Trailers & Pilot Measurement
+
+Purpose:
+
+Add suitable trailers, viewing confirmation, and the minimum privacy-safe
+measurement needed to evaluate time-to-decision.
+
+## Deferred Intelligence Infrastructure
+
+AI provider integration, backend infrastructure, and generalized
+multi-provider abstractions remain deferred until the deterministic decision
+experience demonstrates a product need they can solve.
 
 ## Guiding Principle
 

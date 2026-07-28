@@ -3,7 +3,7 @@
 ## Document Status
 
 - Status: `Canonical`
-- Last product review: `2026-07-27`
+- Last product review: `2026-07-28`
 - Product name: `PickOne` is a codename until the decision experience is
   validated.
 
@@ -154,11 +154,14 @@ language.
 - ask which supported services the user currently has
 - allow multiple selections
 - make the list editable after onboarding
-- distinguish subscription access from rental, purchase, free, and
-  ad-supported access
+- distinguish the selected plan or tier when it materially changes entitlement
+- distinguish access included without an additional transaction from rental,
+  purchase, and separately paid add-on channels
 
-The default first-version promise is content included with the selected
-subscriptions. Rent or buy options must not be mixed into that promise.
+The default first-version promise is content the user can play through the
+selected plan without an additional payment. Advertising does not make an
+already-paid plan ineligible by itself. Rent, buy, and unselected add-on
+channels must not be mixed into that promise.
 
 #### Taste calibration
 
@@ -284,13 +287,19 @@ The product must evaluate:
 
 - active viewing country
 - selected providers
+- selected plan or entitlement where the source distinguishes it
 - monetization type
 - known freshness and coverage limitations
 
 Primary recommendations should be included with at least one selected
-subscription in the active region. If the product later includes rent, buy,
-free, or ad-supported options, those modes require explicit user choice and
-clear labeling.
+plan in the active region without additional transactional payment. Rent, buy,
+and separately paid add-on channels are ineligible unless a future product
+decision explicitly enables them. Ad-supported access is eligible only when it
+belongs to the plan the user selected.
+
+TMDB Discover may generate candidates, but it is not final availability proof.
+Before a movie becomes eligible, its movie-level provider response must contain
+an allowlisted selected provider under the active region's `flatrate` entries.
 
 Availability data must carry required TMDB and JustWatch attribution. When a
 direct provider deep link is unavailable, the product must not manufacture or
@@ -438,23 +447,45 @@ As of the last review:
 - Natural-language Ask is a later enhancement using the same decision rules.
 - Shared viewing is an important future direction but not mandatory account
   scope for the first individual version.
+- The first pilot market is Spain (`ES`).
+- The pilot provider allowlist is Netflix `8`, Amazon Prime Video `119`,
+  Disney Plus `337`, and HBO Max `1899`, presented to the user as Max.
+- The pilot entitlement maps Netflix's highest plan to provider `8` and
+  ad-free Prime Video to provider `119`.
+- Eligibility means included in the selected plan without an additional
+  transaction. Advertising alone is not a universal exclusion.
+- Amazon Video stores, rent, buy, unselected Amazon Channels, and other
+  separately paid add-ons are excluded.
+- TMDB Discover is candidate generation only. Final eligibility requires the
+  exact allowlisted provider in the movie-level `ES.flatrate` response.
+- Availability is verified when a recommendation set is generated and
+  revalidated before handoff when the previous verification is more than
+  24 hours old.
+- “Three for Tonight” does not expire automatically during the pilot. If
+  revalidation invalidates one title, replace that title rather than discarding
+  the complete set.
+- If fewer than three eligible high-confidence movies exist, show the smaller
+  honest set instead of violating availability or quality constraints.
+- The pilot may use TMDB's country-specific watch page as an honest fallback
+  handoff. It must not be presented as a direct provider link.
+- Availability copy must identify JustWatch as the source, state that
+  availability may change, and preserve required TMDB attribution.
 
 ## Open Product Questions
 
 These require explicit product decisions before their related implementation:
 
 1. What exact title set and selection logic should calibrate initial taste?
-2. How should the first version behave when fewer than three eligible,
-   high-confidence movies exist?
-3. What freshness period, if any, should expire “Three for Tonight”?
-4. Which Spanish streaming providers are supported in the first pilot?
-5. Should ad-supported content be opt-in during onboarding?
-6. What is the smallest useful representation of two-person viewing before
+2. What is the smallest useful representation of two-person viewing before
    full profiles or accounts?
-7. What confirmation language best distinguishes intent to watch from verified
+3. What confirmation language best distinguishes intent to watch from verified
    viewing?
-8. What availability caveat and attribution copy preserves trust without adding
-   clutter?
+4. What exact availability caveat and attribution presentation preserves trust
+   without adding clutter?
+5. How should onboarding present plan variants beyond the known pilot
+   entitlements without asking users to understand provider internals?
+6. Which deterministic scoring and diversity rules produce the first
+   personalized recommendation set?
 
 Open questions are not permission for implementation agents to invent behavior.
 They must be resolved in product steering or explicitly bounded by a milestone.
