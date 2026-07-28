@@ -2,7 +2,12 @@
 
 ## Status
 
-Accepted
+Accepted for the historical Ask-first experiment.
+
+The recommendation principles in this document remain useful where they do not
+conflict with [`PRODUCT.md`](../../PRODUCT.md). `PRODUCT.md` is canonical and
+now defines a recommendation-first Home, profile and context inputs, regional
+subscription eligibility, and a later role for natural-language Ask.
 
 ## Purpose
 

@@ -5,6 +5,9 @@ PickOne is an iOS app focused on helping people decide what movie to watch, fast
 The name is currently a product codename. The app is in a private two-person
 pilot and remains under active development.
 
+The canonical product definition, target experience, accepted decisions, and
+open product questions live in [`PRODUCT.md`](PRODUCT.md).
+
 ---
 
 ## Requirements

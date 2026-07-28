@@ -1,5 +1,15 @@
 # PickOne Agent Instructions
 
+## Product Authority
+
+Before work that defines or changes user-visible product behavior, read
+[`PRODUCT.md`](PRODUCT.md).
+
+`PRODUCT.md` is the canonical authority for product intent and behavior.
+Milestones and ADRs may bound or explain implementation, but must not silently
+contradict it. An unresolved product question requires clarification rather
+than an agent-invented decision.
+
 ## Mandatory GitHub Identity
 
 Before any GitHub write operation, read and follow

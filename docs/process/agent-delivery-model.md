@@ -42,14 +42,20 @@ The repository, not a long-running chat, is the durable source of truth.
 
 ## Sources of Truth
 
-Use this order when documents appear to conflict:
+For product intent and user-visible behavior, [`PRODUCT.md`](../../PRODUCT.md)
+is canonical.
 
-1. accepted ADRs
-2. active milestone or feature specification
-3. product strategy and product brief
-4. improvement backlog and roadmap
-5. implementation PR discussion
-6. chat history
+Within that product definition, use this order for delivery details:
+
+1. active milestone or feature specification
+2. accepted ADRs for technical decisions
+3. improvement backlog and roadmap
+4. implementation PR discussion
+5. chat history
+
+No delivery document may silently redefine the canonical product. If a
+milestone needs different behavior, update `PRODUCT.md` through product steering
+before delegating implementation.
 
 Chat conclusions must be promoted into the repository before they are treated
 as durable decisions.

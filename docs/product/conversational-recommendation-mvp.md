@@ -1,6 +1,10 @@
 # Conversational Recommendation MVP
 
-Status: implemented with local stub/mock source
+Status: `Historical implementation baseline — implemented with local stub/mock source`
+
+This document records the delivered Ask experiment. Ask is no longer the
+primary first-version product surface. See the canonical
+[`PRODUCT.md`](../../PRODUCT.md) for current product intent.
 
 ## Goal
 
