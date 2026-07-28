@@ -1,5 +1,6 @@
 import SwiftUI
 
+@MainActor
 struct DiscoveryView: View {
     let model: DiscoveryViewModel
     let getMovieDetail: GetMovieDetailUseCase
@@ -88,6 +89,7 @@ struct DiscoveryView: View {
     }
 }
 
+@MainActor
 private struct PosterCardView: View {
     let movie: DiscoveryMovieItem
     let pipeline: ImagePipeline

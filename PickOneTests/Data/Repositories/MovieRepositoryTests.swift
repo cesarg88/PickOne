@@ -86,7 +86,7 @@ struct MovieRepositoryTests {
     }
 }
 
-private final class TestCacheStore: CacheStore {
+private actor TestCacheStore: CacheStore {
     private struct AnyCacheEntry {
         let value: Any
         let storedAt: Date
@@ -95,14 +95,21 @@ private final class TestCacheStore: CacheStore {
     
     private var entries: [String: AnyCacheEntry] = [:]
     
-    func get<Value>(for key: CacheKey, as type: Value.Type) async -> CacheEntry<Value>? {
+    func get<Value: Sendable>(
+        for key: CacheKey,
+        as type: Value.Type
+    ) async -> CacheEntry<Value>? {
         guard let entry = entries[key.rawValue], let value = entry.value as? Value else {
             return nil
         }
         return CacheEntry(value: value, storedAt: entry.storedAt, expiresAt: entry.expiresAt)
     }
     
-    func set<Value>(value: Value, for key: CacheKey, ttl: TimeInterval) async {
+    func set<Value: Sendable>(
+        value: Value,
+        for key: CacheKey,
+        ttl: TimeInterval
+    ) async {
         let now = Date()
         let entry = AnyCacheEntry(value: value, storedAt: now, expiresAt: now.addingTimeInterval(ttl))
         entries[key.rawValue] = entry
@@ -112,7 +119,12 @@ private final class TestCacheStore: CacheStore {
         entries.removeValue(forKey: key.rawValue)
     }
     
-    func seed<Value>(value: Value, for key: CacheKey, expiresAt: Date, storedAt: Date = Date()) async {
+    func seed<Value: Sendable>(
+        value: Value,
+        for key: CacheKey,
+        expiresAt: Date,
+        storedAt: Date = Date()
+    ) async {
         let entry = AnyCacheEntry(value: value, storedAt: storedAt, expiresAt: expiresAt)
         entries[key.rawValue] = entry
     }

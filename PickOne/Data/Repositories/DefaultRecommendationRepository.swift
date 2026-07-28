@@ -1,6 +1,6 @@
 import Foundation
 
-final class DefaultRecommendationRepository: RecommendationRepository, @unchecked Sendable {
+final class DefaultRecommendationRepository: RecommendationRepository {
     private let client: AIRecommendationClientProtocol
     
     init(client: AIRecommendationClientProtocol) {

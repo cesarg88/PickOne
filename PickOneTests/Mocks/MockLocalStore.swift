@@ -6,107 +6,131 @@
 //
 
 import Foundation
+import Synchronization
 @testable import PickOne
 
-final class MockLocalStore: LocalStoreProtocol, @unchecked Sendable {
-    
-    // MARK: - Storage
-    
-    private var watchlistItems: [PersistedWatchlistItem] = []
-    private var searchHistory: [String] = []
-    
-    // MARK: - Call Tracking
-    
-    private(set) var saveWatchlistItemCallCount = 0
-    private(set) var removeWatchlistItemCallCount = 0
-    private(set) var updateWatchedStatusCallCount = 0
-    private(set) var lastSavedItem: PersistedWatchlistItem?
-    private(set) var lastRemovedMovieId: Int?
-    private(set) var lastUpdatedMovieId: Int?
-    private(set) var lastUpdatedWatchedStatus: Bool?
+final class MockLocalStore: LocalStoreProtocol {
+    private struct State: Sendable {
+        var watchlistItems: [PersistedWatchlistItem] = []
+        var searchHistory: [String] = []
+        var saveWatchlistItemCallCount = 0
+        var removeWatchlistItemCallCount = 0
+        var updateWatchedStatusCallCount = 0
+        var lastSavedItem: PersistedWatchlistItem?
+        var lastRemovedMovieId: Int?
+        var lastUpdatedMovieId: Int?
+        var lastUpdatedWatchedStatus: Bool?
+    }
+
+    private let state = Mutex(State())
+
+    private(set) var saveWatchlistItemCallCount: Int {
+        get { state.withLock { $0.saveWatchlistItemCallCount } }
+        set { state.withLock { $0.saveWatchlistItemCallCount = newValue } }
+    }
+    private(set) var removeWatchlistItemCallCount: Int {
+        get { state.withLock { $0.removeWatchlistItemCallCount } }
+        set { state.withLock { $0.removeWatchlistItemCallCount = newValue } }
+    }
+    private(set) var updateWatchedStatusCallCount: Int {
+        get { state.withLock { $0.updateWatchedStatusCallCount } }
+        set { state.withLock { $0.updateWatchedStatusCallCount = newValue } }
+    }
+    private(set) var lastSavedItem: PersistedWatchlistItem? {
+        get { state.withLock { $0.lastSavedItem } }
+        set { state.withLock { $0.lastSavedItem = newValue } }
+    }
+    private(set) var lastRemovedMovieId: Int? {
+        get { state.withLock { $0.lastRemovedMovieId } }
+        set { state.withLock { $0.lastRemovedMovieId = newValue } }
+    }
+    private(set) var lastUpdatedMovieId: Int? {
+        get { state.withLock { $0.lastUpdatedMovieId } }
+        set { state.withLock { $0.lastUpdatedMovieId = newValue } }
+    }
+    private(set) var lastUpdatedWatchedStatus: Bool? {
+        get { state.withLock { $0.lastUpdatedWatchedStatus } }
+        set { state.withLock { $0.lastUpdatedWatchedStatus = newValue } }
+    }
     
     // MARK: - Watchlist Items
     
     func getWatchlistItems() -> [PersistedWatchlistItem] {
-        watchlistItems.sorted { $0.addedAt > $1.addedAt }
+        state.withLock {
+            $0.watchlistItems.sorted { $0.addedAt > $1.addedAt }
+        }
     }
     
     func saveWatchlistItem(_ item: PersistedWatchlistItem) throws {
-        saveWatchlistItemCallCount += 1
-        lastSavedItem = item
-        
-        // Remove existing if present
-        watchlistItems.removeAll { $0.movieId == item.movieId }
-        watchlistItems.append(item)
+        state.withLock { state in
+            state.saveWatchlistItemCallCount += 1
+            state.lastSavedItem = item
+            state.watchlistItems.removeAll { $0.movieId == item.movieId }
+            state.watchlistItems.append(item)
+        }
     }
     
     func removeWatchlistItem(movieId: Int) throws {
-        removeWatchlistItemCallCount += 1
-        lastRemovedMovieId = movieId
-        watchlistItems.removeAll { $0.movieId == movieId }
+        state.withLock { state in
+            state.removeWatchlistItemCallCount += 1
+            state.lastRemovedMovieId = movieId
+            state.watchlistItems.removeAll { $0.movieId == movieId }
+        }
     }
     
     func updateWatchedStatus(movieId: Int, isWatched: Bool) throws {
-        updateWatchedStatusCallCount += 1
-        lastUpdatedMovieId = movieId
-        lastUpdatedWatchedStatus = isWatched
-        
-        guard let index = watchlistItems.firstIndex(where: { $0.movieId == movieId }) else {
-            return
+        state.withLock { state in
+            state.updateWatchedStatusCallCount += 1
+            state.lastUpdatedMovieId = movieId
+            state.lastUpdatedWatchedStatus = isWatched
+
+            guard let index = state.watchlistItems.firstIndex(
+                where: { $0.movieId == movieId }
+            ) else {
+                return
+            }
+            state.watchlistItems[index].isWatched = isWatched
         }
-        
-        let item = watchlistItems[index]
-        watchlistItems[index] = PersistedWatchlistItem(
-            movieId: item.movieId,
-            title: item.title,
-            posterPath: item.posterPath,
-            releaseYear: item.releaseYear,
-            rating: item.rating,
-            addedAt: item.addedAt,
-            isWatched: isWatched
-        )
     }
     
     func getWatchlistStatus(movieId: Int) -> (isInWatchlist: Bool, isWatched: Bool) {
-        guard let item = watchlistItems.first(where: { $0.movieId == movieId }) else {
-            return (false, false)
+        state.withLock { state in
+            guard let item = state.watchlistItems.first(
+                where: { $0.movieId == movieId }
+            ) else {
+                return (false, false)
+            }
+            return (true, item.isWatched)
         }
-        return (true, item.isWatched)
     }
     
     // MARK: - Search History
     
     func getSearchHistory() -> [String] {
-        searchHistory
+        state.withLock { $0.searchHistory }
     }
     
     func addSearchQuery(_ query: String) {
-        searchHistory.removeAll { $0 == query }
-        searchHistory.insert(query, at: 0)
-        if searchHistory.count > 10 {
-            searchHistory = Array(searchHistory.prefix(10))
+        state.withLock { state in
+            state.searchHistory.removeAll { $0 == query }
+            state.searchHistory.insert(query, at: 0)
+            if state.searchHistory.count > 10 {
+                state.searchHistory = Array(state.searchHistory.prefix(10))
+            }
         }
     }
     
     func clearSearchHistory() {
-        searchHistory.removeAll()
+        state.withLock { $0.searchHistory.removeAll() }
     }
     
     // MARK: - Test Helpers
     
     func seedWatchlistItems(_ items: [PersistedWatchlistItem]) {
-        watchlistItems = items
+        state.withLock { $0.watchlistItems = items }
     }
     
     func reset() {
-        watchlistItems.removeAll()
-        searchHistory.removeAll()
-        saveWatchlistItemCallCount = 0
-        removeWatchlistItemCallCount = 0
-        updateWatchedStatusCallCount = 0
-        lastSavedItem = nil
-        lastRemovedMovieId = nil
-        lastUpdatedMovieId = nil
-        lastUpdatedWatchedStatus = nil
+        state.withLock { $0 = State() }
     }
 }

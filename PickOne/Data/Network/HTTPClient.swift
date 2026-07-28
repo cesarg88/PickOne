@@ -7,18 +7,18 @@
 
 import Foundation
 
-protocol HTTPClient {
-    func request<T: Decodable>(
+protocol HTTPClient: Sendable {
+    func request<T: Decodable & Sendable>(
         endpoint: String,
         method: HTTPMethod,
         parameters: [String: String]?,
         headers: [String: String]?,
         timeout: TimeInterval?,
-        body: Encodable?
+        body: (any Encodable & Sendable)?
     ) async throws -> T
 }
 
-enum HTTPMethod: String {
+enum HTTPMethod: String, Sendable {
     case get = "GET"
     case post = "POST"
     case put = "PUT"
@@ -64,13 +64,13 @@ final class URLSessionHTTPClient {
 extension URLSessionHTTPClient: HTTPClient {
     // MARK: - Public Methods
     
-    func request<T: Decodable>(
+    func request<T: Decodable & Sendable>(
         endpoint: String,
         method: HTTPMethod,
         parameters: [String: String]?,
         headers: [String: String]?,
         timeout: TimeInterval?,
-        body: Encodable?
+        body: (any Encodable & Sendable)?
     ) async throws -> T {
         let url = buildURL(endpoint: endpoint, parameters: parameters)
         
@@ -173,9 +173,9 @@ private extension URLSessionHTTPClient {
         }
     }
     
-    func encodeBody(_ body: Encodable) throws -> Data {
+    func encodeBody(_ body: any Encodable & Sendable) throws -> Data {
         do {
-            return try JSONEncoder().encode(AnyEncodable(body))
+            return try JSONEncoder().encode(body)
         } catch {
             throw NetworkError.encodingError(error)
         }
@@ -196,16 +196,4 @@ private extension URLSessionHTTPClient {
         print("\(statusEmoji) Response: \(response.statusCode) - \(data.count) bytes")
     }
     #endif
-}
-
-private struct AnyEncodable: Encodable {
-    private let encodeBlock: (Encoder) throws -> Void
-    
-    init(_ value: Encodable) {
-        self.encodeBlock = value.encode(to:)
-    }
-    
-    func encode(to encoder: Encoder) throws {
-        try encodeBlock(encoder)
-    }
 }

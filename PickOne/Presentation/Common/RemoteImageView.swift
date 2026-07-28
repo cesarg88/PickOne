@@ -1,5 +1,6 @@
 import SwiftUI
 
+@MainActor
 struct RemoteImageView: View {
     enum Phase {
         case empty

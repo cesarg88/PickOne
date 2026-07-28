@@ -8,6 +8,7 @@
 import SwiftUI
 
 @main
+@MainActor
 struct PickOneApp: App {
     private let container = AppContainer()
     

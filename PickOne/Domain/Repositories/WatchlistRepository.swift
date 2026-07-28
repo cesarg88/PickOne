@@ -35,7 +35,7 @@ protocol WatchlistRepository: Sendable {
 
 // MARK: - Errors
 
-enum WatchlistError: Error, LocalizedError {
+enum WatchlistError: Error, LocalizedError, Sendable {
     case movieAlreadyInWatchlist
     case movieNotInWatchlist
     

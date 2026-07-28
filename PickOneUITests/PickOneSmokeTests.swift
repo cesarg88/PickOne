@@ -5,6 +5,7 @@ final class PickOneSmokeTests: XCTestCase {
         continueAfterFailure = false
     }
 
+    @MainActor
     func testMainTabsAreReachable() {
         let app = XCUIApplication()
         app.launchArguments.append("-ui-testing")

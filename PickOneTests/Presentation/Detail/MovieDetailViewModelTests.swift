@@ -7,10 +7,9 @@ import Foundation
 struct MovieDetailViewModelTests {
     @Test("load sets loaded state")
     func loadSetsLoadedState() async throws {
-        let useCase = MockGetMovieDetailUseCase()
-        useCase.results = [
+        let useCase = MockGetMovieDetailUseCase(results: [
             .success(CacheResult(value: TestFixtures.snapshot, isStale: false))
-        ]
+        ])
         
         let sut = MovieDetailViewModel(movieId: 1, getMovieDetail: useCase)
         await sut.load()
@@ -26,11 +25,10 @@ struct MovieDetailViewModelTests {
     
     @Test("stale refresh overrides loaded state")
     func staleRefreshOverridesLoadedState() async throws {
-        let useCase = MockGetMovieDetailUseCase()
-        useCase.results = [
+        let useCase = MockGetMovieDetailUseCase(results: [
             .success(CacheResult(value: TestFixtures.snapshot, isStale: true)),
             .success(CacheResult(value: TestFixtures.refreshedSnapshot, isStale: false))
-        ]
+        ])
         
         let sut = MovieDetailViewModel(movieId: 1, getMovieDetail: useCase)
         await sut.load()
@@ -45,10 +43,9 @@ struct MovieDetailViewModelTests {
     
     @Test("load error sets error state")
     func loadErrorSetsErrorState() async throws {
-        let useCase = MockGetMovieDetailUseCase()
-        useCase.results = [
+        let useCase = MockGetMovieDetailUseCase(results: [
             .failure(TestError.fetchFailed)
-        ]
+        ])
         
         let sut = MovieDetailViewModel(movieId: 1, getMovieDetail: useCase)
         await sut.load()
@@ -60,10 +57,13 @@ struct MovieDetailViewModelTests {
     }
 }
 
-@MainActor
-private final class MockGetMovieDetailUseCase: GetMovieDetailUseCase {
-    var results: [Result<CacheResult<MovieDetailSnapshot>, Error>] = []
+private actor MockGetMovieDetailUseCase: GetMovieDetailUseCase {
+    private let results: [Result<CacheResult<MovieDetailSnapshot>, Error>]
     private var callIndex = 0
+
+    init(results: [Result<CacheResult<MovieDetailSnapshot>, Error>]) {
+        self.results = results
+    }
     
     func execute(id: Int, policy: CachePolicy) async throws -> CacheResult<MovieDetailSnapshot> {
         defer { callIndex += 1 }

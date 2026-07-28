@@ -131,8 +131,7 @@ struct SearchViewModelTests {
     }
 }
 
-@MainActor
-private final class SearchHistoryStub: SearchHistoryUseCase {
+private struct SearchHistoryStub: SearchHistoryUseCase {
     func getHistory() -> [String] { [] }
     func clear() {}
 }

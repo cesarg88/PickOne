@@ -7,6 +7,7 @@
 
 import SwiftUI
 
+@MainActor
 struct MainTabView: View {
     let container: AppContainer
     

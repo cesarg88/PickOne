@@ -6,11 +6,12 @@
 //
 
 import Foundation
+import Synchronization
 
 // MARK: - Persisted Models
 
 /// Persisted watchlist item with embedded movie summary for offline access
-struct PersistedWatchlistItem: Codable, Equatable {
+struct PersistedWatchlistItem: Codable, Equatable, Sendable {
     let movieId: Int
     let title: String
     let posterPath: String?
@@ -36,97 +37,136 @@ protocol LocalStoreProtocol: Sendable {
     func clearSearchHistory()
 }
 
-final class UserDefaultsLocalStore: LocalStoreProtocol, @unchecked Sendable {
+final class UserDefaultsLocalStore: LocalStoreProtocol {
+    private enum Backend: Sendable {
+        case standard
+        case suite(String)
 
-    private let userDefaults: UserDefaults
-    private let encoder = JSONEncoder()
-    private let decoder = JSONDecoder()
+        func makeUserDefaults() -> UserDefaults {
+            switch self {
+            case .standard:
+                return .standard
+            case .suite(let name):
+                guard let userDefaults = UserDefaults(suiteName: name) else {
+                    preconditionFailure("Invalid UserDefaults suite name: \(name)")
+                }
+                return userDefaults
+            }
+        }
+    }
+
+    private let backend: Mutex<Backend>
     
     private enum Keys {
         static let watchlistItems = "watchlist_items_v2"
         static let searchHistory = "search_history"
     }
     
-    init(userDefaults: UserDefaults = .standard) {
-        self.userDefaults = userDefaults
+    init() {
+        self.backend = Mutex(.standard)
+    }
+
+    init(suiteName: String) {
+        self.backend = Mutex(.suite(suiteName))
     }
     
     // MARK: - Watchlist Items
     
     func getWatchlistItems() -> [PersistedWatchlistItem] {
-        (try? loadWatchlistItems()) ?? []
+        backend.withLock { backend in
+            (try? Self.loadWatchlistItems(from: backend.makeUserDefaults())) ?? []
+        }
     }
     
     func saveWatchlistItem(_ item: PersistedWatchlistItem) throws {
-        var items = try loadWatchlistItems()
-        
-        // Remove existing if present (to update)
-        items.removeAll { $0.movieId == item.movieId }
-        
-        // Add new item
-        items.append(item)
-        
-        try persistWatchlistItems(items)
+        try backend.withLock { backend in
+            let userDefaults = backend.makeUserDefaults()
+            var items = try Self.loadWatchlistItems(from: userDefaults)
+
+            // Remove existing if present (to update)
+            items.removeAll { $0.movieId == item.movieId }
+
+            // Add new item
+            items.append(item)
+
+            try Self.persistWatchlistItems(items, to: userDefaults)
+        }
     }
     
     func removeWatchlistItem(movieId: Int) throws {
-        var items = try loadWatchlistItems()
-        items.removeAll { $0.movieId == movieId }
-        try persistWatchlistItems(items)
+        try backend.withLock { backend in
+            let userDefaults = backend.makeUserDefaults()
+            var items = try Self.loadWatchlistItems(from: userDefaults)
+            items.removeAll { $0.movieId == movieId }
+            try Self.persistWatchlistItems(items, to: userDefaults)
+        }
     }
     
     func updateWatchedStatus(movieId: Int, isWatched: Bool) throws {
-        var items = try loadWatchlistItems()
-        guard let index = items.firstIndex(where: { $0.movieId == movieId }) else {
-            return
+        try backend.withLock { backend in
+            let userDefaults = backend.makeUserDefaults()
+            var items = try Self.loadWatchlistItems(from: userDefaults)
+            guard let index = items.firstIndex(where: { $0.movieId == movieId }) else {
+                return
+            }
+            items[index].isWatched = isWatched
+            try Self.persistWatchlistItems(items, to: userDefaults)
         }
-        items[index].isWatched = isWatched
-        try persistWatchlistItems(items)
     }
     
     func getWatchlistStatus(movieId: Int) -> (isInWatchlist: Bool, isWatched: Bool) {
-        let items = getWatchlistItems()
-        guard let item = items.first(where: { $0.movieId == movieId }) else {
-            return (isInWatchlist: false, isWatched: false)
+        backend.withLock { backend in
+            let items = (try? Self.loadWatchlistItems(from: backend.makeUserDefaults())) ?? []
+            guard let item = items.first(where: { $0.movieId == movieId }) else {
+                return (isInWatchlist: false, isWatched: false)
+            }
+            return (isInWatchlist: true, isWatched: item.isWatched)
         }
-        return (isInWatchlist: true, isWatched: item.isWatched)
     }
     
     // MARK: - Search History
     
     func getSearchHistory() -> [String] {
-        return userDefaults.array(forKey: Keys.searchHistory) as? [String] ?? []
+        backend.withLock { backend in
+            Self.loadSearchHistory(from: backend.makeUserDefaults())
+        }
     }
     
     func addSearchQuery(_ query: String) {
-        var history = getSearchHistory()
-        
-        // Remove if already exists (to move to top)
-        history.removeAll { $0.lowercased() == query.lowercased() }
-        
-        // Add to beginning
-        history.insert(query, at: 0)
-        
-        // Keep only last 10 searches
-        if history.count > 10 {
-            history = Array(history.prefix(10))
+        backend.withLock { backend in
+            let userDefaults = backend.makeUserDefaults()
+            var history = Self.loadSearchHistory(from: userDefaults)
+
+            // Remove if already exists (to move to top)
+            history.removeAll { $0.lowercased() == query.lowercased() }
+
+            // Add to beginning
+            history.insert(query, at: 0)
+
+            // Keep only last 10 searches
+            if history.count > 10 {
+                history = Array(history.prefix(10))
+            }
+
+            userDefaults.set(history, forKey: Keys.searchHistory)
         }
-        
-        userDefaults.set(history, forKey: Keys.searchHistory)
     }
     
     func clearSearchHistory() {
-        userDefaults.removeObject(forKey: Keys.searchHistory)
+        backend.withLock { backend in
+            backend.makeUserDefaults().removeObject(forKey: Keys.searchHistory)
+        }
     }
     
     // MARK: - Private
     
-    private func loadWatchlistItems() throws -> [PersistedWatchlistItem] {
+    private static func loadWatchlistItems(from userDefaults: UserDefaults) throws
+        -> [PersistedWatchlistItem] {
         guard let data = userDefaults.data(forKey: Keys.watchlistItems) else {
             return []
         }
         do {
-            let items = try decoder.decode([PersistedWatchlistItem].self, from: data)
+            let items = try JSONDecoder().decode([PersistedWatchlistItem].self, from: data)
             // Return sorted by addedAt descending (most recent first)
             return items.sorted { $0.addedAt > $1.addedAt }
         } catch {
@@ -134,13 +174,20 @@ final class UserDefaultsLocalStore: LocalStoreProtocol, @unchecked Sendable {
         }
     }
 
-    private func persistWatchlistItems(_ items: [PersistedWatchlistItem]) throws {
+    private static func persistWatchlistItems(
+        _ items: [PersistedWatchlistItem],
+        to userDefaults: UserDefaults
+    ) throws {
         do {
-            let data = try encoder.encode(items)
+            let data = try JSONEncoder().encode(items)
             userDefaults.set(data, forKey: Keys.watchlistItems)
         } catch {
             throw LocalStoreError.encodingFailed
         }
+    }
+
+    private static func loadSearchHistory(from userDefaults: UserDefaults) -> [String] {
+        userDefaults.array(forKey: Keys.searchHistory) as? [String] ?? []
     }
 }
 

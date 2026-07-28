@@ -7,6 +7,7 @@
 
 import SwiftUI
 
+@MainActor
 struct WatchlistView: View {
     let model: WatchlistViewModel
     let getMovieDetail: GetMovieDetailUseCase
@@ -140,6 +141,7 @@ struct WatchlistView: View {
 
 // MARK: - Row
 
+@MainActor
 private struct WatchlistRow: View {
     let item: WatchlistItemPresentation
     let imagePipeline: ImagePipeline

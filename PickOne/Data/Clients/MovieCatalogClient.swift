@@ -1,6 +1,6 @@
 import Foundation
 
-protocol MovieCatalogClientProtocol {
+protocol MovieCatalogClientProtocol: Sendable {
     func getTopRated(page: Int) async throws -> MovieListResponseDTO
     func getMovieDetail(id: Int) async throws -> MovieDetailDTO
     func getSimilarMovies(id: Int, page: Int) async throws -> MovieListResponseDTO

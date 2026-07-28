@@ -1,5 +1,6 @@
 import SwiftUI
 
+@MainActor
 struct MovieDetailView: View {
     let model: MovieDetailViewModel
     let imagePipeline: ImagePipeline
@@ -145,6 +146,7 @@ struct MovieDetailView: View {
 
 // MARK: - Watchlist Actions
 
+@MainActor
 private struct WatchlistActionsView: View {
     let isInWatchlist: Bool
     let isWatched: Bool
@@ -180,6 +182,7 @@ private struct WatchlistActionsView: View {
     }
 }
 
+@MainActor
 private struct CreditsSection: View {
     let directorName: String?
     let topCastNames: [String]
@@ -216,6 +219,7 @@ private struct CreditsSection: View {
     }
 }
 
+@MainActor
 private struct ExpandableText: View {
     let title: String
     let text: String
@@ -243,6 +247,7 @@ private struct ExpandableText: View {
     }
 }
 
+@MainActor
 private struct SimilarMoviesSection: View {
     let movies: [SimilarMovieItem]
     let pipeline: ImagePipeline

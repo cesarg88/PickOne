@@ -145,7 +145,7 @@ private extension DefaultMovieRepository {
     }
 }
 
-struct CacheTTL {
+struct CacheTTL: Sendable {
     let discovery: TimeInterval
     let detail: TimeInterval
     let similar: TimeInterval
@@ -155,7 +155,10 @@ struct CacheTTL {
 private actor InFlightStore {
     private var tasks: [String: Any] = [:]
     
-    func run<Value>(key: String, operation: @escaping () async throws -> Value) async throws -> Value {
+    func run<Value: Sendable>(
+        key: String,
+        operation: @escaping @Sendable () async throws -> Value
+    ) async throws -> Value {
         if let existing = tasks[key] as? Task<Value, Error> {
             return try await existing.value
         }
