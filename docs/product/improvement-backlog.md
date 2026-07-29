@@ -12,7 +12,7 @@ It contains only work that remains pending after Milestone 3.3. Completed work
 should remain in this file with its status changed to `Completed` and a link to
 the implementing PR or milestone.
 
-Last reviewed: 2026-07-27, after PR #12.
+Last reviewed: 2026-07-29, during PR #15.
 
 ## Product Direction
 
@@ -111,9 +111,10 @@ Priorities:
   source of viewer context.
 - Implementation:
   - define the two-minute onboarding flow
-  - confirm active region, starting with Spain
-  - capture the pilot services and plan variants without exposing TMDB
-    internals
+  - store Spain (`ES`) as the pilot region without exposing a country selector
+  - capture the supported services without exposing TMDB internals
+  - map the Product Owner's confirmed plan entitlements internally instead of
+    presenting plan-variant choices
   - define the 10–15 title calibration set and response semantics
   - define skip, retry, edit, reset, migration, and failure behavior
   - persist one versioned local profile per installation
@@ -122,6 +123,28 @@ Priorities:
   - every onboarding state and stored field has accepted behavior
   - the output is sufficient for availability and deterministic ranking
   - an implementation agent has no unresolved product decision
+
+### IMP-020 — Validate household utility after Three for Tonight
+
+- Status: `Planned`
+- Priority: `P0`
+- Roadmap relationship: Utility Checkpoint after Milestone 6
+- Depends on: Milestones 4, 5, and 6
+- Why:
+  a working recommendation flow does not prove that PickOne reduces decision
+  fatigue or gives the Product Owner credible, watchable choices.
+- Validation:
+  - use the complete flow on the physical pilot iPhone during real household
+    movie decisions
+  - assess whether recommendations make sense for the Product Owner
+  - verify reported availability against the Product Owner's Spanish services
+  - observe whether PickOne enables a confident choice quickly
+  - record concise qualitative findings without adding external research or an
+    analytics system
+- Done when:
+  - the Product Owner has accepted the flow as useful enough to continue, or
+    the next refinement has been identified
+  - Milestone 7 is confirmed, revised, or deferred from observed household use
 
 ### IMP-003 — Make recommendations the primary Home experience
 
@@ -251,7 +274,8 @@ Priorities:
 - Why: a good movie recommendation is less useful if it is not available in
   the user's country or services.
 - Implementation:
-  - use Spain and the accepted provider allowlist `8`, `119`, `337`, `1899`
+  - use Spain and the accepted provider allowlist: Netflix `8`, Amazon Prime
+    Video `119`, Disney Plus `337`, and HBO Max `1899`
   - use Discover only to generate candidates
   - require the exact selected provider in movie-level `ES.flatrate`
   - model selected entitlement as included without additional payment
@@ -411,11 +435,14 @@ the added complexity.
    availability.
 4. Implement Availability Foundation and Onboarding as bounded milestones.
 5. Implement persistent `Three for Tonight`.
-6. Add explicit decision feedback and resolve Recommendation/Watchlist state.
-7. Add trailers and the minimum pilot measurement contract.
-8. Introduce a backend or AI provider only if product validation demonstrates
+6. Run the required household utility checkpoint and use its findings to
+   confirm or revise the next milestone.
+7. Add explicit decision feedback and resolve Recommendation/Watchlist state
+   only after the checkpoint supports that direction.
+8. Add trailers and the minimum pilot measurement contract.
+9. Introduce a backend or AI provider only if product validation demonstrates
    a need that deterministic recommendation cannot meet.
-9. Complete distribution, accessibility, and persistence hardening as the
+10. Complete distribution, accessibility, and persistence hardening as the
    audience expands.
 
 ## Update Rules

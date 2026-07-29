@@ -34,8 +34,9 @@ Product Owner and CTO review:
 2. Treat Discover only as candidate generation.
 3. Before eligibility, require the selected provider to occur in that movie's
    `ES` `flatrate` array.
-4. Exclude store, ad-labelled, and add-on-channel provider IDs even when TMDB
-   places those offers under `flatrate`.
+4. Require the exact provider that represents the selected entitlement. For the
+   confirmed pilot entitlements, this excludes stores, ad-labelled variants,
+   and add-on-channel IDs even when TMDB places them under `flatrate`.
 5. Describe availability as current best-known information, not a guarantee;
    TMDB exposes no availability freshness timestamp.
 6. Use the returned country-specific TMDB watch URL for handoff unless a
@@ -53,7 +54,7 @@ specification.
 | Date accessed | 2026-07-28 |
 | Region | Spain (`ES`) |
 | Content type | Movies only |
-| Target services | Netflix, Amazon Prime Video, Disney+, Max |
+| Target services | Netflix, Amazon Prime Video, Disney+, HBO Max |
 | Accepted monetization | Included subscription (`flatrate`) only |
 | Excluded monetization | `ads`, `free`, `rent`, and `buy` |
 | Explicitly excluded variants | Ad-labelled plans, stores, and add-on channels |
@@ -157,7 +158,7 @@ entries selected as pilot candidates were:
 | 8 | Netflix | 0 | `/pbpMk2JmcoNnQwx5JGpXngfoWtp.jpg` | Standalone subscription | Accept as candidate base provider. |
 | 119 | Amazon Prime Video | 1 | `/pvske1MyAoymrs5bguRfVqYiM9a.jpg` | Standalone subscription, tier meaning not documented | Accept provisionally; Product Owner/CTO must confirm how this maps to the Spanish subscription now that TMDB also exposes an ads variant. |
 | 337 | Disney Plus | 3 | `/97yvRBw1GzX7fXprcF80er19ot.jpg` | Standalone subscription | Accept as candidate base provider. |
-| 1899 | HBO Max | 155 | `/jbe4gVSfRlbPTdESXhEKpornsfu.jpg` | Standalone subscription | Accept provisionally as the current `ES` entry corresponding to the product's “Max”; no separate provider named exactly `Max` was returned. |
+| 1899 | HBO Max | 155 | `/jbe4gVSfRlbPTdESXhEKpornsfu.jpg` | Standalone subscription | Accept provisionally as the current standalone `ES` entry. |
 
 `display_priority` is recorded exactly as returned. TMDB does not document it
 as a provider-role or subscription-tier signal, so it was not used to accept or
@@ -194,9 +195,10 @@ the four standalone candidates:
 Provider names allow stores, explicit ad plans, and named Amazon channels to be
 distinguished. The API does not return a semantic field such as
 `base_subscription`, `store`, `add_on`, or `ad_supported`; the classification
-above therefore combines exact names with live monetization controls. The two
-provisional mappings that require owner review are Amazon Prime Video `119` and
-the product name “Max” mapping to TMDB's `HBO Max` `1899`.
+above therefore combines exact names with live monetization controls. At the
+time of research, Amazon Prime Video `119` and HBO Max `1899` remained
+provisional pending owner review. Both were subsequently accepted for the
+pilot; see section 15.
 
 ## 6. Coverage and sample size
 
@@ -247,9 +249,9 @@ check remains mandatory.
 | --- | --- | --- | --- |
 | Amazon store | `provider=10`, `rent|buy`; 15,283 results | *The Mandalorian and Grogu* (`1228710`): Amazon Video under both `rent` and `buy` | Store offers are distinct from subscription access. |
 | Provider/monetization association | `provider=10`, `flatrate`; 9,304 results | *Proyecto Salvación* (`687163`): Amazon Video only under `rent` and `buy`; `flatrate` came from Amazon Prime Video `119`, MGM Plus Amazon Channel `2141`, and Amazon Prime Video with Ads `2100` | Discover does not prove that the requested provider supplies the requested monetization type. |
-| Prime ads variant | `provider=2100`, `flatrate`; 7,717 results | *He-Man y los masters del universo* (`454639`): provider `2100` under `flatrate` | An explicitly ad-labelled plan can still be classified as `flatrate`; category alone cannot enforce the no-ads product rule. |
+| Prime ads variant | `provider=2100`, `flatrate`; 7,717 results | *He-Man y los masters del universo* (`454639`): provider `2100` under `flatrate` | An explicitly ad-labelled plan can still be classified as `flatrate`; category alone cannot identify the selected entitlement. |
 | Netflix ads variant | `provider=1796`, `flatrate`; 6,561 results | *Deseo* (`1668364`): provider `1796` under `flatrate` | Same ad-plan risk as Prime. |
-| Max add-on variant | `provider=1825`, `flatrate`; 882 results | *Mortal Kombat II* (`931285`): HBO Max Amazon Channel under `flatrate` | `flatrate` can represent a separately paid add-on channel. |
+| HBO Max add-on variant | `provider=1825`, `flatrate`; 882 results | *Mortal Kombat II* (`931285`): HBO Max Amazon Channel under `flatrate` | `flatrate` can represent a separately paid add-on channel. |
 | Ad-supported offer | `provider=300`, `ads`; 69 results | *Ghost in the Shell* (`9323`): Pluto TV `300` under `ads` | `ads` is separately represented. |
 | Free offer | `free`; 5,075 results | *Memoria de una madre* (`1567187`): Tivify `1838` under `free`, while unrelated providers also appeared under `flatrate` | `free` is separately represented and may coexist with subscription offers. |
 | Unavailable in Spain | US Netflix `flatrate` candidate | *El quinto elemento* (`18`) had no `ES` watch-provider entry | Region omission is observable and must make a title ineligible for an `ES` recommendation. |
@@ -282,7 +284,7 @@ TMDB movie-level responses distinguish the following arrays:
 | TMDB key | Observed meaning | Pilot treatment |
 | --- | --- | --- |
 | `flatrate` | Access associated with a subscription provider | Potentially eligible only when the exact provider ID is on the standalone allowlist. |
-| `ads` | Ad-supported access | Excluded by current product scope. |
+| `ads` | Ad-supported access | Excluded from the confirmed pilot entitlements; advertising is not a universal product exclusion. |
 | `free` | Free access without a subscription payment | Excluded by current product scope. |
 | `rent` | Time-limited transactional rental | Excluded. |
 | `buy` | Transactional purchase | Excluded. |
@@ -341,7 +343,7 @@ actual provider links. Therefore:
 
 - supported now: open the returned TMDB `ES` watch page
 - unsupported now: claim that the TMDB URL is a direct Netflix, Prime Video,
-  Disney+, or Max deep link
+  Disney+, or HBO Max deep link
 - unsupported now: construct a service URL from a title, provider ID, or logo
   path
 - possible later: a direct JustWatch partner handoff after a separate agreement
@@ -375,8 +377,8 @@ actual provider links. Therefore:
   structurally consistent.
 - Amazon Prime Video's generic and ads-labelled entries may not map cleanly to
   how pilot users understand their current Spanish Prime subscription.
-- “HBO Max” `1899` appears to be TMDB's current standalone mapping for the
-  product label “Max,” but the naming mismatch could change.
+- HBO Max `1899` appears to be TMDB's current standalone mapping, but provider
+  identities and plan variants can still change.
 - A provider page may still require authentication, app installation, or a
   separately eligible plan before playback.
 - Without a freshness field, any cache duration is a PickOne policy decision,
@@ -392,19 +394,18 @@ The following are candidate constraints for the later specification:
 
 - Store stable TMDB provider IDs, not display names or priorities, for the four
   selected services.
-- Present user-facing service names separately from the current TMDB provider
-  name so a future HBO Max/Max rename does not alter persisted identity.
-- Do not expose Amazon Video, ads-labelled plans, or Amazon Channels as if they
-  were the four base subscriptions.
-- Resolve whether a Spanish Prime subscriber with the default ad-supported tier
-  should select Amazon Prime Video, an ads-specific option, or neither under the
-  accepted no-ads promise.
+- Display HBO Max using TMDB's current provider name while keeping provider IDs
+  as the persisted identity.
+- Present only the four supported services. Do not expose Amazon Video,
+  ads-labelled plans, Amazon Channels, provider IDs, or other TMDB internals.
+- Map the Product Owner's confirmed Netflix highest-plan and ad-free Prime Video
+  entitlements internally; do not ask the pilot user to choose plan variants.
 - Explain that availability is third-party, region-specific, and subject to
   change.
 - Include an attribution path for TMDB and JustWatch.
 
-No onboarding behavior is authorized by this document. The Amazon tier question
-must be resolved before onboarding can make an accurate promise.
+No onboarding behavior is authorized by this research document. The accepted
+post-spike product behavior lives in `PRODUCT.md`.
 
 ## 14. Implications for Availability & Eligibility v1
 
@@ -429,53 +430,59 @@ It must not treat that Discover response as final proof. Missing region,
 missing `flatrate`, a non-allowlisted provider, or an unsupported monetization
 category should fail closed for primary recommendation eligibility.
 
-Because TMDB supplies no freshness value, Product Owner/CTO must define when to
-revalidate availability and how much caching is acceptable. A conservative
-candidate is to verify at recommendation-set generation and refresh before a
-handoff after material elapsed time, but this spike does not accept that policy.
+Because TMDB supplies no freshness value, revalidation and caching remain
+PickOne policy decisions rather than source guarantees. The Product Owner and
+CTO accepted a policy after this research; see section 15.
 
 The returned TMDB watch link is suitable for an honest fallback handoff. Direct
 service links require separately supported data.
 
-## 15. Unresolved questions for Product Owner or CTO review
+## 15. Post-spike product decisions
 
-1. Is the exact pilot allowlist accepted as `8`, `119`, `337`, and `1899`?
-2. Does Amazon Prime Video `119` represent the entitlement the two pilot users
-   actually have in Spain, given the separate `Amazon Prime Video with Ads`
-   entry `2100` and the product's exclusion of ad-supported access?
-3. Is TMDB's `HBO Max` provider `1899` accepted as the current identity behind
-   the user-facing service name “Max”?
-4. What caveat copy should distinguish “reported available” from guaranteed
-   playback without undermining the decision experience?
-5. Where and how should JustWatch attribution appear alongside the existing
+After reviewing the evidence, the Product Owner and CTO accepted the following
+pilot decisions on 2026-07-29. `PRODUCT.md` remains the canonical authority:
+
+1. The Spain allowlist is Netflix `8`, Amazon Prime Video `119`, Disney Plus
+   `337`, and HBO Max `1899`.
+2. HBO Max is the user-facing name for provider `1899`.
+3. The Product Owner's Netflix highest plan maps to `8`, and ad-free Prime Video
+   maps to `119`. The ad-labelled variants are not selected pilot entitlements.
+4. Advertising is not a universal product exclusion. Eligibility depends on
+   whether the exact provider represents the selected included entitlement.
+5. Onboarding shows supported services, not TMDB IDs or plan variants. The
+   confirmed pilot entitlements are mapped internally.
+6. Availability is verified when a recommendation set is generated and
+   revalidated before handoff when the previous verification is more than
+   24 hours old.
+7. The country-specific TMDB watch page is accepted as the pilot fallback
+   handoff and must not be presented as a direct provider link.
+8. Availability copy identifies JustWatch as the source, states that
+   availability may change, and preserves required TMDB attribution.
+
+These decisions accept the constrained TMDB path for the pilot; they do not
+alter the dated API observations recorded by the spike.
+
+## 16. Remaining questions
+
+1. What exact caveat copy should distinguish reported availability from
+   guaranteed playback without undermining the decision experience?
+2. Where and how should JustWatch attribution appear alongside the existing
    TMDB About/Credits attribution?
-6. What revalidation and cache policy is acceptable when the source exposes no
-   freshness timestamp?
-7. Is the TMDB watch page an acceptable pilot handoff, or should provider
-   handoff wait for direct-link support?
-8. Before commercial distribution, does PickOne require a commercial TMDB
+3. Before commercial distribution, does PickOne require a commercial TMDB
    agreement or a direct JustWatch partner agreement?
 
 No research question depends on broadening into TV, another country, an
 unofficial endpoint, or application code.
 
-## 16. Recommended next decision
+## 17. Recommended next step
 
-Product Owner and CTO should accept TMDB as the pilot availability source only
-with the exact-provider allowlist and mandatory movie-level `ES.flatrate`
-verification described above.
+The required provider, entitlement, freshness, and handoff decisions now live
+in product authority. The team can specify `Availability Foundation v1`,
+followed by `Viewer Profile & Onboarding v1`. The exact caveat and attribution
+presentation must be resolved in the availability specification before its
+user interface is implemented.
 
-Before authoring implementation, they should explicitly decide:
-
-1. the Prime Video tier mapping
-2. the HBO Max/Max identity mapping
-3. the availability caveat and attribution presentation
-4. the freshness/revalidation policy
-5. whether the TMDB country-specific watch page is sufficient for pilot handoff
-
-After those decisions are recorded in product authority, the team can write
-`Onboarding v1` and `Availability & Eligibility v1`. This spike implements
-neither.
+This spike implements neither capability.
 
 ## Appendix A. Research-question traceability
 
@@ -483,7 +490,7 @@ neither.
 | --- | --- |
 | 1. Current IDs/names | Resolved in section 5: `8`, `119`, `337`, `1899`. |
 | 2. Separate or ambiguous entries | Yes; store, ads plans, Amazon Channels, and HBO Max Amazon Channel are listed in section 5. |
-| 3. Base-subscription entries | Four provisional standalone entries identified; Prime and Max mappings require owner review. |
+| 3. Base-subscription entries | Four standalone entries identified and subsequently accepted for the pilot; section 15. |
 | 4. Region + provider + `flatrate` Discover | Parameters can be sent together, but the checked Amazon control proves they are not offer-bound. |
 | 5. Discover/movie-level consistency | 80/80 primary checks confirmed; section 7. |
 | 6. Monetization distinction | Arrays distinguish all five categories, with the `flatrate` role caveat; sections 8 and 10. |

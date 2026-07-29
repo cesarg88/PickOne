@@ -15,7 +15,7 @@ Product decisions and delegated implementation follow the
 Current Phase:
 Phase 3 — Decision Product MVP
 
-## Phase 1 — MVP
+## Phase 1 — Application Foundation & Feature Prototype
 
 Status: Complete
 
@@ -43,7 +43,7 @@ Recommendation Enrichment
 
 Ask UX Polish
 
-## Phase 2 — Intelligence
+## Phase 2 — Product Strategy & Technical Readiness
 
 Status:
 Complete
@@ -73,7 +73,7 @@ Complete — Basic Two-Device Pilot Passed
 Purpose:
 
 Establish reproducible builds, a green full test suite, release-bundle hygiene,
-and a reliable two-person device pilot before continuing Intelligence work.
+and a reliable two-device pilot before starting the Decision Product MVP.
 
 ### Milestone 3.4
 
@@ -126,8 +126,10 @@ Viewer Profile & Onboarding
 
 Purpose:
 
-Collect region, selected services and plans, title-based taste calibration, and
-persist one editable local profile per installation.
+Collect the supported services and title-based taste calibration, then persist
+one editable local profile per installation. The pilot fixes the region to
+Spain and maps the Product Owner's known plan entitlements internally rather
+than exposing country or plan-variant selectors.
 
 ### Milestone 6
 
@@ -137,6 +139,26 @@ Purpose:
 
 Define and implement the first deterministic decision engine, a persistent
 three-title Home set, honest smaller sets, reasons, and explicit refresh.
+
+### Utility Checkpoint after Milestone 6
+
+Status:
+Required before continuing to Milestone 7
+
+Purpose:
+
+The Product Owner uses the complete onboarding, availability, and Three for
+Tonight flow on the physical pilot iPhone during real household movie
+decisions. The checkpoint evaluates whether:
+
+- the recommendations make sense for the Product Owner
+- the reported Spanish subscription availability is correct
+- the experience helps reach a confident choice quickly
+
+This is a lightweight household validation, not external user research or an
+analytics implementation. Its findings determine whether Milestone 7 remains
+the right next investment or whether recommendation, onboarding, or
+availability behavior needs refinement first.
 
 ### Milestone 7
 
