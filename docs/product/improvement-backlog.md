@@ -12,7 +12,7 @@ It contains only work that remains pending after Milestone 3.3. Completed work
 should remain in this file with its status changed to `Completed` and a link to
 the implementing PR or milestone.
 
-Last reviewed: 2026-07-29, during PR #15.
+Last reviewed: 2026-07-30, at the start of Milestone 4.
 
 ## Product Direction
 
@@ -91,6 +91,8 @@ Priorities:
   - define supported intent dimensions: mood, genre, pace, runtime, company,
     era, references, and exclusions
   - define behavior for sparse, conflicting, and impossible constraints
+  - generate the candidate pool with TMDB Discover using the active region and
+    selected providers without treating Discover as availability proof
   - default to three strong recommendations
   - define how one item becomes the best choice
   - specify diversity, constraint, duplicate, and already-watched policies
@@ -266,29 +268,38 @@ Priorities:
 
 ### IMP-009 — Add regional availability and a path to watch
 
-- Status: `Planned — spike validated`
+- Status: `In Progress`
 - Priority: `P0`
 - Evidence:
   [`TMDB Spain Streaming Availability Findings`](../research/tmdb-es-streaming-availability-findings.md)
+- Specification:
+  [`Milestone 4 — Availability Foundation`](../milestones/milestone-4-availability-foundation.md)
+- Architecture:
+  [`ADR-009 — Availability Boundary and Verification`](../decisions/adr-009-availability-boundary-verification.md)
 - Roadmap relationship: Milestone 4
 - Why: a good movie recommendation is less useful if it is not available in
   the user's country or services.
 - Implementation:
   - use Spain and the accepted provider allowlist: Netflix `8`, Amazon Prime
     Video `119`, Disney Plus `337`, and HBO Max `1899`
-  - use Discover only to generate candidates
   - require the exact selected provider in movie-level `ES.flatrate`
   - model selected entitlement as included without additional payment
   - reject rent, buy, stores, and unselected add-on channels
-  - show availability with freshness and coverage caveats
+  - distinguish eligible, ineligible, and unknown evidence
+  - show every verified selected provider directly in Movie Detail
+  - load availability independently from the rest of Movie Detail
+  - show availability with freshness and coverage caveats and provider-logo
+    fallback text
   - revalidate before a handoff when evidence is older than 24 hours
   - attribute TMDB and JustWatch
-  - use the returned country-specific TMDB watch page as the pilot fallback
+  - use the returned country-specific TMDB watch page only as a secondary pilot
+    handoff
 - Done when:
-  - recommendation decisions enforce active region, selected provider, and
-    selected entitlement
-  - the user can understand where a selected movie may be watched
-  - Discover false positives cannot become final eligible recommendations
+  - the Domain contract exposes only current eligible evidence as acceptable
+    for future primary recommendations
+  - Detail communicates every verified included service without requiring a tap
+  - source failure cannot silently become an unavailable result
+  - no handoff is constructed or presented as a provider deep link
 
 ### IMP-010 — Implement privacy-safe analytics and operational observability
 

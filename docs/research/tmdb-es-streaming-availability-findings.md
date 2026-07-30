@@ -254,7 +254,7 @@ check remains mandatory.
 | HBO Max add-on variant | `provider=1825`, `flatrate`; 882 results | *Mortal Kombat II* (`931285`): HBO Max Amazon Channel under `flatrate` | `flatrate` can represent a separately paid add-on channel. |
 | Ad-supported offer | `provider=300`, `ads`; 69 results | *Ghost in the Shell* (`9323`): Pluto TV `300` under `ads` | `ads` is separately represented. |
 | Free offer | `free`; 5,075 results | *Memoria de una madre* (`1567187`): Tivify `1838` under `free`, while unrelated providers also appeared under `flatrate` | `free` is separately represented and may coexist with subscription offers. |
-| Unavailable in Spain | US Netflix `flatrate` candidate | *El quinto elemento* (`18`) had no `ES` watch-provider entry | Region omission is observable and must make a title ineligible for an `ES` recommendation. |
+| No Spain evidence | US Netflix `flatrate` candidate | *El quinto elemento* (`18`) had no `ES` watch-provider entry | Region omission is observable. The later product decision classifies it as unknown and therefore not eligible for an `ES` recommendation. |
 
 These controls exceed the five-control minimum and cover every non-subscription
 monetization category in scope.
@@ -440,7 +440,8 @@ service links require separately supported data.
 ## 15. Post-spike product decisions
 
 After reviewing the evidence, the Product Owner and CTO accepted the following
-pilot decisions on 2026-07-29. `PRODUCT.md` remains the canonical authority:
+pilot decisions on 2026-07-29 and refined their presentation on 2026-07-30.
+`PRODUCT.md` remains the canonical authority:
 
 1. The Spain allowlist is Netflix `8`, Amazon Prime Video `119`, Disney Plus
    `337`, and HBO Max `1899`.
@@ -456,31 +457,33 @@ pilot decisions on 2026-07-29. `PRODUCT.md` remains the canonical authority:
    24 hours old.
 7. The country-specific TMDB watch page is accepted as the pilot fallback
    handoff and must not be presented as a direct provider link.
-8. Availability copy identifies JustWatch as the source, states that
-   availability may change, and preserves required TMDB attribution.
+8. Movie Detail shows verified availability directly with the brief copy
+   `Availability data from JustWatch · may change`. About preserves the existing
+   TMDB attribution and adds full JustWatch source attribution.
+9. Availability distinguishes eligible, ineligible, and unknown. Missing `ES`
+   evidence and source failure are unknown rather than confirmed unavailability.
+10. The regional TMDB watch page is a secondary
+    `View playback options on TMDB` action, not a prerequisite for discovering
+    availability and not a provider deep link.
 
 These decisions accept the constrained TMDB path for the pilot; they do not
 alter the dated API observations recorded by the spike.
 
-## 16. Remaining questions
+## 16. Remaining question
 
-1. What exact caveat copy should distinguish reported availability from
-   guaranteed playback without undermining the decision experience?
-2. Where and how should JustWatch attribution appear alongside the existing
-   TMDB About/Credits attribution?
-3. Before commercial distribution, does PickOne require a commercial TMDB
-   agreement or a direct JustWatch partner agreement?
+Before commercial distribution, does PickOne require a commercial TMDB
+agreement or a direct JustWatch partner agreement?
 
 No research question depends on broadening into TV, another country, an
 unofficial endpoint, or application code.
 
 ## 17. Recommended next step
 
-The required provider, entitlement, freshness, and handoff decisions now live
-in product authority. The team can specify `Availability Foundation v1`,
-followed by `Viewer Profile & Onboarding v1`. The exact caveat and attribution
-presentation must be resolved in the availability specification before its
-user interface is implemented.
+The required provider, entitlement, freshness, presentation, attribution, and
+handoff decisions now live in product authority and
+[Milestone 4](../milestones/milestone-4-availability-foundation.md). After
+Availability Foundation is implemented and validated, the team can specify
+`Viewer Profile & Onboarding v1`.
 
 This spike implements neither capability.
 
