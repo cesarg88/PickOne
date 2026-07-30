@@ -162,6 +162,84 @@ struct AvailabilityRepositoryTests {
         #expect(await client.callCount == 1)
     }
 
+    @Test("cancelling one waiter preserves the shared source request")
+    func cancellingOneWaiterPreservesSharedRequest() async throws {
+        let gate = AvailabilityRequestGate()
+        let client = MockMovieAvailabilityClient(gate: gate) {
+            movieID,
+            _ in
+            Self.response(movieID: movieID, providerID: 8)
+        }
+        let sut = DefaultAvailabilityRepository(
+            client: client,
+            clock: LockedAvailabilityClock(
+                now: AvailabilityTestFixtures.now
+            )
+        )
+
+        let first = Task {
+            try await sut.getVerifiedEvidence(
+                movieID: 42,
+                region: .spain,
+                policy: .useFreshCache
+            )
+        }
+        while await client.callCount == 0 {
+            await Task.yield()
+        }
+
+        let second = Task {
+            try await sut.getVerifiedEvidence(
+                movieID: 42,
+                region: .spain,
+                policy: .useFreshCache
+            )
+        }
+        for _ in 0..<1_000 {
+            guard await sut.activeWaiterCount(
+                movieID: 42,
+                region: .spain
+            ) < 2 else {
+                break
+            }
+            await Task.yield()
+        }
+        #expect(
+            await sut.activeWaiterCount(
+                movieID: 42,
+                region: .spain
+            ) == 2
+        )
+
+        first.cancel()
+        for _ in 0..<1_000 {
+            guard await sut.activeWaiterCount(
+                movieID: 42,
+                region: .spain
+            ) > 1 else {
+                break
+            }
+            await Task.yield()
+        }
+        #expect(
+            await sut.activeWaiterCount(
+                movieID: 42,
+                region: .spain
+            ) == 1
+        )
+        await gate.open()
+
+        await #expect(throws: CancellationError.self) {
+            try await first.value
+        }
+        let secondResult = try await second.value
+
+        #expect(
+            secondResult?.regionalEvidence.flatrate.first?.providerID == 8
+        )
+        #expect(await client.callCount == 1)
+    }
+
     @Test("selected services reevaluate the same cached evidence")
     func selectedServicesAreNotPartOfCacheKey() async throws {
         let client = MockMovieAvailabilityClient { movieID, _ in
@@ -275,14 +353,17 @@ private actor MockMovieAvailabilityClient: MovieAvailabilityClientProtocol {
     ) throws -> WatchProvidersResponseDTO
 
     private let yieldsBeforeResponse: Int
+    private let gate: AvailabilityRequestGate?
     private let handler: Handler
     private(set) var callCount = 0
 
     init(
         yieldsBeforeResponse: Int = 0,
+        gate: AvailabilityRequestGate? = nil,
         handler: @escaping Handler
     ) {
         self.yieldsBeforeResponse = yieldsBeforeResponse
+        self.gate = gate
         self.handler = handler
     }
 
@@ -294,7 +375,33 @@ private actor MockMovieAvailabilityClient: MovieAvailabilityClientProtocol {
         for _ in 0..<yieldsBeforeResponse {
             await Task.yield()
         }
+        if let gate {
+            await gate.wait()
+        }
         try Task.checkCancellation()
         return try handler(movieID, index)
+    }
+}
+
+private actor AvailabilityRequestGate {
+    private var isOpen = false
+    private var continuations: [CheckedContinuation<Void, Never>] = []
+
+    func wait() async {
+        guard !isOpen else {
+            return
+        }
+
+        await withCheckedContinuation {
+            continuations.append($0)
+        }
+    }
+
+    func open() {
+        isOpen = true
+        for continuation in continuations {
+            continuation.resume()
+        }
+        continuations.removeAll()
     }
 }
