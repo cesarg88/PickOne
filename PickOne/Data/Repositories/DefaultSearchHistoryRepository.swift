@@ -9,9 +9,9 @@ import Foundation
 
 final class DefaultSearchHistoryRepository: SearchHistoryRepository {
     
-    private let localStore: LocalStoreProtocol
+    private let localStore: LocalStore
     
-    init(localStore: LocalStoreProtocol) {
+    init(localStore: LocalStore) {
         self.localStore = localStore
     }
     

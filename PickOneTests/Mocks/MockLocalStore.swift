@@ -2,14 +2,14 @@
 //  MockLocalStore.swift
 //  PickOneTests
 //
-//  Mock implementation of LocalStoreProtocol for testing
+//  Mock implementation of LocalStore for testing
 //
 
 import Foundation
 import Synchronization
 @testable import PickOne
 
-final class MockLocalStore: LocalStoreProtocol {
+final class MockLocalStore: LocalStore {
     private struct State: Sendable {
         var watchlistItems: [PersistedWatchlistItem] = []
         var searchHistory: [String] = []

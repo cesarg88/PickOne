@@ -16,14 +16,14 @@ actor DefaultAvailabilityRepository: AvailabilityRepository {
         var waiterIDs: Set<UUID>
     }
 
-    private let client: MovieAvailabilityClientProtocol
+    private let client: MovieAvailabilityClient
     private let clock: AvailabilityClock
     private let freshnessInterval: TimeInterval
     private var cache: [CacheKey: VerifiedAvailabilityEvidence] = [:]
     private var inFlight: [CacheKey: InFlightRequest] = [:]
 
     init(
-        client: MovieAvailabilityClientProtocol,
+        client: MovieAvailabilityClient,
         clock: AvailabilityClock,
         freshnessInterval: TimeInterval = AvailabilityFreshness.interval
     ) {

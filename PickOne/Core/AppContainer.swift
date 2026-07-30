@@ -36,11 +36,11 @@ final class AppContainer {
             defaultTimeout: AppConfiguration.defaultRequestTimeout
         )
         
-        let movieClient = MovieCatalogClient(
+        let movieClient = TMDBMovieCatalogClient(
             httpClient: httpClient,
             apiKey: AppConfiguration.tmdbAPIKey
         )
-        let availabilityClient = MovieAvailabilityClient(
+        let availabilityClient = TMDBMovieAvailabilityClient(
             httpClient: httpClient,
             apiKey: AppConfiguration.tmdbAPIKey
         )

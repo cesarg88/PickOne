@@ -2,8 +2,8 @@ import Foundation
 import Testing
 @testable import PickOne
 
-@Suite("MovieAvailabilityClient tests", .serialized)
-struct MovieAvailabilityClientTests {
+@Suite("TMDBMovieAvailabilityClient tests", .serialized)
+struct TMDBMovieAvailabilityClientTests {
     @Test("requests the movie-level watch providers endpoint")
     func requestsExpectedEndpoint() async throws {
         MockURLProtocol.reset()
@@ -19,7 +19,7 @@ struct MovieAvailabilityClientTests {
             baseURL: "https://api.themoviedb.org/3",
             session: MockURLProtocol.createMockSession()
         )
-        let sut = MovieAvailabilityClient(
+        let sut = TMDBMovieAvailabilityClient(
             httpClient: httpClient,
             apiKey: "test-token"
         )

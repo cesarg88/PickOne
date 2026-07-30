@@ -1,9 +1,9 @@
 import Foundation
 
 final class DefaultRecommendationRepository: RecommendationRepository {
-    private let client: AIRecommendationClientProtocol
+    private let client: RecommendationClient
     
-    init(client: AIRecommendationClientProtocol) {
+    init(client: RecommendationClient) {
         self.client = client
     }
     

@@ -126,6 +126,6 @@ Until the future backend contract is implemented:
 
 ## Known Codebase Adjustment
 
-The current `AIRecommendationClient` skeleton accepts an `apiKey`.
+The current `HTTPRecommendationClient` skeleton accepts an `apiKey`.
 
 That is no longer the target architecture for production use. The client can remain as a generic backend client, but app-managed provider credentials should not be part of the final Milestone 3 implementation.

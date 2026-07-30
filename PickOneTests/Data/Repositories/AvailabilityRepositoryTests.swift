@@ -346,7 +346,7 @@ private final class LockedAvailabilityClock: AvailabilityClock, Sendable {
     }
 }
 
-private actor MockMovieAvailabilityClient: MovieAvailabilityClientProtocol {
+private actor MockMovieAvailabilityClient: MovieAvailabilityClient {
     typealias Handler = @Sendable (
         _ movieID: Int,
         _ callIndex: Int

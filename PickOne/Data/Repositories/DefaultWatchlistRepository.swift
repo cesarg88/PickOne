@@ -9,9 +9,9 @@ import Foundation
 
 final class DefaultWatchlistRepository: WatchlistRepository {
     
-    private let localStore: LocalStoreProtocol
+    private let localStore: LocalStore
     
-    init(localStore: LocalStoreProtocol) {
+    init(localStore: LocalStore) {
         self.localStore = localStore
     }
     

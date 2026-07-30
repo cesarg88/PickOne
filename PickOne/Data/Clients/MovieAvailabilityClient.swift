@@ -1,10 +1,10 @@
 import Foundation
 
-protocol MovieAvailabilityClientProtocol: Sendable {
+protocol MovieAvailabilityClient: Sendable {
     func getWatchProviders(movieID: Int) async throws -> WatchProvidersResponseDTO
 }
 
-final class MovieAvailabilityClient: MovieAvailabilityClientProtocol {
+final class TMDBMovieAvailabilityClient: MovieAvailabilityClient {
     private let httpClient: HTTPClient
     private let apiKey: String
 

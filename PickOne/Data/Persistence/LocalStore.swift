@@ -21,9 +21,9 @@ struct PersistedWatchlistItem: Codable, Equatable, Sendable {
     var isWatched: Bool
 }
 
-// MARK: - Protocol
+// MARK: - Store
 
-protocol LocalStoreProtocol: Sendable {
+protocol LocalStore: Sendable {
     // Watchlist with persisted summaries
     func getWatchlistItems() -> [PersistedWatchlistItem]
     func saveWatchlistItem(_ item: PersistedWatchlistItem) throws
@@ -37,7 +37,7 @@ protocol LocalStoreProtocol: Sendable {
     func clearSearchHistory()
 }
 
-final class UserDefaultsLocalStore: LocalStoreProtocol {
+final class UserDefaultsLocalStore: LocalStore {
     private enum Backend: Sendable {
         case standard
         case suite(String)

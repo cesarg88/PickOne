@@ -130,7 +130,7 @@ private actor TestCacheStore: CacheStore {
     }
 }
 
-private actor MockMovieCatalogClient: MovieCatalogClientProtocol {
+private actor MockMovieCatalogClient: MovieCatalogClient {
     private(set) var topRatedCallCount = 0
     private(set) var detailCallCount = 0
     private(set) var similarCallCount = 0
