@@ -13,9 +13,9 @@ Product decisions and delegated implementation follow the
 ## Status
 
 Current Phase:
-Phase 2 — Intelligence
+Phase 3 — Decision Product MVP
 
-## Phase 1 — MVP
+## Phase 1 — Application Foundation & Feature Prototype
 
 Status: Complete
 
@@ -43,10 +43,10 @@ Recommendation Enrichment
 
 Ask UX Polish
 
-## Phase 2 — Intelligence
+## Phase 2 — Product Strategy & Technical Readiness
 
 Status:
-In Progress
+Complete
 
 ### Epic 2.1
 
@@ -73,14 +73,14 @@ Complete — Basic Two-Device Pilot Passed
 Purpose:
 
 Establish reproducible builds, a green full test suite, release-bundle hygiene,
-and a reliable two-person device pilot before continuing Intelligence work.
+and a reliable two-device pilot before starting the Decision Product MVP.
 
 ### Milestone 3.4
 
 [Swift 6 Concurrency Migration](../milestones/milestone-3.4-swift-6-concurrency.md)
 
 Status:
-Planned
+Complete — merged in PR #13
 
 Purpose:
 
@@ -88,45 +88,101 @@ Move the project to Swift 6 strict concurrency before backend and provider work
 adds more asynchronous complexity. This milestone must not change product
 behavior.
 
-### Epic 2.2
+### SPIKE-001
 
-Decision Engine v1
+[TMDB Spain Streaming Availability](../research/tmdb-es-streaming-availability-findings.md)
 
 Status:
-
-Planned
+Complete — documented in PR #15
 
 Purpose:
 
-Define the product reasoning model that combines stable preferences, current
-viewing context, active region, subscriptions, watched state, and availability
-into three recommendation decisions.
+Validate whether TMDB can support Spain-specific, exact-provider subscription
+eligibility for the first pilot.
 
-No provider-specific implementation.
+Outcome:
 
-### Epic 2.3
+Viable for the pilot with exact-provider movie-level verification and explicit
+trust restrictions.
 
-AI Provider Abstraction
+## Phase 3 — Decision Product MVP
 
 Status:
+Planning
 
-Planned
+### Milestone 4
+
+Availability Foundation
 
 Purpose:
 
-Define repository boundaries, interfaces and contracts for future providers.
+Add the allowlisted Spain providers, TMDB candidate discovery, exact
+movie-level eligibility verification, freshness handling, attribution, and
+fallback watch-page handoff.
 
-### Epic 2.4
+### Milestone 5
 
-First Real Provider
-
-Status:
-
-Planned
+Viewer Profile & Onboarding
 
 Purpose:
 
-Connect PickOne to its first production recommendation backend.
+Collect the supported services and title-based taste calibration, then persist
+one editable local profile per installation. The pilot fixes the region to
+Spain and maps the Product Owner's known plan entitlements internally rather
+than exposing country or plan-variant selectors.
+
+### Milestone 6
+
+Three for Tonight
+
+Purpose:
+
+Define and implement the first deterministic decision engine, a persistent
+three-title Home set, honest smaller sets, reasons, and explicit refresh.
+
+### Utility Checkpoint after Milestone 6
+
+Status:
+Required before continuing to Milestone 7
+
+Purpose:
+
+The Product Owner uses the complete onboarding, availability, and Three for
+Tonight flow on the physical pilot iPhone during real household movie
+decisions. The checkpoint evaluates whether:
+
+- the recommendations make sense for the Product Owner
+- the reported Spanish subscription availability is correct
+- the experience helps reach a confident choice quickly
+
+This is a lightweight household validation, not external user research or an
+analytics implementation. Its findings determine whether Milestone 7 remains
+the right next investment or whether recommendation, onboarding, or
+availability behavior needs refinement first.
+
+### Milestone 7
+
+Decision Feedback
+
+Purpose:
+
+Add `Watch this`, `Save for later`, `Not tonight`, `Not interested`, and
+`Already watched` with their accepted learning semantics.
+
+### Milestone 8
+
+Trailers & Pilot Measurement
+
+Purpose:
+
+Add suitable trailers, viewing confirmation, and the minimum privacy-safe
+measurement needed to evaluate time-to-decision.
+
+## Deferred Intelligence Infrastructure
+
+AI provider integration, backend infrastructure, and generalized
+multi-provider abstractions remain deferred until the deterministic decision
+experience demonstrates a product need they can solve.
 
 ## Guiding Principle
 

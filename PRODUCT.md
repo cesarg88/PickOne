@@ -3,7 +3,7 @@
 ## Document Status
 
 - Status: `Canonical`
-- Last product review: `2026-07-27`
+- Last product review: `2026-07-29`
 - Product name: `PickOne` is a codename until the decision experience is
   validated.
 
@@ -14,6 +14,20 @@ If another document conflicts with this one about product intent or user
 behavior, this document wins. Milestones define bounded delivery, ADRs define
 technical decisions, and the backlog tracks work; none of them independently
 redefine the product.
+
+## Current Product Development Mode
+
+PickOne is being developed first for the Product Owner's household, with the
+Product Owner as the primary viewer and decision-maker represented by the first
+local profile. The immediate goal is not broad adoption; it is to make the
+decision experience genuinely useful during real movie nights on the Product
+Owner's iPhone.
+
+A partner may participate in the decision, but the first version does not model
+separate partner preferences or attempt to combine household profiles. External
+user validation, monetization, and public distribution are intentionally
+postponed until the household pilot demonstrates utility. They are deferred,
+not rejected as future product directions.
 
 ## One-Sentence Definition
 
@@ -59,10 +73,11 @@ The initial audience is adults who:
 - value a small, useful answer over an exhaustive list
 - may choose alone or together with a partner
 
-The first pilot users are a two-person household in Spain. This makes individual
-preference, shared choice, Spanish regional availability, and real-device
-behavior the first validation context. It does not limit the long-term product
-to that household or country.
+The first pilot context is the Product Owner's household in Spain, using one
+individual profile for the Product Owner. Household movie nights and partner
+participation remain useful real-world context, but the first recommendation
+model represents only the Product Owner's preferences. This does not limit the
+long-term product to one viewer, household, or country.
 
 ## Primary Job to Be Done
 
@@ -142,23 +157,31 @@ needed to improve the first recommendation set.
 
 #### Region
 
-- propose the device region as a default
-- require confirmation of the active viewing country
-- allow the country to be changed later, including when traveling
+- use Spain (`ES`) as the only supported pilot region
+- display Spain to the user without exposing a country selector during the
+  pilot
+- persist the region explicitly so later product versions can support region
+  selection without redefining availability
 
 The region represents where the user intends to watch, not nationality or
-language.
+language. Region editing is deferred until PickOne supports another market.
 
 #### Streaming subscriptions
 
 - ask which supported services the user currently has
 - allow multiple selections
 - make the list editable after onboarding
-- distinguish subscription access from rental, purchase, free, and
-  ad-supported access
+- distinguish access included without an additional transaction from rental,
+  purchase, and separately paid add-on channels
+- do not ask the pilot user to select plan variants; map the Product Owner's
+  confirmed entitlements internally
 
-The default first-version promise is content included with the selected
-subscriptions. Rent or buy options must not be mixed into that promise.
+The default first-version promise is content the user can play through the
+selected plan without an additional payment. Advertising does not make an
+already-paid plan ineligible by itself. Rent, buy, and unselected add-on
+channels must not be mixed into that promise. A future plan selector should be
+introduced only when a variant materially changes availability and PickOne can
+represent that distinction reliably.
 
 #### Taste calibration
 
@@ -284,13 +307,19 @@ The product must evaluate:
 
 - active viewing country
 - selected providers
+- selected plan or entitlement where the source distinguishes it
 - monetization type
 - known freshness and coverage limitations
 
 Primary recommendations should be included with at least one selected
-subscription in the active region. If the product later includes rent, buy,
-free, or ad-supported options, those modes require explicit user choice and
-clear labeling.
+plan in the active region without additional transactional payment. Rent, buy,
+and separately paid add-on channels are ineligible unless a future product
+decision explicitly enables them. Ad-supported access is eligible only when it
+belongs to the plan the user selected.
+
+TMDB Discover may generate candidates, but it is not final availability proof.
+Before a movie becomes eligible, its movie-level provider response must contain
+an allowlisted selected provider under the active region's `flatrate` entries.
 
 Availability data must carry required TMDB and JustWatch attribution. When a
 direct provider deep link is unavailable, the product must not manufacture or
@@ -336,11 +365,12 @@ direction includes:
 - recommendations that seek a credible intersection of preferences
 
 Full household and account infrastructure is not required for the first
-individual recommendation version. However, current choices should not assume
-that one device will always represent one person's taste.
+individual recommendation version. The pilot persists one local profile for the
+Product Owner. Joint movie nights may inform qualitative feedback, but partner
+preferences are not a recommendation input in this version.
 
-The two-person pilot should explicitly observe both individual and joint
-decision sessions before household scope is finalized.
+Future household work should be justified by observed decision problems rather
+than added only to preserve hypothetical flexibility.
 
 ## Success Definition
 
@@ -424,6 +454,9 @@ behavior, but new product implementation must be specified against this target.
 
 As of the last review:
 
+- PickOne is developed first for the Product Owner's household and must prove
+  useful there before external validation, monetization, or public distribution.
+- The pilot uses one editable local profile representing the Product Owner.
 - Home, not Ask or generic discovery, is the primary product surface.
 - The default recommendation set contains three movies.
 - Onboarding captures region, subscriptions, and title-based taste signals.
@@ -436,25 +469,47 @@ As of the last review:
 - Feedback distinguishes stable preference from temporary mood.
 - Trailers belong in Detail when suitable video metadata exists.
 - Natural-language Ask is a later enhancement using the same decision rules.
-- Shared viewing is an important future direction but not mandatory account
-  scope for the first individual version.
+- Shared viewing is an important future direction, but separate or combined
+  household profiles are outside the first individual version.
+- The first pilot market is Spain (`ES`).
+- The pilot stores `ES` explicitly but does not expose a country selector.
+- The pilot provider allowlist is Netflix `8`, Amazon Prime Video `119`,
+  Disney Plus `337`, and HBO Max `1899`, presented to the user as HBO Max.
+- The pilot entitlement maps Netflix's highest plan to provider `8` and
+  ad-free Prime Video to provider `119`.
+- Onboarding asks for supported services, not plan variants. The known pilot
+  entitlements are mapped internally; plan selection remains deferred until it
+  materially and reliably changes availability.
+- Eligibility means included in the selected plan without an additional
+  transaction. Advertising alone is not a universal exclusion.
+- Amazon Video stores, rent, buy, unselected Amazon Channels, and other
+  separately paid add-ons are excluded.
+- TMDB Discover is candidate generation only. Final eligibility requires the
+  exact allowlisted provider in the movie-level `ES.flatrate` response.
+- Availability is verified when a recommendation set is generated and
+  revalidated before handoff when the previous verification is more than
+  24 hours old.
+- “Three for Tonight” does not expire automatically during the pilot. If
+  revalidation invalidates one title, replace that title rather than discarding
+  the complete set.
+- If fewer than three eligible high-confidence movies exist, show the smaller
+  honest set instead of violating availability or quality constraints.
+- The pilot may use TMDB's country-specific watch page as an honest fallback
+  handoff. It must not be presented as a direct provider link.
+- Availability copy must identify JustWatch as the source, state that
+  availability may change, and preserve required TMDB attribution.
 
 ## Open Product Questions
 
 These require explicit product decisions before their related implementation:
 
 1. What exact title set and selection logic should calibrate initial taste?
-2. How should the first version behave when fewer than three eligible,
-   high-confidence movies exist?
-3. What freshness period, if any, should expire “Three for Tonight”?
-4. Which Spanish streaming providers are supported in the first pilot?
-5. Should ad-supported content be opt-in during onboarding?
-6. What is the smallest useful representation of two-person viewing before
-   full profiles or accounts?
-7. What confirmation language best distinguishes intent to watch from verified
+2. What confirmation language best distinguishes intent to watch from verified
    viewing?
-8. What availability caveat and attribution copy preserves trust without adding
-   clutter?
+3. What exact availability caveat and attribution presentation preserves trust
+   without adding clutter?
+4. Which deterministic scoring and diversity rules produce the first
+   personalized recommendation set?
 
 Open questions are not permission for implementation agents to invent behavior.
 They must be resolved in product steering or explicitly bounded by a milestone.

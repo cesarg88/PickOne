@@ -12,7 +12,7 @@ It contains only work that remains pending after Milestone 3.3. Completed work
 should remain in this file with its status changed to `Completed` and a link to
 the implementing PR or milestone.
 
-Last reviewed: 2026-07-27, after PR #12.
+Last reviewed: 2026-07-29, during PR #15.
 
 ## Product Direction
 
@@ -58,34 +58,31 @@ Priorities:
 
 ### IMP-012 — Complete the Swift 6 concurrency migration
 
-- Status: `Planned`
+- Status: `Completed`
 - Priority: `P0`
-- Next implementation milestone: Milestone 3.4
+- Evidence: PR #13 and Milestone 3.4
 - Reference: `docs/decisions/adr-008-swift-concurrency-baseline.md`
 - Why now:
   the current product baseline and CI are stable, while upcoming backend and
   provider work will add more asynchronous boundaries. Migrating now is cheaper
   and safer than migrating after that complexity arrives.
-- Verified gap:
-  the project remains in Swift 5 language mode with default `MainActor`
-  isolation and several `@unchecked Sendable` conformances.
-- Implementation:
-  - enable Swift 6 language mode in a dedicated milestone
-  - remove default global `MainActor` isolation
-  - keep UI and presentation explicitly `@MainActor`
-  - isolate mutable persistence and repositories deliberately
-  - remove `@unchecked Sendable` case by case
-  - keep the full suite green throughout the migration
-- Done when:
+- Completed result:
+  - Swift 6 language mode and complete strict-concurrency checking are enabled
+  - default global `MainActor` isolation was removed
+  - UI and Presentation are explicitly `@MainActor`
+  - mutable persistence and repositories have deliberate ownership
+  - unchecked sendability suppressions were removed
+  - the full suite and CI remained green
+- Completion evidence:
   - strict concurrency builds without project warnings
-  - unchecked conformances are removed or individually justified
+  - unchecked conformances are removed
   - no user-visible behavior changes
 
 ### IMP-002 — Define Decision Engine v1
 
 - Status: `Planned`
 - Priority: `P0`
-- Roadmap relationship: Epic 2.2
+- Roadmap relationship: Milestone 6
 - Why: provider integration should implement an accepted product reasoning
   model rather than define the product accidentally.
 - Implementation:
@@ -103,10 +100,57 @@ Priorities:
   - representative prompt fixtures and expected decisions are documented
   - the rules can be tested independently of an AI provider
 
+### IMP-019 — Define Viewer Profile & Onboarding v1
+
+- Status: `Planned`
+- Priority: `P0`
+- Roadmap relationship: Milestone 5
+- Depends on: IMP-009 availability identity and entitlement decisions
+- Why:
+  PickOne cannot personalize or enforce watchability without a small, editable
+  source of viewer context.
+- Implementation:
+  - define the two-minute onboarding flow
+  - store Spain (`ES`) as the pilot region without exposing a country selector
+  - capture the supported services without exposing TMDB internals
+  - map the Product Owner's confirmed plan entitlements internally instead of
+    presenting plan-variant choices
+  - define the 10–15 title calibration set and response semantics
+  - define skip, retry, edit, reset, migration, and failure behavior
+  - persist one versioned local profile per installation
+  - keep accounts, sync, and household profiles out of the first version
+- Done when:
+  - every onboarding state and stored field has accepted behavior
+  - the output is sufficient for availability and deterministic ranking
+  - an implementation agent has no unresolved product decision
+
+### IMP-020 — Validate household utility after Three for Tonight
+
+- Status: `Planned`
+- Priority: `P0`
+- Roadmap relationship: Utility Checkpoint after Milestone 6
+- Depends on: Milestones 4, 5, and 6
+- Why:
+  a working recommendation flow does not prove that PickOne reduces decision
+  fatigue or gives the Product Owner credible, watchable choices.
+- Validation:
+  - use the complete flow on the physical pilot iPhone during real household
+    movie decisions
+  - assess whether recommendations make sense for the Product Owner
+  - verify reported availability against the Product Owner's Spanish services
+  - observe whether PickOne enables a confident choice quickly
+  - record concise qualitative findings without adding external research or an
+    analytics system
+- Done when:
+  - the Product Owner has accepted the flow as useful enough to continue, or
+    the next refinement has been identified
+  - Milestone 7 is confirmed, revised, or deferred from observed household use
+
 ### IMP-003 — Make recommendations the primary Home experience
 
-- Status: `Proposed`
+- Status: `Planned`
 - Priority: `P0`
+- Depends on: IMP-002, IMP-009, and IMP-019
 - Why: opening on a generic Top Rated grid communicates that PickOne is a
   catalog, while opening on Ask requires effort before the product demonstrates
   value.
@@ -201,10 +245,9 @@ Priorities:
 
 ### IMP-008 — Integrate one real recommendation provider behind a backend
 
-- Status: `Planned`
+- Status: `Deferred`
 - Priority: `P1`
-- Roadmap relationship: Epic 2.4 should precede a generalized provider
-  abstraction.
+- Roadmap relationship: Deferred Intelligence Infrastructure
 - Why: the local stub validates UI stability but cannot validate
   recommendation quality.
 - Implementation:
@@ -223,23 +266,29 @@ Priorities:
 
 ### IMP-009 — Add regional availability and a path to watch
 
-- Status: `Proposed`
-- Priority: `P1`
+- Status: `Planned — spike validated`
+- Priority: `P0`
+- Evidence:
+  [`TMDB Spain Streaming Availability Findings`](../research/tmdb-es-streaming-availability-findings.md)
+- Roadmap relationship: Milestone 4
 - Why: a good movie recommendation is less useful if it is not available in
   the user's country or services.
 - Implementation:
-  - define how the active country/region is selected and changed
-  - collect and maintain the user's selected subscription services
-  - evaluate TMDB watch-provider data and its attribution requirements
+  - use Spain and the accepted provider allowlist: Netflix `8`, Amazon Prime
+    Video `119`, Disney Plus `337`, and HBO Max `1899`
+  - use Discover only to generate candidates
+  - require the exact selected provider in movie-level `ES.flatrate`
+  - model selected entitlement as included without additional payment
+  - reject rent, buy, stores, and unselected add-on channels
   - show availability with freshness and coverage caveats
-  - require subscription-included regional availability for primary
-    first-version recommendations
-  - distinguish included, ads, free, rent, and buy availability
-  - provide a clear next action to open an available service when supported
+  - revalidate before a handoff when evidence is older than 24 hours
+  - attribute TMDB and JustWatch
+  - use the returned country-specific TMDB watch page as the pilot fallback
 - Done when:
   - recommendation decisions enforce active region, selected provider, and
-    accepted monetization type
+    selected entitlement
   - the user can understand where a selected movie may be watched
+  - Discover false positives cannot become final eligible recommendations
 
 ### IMP-010 — Implement privacy-safe analytics and operational observability
 
@@ -380,18 +429,20 @@ the added complexity.
 
 ## Suggested Sequence
 
-1. Run the Swift 6 migration as the next isolated technical milestone.
-2. Define the first-version onboarding, Home, availability, feedback, and
-   measurement specifications from `PRODUCT.md`.
+1. Define Availability Foundation v1 from the accepted SPIKE-001 evidence.
+2. Define Viewer Profile & Onboarding v1.
 3. Define Decision Engine v1 against preferences, viewing context, and
    availability.
-4. Implement onboarding, regional subscription eligibility, persistent
-   `Three for Tonight`, and explicit decision actions in bounded milestones.
-5. Fix recommendation Watchlist state and Detail domain preservation.
-6. Build one real backend/provider vertical only where the accepted decision
-   strategy needs it.
-7. Add privacy-safe analytics and operational observability.
-8. Complete distribution, accessibility, and persistence hardening as the
+4. Implement Availability Foundation and Onboarding as bounded milestones.
+5. Implement persistent `Three for Tonight`.
+6. Run the required household utility checkpoint and use its findings to
+   confirm or revise the next milestone.
+7. Add explicit decision feedback and resolve Recommendation/Watchlist state
+   only after the checkpoint supports that direction.
+8. Add trailers and the minimum pilot measurement contract.
+9. Introduce a backend or AI provider only if product validation demonstrates
+   a need that deterministic recommendation cannot meet.
+10. Complete distribution, accessibility, and persistence hardening as the
    audience expands.
 
 ## Update Rules
