@@ -54,6 +54,8 @@ struct AppConfiguration {
         case backdropSmall = "w300"
         case backdropMedium = "w780"
         case backdropLarge = "w1280"
+
+        case providerLogo = "w92"
     }
     
     // MARK: - Cache Configuration

@@ -15,8 +15,13 @@ final class MovieDetailViewModel {
     private let getMovieDetail: GetMovieDetailUseCase
     private let setMembership: SetWatchlistMembershipUseCase?
     private let setWatched: SetWatchedUseCase?
+    private let checkAvailability: CheckMovieAvailabilityUseCase?
+    private let preparePlaybackOptionsUseCase: PreparePlaybackOptionsUseCase?
+    private var activeLoadID = UUID()
+    private var availabilityOutcome: AvailabilityOutcome?
     
     var state: MovieDetailViewState = .idle
+    var availabilityState: MovieAvailabilityViewState = .loading
     var actionErrorMessage: String?
     
     /// Convenience initializer for backwards compatibility
@@ -25,6 +30,8 @@ final class MovieDetailViewModel {
         self.getMovieDetail = getMovieDetail
         self.setMembership = nil
         self.setWatched = nil
+        self.checkAvailability = nil
+        self.preparePlaybackOptionsUseCase = nil
     }
     
     /// Full initializer with watchlist support
@@ -32,27 +39,110 @@ final class MovieDetailViewModel {
         movieId: Int,
         getMovieDetail: GetMovieDetailUseCase,
         setMembership: SetWatchlistMembershipUseCase?,
-        setWatched: SetWatchedUseCase?
+        setWatched: SetWatchedUseCase?,
+        checkAvailability: CheckMovieAvailabilityUseCase? = nil,
+        preparePlaybackOptions: PreparePlaybackOptionsUseCase? = nil
     ) {
         self.movieId = movieId
         self.getMovieDetail = getMovieDetail
         self.setMembership = setMembership
         self.setWatched = setWatched
+        self.checkAvailability = checkAvailability
+        self.preparePlaybackOptionsUseCase = preparePlaybackOptions
     }
     
     // MARK: - Load
     
     func load() async {
+        let loadID = UUID()
+        activeLoadID = loadID
         state = .loading
+        availabilityState = .loading
+        availabilityOutcome = nil
+
+        async let detailLoad: Void = loadDetail(loadID: loadID)
+        async let availabilityLoad: Void = loadAvailability(loadID: loadID)
+        _ = await (detailLoad, availabilityLoad)
+    }
+
+    private func loadDetail(loadID: UUID) async {
         do {
             let cached = try await getMovieDetail.execute(id: movieId, policy: .returnCacheElseLoad)
+            try Task.checkCancellation()
+            guard activeLoadID == loadID else { return }
             state = .loaded(MovieDetailPresentationMapper.map(snapshot: cached.value))
             if cached.isStale {
                 let refreshed = try await getMovieDetail.execute(id: movieId, policy: .refresh)
+                try Task.checkCancellation()
+                guard activeLoadID == loadID else { return }
                 state = .loaded(MovieDetailPresentationMapper.map(snapshot: refreshed.value))
             }
+        } catch is CancellationError {
+            return
         } catch {
+            guard activeLoadID == loadID else { return }
             state = .error(error.localizedDescription)
+        }
+    }
+
+    private func loadAvailability(loadID: UUID) async {
+        guard let checkAvailability else { return }
+        do {
+            let outcome = try await checkAvailability.execute(
+                movieID: movieId,
+                policy: .useFreshCache
+            )
+            try Task.checkCancellation()
+            guard activeLoadID == loadID else { return }
+            availabilityOutcome = outcome
+            availabilityState = AvailabilityPresentationMapper.map(
+                outcome: outcome
+            )
+        } catch is CancellationError {
+            return
+        } catch {
+            guard activeLoadID == loadID else { return }
+            let outcome = AvailabilityOutcome.unknown(
+                reason: .verificationFailed
+            )
+            availabilityOutcome = outcome
+            availabilityState = .unknown
+        }
+    }
+
+    func preparePlaybackOptions() async -> URL? {
+        guard
+            let preparePlaybackOptionsUseCase,
+            let availabilityOutcome
+        else {
+            return nil
+        }
+
+        let loadID = activeLoadID
+        do {
+            let preparation = try await preparePlaybackOptionsUseCase.execute(
+                movieID: movieId,
+                currentOutcome: availabilityOutcome
+            )
+            try Task.checkCancellation()
+            guard activeLoadID == loadID else { return nil }
+
+            switch preparation {
+            case .open(let url):
+                return url
+            case .updatedOutcome(let outcome):
+                self.availabilityOutcome = outcome
+                availabilityState = AvailabilityPresentationMapper.map(
+                    outcome: outcome
+                )
+                return nil
+            case .unavailable:
+                return nil
+            }
+        } catch is CancellationError {
+            return nil
+        } catch {
+            return nil
         }
     }
     

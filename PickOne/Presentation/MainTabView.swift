@@ -18,6 +18,8 @@ struct MainTabView: View {
                 getMovieDetail: container.getMovieDetail,
                 setMembership: container.setWatchlistMembership,
                 setWatched: container.setWatched,
+                checkAvailability: container.checkMovieAvailability,
+                preparePlaybackOptions: container.preparePlaybackOptions,
                 imagePipeline: container.imagePipeline
             )
             .tabItem {
@@ -29,6 +31,8 @@ struct MainTabView: View {
                 getMovieDetail: container.getMovieDetail,
                 setMembership: container.setWatchlistMembership,
                 setWatched: container.setWatched,
+                checkAvailability: container.checkMovieAvailability,
+                preparePlaybackOptions: container.preparePlaybackOptions,
                 imagePipeline: container.imagePipeline
             )
             .tabItem {
@@ -40,6 +44,8 @@ struct MainTabView: View {
                 getMovieDetail: container.getMovieDetail,
                 setMembership: container.setWatchlistMembership,
                 setWatched: container.setWatched,
+                checkAvailability: container.checkMovieAvailability,
+                preparePlaybackOptions: container.preparePlaybackOptions,
                 imagePipeline: container.imagePipeline
             )
             .tabItem {
@@ -51,6 +57,8 @@ struct MainTabView: View {
                 getMovieDetail: container.getMovieDetail,
                 setMembership: container.setWatchlistMembership,
                 setWatched: container.setWatched,
+                checkAvailability: container.checkMovieAvailability,
+                preparePlaybackOptions: container.preparePlaybackOptions,
                 imagePipeline: container.imagePipeline
             )
             .tabItem {

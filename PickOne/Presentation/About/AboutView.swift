@@ -47,6 +47,12 @@ struct AboutView: View {
                         .font(.footnote)
                         .multilineTextAlignment(.center)
 
+                        Text(
+                            "Streaming availability data is provided by JustWatch."
+                        )
+                        .font(.footnote)
+                        .multilineTextAlignment(.center)
+
                         Link(
                             "Visit The Movie Database",
                             destination: URL(string: "https://www.themoviedb.org")!
