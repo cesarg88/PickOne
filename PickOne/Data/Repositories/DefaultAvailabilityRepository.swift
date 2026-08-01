@@ -59,8 +59,8 @@ actor DefaultAvailabilityRepository: AvailabilityRepository {
             requestID = currentRequest.id
             request = currentRequest.task
         } else {
-            let client = self.client
-            let clock = self.clock
+            let client = client
+            let clock = clock
             requestID = UUID()
             request = Task<VerifiedAvailabilityEvidence?, Error> {
                 let response = try await client.getWatchProviders(
@@ -193,13 +193,13 @@ actor DefaultAvailabilityRepository: AvailabilityRepository {
     }
 
     #if DEBUG
-    func activeWaiterCount(
-        movieID: Int,
-        region: ViewingRegion
-    ) -> Int {
-        inFlight[
-            CacheKey(movieID: movieID, region: region)
-        ]?.waiterIDs.count ?? 0
-    }
+        func activeWaiterCount(
+            movieID: Int,
+            region: ViewingRegion
+        ) -> Int {
+            inFlight[
+                CacheKey(movieID: movieID, region: region)
+            ]?.waiterIDs.count ?? 0
+        }
     #endif
 }

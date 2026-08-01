@@ -7,7 +7,7 @@ protocol GetMovieDetailUseCase: Sendable {
 final class GetMovieDetail: GetMovieDetailUseCase, Sendable {
     private let repository: MovieRepository
     private let watchlistRepository: WatchlistRepository
-    
+
     init(
         repository: MovieRepository,
         watchlistRepository: WatchlistRepository
@@ -15,13 +15,13 @@ final class GetMovieDetail: GetMovieDetailUseCase, Sendable {
         self.repository = repository
         self.watchlistRepository = watchlistRepository
     }
-    
+
     func execute(id: Int, policy: CachePolicy) async throws -> CacheResult<MovieDetailSnapshot> {
         let (detailResult, similarOutcome, creditsOutcome) = try await withThrowingTaskGroup(
             of: FetchResult.self
         ) { group in
             group.addTask {
-                .detail(try await self.repository.getMovieDetail(id: id, policy: policy))
+                try await .detail(self.repository.getMovieDetail(id: id, policy: policy))
             }
             group.addTask {
                 do {
@@ -39,57 +39,57 @@ final class GetMovieDetail: GetMovieDetailUseCase, Sendable {
                     return .credits(.failure(error))
                 }
             }
-            
+
             var detail: CacheResult<Movie>?
             var similar: Result<CacheResult<MoviePage>, Error> = .failure(FetchError.missing)
             var credits: Result<CacheResult<Credits>, Error> = .failure(FetchError.missing)
-            
+
             for try await result in group {
                 switch result {
-                case .detail(let value):
-                    detail = value
-                case .similar(let value):
-                    similar = value
-                case .credits(let value):
-                    credits = value
+                    case let .detail(value):
+                        detail = value
+                    case let .similar(value):
+                        similar = value
+                    case let .credits(value):
+                        credits = value
                 }
             }
-            
+
             guard let detail else {
                 throw FetchError.missing
             }
-            
+
             return (detail, similar, credits)
         }
-        
+
         var similar: [MovieSummary] = []
-        var credits: Credits = Credits(director: nil, topCast: [])
+        var credits = Credits(director: nil, topCast: [])
         var isSimilarUnavailable = false
         var isCreditsUnavailable = false
         var similarStale = false
         var creditsStale = false
-        
+
         switch similarOutcome {
-        case .success(let result):
-            similar = result.value.movies
-            similarStale = result.isStale
-        case .failure:
-            isSimilarUnavailable = true
+            case let .success(result):
+                similar = result.value.movies
+                similarStale = result.isStale
+            case .failure:
+                isSimilarUnavailable = true
         }
-        
+
         switch creditsOutcome {
-        case .success(let result):
-            credits = result.value
-            creditsStale = result.isStale
-        case .failure:
-            isCreditsUnavailable = true
+            case let .success(result):
+                credits = result.value
+                creditsStale = result.isStale
+            case .failure:
+                isCreditsUnavailable = true
         }
-        
+
         // Get watchlist status
         let watchlistStatus = watchlistRepository.getStatus(movieId: id)
         let isInWatchlist = watchlistStatus != .notInWatchlist
         let isWatched = watchlistStatus == .watched
-        
+
         let snapshot = MovieDetailSnapshot(
             movie: detailResult.value,
             similar: similar,

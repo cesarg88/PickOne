@@ -22,14 +22,14 @@ struct Movie: Identifiable, Equatable, Sendable {
     let backdropPath: String?
     let genres: [Genre]
     let tagline: String?
-    
+
     var releaseYear: Int? {
-        guard let releaseDate = releaseDate else { return nil }
+        guard let releaseDate else { return nil }
         return Calendar.current.component(.year, from: releaseDate)
     }
-    
+
     var runtimeFormatted: String? {
-        guard let runtime = runtime else { return nil }
+        guard let runtime else { return nil }
         let hours = runtime / 60
         let minutes = runtime % 60
         if hours > 0 {
@@ -68,7 +68,7 @@ struct MoviePage: Equatable, Sendable {
     let page: Int
     let totalPages: Int
     let movies: [MovieSummary]
-    
+
     var hasMorePages: Bool {
         page < totalPages
     }

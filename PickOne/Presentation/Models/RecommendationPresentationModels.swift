@@ -25,10 +25,10 @@ enum RecommendationPresentationMapper {
             items: snapshot.recommendations.map(mapItem)
         )
     }
-    
+
     private static func mapItem(_ recommendation: Recommendation) -> RecommendationMovieItem {
         let movie = recommendation.movie
-        
+
         return RecommendationMovieItem(
             id: recommendation.id,
             title: movie.title,
@@ -39,12 +39,12 @@ enum RecommendationPresentationMapper {
             movieSummary: movie
         )
     }
-    
+
     private static func formatRating(_ rating: Double) -> String {
         guard rating > 0 else {
             return "—"
         }
-        
+
         return String(format: "%.1f", rating)
     }
 }

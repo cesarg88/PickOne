@@ -14,7 +14,7 @@ struct WatchlistItem: Identifiable, Equatable, Sendable {
     let addedAt: Date
     let isWatched: Bool
     let movie: MovieSummary
-    
+
     nonisolated init(
         id: Int,
         addedAt: Date,

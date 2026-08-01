@@ -16,36 +16,36 @@ struct SearchView: View {
     let checkAvailability: CheckMovieAvailabilityUseCase
     let preparePlaybackOptions: PreparePlaybackOptionsUseCase
     let imagePipeline: ImagePipeline
-    
+
     var body: some View {
         NavigationStack {
             Group {
                 switch model.state {
-                case .idle(let history):
-                    historyView(history: history)
-                    
-                case .searching:
-                    ProgressView("Searching...")
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    
-                case .results(let data):
-                    resultsView(data: data)
-                    
-                case .empty(let query):
-                    EmptyStateView(
-                        title: "No results",
-                        message: "No movies found for \"\(query)\"",
-                        actionTitle: "Clear",
-                        action: { model.clearSearch() }
-                    )
-                    
-                case .error(let message):
-                    EmptyStateView(
-                        title: "Search failed",
-                        message: message,
-                        actionTitle: "Try again",
-                        action: { model.selectHistoryItem(model.query) }
-                    )
+                    case let .idle(history):
+                        historyView(history: history)
+
+                    case .searching:
+                        ProgressView("Searching...")
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+
+                    case let .results(data):
+                        resultsView(data: data)
+
+                    case let .empty(query):
+                        EmptyStateView(
+                            title: "No results",
+                            message: "No movies found for \"\(query)\"",
+                            actionTitle: "Clear",
+                            action: { model.clearSearch() }
+                        )
+
+                    case let .error(message):
+                        EmptyStateView(
+                            title: "Search failed",
+                            message: message,
+                            actionTitle: "Try again",
+                            action: { model.selectHistoryItem(model.query) }
+                        )
                 }
             }
             .navigationTitle("Search")
@@ -61,9 +61,9 @@ struct SearchView: View {
             }
         }
     }
-    
+
     // MARK: - Subviews
-    
+
     @ViewBuilder
     private func historyView(history: [String]) -> some View {
         if history.isEmpty {
@@ -104,8 +104,7 @@ struct SearchView: View {
             .listStyle(.insetGrouped)
         }
     }
-    
-    @ViewBuilder
+
     private func resultsView(data: SearchPresentationModel) -> some View {
         List {
             ForEach(data.items) { item in
@@ -136,7 +135,7 @@ struct SearchView: View {
                         }
                 }
             }
-            
+
             if data.isLoadingNextPage {
                 HStack {
                     Spacer()
@@ -156,7 +155,7 @@ struct SearchView: View {
 private struct SearchResultRow: View {
     let item: SearchMovieItem
     let imagePipeline: ImagePipeline
-    
+
     var body: some View {
         HStack(spacing: 12) {
             // Poster
@@ -169,20 +168,20 @@ private struct SearchResultRow: View {
             .frame(width: 60, height: 90)
             .clipped()
             .cornerRadius(6)
-            
+
             // Info
             VStack(alignment: .leading, spacing: 4) {
                 Text(item.title)
                     .font(.headline)
                     .lineLimit(2)
-                
+
                 HStack(spacing: 8) {
                     if let year = item.releaseYear {
                         Text(year)
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
                     }
-                    
+
                     HStack(spacing: 2) {
                         Image(systemName: "star.fill")
                             .foregroundStyle(.yellow)
@@ -193,7 +192,7 @@ private struct SearchResultRow: View {
                     }
                 }
             }
-            
+
             Spacer()
         }
         .padding(.vertical, 4)

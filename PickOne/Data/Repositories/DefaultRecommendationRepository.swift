@@ -2,11 +2,11 @@ import Foundation
 
 final class DefaultRecommendationRepository: RecommendationRepository {
     private let client: RecommendationClient
-    
+
     init(client: RecommendationClient) {
         self.client = client
     }
-    
+
     func getRecommendations(
         query: String,
         maxResults: Int
@@ -17,7 +17,7 @@ final class DefaultRecommendationRepository: RecommendationRepository {
                 maxResults: maxResults
             )
         )
-        
+
         return RecommendationMapper.mapResult(
             query: query,
             response: response

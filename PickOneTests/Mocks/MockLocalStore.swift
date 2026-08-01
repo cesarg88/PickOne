@@ -6,8 +6,8 @@
 //
 
 import Foundation
-import Synchronization
 @testable import PickOne
+import Synchronization
 
 final class MockLocalStore: LocalStore {
     private struct State: Sendable {
@@ -28,39 +28,45 @@ final class MockLocalStore: LocalStore {
         get { state.withLock { $0.saveWatchlistItemCallCount } }
         set { state.withLock { $0.saveWatchlistItemCallCount = newValue } }
     }
+
     private(set) var removeWatchlistItemCallCount: Int {
         get { state.withLock { $0.removeWatchlistItemCallCount } }
         set { state.withLock { $0.removeWatchlistItemCallCount = newValue } }
     }
+
     private(set) var updateWatchedStatusCallCount: Int {
         get { state.withLock { $0.updateWatchedStatusCallCount } }
         set { state.withLock { $0.updateWatchedStatusCallCount = newValue } }
     }
+
     private(set) var lastSavedItem: PersistedWatchlistItem? {
         get { state.withLock { $0.lastSavedItem } }
         set { state.withLock { $0.lastSavedItem = newValue } }
     }
+
     private(set) var lastRemovedMovieId: Int? {
         get { state.withLock { $0.lastRemovedMovieId } }
         set { state.withLock { $0.lastRemovedMovieId = newValue } }
     }
+
     private(set) var lastUpdatedMovieId: Int? {
         get { state.withLock { $0.lastUpdatedMovieId } }
         set { state.withLock { $0.lastUpdatedMovieId = newValue } }
     }
+
     private(set) var lastUpdatedWatchedStatus: Bool? {
         get { state.withLock { $0.lastUpdatedWatchedStatus } }
         set { state.withLock { $0.lastUpdatedWatchedStatus = newValue } }
     }
-    
+
     // MARK: - Watchlist Items
-    
+
     func getWatchlistItems() -> [PersistedWatchlistItem] {
         state.withLock {
             $0.watchlistItems.sorted { $0.addedAt > $1.addedAt }
         }
     }
-    
+
     func saveWatchlistItem(_ item: PersistedWatchlistItem) throws {
         state.withLock { state in
             state.saveWatchlistItemCallCount += 1
@@ -69,7 +75,7 @@ final class MockLocalStore: LocalStore {
             state.watchlistItems.append(item)
         }
     }
-    
+
     func removeWatchlistItem(movieId: Int) throws {
         state.withLock { state in
             state.removeWatchlistItemCallCount += 1
@@ -77,7 +83,7 @@ final class MockLocalStore: LocalStore {
             state.watchlistItems.removeAll { $0.movieId == movieId }
         }
     }
-    
+
     func updateWatchedStatus(movieId: Int, isWatched: Bool) throws {
         state.withLock { state in
             state.updateWatchedStatusCallCount += 1
@@ -92,7 +98,7 @@ final class MockLocalStore: LocalStore {
             state.watchlistItems[index].isWatched = isWatched
         }
     }
-    
+
     func getWatchlistStatus(movieId: Int) -> (isInWatchlist: Bool, isWatched: Bool) {
         state.withLock { state in
             guard let item = state.watchlistItems.first(
@@ -103,13 +109,13 @@ final class MockLocalStore: LocalStore {
             return (true, item.isWatched)
         }
     }
-    
+
     // MARK: - Search History
-    
+
     func getSearchHistory() -> [String] {
         state.withLock { $0.searchHistory }
     }
-    
+
     func addSearchQuery(_ query: String) {
         state.withLock { state in
             state.searchHistory.removeAll { $0 == query }
@@ -119,17 +125,17 @@ final class MockLocalStore: LocalStore {
             }
         }
     }
-    
+
     func clearSearchHistory() {
         state.withLock { $0.searchHistory.removeAll() }
     }
-    
+
     // MARK: - Test Helpers
-    
+
     func seedWatchlistItems(_ items: [PersistedWatchlistItem]) {
         state.withLock { $0.watchlistItems = items }
     }
-    
+
     func reset() {
         state.withLock { $0 = State() }
     }

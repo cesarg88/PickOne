@@ -15,7 +15,7 @@ struct DiscoverySnapshot: Equatable, Sendable {
     let currentPage: Int
     let hasMorePages: Bool
     let asOf: Date
-    
+
     static let empty = DiscoverySnapshot(
         movies: [],
         currentPage: 0,
@@ -44,7 +44,7 @@ struct WatchlistSnapshot: Equatable, Sendable {
     let toWatch: [WatchlistItem]
     let watched: [WatchlistItem]
     let asOf: Date
-    
+
     static let empty = WatchlistSnapshot(
         toWatch: [],
         watched: [],
@@ -90,11 +90,11 @@ struct SearchSnapshot: Equatable, Sendable {
     let currentPage: Int
     let totalPages: Int
     let asOf: Date
-    
+
     var hasMorePages: Bool {
         currentPage < totalPages
     }
-    
+
     static let empty = SearchSnapshot(
         query: "",
         results: [],

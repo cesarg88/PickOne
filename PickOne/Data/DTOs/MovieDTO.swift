@@ -24,14 +24,14 @@ struct MovieListResponseDTO: Codable, Sendable {
 struct MovieListItemDTO: Codable, Sendable {
     let adult: Bool
     let backdropPath: String?
-    let genreIds: [Int]?          // May be missing for some entries
+    let genreIds: [Int]? // May be missing for some entries
     let id: Int
     let originalLanguage: String?
     let originalTitle: String?
-    let overview: String?         // Can be empty/null for some languages
+    let overview: String? // Can be empty/null for some languages
     let popularity: Double?
     let posterPath: String?
-    let releaseDate: String?      // Can be empty for unreleased/unknown dates
+    let releaseDate: String? // Can be empty for unreleased/unknown dates
     let title: String
     let video: Bool?
     let voteAverage: Double?
@@ -44,18 +44,18 @@ struct MovieListItemDTO: Codable, Sendable {
 struct MovieDetailDTO: Codable, Sendable {
     let adult: Bool
     let backdropPath: String?
-    let budget: Int?              // May be 0 or missing for some movies
-    let genres: [GenreDTO]?       // Usually present but play safe
+    let budget: Int? // May be 0 or missing for some movies
+    let genres: [GenreDTO]? // Usually present but play safe
     let homepage: String?
     let id: Int
     let imdbId: String?
     let originalLanguage: String?
     let originalTitle: String?
-    let overview: String?         // Can be empty for some languages
+    let overview: String? // Can be empty for some languages
     let popularity: Double?
     let posterPath: String?
-    let releaseDate: String?      // Can be empty for unreleased movies
-    let revenue: Int?             // May be 0 or missing
+    let releaseDate: String? // Can be empty for unreleased movies
+    let revenue: Int? // May be 0 or missing
     let runtime: Int?
     let status: String?
     let tagline: String?
@@ -89,8 +89,8 @@ struct CastMemberDTO: Codable, Sendable {
     let originalName: String?
     let popularity: Double?
     let profilePath: String?
-    let castId: Int?              // May be missing in some responses
-    let character: String?        // Can be empty for uncredited roles
+    let castId: Int? // May be missing in some responses
+    let character: String? // Can be empty for uncredited roles
     let creditId: String?
     let order: Int?
 }

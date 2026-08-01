@@ -9,7 +9,7 @@ final class GetChatRecommendations: GetChatRecommendationsUseCase, Sendable {
     private let movieRepository: MovieRepository
     private let minResults: Int
     private let maxAllowedResults: Int
-    
+
     init(
         repository: RecommendationRepository,
         movieRepository: MovieRepository,
@@ -21,30 +21,30 @@ final class GetChatRecommendations: GetChatRecommendationsUseCase, Sendable {
         self.minResults = minResults
         self.maxAllowedResults = maxAllowedResults
     }
-    
+
     func execute(query: String, maxResults: Int) async throws -> ChatRecommendationSnapshot {
         let trimmedQuery = query.trimmingCharacters(in: .whitespacesAndNewlines)
-        
+
         guard !trimmedQuery.isEmpty else {
             throw ChatRecommendationError.emptyQuery
         }
-        
+
         let clampedMaxResults = min(
             max(maxResults, minResults),
             maxAllowedResults
         )
-        
+
         let result = try await repository.getRecommendations(
             query: trimmedQuery,
             maxResults: clampedMaxResults
         )
-        
+
         let recommendations = try await enrichCandidates(result.candidates)
-        
+
         guard !recommendations.isEmpty else {
             throw ChatRecommendationError.noRecommendations
         }
-        
+
         return ChatRecommendationSnapshot(
             query: result.query,
             recommendations: recommendations,
@@ -52,21 +52,21 @@ final class GetChatRecommendations: GetChatRecommendationsUseCase, Sendable {
             asOf: Date()
         )
     }
-    
+
     private func enrichCandidates(
         _ candidates: [RecommendationCandidate]
     ) async throws -> [Recommendation] {
         var recommendations: [Recommendation] = []
         recommendations.reserveCapacity(candidates.count)
-        
+
         for candidate in candidates {
             try Task.checkCancellation()
-            
+
             do {
                 let movie = try await movieRepository
                     .getMovieDetail(id: candidate.id, policy: .returnCacheElseLoad)
                     .value
-                
+
                 recommendations.append(
                     Recommendation(
                         id: candidate.id,
@@ -80,7 +80,7 @@ final class GetChatRecommendations: GetChatRecommendationsUseCase, Sendable {
                 continue
             }
         }
-        
+
         return recommendations
     }
 }
@@ -88,13 +88,13 @@ final class GetChatRecommendations: GetChatRecommendationsUseCase, Sendable {
 enum ChatRecommendationError: Error, LocalizedError, Sendable {
     case emptyQuery
     case noRecommendations
-    
+
     var errorDescription: String? {
         switch self {
-        case .emptyQuery:
-            return "Recommendation query cannot be empty."
-        case .noRecommendations:
-            return "No recommendations were available."
+            case .emptyQuery:
+                "Recommendation query cannot be empty."
+            case .noRecommendations:
+                "No recommendations were available."
         }
     }
 }

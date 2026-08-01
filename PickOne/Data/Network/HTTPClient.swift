@@ -39,12 +39,11 @@ private enum MIMEType {
 // MARK: - Implementation
 
 final class URLSessionHTTPClient {
-    
     private let session: URLSession
     private let baseURL: URL
     private let responseMapper: ResponseMapper
     private let defaultTimeout: TimeInterval
-    
+
     init(
         baseURL: String,
         session: URLSession = .shared,
@@ -63,7 +62,7 @@ final class URLSessionHTTPClient {
 
 extension URLSessionHTTPClient: HTTPClient {
     // MARK: - Public Methods
-    
+
     func request<T: Decodable & Sendable>(
         endpoint: String,
         method: HTTPMethod,
@@ -73,7 +72,7 @@ extension URLSessionHTTPClient: HTTPClient {
         body: (any Encodable & Sendable)?
     ) async throws -> T {
         let url = buildURL(endpoint: endpoint, parameters: parameters)
-        
+
         var request = URLRequest(url: url)
         request.httpMethod = method.rawValue
         request.timeoutInterval = timeout ?? defaultTimeout
@@ -83,7 +82,7 @@ extension URLSessionHTTPClient: HTTPClient {
                 request.setValue(MIMEType.json, forHTTPHeaderField: Header.contentType)
             }
         }
-        
+
         if let headers {
             for (key, value) in headers {
                 request.setValue(value, forHTTPHeaderField: key)
@@ -95,21 +94,21 @@ extension URLSessionHTTPClient: HTTPClient {
         if request.value(forHTTPHeaderField: Header.accept) == nil {
             request.setValue(MIMEType.json, forHTTPHeaderField: Header.accept)
         }
-#if DEBUG
-        logRequest(request, endpoint: endpoint)
-#endif
+        #if DEBUG
+            logRequest(request, endpoint: endpoint)
+        #endif
         do {
             let (data, response) = try await session.data(for: request)
-            
+
             guard let httpResponse = response as? HTTPURLResponse else {
                 throw NetworkError.unknown(NSError(domain: "Invalid response type", code: -1))
             }
-            
-#if DEBUG
-            logResponse(httpResponse, data: data)
-#endif
-            
-            guard (200...299).contains(httpResponse.statusCode) else {
+
+            #if DEBUG
+                logResponse(httpResponse, data: data)
+            #endif
+
+            guard (200 ... 299).contains(httpResponse.statusCode) else {
                 throw NetworkError.httpError(statusCode: httpResponse.statusCode)
             }
             if request.value(forHTTPHeaderField: Header.accept)?.contains(MIMEType.json) == true {
@@ -119,7 +118,7 @@ extension URLSessionHTTPClient: HTTPClient {
                 throw NetworkError.noData
             }
             return try responseMapper.map(data, to: T.self)
-            
+
         } catch let error as NetworkError {
             throw error
         } catch let urlError as URLError {
@@ -129,50 +128,51 @@ extension URLSessionHTTPClient: HTTPClient {
         }
     }
 }
+
 private extension URLSessionHTTPClient {
     // MARK: - Private Helpers
-    
+
     func buildURL(endpoint: String, parameters: [String: String]?) -> URL {
         let normalizedEndpoint = endpoint.hasPrefix("/") ? String(endpoint.dropFirst()) : endpoint
         let url = baseURL.appending(path: normalizedEndpoint)
-        
+
         guard let parameters, !parameters.isEmpty else {
             return url
         }
-        
+
         guard var components = URLComponents(url: url, resolvingAgainstBaseURL: false) else {
             return url
         }
-        
+
         components.queryItems = parameters.map { URLQueryItem(name: $0.key, value: $0.value) }
         return components.url ?? url
     }
-    
+
     func validateContentType(_ response: HTTPURLResponse) {
         guard let responseContentType = response.value(forHTTPHeaderField: Header.contentType) else {
             return
         }
-        
+
         if !responseContentType.lowercased().contains(MIMEType.json) {
             #if DEBUG
-            print("⚠️ Unexpected Content-Type: \(responseContentType)")
+                print("⚠️ Unexpected Content-Type: \(responseContentType)")
             #endif
         }
     }
-    
+
     func mapURLError(_ error: URLError) -> NetworkError {
         switch error.code {
-        case .timedOut:
-            return .timeout
-        case .notConnectedToInternet, .networkConnectionLost:
-            return .noConnection
-        case .cannotFindHost, .cannotConnectToHost:
-            return .noConnection
-        default:
-            return .unknown(error)
+            case .timedOut:
+                .timeout
+            case .notConnectedToInternet, .networkConnectionLost:
+                .noConnection
+            case .cannotFindHost, .cannotConnectToHost:
+                .noConnection
+            default:
+                .unknown(error)
         }
     }
-    
+
     func encodeBody(_ body: any Encodable & Sendable) throws -> Data {
         do {
             return try JSONEncoder().encode(body)
@@ -180,20 +180,20 @@ private extension URLSessionHTTPClient {
             throw NetworkError.encodingError(error)
         }
     }
-    
+
     // MARK: - Debug Logging
-    
+
     #if DEBUG
-    func logRequest(_ request: URLRequest, endpoint: String) {
-        print("🌐 [\(request.httpMethod ?? "?")] \(endpoint)")
-        if let url = request.url {
-            print("   URL: \(url.absoluteString)")
+        func logRequest(_ request: URLRequest, endpoint: String) {
+            print("🌐 [\(request.httpMethod ?? "?")] \(endpoint)")
+            if let url = request.url {
+                print("   URL: \(url.absoluteString)")
+            }
         }
-    }
-    
-    func logResponse(_ response: HTTPURLResponse, data: Data) {
-        let statusEmoji = (200...299).contains(response.statusCode) ? "✅" : "❌"
-        print("\(statusEmoji) Response: \(response.statusCode) - \(data.count) bytes")
-    }
+
+        func logResponse(_ response: HTTPURLResponse, data: Data) {
+            let statusEmoji = (200 ... 299).contains(response.statusCode) ? "✅" : "❌"
+            print("\(statusEmoji) Response: \(response.statusCode) - \(data.count) bytes")
+        }
     #endif
 }

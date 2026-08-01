@@ -1,0 +1,18 @@
+# PickOne SwiftFormat configuration.
+# Keep this intentionally conservative: formatting must not change behavior.
+
+--swiftversion 6.0
+--indent 4
+--maxwidth 120
+--wraparguments before-first
+--wrapparameters before-first
+--wrapcollections before-first
+--closingparen balanced
+--stripunusedargs closure-only
+--indentcase true
+
+# These rules can make non-trivial semantic changes. Leave them disabled and
+# introduce them separately only with focused validation.
+--disable enumNamespaces,assertionFailures,preferKeyPath,redundantType,redundantInit,redundantMemberwiseInit
+
+--exclude .build,Build,DerivedData

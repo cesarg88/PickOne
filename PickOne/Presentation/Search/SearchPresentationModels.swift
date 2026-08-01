@@ -14,7 +14,7 @@ struct SearchPresentationModel: Equatable {
     let items: [SearchMovieItem]
     let hasMorePages: Bool
     var isLoadingNextPage: Bool
-    
+
     static let empty = SearchPresentationModel(
         query: "",
         items: [],
@@ -30,7 +30,7 @@ struct SearchMovieItem: Identifiable, Equatable {
     let releaseYear: String?
     let rating: String
     let overview: String
-    
+
     /// The MovieSummary for passing to use cases
     let movieSummary: MovieSummary
 }
@@ -39,7 +39,6 @@ struct SearchMovieItem: Identifiable, Equatable {
 
 @MainActor
 enum SearchPresentationMapper {
-    
     static func map(snapshot: SearchSnapshot) -> SearchPresentationModel {
         SearchPresentationModel(
             query: snapshot.query,
@@ -48,7 +47,7 @@ enum SearchPresentationMapper {
             isLoadingNextPage: false
         )
     }
-    
+
     private static func mapItem(_ movie: MovieSummary) -> SearchMovieItem {
         SearchMovieItem(
             id: movie.id,
@@ -60,9 +59,9 @@ enum SearchPresentationMapper {
             movieSummary: movie
         )
     }
-    
+
     private static func posterURL(for path: String?) -> URL? {
-        guard let path = path else { return nil }
+        guard let path else { return nil }
         return URL(string: "https://image.tmdb.org/t/p/w342\(path)")
     }
 }

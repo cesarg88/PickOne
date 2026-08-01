@@ -13,8 +13,10 @@ enum WatchlistFilter: String, CaseIterable, Identifiable {
     case all = "All"
     case toWatch = "To Watch"
     case watched = "Watched"
-    
-    var id: String { rawValue }
+
+    var id: String {
+        rawValue
+    }
 }
 
 // MARK: - Presentation Model
@@ -22,9 +24,11 @@ enum WatchlistFilter: String, CaseIterable, Identifiable {
 struct WatchlistPresentationModel: Equatable {
     let items: [WatchlistItemPresentation]
     let filter: WatchlistFilter
-    
-    var isEmpty: Bool { items.isEmpty }
-    
+
+    var isEmpty: Bool {
+        items.isEmpty
+    }
+
     static let empty = WatchlistPresentationModel(items: [], filter: .all)
 }
 
@@ -36,7 +40,7 @@ struct WatchlistItemPresentation: Identifiable, Equatable {
     let rating: String
     let isWatched: Bool
     let addedDate: String
-    
+
     /// The MovieSummary for passing to use cases
     let movieSummary: MovieSummary
 }
@@ -45,28 +49,25 @@ struct WatchlistItemPresentation: Identifiable, Equatable {
 
 @MainActor
 enum WatchlistPresentationMapper {
-    
     static func map(snapshot: WatchlistSnapshot, filter: WatchlistFilter) -> WatchlistPresentationModel {
-        let items: [WatchlistItem]
-        
-        switch filter {
-        case .all:
-            items = snapshot.toWatch + snapshot.watched
-        case .toWatch:
-            items = snapshot.toWatch
-        case .watched:
-            items = snapshot.watched
+        let items: [WatchlistItem] = switch filter {
+            case .all:
+                snapshot.toWatch + snapshot.watched
+            case .toWatch:
+                snapshot.toWatch
+            case .watched:
+                snapshot.watched
         }
-        
+
         // Sort by addedAt descending (most recent first)
         let sorted = items.sorted { $0.addedAt > $1.addedAt }
-        
+
         return WatchlistPresentationModel(
             items: sorted.map(mapItem),
             filter: filter
         )
     }
-    
+
     private static func mapItem(_ item: WatchlistItem) -> WatchlistItemPresentation {
         WatchlistItemPresentation(
             id: item.id,
@@ -79,12 +80,12 @@ enum WatchlistPresentationMapper {
             movieSummary: item.movie
         )
     }
-    
+
     private static func posterURL(for path: String?) -> URL? {
-        guard let path = path else { return nil }
+        guard let path else { return nil }
         return URL(string: "https://image.tmdb.org/t/p/w342\(path)")
     }
-    
+
     private static func formatDate(_ date: Date) -> String {
         let formatter = RelativeDateTimeFormatter()
         formatter.unitsStyle = .abbreviated

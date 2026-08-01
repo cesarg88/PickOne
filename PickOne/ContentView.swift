@@ -3,7 +3,7 @@ import SwiftUI
 @MainActor
 struct ContentView: View {
     let container: AppContainer
-        
+
     var body: some View {
         DiscoveryView(
             model: container.discoveryViewModel,

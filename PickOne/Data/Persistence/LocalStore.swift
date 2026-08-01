@@ -44,40 +44,40 @@ final class UserDefaultsLocalStore: LocalStore {
 
         func makeUserDefaults() -> UserDefaults {
             switch self {
-            case .standard:
-                return .standard
-            case .suite(let name):
-                guard let userDefaults = UserDefaults(suiteName: name) else {
-                    preconditionFailure("Invalid UserDefaults suite name: \(name)")
-                }
-                return userDefaults
+                case .standard:
+                    return .standard
+                case let .suite(name):
+                    guard let userDefaults = UserDefaults(suiteName: name) else {
+                        preconditionFailure("Invalid UserDefaults suite name: \(name)")
+                    }
+                    return userDefaults
             }
         }
     }
 
     private let backend: Mutex<Backend>
-    
+
     private enum Keys {
         static let watchlistItems = "watchlist_items_v2"
         static let searchHistory = "search_history"
     }
-    
+
     init() {
-        self.backend = Mutex(.standard)
+        backend = Mutex(.standard)
     }
 
     init(suiteName: String) {
-        self.backend = Mutex(.suite(suiteName))
+        backend = Mutex(.suite(suiteName))
     }
-    
+
     // MARK: - Watchlist Items
-    
+
     func getWatchlistItems() -> [PersistedWatchlistItem] {
         backend.withLock { backend in
             (try? Self.loadWatchlistItems(from: backend.makeUserDefaults())) ?? []
         }
     }
-    
+
     func saveWatchlistItem(_ item: PersistedWatchlistItem) throws {
         try backend.withLock { backend in
             let userDefaults = backend.makeUserDefaults()
@@ -92,7 +92,7 @@ final class UserDefaultsLocalStore: LocalStore {
             try Self.persistWatchlistItems(items, to: userDefaults)
         }
     }
-    
+
     func removeWatchlistItem(movieId: Int) throws {
         try backend.withLock { backend in
             let userDefaults = backend.makeUserDefaults()
@@ -101,7 +101,7 @@ final class UserDefaultsLocalStore: LocalStore {
             try Self.persistWatchlistItems(items, to: userDefaults)
         }
     }
-    
+
     func updateWatchedStatus(movieId: Int, isWatched: Bool) throws {
         try backend.withLock { backend in
             let userDefaults = backend.makeUserDefaults()
@@ -113,7 +113,7 @@ final class UserDefaultsLocalStore: LocalStore {
             try Self.persistWatchlistItems(items, to: userDefaults)
         }
     }
-    
+
     func getWatchlistStatus(movieId: Int) -> (isInWatchlist: Bool, isWatched: Bool) {
         backend.withLock { backend in
             let items = (try? Self.loadWatchlistItems(from: backend.makeUserDefaults())) ?? []
@@ -123,15 +123,15 @@ final class UserDefaultsLocalStore: LocalStore {
             return (isInWatchlist: true, isWatched: item.isWatched)
         }
     }
-    
+
     // MARK: - Search History
-    
+
     func getSearchHistory() -> [String] {
         backend.withLock { backend in
             Self.loadSearchHistory(from: backend.makeUserDefaults())
         }
     }
-    
+
     func addSearchQuery(_ query: String) {
         backend.withLock { backend in
             let userDefaults = backend.makeUserDefaults()
@@ -151,17 +151,18 @@ final class UserDefaultsLocalStore: LocalStore {
             userDefaults.set(history, forKey: Keys.searchHistory)
         }
     }
-    
+
     func clearSearchHistory() {
         backend.withLock { backend in
             backend.makeUserDefaults().removeObject(forKey: Keys.searchHistory)
         }
     }
-    
+
     // MARK: - Private
-    
+
     private static func loadWatchlistItems(from userDefaults: UserDefaults) throws
-        -> [PersistedWatchlistItem] {
+        -> [PersistedWatchlistItem]
+    {
         guard let data = userDefaults.data(forKey: Keys.watchlistItems) else {
             return []
         }
@@ -197,10 +198,10 @@ enum LocalStoreError: Error, LocalizedError, Equatable {
 
     var errorDescription: String? {
         switch self {
-        case .corruptedWatchlist:
-            return "Saved watchlist data could not be read. Your existing data was preserved."
-        case .encodingFailed:
-            return "The watchlist could not be saved. Please try again."
+            case .corruptedWatchlist:
+                "Saved watchlist data could not be read. Your existing data was preserved."
+            case .encodingFailed:
+                "The watchlist could not be saved. Please try again."
         }
     }
 }

@@ -73,4 +73,3 @@ When generating code, finding bugs, or optimizing SwiftUI projects, follow these
 - Use SwiftLint or similar tools to enforce consistent code style.
 
 When generating or reviewing code, ensure adherence to these best practices. Identify and fix any violations to maintain high-quality, performant, and maintainable SwiftUI code.
-

@@ -7,7 +7,7 @@ struct StubRecommendationRepository: RecommendationRepository, Sendable {
     ) async throws -> ChatRecommendationCandidateResult {
         let scenario = RecommendationStubCatalog.scenario(for: query)
         let candidates = Array(scenario.candidates.prefix(maxResults))
-        
+
         return ChatRecommendationCandidateResult(
             query: query,
             candidates: candidates,
@@ -19,45 +19,45 @@ struct StubRecommendationRepository: RecommendationRepository, Sendable {
 private enum RecommendationStubCatalog {
     nonisolated static func scenario(for query: String) -> RecommendationScenario {
         let normalized = query.lowercased()
-        
+
         if normalized.contains("sci-fi") || normalized.contains("science fiction") || normalized.contains("arrival") {
             return sciFi
         }
-        
+
         if normalized.contains("funny") || normalized.contains("comedy") || normalized.contains("laugh") {
             return comedy
         }
-        
+
         if normalized.contains("thriller") || normalized.contains("tense") || normalized.contains("crime") {
             return thriller
         }
-        
+
         return general
     }
-    
+
     nonisolated static let sciFi = RecommendationScenario(
         explanation: "These picks lean into intelligent science fiction with emotional stakes and a strong sense of atmosphere.",
         candidates: [
             RecommendationCandidate(
-                id: 157336,
+                id: 157_336,
                 title: "Interstellar",
                 year: 2014,
                 reason: "Large-scale science fiction with emotional depth."
             ),
             RecommendationCandidate(
-                id: 329865,
+                id: 329_865,
                 title: "Arrival",
                 year: 2016,
                 reason: "Thoughtful and intimate sci-fi grounded in character."
             ),
             RecommendationCandidate(
-                id: 335984,
+                id: 335_984,
                 title: "Blade Runner 2049",
                 year: 2017,
                 reason: "Patient, atmospheric science fiction with striking visuals."
             ),
             RecommendationCandidate(
-                id: 264660,
+                id: 264_660,
                 title: "Ex Machina",
                 year: 2014,
                 reason: "A tense AI story with sharp ideas and minimalism."
@@ -67,15 +67,15 @@ private enum RecommendationStubCatalog {
                 title: "2001: A Space Odyssey",
                 year: 1968,
                 reason: "Classic cerebral sci-fi with a sense of awe."
-            )
+            ),
         ]
     )
-    
+
     nonisolated static let comedy = RecommendationScenario(
         explanation: "These recommendations favor witty, personality-driven comedies over broad or disposable humor.",
         candidates: [
             RecommendationCandidate(
-                id: 496243,
+                id: 496_243,
                 title: "Parasite",
                 year: 2019,
                 reason: "Darkly funny, sharp, and constantly surprising."
@@ -93,7 +93,7 @@ private enum RecommendationStubCatalog {
                 reason: "Fast, quotable comedy with real bite."
             ),
             RecommendationCandidate(
-                id: 772071,
+                id: 772_071,
                 title: "Bottoms",
                 year: 2023,
                 reason: "Chaotic and specific in a way that feels fresh."
@@ -103,10 +103,10 @@ private enum RecommendationStubCatalog {
                 title: "The Big Lebowski",
                 year: 1998,
                 reason: "Offbeat comedy with a famously relaxed vibe."
-            )
+            ),
         ]
     )
-    
+
     nonisolated static let thriller = RecommendationScenario(
         explanation: "These picks focus on tension, momentum, and strong hooks without drifting too far into action spectacle.",
         candidates: [
@@ -139,10 +139,10 @@ private enum RecommendationStubCatalog {
                 title: "The Dark Knight Rises",
                 year: 2012,
                 reason: "High-stakes tension with strong forward momentum."
-            )
+            ),
         ]
     )
-    
+
     nonisolated static let general = RecommendationScenario(
         explanation: "These are broad, high-confidence picks meant to cover a few different tones while staying easy to choose from.",
         candidates: [
@@ -175,7 +175,7 @@ private enum RecommendationStubCatalog {
                 title: "The Matrix",
                 year: 1999,
                 reason: "A crowd-pleasing choice with a smart high concept."
-            )
+            ),
         ]
     )
 }

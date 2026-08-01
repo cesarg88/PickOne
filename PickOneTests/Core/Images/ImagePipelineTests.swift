@@ -1,12 +1,12 @@
 import Foundation
+@testable import PickOne
 import Testing
 import UIKit
-@testable import PickOne
 
 @Suite("ImagePipeline Tests", .serialized)
 struct ImagePipelineTests {
     @Test("rejects unsuccessful HTTP responses")
-    func rejectsHTTPFailure() async {
+    func rejectsHTTPFailure() async throws {
         let sut = makeSUT(
             statusCode: 404,
             contentType: "image/png",
@@ -14,12 +14,12 @@ struct ImagePipelineTests {
         )
 
         await #expect(throws: ImagePipelineError.httpStatus(404)) {
-            _ = try await sut.loadImage(from: URL(string: "https://example.com/a.png")!)
+            _ = try await sut.loadImage(from: #require(URL(string: "https://example.com/a.png")))
         }
     }
 
     @Test("rejects non-image content")
-    func rejectsNonImageContent() async {
+    func rejectsNonImageContent() async throws {
         let sut = makeSUT(
             statusCode: 200,
             contentType: "text/html",
@@ -29,7 +29,7 @@ struct ImagePipelineTests {
         await #expect(
             throws: ImagePipelineError.invalidContentType("text/html")
         ) {
-            _ = try await sut.loadImage(from: URL(string: "https://example.com/a.png")!)
+            _ = try await sut.loadImage(from: #require(URL(string: "https://example.com/a.png")))
         }
     }
 
@@ -42,7 +42,7 @@ struct ImagePipelineTests {
         )
 
         let image = try await sut.loadImage(
-            from: URL(string: "https://example.com/a.png")!
+            from: #require(URL(string: "https://example.com/a.png"))
         )
 
         #expect(image.size.width > 0)
@@ -79,7 +79,7 @@ struct ImagePipelineTests {
     private var validPNGData: Data {
         Data(
             base64Encoded:
-                "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Wl2nWQAAAAASUVORK5CYII="
+            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Wl2nWQAAAAASUVORK5CYII="
         )!
     }
 }

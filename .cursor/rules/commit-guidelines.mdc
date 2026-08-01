@@ -1,9 +1,18 @@
 ---
 name: commit-guidelines
-description: This is a new rule
+description: PickOne commit message and verification requirements
 ---
 
 # Overview
+
+Use Conventional Commit subjects:
+
+```text
+<type>(<optional-scope>): <subject>
+```
+
+Allowed types: `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`,
+`chore`, and `ci`.
 
 ## Scope (recommended)
 
@@ -25,3 +34,11 @@ The scope should indicate the area of the codebase affected:
 - Use imperative mood
 - Wrap at 72 characters
 - Separate from subject with blank line
+
+## Verification
+
+- Every commit must pass the formatting and linting pre-commit hook.
+- Run `make verify` before handing off implementation work or opening a PR.
+- Never bypass hooks with `--no-verify`.
+- Follow `docs/process/github-app-authentication.md`; commits must use the
+  configured `Cesar-IA-Agent` identity.

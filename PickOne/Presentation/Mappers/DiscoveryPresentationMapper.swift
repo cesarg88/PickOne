@@ -10,7 +10,7 @@ enum DiscoveryPresentationMapper {
             isLoadingNextPage: false
         )
     }
-    
+
     private static func mapMovie(_ summary: MovieSummary) -> DiscoveryMovieItem {
         DiscoveryMovieItem(
             id: summary.id,

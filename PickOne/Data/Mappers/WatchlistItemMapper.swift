@@ -8,7 +8,6 @@
 import Foundation
 
 enum WatchlistItemMapper: Sendable {
-    
     /// Maps a persisted watchlist item to a domain WatchlistItem
     nonisolated static func toDomain(_ persisted: PersistedWatchlistItem) -> WatchlistItem {
         let movie = MovieSummary(
@@ -18,7 +17,7 @@ enum WatchlistItemMapper: Sendable {
             releaseYear: persisted.releaseYear,
             rating: persisted.rating
         )
-        
+
         return WatchlistItem(
             id: persisted.movieId,
             addedAt: persisted.addedAt,
@@ -26,7 +25,7 @@ enum WatchlistItemMapper: Sendable {
             movie: movie
         )
     }
-    
+
     /// Creates a persisted watchlist item from a movie summary
     nonisolated static func toPersisted(
         movie: MovieSummary,

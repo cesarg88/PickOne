@@ -28,7 +28,7 @@ enum MovieDetailPresentationMapper {
             isWatched: snapshot.isWatched
         )
     }
-    
+
     private static func formatRating(_ rating: Double, voteCount: Int) -> String {
         let formatter = NumberFormatter()
         formatter.numberStyle = .decimal

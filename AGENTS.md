@@ -42,3 +42,14 @@ Implementation agents must:
 - provide automated validation and a concise PR handoff
 - stop for clarification when a fix would change product behavior or public
   contracts
+
+## Mandatory Verification
+
+Before committing or handing off implementation work, read and follow
+[`docs/process/repository-verification.md`](docs/process/repository-verification.md).
+
+Every commit must pass the installed formatting and linting hook. Before
+handing off implementation work or opening a pull request, run `make verify`
+from the repository root. Do not bypass the hook with `--no-verify`. If a
+required tool or check is unavailable, report the blocker rather than claiming
+successful validation.

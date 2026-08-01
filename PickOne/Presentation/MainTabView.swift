@@ -10,7 +10,7 @@ import SwiftUI
 @MainActor
 struct MainTabView: View {
     let container: AppContainer
-    
+
     var body: some View {
         TabView {
             DiscoveryView(
@@ -25,7 +25,7 @@ struct MainTabView: View {
             .tabItem {
                 Label("Discover", systemImage: "film")
             }
-            
+
             SearchView(
                 model: container.searchViewModel,
                 getMovieDetail: container.getMovieDetail,
@@ -38,7 +38,7 @@ struct MainTabView: View {
             .tabItem {
                 Label("Search", systemImage: "magnifyingglass")
             }
-            
+
             RecommendationView(
                 model: container.recommendationViewModel,
                 getMovieDetail: container.getMovieDetail,
@@ -51,7 +51,7 @@ struct MainTabView: View {
             .tabItem {
                 Label("Ask", systemImage: "sparkles")
             }
-            
+
             WatchlistView(
                 model: container.watchlistViewModel,
                 getMovieDetail: container.getMovieDetail,

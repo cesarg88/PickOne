@@ -1,6 +1,6 @@
-import Testing
 import Foundation
 @testable import PickOne
+import Testing
 
 @MainActor
 @Suite("DiscoveryPresentationMapper Tests", .serialized)
@@ -9,15 +9,15 @@ struct DiscoveryPresentationMapperTests {
     func mapsSnapshotToPresentationModel() {
         let snapshot = DiscoverySnapshot(
             movies: [
-                MovieSummary(id: 1, title: "Movie A", posterPath: "/posterA.jpg", releaseYear: 2023, rating: 8.1)
+                MovieSummary(id: 1, title: "Movie A", posterPath: "/posterA.jpg", releaseYear: 2023, rating: 8.1),
             ],
             currentPage: 1,
             hasMorePages: true,
             asOf: Date()
         )
-        
+
         let model = DiscoveryPresentationMapper.map(snapshot: snapshot)
-        
+
         #expect(model.currentPage == 1)
         #expect(model.hasMorePages == true)
         #expect(model.movies.count == 1)

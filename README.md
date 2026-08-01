@@ -22,13 +22,17 @@ open product questions live in [`PRODUCT.md`](PRODUCT.md).
 
 See [SETUP.md](SETUP.md) for local configuration, tests, and pilot installation.
 
+After configuring the app, run `make setup` once to install the repository's
+versioned formatting and linting hooks. Use `make verify` before handing off a
+change or opening a pull request.
+
 ---
 
 ## Notes
 
 - Debug and Release credentials are injected through ignored xcconfig files.
-- Pull requests run secret scanning, tests, static analysis, a Release build,
-  and app-bundle inspection.
+- Pull requests run formatting and lint checks, secret scanning, tests, static
+  analysis, a Release build, and app-bundle inspection.
 - `PickOne Pilot` installs an optimized Release build from Xcode.
 - Ask still uses a local recommendation stub; the pilot validates product
   stability, not recommendation quality.

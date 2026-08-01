@@ -1,6 +1,6 @@
-import Testing
 import Foundation
 @testable import PickOne
+import Testing
 
 @MainActor
 @Suite("MovieDetailPresentationMapper Tests", .serialized)
@@ -23,7 +23,7 @@ struct MovieDetailPresentationMapperTests {
                 tagline: nil
             ),
             similar: [
-                MovieSummary(id: 2, title: "Movie B", posterPath: "/posterB.jpg", releaseYear: 2022, rating: 7.4)
+                MovieSummary(id: 2, title: "Movie B", posterPath: "/posterB.jpg", releaseYear: 2022, rating: 7.4),
             ],
             isInWatchlist: false,
             isWatched: false,
@@ -33,9 +33,9 @@ struct MovieDetailPresentationMapperTests {
             isCreditsUnavailable: true,
             asOf: Date()
         )
-        
+
         let model = MovieDetailPresentationMapper.map(snapshot: snapshot)
-        
+
         #expect(model.title == "Movie A")
         #expect(model.similar.count == 1)
         #expect(model.isCreditsUnavailable == true)
