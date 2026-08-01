@@ -2,39 +2,16 @@ import SwiftUI
 
 @MainActor
 struct MovieDetailView: View {
+    @Environment(\.openURL) private var openURL
+    @State private var handoffTask: Task<Void, Never>?
+
     let model: MovieDetailViewModel
     let imagePipeline: ImagePipeline
     let getMovieDetail: GetMovieDetailUseCase
-    let setMembership: SetWatchlistMembershipUseCase?
-    let setWatched: SetWatchedUseCase?
-    
-    /// Convenience initializer for backwards compatibility
-    init(
-        model: MovieDetailViewModel,
-        imagePipeline: ImagePipeline,
-        getMovieDetail: GetMovieDetailUseCase
-    ) {
-        self.model = model
-        self.imagePipeline = imagePipeline
-        self.getMovieDetail = getMovieDetail
-        self.setMembership = nil
-        self.setWatched = nil
-    }
-    
-    /// Full initializer with watchlist support
-    init(
-        model: MovieDetailViewModel,
-        imagePipeline: ImagePipeline,
-        getMovieDetail: GetMovieDetailUseCase,
-        setMembership: SetWatchlistMembershipUseCase?,
-        setWatched: SetWatchedUseCase?
-    ) {
-        self.model = model
-        self.imagePipeline = imagePipeline
-        self.getMovieDetail = getMovieDetail
-        self.setMembership = setMembership
-        self.setWatched = setWatched
-    }
+    let setMembership: SetWatchlistMembershipUseCase
+    let setWatched: SetWatchedUseCase
+    let checkAvailability: CheckMovieAvailabilityUseCase
+    let preparePlaybackOptions: PreparePlaybackOptionsUseCase
     
     var body: some View {
         ScrollView {
@@ -108,6 +85,21 @@ struct MovieDetailView: View {
                         topCastNames: data.topCastNames,
                         isUnavailable: data.isCreditsUnavailable
                     )
+
+                    AvailabilitySection(
+                        state: model.availabilityState,
+                        imagePipeline: imagePipeline,
+                        onOpenPlaybackOptions: {
+                            handoffTask?.cancel()
+                            handoffTask = Task {
+                                if let url = await model.preparePlaybackOptions() {
+                                    try? Task.checkCancellation()
+                                    guard !Task.isCancelled else { return }
+                                    openURL(url)
+                                }
+                            }
+                        }
+                    )
                     
                     if !data.similar.isEmpty || data.isSimilarUnavailable {
                         SimilarMoviesSection(
@@ -116,7 +108,9 @@ struct MovieDetailView: View {
                             isUnavailable: data.isSimilarUnavailable,
                             getMovieDetail: getMovieDetail,
                             setMembership: setMembership,
-                            setWatched: setWatched
+                            setWatched: setWatched,
+                            checkAvailability: checkAvailability,
+                            preparePlaybackOptions: preparePlaybackOptions
                         )
                     }
                 }
@@ -127,6 +121,10 @@ struct MovieDetailView: View {
         .navigationBarTitleDisplayMode(.inline)
         .task {
             await model.load()
+        }
+        .onDisappear {
+            handoffTask?.cancel()
+            handoffTask = nil
         }
         .alert(
             "Watchlist update failed",
@@ -140,6 +138,125 @@ struct MovieDetailView: View {
             }
         } message: {
             Text(model.actionErrorMessage ?? "Please try again.")
+        }
+    }
+}
+
+// MARK: - Availability
+
+@MainActor
+private struct AvailabilitySection: View {
+    let state: MovieAvailabilityViewState
+    let imagePipeline: ImagePipeline
+    let onOpenPlaybackOptions: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text(MovieAvailabilityViewState.title)
+                .font(.headline)
+
+            switch state {
+            case .loading:
+                ProgressView()
+                    .controlSize(.small)
+                    .accessibilityLabel("Loading availability")
+            case .eligible(let data):
+                providerLogos(data.providers)
+                Text(MovieAvailabilityViewState.attribution)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                if data.showsPlaybackOptionsAction {
+                    Button(
+                        MovieAvailabilityViewState.handoffTitle,
+                        action: onOpenPlaybackOptions
+                    )
+                    .font(.footnote.weight(.semibold))
+                }
+            case .ineligible:
+                Text(MovieAvailabilityViewState.ineligibleMessage)
+                    .font(.subheadline)
+                Text(MovieAvailabilityViewState.attribution)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            case .unknown:
+                Text(MovieAvailabilityViewState.unknownMessage)
+                    .font(.subheadline)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func providerLogos(
+        _ providers: [AvailabilityProviderPresentationModel]
+    ) -> some View {
+        LazyVGrid(
+            columns: [GridItem(.adaptive(minimum: 112), spacing: 12)],
+            alignment: .leading,
+            spacing: 10
+        ) {
+            ForEach(providers) { provider in
+                ProviderLogoView(
+                    provider: provider,
+                    imagePipeline: imagePipeline
+                )
+            }
+        }
+    }
+}
+
+@MainActor
+private struct ProviderLogoView: View {
+    private enum Phase {
+        case loading
+        case loaded(Image)
+        case fallback
+    }
+
+    let provider: AvailabilityProviderPresentationModel
+    let imagePipeline: ImagePipeline
+    @State private var phase: Phase = .loading
+
+    var body: some View {
+        Group {
+            switch phase {
+            case .loading:
+                ProgressView()
+                    .controlSize(.small)
+            case .loaded(let image):
+                image
+                    .resizable()
+                    .scaledToFit()
+            case .fallback:
+                Text(provider.name)
+                    .font(.footnote.weight(.semibold))
+                    .multilineTextAlignment(.center)
+            }
+        }
+        .frame(maxWidth: 112, minHeight: 44, maxHeight: 44)
+        .padding(.horizontal, 8)
+        .background(Color(uiColor: .secondarySystemBackground))
+        .clipShape(RoundedRectangle(cornerRadius: 8))
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(provider.name)
+        .task(id: provider.logoURL?.absoluteString ?? "") {
+            await load()
+        }
+    }
+
+    private func load() async {
+        guard let logoURL = provider.logoURL else {
+            phase = .fallback
+            return
+        }
+        phase = .loading
+        do {
+            let image = try await imagePipeline.loadImage(from: logoURL)
+            try Task.checkCancellation()
+            phase = .loaded(Image(uiImage: image))
+        } catch is CancellationError {
+            return
+        } catch {
+            phase = .fallback
         }
     }
 }
@@ -253,8 +370,10 @@ private struct SimilarMoviesSection: View {
     let pipeline: ImagePipeline
     let isUnavailable: Bool
     let getMovieDetail: GetMovieDetailUseCase
-    let setMembership: SetWatchlistMembershipUseCase?
-    let setWatched: SetWatchedUseCase?
+    let setMembership: SetWatchlistMembershipUseCase
+    let setWatched: SetWatchedUseCase
+    let checkAvailability: CheckMovieAvailabilityUseCase
+    let preparePlaybackOptions: PreparePlaybackOptionsUseCase
     
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -276,12 +395,16 @@ private struct SimilarMoviesSection: View {
                                     movieId: movie.id,
                                     getMovieDetail: getMovieDetail,
                                     setMembership: setMembership,
-                                    setWatched: setWatched
+                                    setWatched: setWatched,
+                                    checkAvailability: checkAvailability,
+                                    preparePlaybackOptions: preparePlaybackOptions
                                 ),
                                 imagePipeline: pipeline,
                                 getMovieDetail: getMovieDetail,
                                 setMembership: setMembership,
-                                setWatched: setWatched
+                                setWatched: setWatched,
+                                checkAvailability: checkAvailability,
+                                preparePlaybackOptions: preparePlaybackOptions
                             )
                         } label: {
                             VStack(alignment: .leading, spacing: 4) {

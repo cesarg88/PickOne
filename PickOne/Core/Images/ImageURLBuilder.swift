@@ -8,6 +8,10 @@ enum ImageURLBuilder {
     static func backdropURL(path: String?, size: AppConfiguration.ImageSize = .backdropLarge) -> URL? {
         buildURL(path: path, size: size)
     }
+
+    static func providerLogoURL(path: String?) -> URL? {
+        buildURL(path: path, size: .providerLogo)
+    }
     
     private static func buildURL(path: String?, size: AppConfiguration.ImageSize) -> URL? {
         guard let path, !path.isEmpty else { return nil }

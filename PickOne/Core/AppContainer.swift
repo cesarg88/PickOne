@@ -8,6 +8,8 @@ final class AppContainer {
     // MARK: - Use Cases - Discovery
     let getDiscoveryFeed: GetDiscoveryFeedUseCase
     let getMovieDetail: GetMovieDetailUseCase
+    let checkMovieAvailability: CheckMovieAvailabilityUseCase
+    let preparePlaybackOptions: PreparePlaybackOptionsUseCase
     
     // MARK: - Use Cases - Watchlist
     let getWatchlist: GetWatchlistUseCase
@@ -34,7 +36,11 @@ final class AppContainer {
             defaultTimeout: AppConfiguration.defaultRequestTimeout
         )
         
-        let movieClient = MovieCatalogClient(
+        let movieClient = TMDBMovieCatalogClient(
+            httpClient: httpClient,
+            apiKey: AppConfiguration.tmdbAPIKey
+        )
+        let availabilityClient = TMDBMovieAvailabilityClient(
             httpClient: httpClient,
             apiKey: AppConfiguration.tmdbAPIKey
         )
@@ -55,6 +61,11 @@ final class AppContainer {
             cacheStore: cacheStore,
             ttl: ttl
         )
+        let availabilityClock = SystemAvailabilityClock()
+        let availabilityRepository = DefaultAvailabilityRepository(
+            client: availabilityClient,
+            clock: availabilityClock
+        )
         
         let watchlistRepository = DefaultWatchlistRepository(
             localStore: localStore
@@ -71,6 +82,15 @@ final class AppContainer {
         self.getMovieDetail = GetMovieDetail(
             repository: movieRepository,
             watchlistRepository: watchlistRepository
+        )
+        let checkMovieAvailability = CheckMovieAvailability(
+            repository: availabilityRepository,
+            context: .spainPilot
+        )
+        self.checkMovieAvailability = checkMovieAvailability
+        self.preparePlaybackOptions = PreparePlaybackOptions(
+            checkAvailability: checkMovieAvailability,
+            clock: availabilityClock
         )
         
         // MARK: - Use Cases - Watchlist

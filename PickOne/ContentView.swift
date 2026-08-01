@@ -10,6 +10,8 @@ struct ContentView: View {
             getMovieDetail: container.getMovieDetail,
             setMembership: container.setWatchlistMembership,
             setWatched: container.setWatched,
+            checkAvailability: container.checkMovieAvailability,
+            preparePlaybackOptions: container.preparePlaybackOptions,
             imagePipeline: container.imagePipeline
         )
     }

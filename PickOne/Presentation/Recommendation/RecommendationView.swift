@@ -6,6 +6,8 @@ struct RecommendationView: View {
     let getMovieDetail: GetMovieDetailUseCase
     let setMembership: SetWatchlistMembershipUseCase
     let setWatched: SetWatchedUseCase
+    let checkAvailability: CheckMovieAvailabilityUseCase
+    let preparePlaybackOptions: PreparePlaybackOptionsUseCase
     let imagePipeline: ImagePipeline
     
     var body: some View {
@@ -174,6 +176,8 @@ struct RecommendationView: View {
                         getMovieDetail: getMovieDetail,
                         setMembership: setMembership,
                         setWatched: setWatched,
+                        checkAvailability: checkAvailability,
+                        preparePlaybackOptions: preparePlaybackOptions,
                         imagePipeline: imagePipeline
                     )
                 }
@@ -232,6 +236,8 @@ private struct RecommendationCard: View {
     let getMovieDetail: GetMovieDetailUseCase
     let setMembership: SetWatchlistMembershipUseCase
     let setWatched: SetWatchedUseCase
+    let checkAvailability: CheckMovieAvailabilityUseCase
+    let preparePlaybackOptions: PreparePlaybackOptionsUseCase
     let imagePipeline: ImagePipeline
     
     @State private var didAddToWatchlist = false
@@ -249,12 +255,16 @@ private struct RecommendationCard: View {
                         movieId: item.id,
                         getMovieDetail: getMovieDetail,
                         setMembership: setMembership,
-                        setWatched: setWatched
+                        setWatched: setWatched,
+                        checkAvailability: checkAvailability,
+                        preparePlaybackOptions: preparePlaybackOptions
                     ),
                     imagePipeline: imagePipeline,
                     getMovieDetail: getMovieDetail,
                     setMembership: setMembership,
-                    setWatched: setWatched
+                    setWatched: setWatched,
+                    checkAvailability: checkAvailability,
+                    preparePlaybackOptions: preparePlaybackOptions
                 )
             } label: {
                 HStack(spacing: 12) {

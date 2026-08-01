@@ -5,11 +5,18 @@ Active
 
 ## Core Structure
 
-PickOne uses a strict 3-layer architecture:
+PickOne uses a strict 3-layer architecture.
+
+Compile-time dependency direction:
+
+`Presentation -> Domain <- Data`
+
+Runtime control flow may proceed as:
 
 `Presentation -> Domain -> Data`
 
-Dependencies only move downward.
+Domain owns the contracts implemented by Data. Presentation and Data may depend
+on Domain, but Domain does not depend on either layer.
 
 ## Presentation
 

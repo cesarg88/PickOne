@@ -1,6 +1,6 @@
 import Foundation
 
-protocol MovieCatalogClientProtocol: Sendable {
+protocol MovieCatalogClient: Sendable {
     func getTopRated(page: Int) async throws -> MovieListResponseDTO
     func getMovieDetail(id: Int) async throws -> MovieDetailDTO
     func getSimilarMovies(id: Int, page: Int) async throws -> MovieListResponseDTO
@@ -8,7 +8,7 @@ protocol MovieCatalogClientProtocol: Sendable {
     func getMovieCredits(id: Int) async throws -> CreditsResponseDTO
 }
 
-final class MovieCatalogClient {
+final class TMDBMovieCatalogClient {
     
     private enum Endpoint {
         case topRated
@@ -44,7 +44,7 @@ final class MovieCatalogClient {
     }
 }
 
-extension MovieCatalogClient: MovieCatalogClientProtocol {
+extension TMDBMovieCatalogClient: MovieCatalogClient {
     func getTopRated(page: Int) async throws -> MovieListResponseDTO {
         return try await httpClient.request(
             endpoint: Endpoint.topRated.path,

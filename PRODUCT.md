@@ -3,7 +3,7 @@
 ## Document Status
 
 - Status: `Canonical`
-- Last product review: `2026-07-29`
+- Last product review: `2026-07-30`
 - Product name: `PickOne` is a codename until the decision experience is
   validated.
 
@@ -298,6 +298,11 @@ prioritize:
 A trailer is supporting evidence, not an autoplay surface. If no suitable
 trailer exists, omit the section gracefully.
 
+Availability is presented directly in Detail rather than hidden behind a
+handoff action. Detail content and availability may load in parallel;
+availability has its own loading and failure state and must not block otherwise
+usable movie information.
+
 ### 7. Availability
 
 Availability is a recommendation eligibility rule for the first product
@@ -324,6 +329,25 @@ an allowlisted selected provider under the active region's `flatrate` entries.
 Availability data must carry required TMDB and JustWatch attribution. When a
 direct provider deep link is unavailable, the product must not manufacture or
 imply one.
+
+Availability checks distinguish three outcomes:
+
+- `eligible` — valid current evidence contains at least one selected,
+  allowlisted provider under the active region's `flatrate` entries
+- `ineligible` — valid regional evidence exists, but it does not satisfy the
+  selected-provider eligibility rule
+- `unknown` — regional evidence could not be obtained or verified
+
+Missing evidence, an absent active-region entry, source failure, and invalid
+data are `unknown`, not proof that a movie is unavailable. Unknown titles fail
+closed for primary recommendation eligibility while remaining distinct from
+ineligible titles.
+
+Detail shows every selected provider for which eligibility is verified. The
+provider logos communicate availability and are not interactive when PickOne
+cannot open the corresponding service directly. A separate secondary handoff
+may open only the country-specific watch URL returned by TMDB and must clearly
+identify TMDB as its destination.
 
 ### 8. Supporting surfaces
 
@@ -498,6 +522,18 @@ As of the last review:
   handoff. It must not be presented as a direct provider link.
 - Availability copy must identify JustWatch as the source, state that
   availability may change, and preserve required TMDB attribution.
+- Movie Detail presents availability immediately in an independent
+  `Available on` section rather than requiring a handoff action to discover it.
+- Detail shows all selected providers verified under `ES.flatrate`; provider
+  logos are informational and non-interactive.
+- Availability loading and failure never block otherwise usable Detail content.
+- Valid regional evidence produces either `eligible` or `ineligible`; missing,
+  invalid, or unobtainable regional evidence produces `unknown`.
+- The pilot uses the exact English copy and behavior bounded by Milestone 4,
+  including brief JustWatch attribution beside availability and full TMDB and
+  JustWatch attribution in About.
+- The TMDB regional watch page is exposed only as a secondary
+  `View playback options on TMDB` action, never as a provider deep link.
 
 ## Open Product Questions
 
@@ -506,9 +542,7 @@ These require explicit product decisions before their related implementation:
 1. What exact title set and selection logic should calibrate initial taste?
 2. What confirmation language best distinguishes intent to watch from verified
    viewing?
-3. What exact availability caveat and attribution presentation preserves trust
-   without adding clutter?
-4. Which deterministic scoring and diversity rules produce the first
+3. Which deterministic scoring and diversity rules produce the first
    personalized recommendation set?
 
 Open questions are not permission for implementation agents to invent behavior.
@@ -516,6 +550,10 @@ They must be resolved in product steering or explicitly bounded by a milestone.
 
 ## Related Documents
 
+- [`docs/milestones/milestone-4-availability-foundation.md`](docs/milestones/milestone-4-availability-foundation.md)
+  is the active specification for availability behavior.
+- [`docs/decisions/adr-009-availability-boundary-verification.md`](docs/decisions/adr-009-availability-boundary-verification.md)
+  defines the availability architecture boundary and verification policy.
 - [`docs/product/product-roadmap.md`](docs/product/product-roadmap.md) tracks
   delivery sequence.
 - [`docs/product/improvement-backlog.md`](docs/product/improvement-backlog.md)

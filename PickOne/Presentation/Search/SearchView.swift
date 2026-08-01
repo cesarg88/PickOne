@@ -13,6 +13,8 @@ struct SearchView: View {
     let getMovieDetail: GetMovieDetailUseCase
     let setMembership: SetWatchlistMembershipUseCase
     let setWatched: SetWatchedUseCase
+    let checkAvailability: CheckMovieAvailabilityUseCase
+    let preparePlaybackOptions: PreparePlaybackOptionsUseCase
     let imagePipeline: ImagePipeline
     
     var body: some View {
@@ -113,12 +115,16 @@ struct SearchView: View {
                             movieId: item.id,
                             getMovieDetail: getMovieDetail,
                             setMembership: setMembership,
-                            setWatched: setWatched
+                            setWatched: setWatched,
+                            checkAvailability: checkAvailability,
+                            preparePlaybackOptions: preparePlaybackOptions
                         ),
                         imagePipeline: imagePipeline,
                         getMovieDetail: getMovieDetail,
                         setMembership: setMembership,
-                        setWatched: setWatched
+                        setWatched: setWatched,
+                        checkAvailability: checkAvailability,
+                        preparePlaybackOptions: preparePlaybackOptions
                     )
                 } label: {
                     SearchResultRow(item: item, imagePipeline: imagePipeline)

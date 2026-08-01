@@ -1,12 +1,12 @@
 import Foundation
 
 final class DefaultMovieRepository {
-    private let client: MovieCatalogClientProtocol
+    private let client: MovieCatalogClient
     private let cacheStore: CacheStore
     private let ttl: CacheTTL
     private let inFlight = InFlightStore()
     
-    init(client: MovieCatalogClientProtocol, cacheStore: CacheStore, ttl: CacheTTL) {
+    init(client: MovieCatalogClient, cacheStore: CacheStore, ttl: CacheTTL) {
         self.client = client
         self.cacheStore = cacheStore
         self.ttl = ttl

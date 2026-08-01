@@ -1,12 +1,12 @@
 import Foundation
 
-protocol AIRecommendationClientProtocol: Sendable {
+protocol RecommendationClient: Sendable {
     func getRecommendations(
         request: AIRecommendationRequestDTO
     ) async throws -> AIRecommendationResponseDTO
 }
 
-final class AIRecommendationClient {
+final class HTTPRecommendationClient {
     private let httpClient: HTTPClient
     private let endpointPath: String
     private let apiKey: String?
@@ -25,7 +25,7 @@ final class AIRecommendationClient {
     }
 }
 
-extension AIRecommendationClient: AIRecommendationClientProtocol {
+extension HTTPRecommendationClient: RecommendationClient {
     func getRecommendations(
         request: AIRecommendationRequestDTO
     ) async throws -> AIRecommendationResponseDTO {

@@ -6,6 +6,8 @@ struct DiscoveryView: View {
     let getMovieDetail: GetMovieDetailUseCase
     let setMembership: SetWatchlistMembershipUseCase
     let setWatched: SetWatchedUseCase
+    let checkAvailability: CheckMovieAvailabilityUseCase
+    let preparePlaybackOptions: PreparePlaybackOptionsUseCase
     let imagePipeline: ImagePipeline
     @State private var isShowingAbout = false
     
@@ -42,12 +44,16 @@ struct DiscoveryView: View {
                                             movieId: movie.id,
                                             getMovieDetail: getMovieDetail,
                                             setMembership: setMembership,
-                                            setWatched: setWatched
+                                            setWatched: setWatched,
+                                            checkAvailability: checkAvailability,
+                                            preparePlaybackOptions: preparePlaybackOptions
                                         ),
                                         imagePipeline: imagePipeline,
                                         getMovieDetail: getMovieDetail,
                                         setMembership: setMembership,
-                                        setWatched: setWatched
+                                        setWatched: setWatched,
+                                        checkAvailability: checkAvailability,
+                                        preparePlaybackOptions: preparePlaybackOptions
                                     )
                                 } label: {
                                     PosterCardView(movie: movie, pipeline: imagePipeline)

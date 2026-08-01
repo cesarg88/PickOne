@@ -23,6 +23,11 @@ final class PickOneSmokeTests: XCTestCase {
                 "This product uses the TMDB API but is not endorsed or certified by TMDB."
             ].exists
         )
+        XCTAssertTrue(
+            app.staticTexts[
+                "Streaming availability data is provided by JustWatch."
+            ].exists
+        )
         app.buttons["Done"].tap()
 
         for tab in tabs {

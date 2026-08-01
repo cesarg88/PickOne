@@ -7,7 +7,7 @@ import Foundation
 struct RecommendationRepositoryTests {
     @Test("maps valid recommendations into candidate result")
     func mapsValidRecommendationsIntoCandidateResult() async throws {
-        let client = MockAIRecommendationClient(response: AIRecommendationResponseDTO(
+        let client = MockRecommendationClient(response: AIRecommendationResponseDTO(
             recommendations: [
                 AIRecommendationItemDTO(
                     id: 157336,
@@ -46,7 +46,7 @@ struct RecommendationRepositoryTests {
     
     @Test("filters unusable recommendations without tmdb identity")
     func filtersUnusableRecommendationsWithoutTMDBIdentity() async throws {
-        let client = MockAIRecommendationClient(response: AIRecommendationResponseDTO(
+        let client = MockRecommendationClient(response: AIRecommendationResponseDTO(
             recommendations: [
                 AIRecommendationItemDTO(
                     id: nil,
@@ -91,7 +91,7 @@ struct RecommendationRepositoryTests {
     
     @Test("propagates client failure")
     func propagatesClientFailure() async throws {
-        let client = MockAIRecommendationClient(error: .timeout)
+        let client = MockRecommendationClient(error: .timeout)
         let sut = DefaultRecommendationRepository(client: client)
         
         await #expect(throws: NetworkError.self) {
@@ -103,7 +103,7 @@ struct RecommendationRepositoryTests {
     }
 }
 
-private actor MockAIRecommendationClient: AIRecommendationClientProtocol {
+private actor MockRecommendationClient: RecommendationClient {
     enum MockError: Equatable, Sendable {
         case timeout
     }

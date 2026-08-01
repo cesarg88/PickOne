@@ -15,6 +15,9 @@ Product decisions and delegated implementation follow the
 Current Phase:
 Phase 3 — Decision Product MVP
 
+Status:
+In Progress
+
 ## Phase 1 — Application Foundation & Feature Prototype
 
 Status: Complete
@@ -107,18 +110,18 @@ trust restrictions.
 
 ## Phase 3 — Decision Product MVP
 
-Status:
-Planning
-
 ### Milestone 4
 
-Availability Foundation
+[Availability Foundation](../milestones/milestone-4-availability-foundation.md)
+
+Status:
+In Progress
 
 Purpose:
 
-Add the allowlisted Spain providers, TMDB candidate discovery, exact
-movie-level eligibility verification, freshness handling, attribution, and
-fallback watch-page handoff.
+Add the allowlisted Spain providers, exact movie-level eligibility
+verification, freshness handling, direct Movie Detail presentation,
+attribution, and the secondary fallback watch-page handoff.
 
 ### Milestone 5
 
@@ -137,8 +140,10 @@ Three for Tonight
 
 Purpose:
 
-Define and implement the first deterministic decision engine, a persistent
-three-title Home set, honest smaller sets, reasons, and explicit refresh.
+Define and implement TMDB candidate generation, the first deterministic
+decision engine, a persistent three-title Home set, honest smaller sets,
+reasons, and explicit refresh. Discover results remain candidates until
+Milestone 4 verification proves exact movie-level eligibility.
 
 ### Utility Checkpoint after Milestone 6
 
