@@ -1,6 +1,6 @@
 import Foundation
-import Testing
 @testable import PickOne
+import Testing
 
 @Suite("PreparePlaybackOptions tests")
 struct PreparePlaybackOptionsTests {
@@ -8,7 +8,7 @@ struct PreparePlaybackOptionsTests {
         "fresh evidence opens without revalidation",
         arguments: [
             AvailabilityFreshness.interval - 1,
-            AvailabilityFreshness.interval
+            AvailabilityFreshness.interval,
         ]
     )
     func freshEvidenceOpens(age: TimeInterval) async throws {
@@ -28,7 +28,7 @@ struct PreparePlaybackOptionsTests {
         )
 
         #expect(
-            result == .open(URL(string: AvailabilityTestFixtures.tmdbURL)!)
+            try result == .open(#require(URL(string: AvailabilityTestFixtures.tmdbURL)))
         )
         #expect(await checker.callCount == 0)
     }
@@ -58,7 +58,7 @@ struct PreparePlaybackOptionsTests {
             currentOutcome: stale
         )
 
-        #expect(result == .open(URL(string: newURL)!))
+        #expect(try result == .open(#require(URL(string: newURL))))
         #expect(await checker.policies == [.reloadIgnoringCache])
     }
 
@@ -98,7 +98,7 @@ struct PreparePlaybackOptionsTests {
         arguments: [
             nil,
             "http://www.themoviedb.org/movie/42/watch",
-            "https://example.com/movie/42/watch"
+            "https://example.com/movie/42/watch",
         ] as [String?]
     )
     func invalidURLIsUnavailable(watchURL: String?) async throws {
@@ -165,7 +165,7 @@ struct PreparePlaybackOptionsTests {
                     name: "Netflix",
                     logoPath: "/netflix.png",
                     productOrder: 1
-                )
+                ),
             ],
             evidence: evidence
         )

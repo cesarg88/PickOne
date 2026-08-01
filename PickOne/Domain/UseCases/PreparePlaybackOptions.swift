@@ -23,7 +23,7 @@ struct PreparePlaybackOptions: PreparePlaybackOptionsUseCase {
         movieID: Int,
         currentOutcome: AvailabilityOutcome
     ) async throws -> PlaybackOptionsPreparation {
-        guard case .eligible(_, let evidence) = currentOutcome else {
+        guard case let .eligible(_, evidence) = currentOutcome else {
             return .unavailable
         }
 
@@ -35,17 +35,17 @@ struct PreparePlaybackOptions: PreparePlaybackOptionsUseCase {
             movieID: movieID,
             policy: .reloadIgnoringCache
         )
-        guard case .eligible(_, let refreshedEvidence) = refreshed else {
+        guard case let .eligible(_, refreshedEvidence) = refreshed else {
             return .updatedOutcome(refreshed)
         }
 
         switch handoff(from: refreshedEvidence) {
-        case .open(let url):
-            return .open(url)
-        case .unavailable:
-            return .updatedOutcome(refreshed)
-        case .updatedOutcome:
-            return .updatedOutcome(refreshed)
+            case let .open(url):
+                return .open(url)
+            case .unavailable:
+                return .updatedOutcome(refreshed)
+            case .updatedOutcome:
+                return .updatedOutcome(refreshed)
         }
     }
 

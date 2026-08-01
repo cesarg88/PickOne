@@ -16,13 +16,12 @@ protocol SetWatchlistMembershipUseCase: Sendable {
 }
 
 final class SetWatchlistMembership: SetWatchlistMembershipUseCase, Sendable {
-    
     private let repository: WatchlistRepository
-    
+
     init(repository: WatchlistRepository) {
         self.repository = repository
     }
-    
+
     func execute(movie: MovieSummary, isInWatchlist: Bool) throws {
         if isInWatchlist {
             // Check if already in watchlist - if so, silently succeed (idempotent)

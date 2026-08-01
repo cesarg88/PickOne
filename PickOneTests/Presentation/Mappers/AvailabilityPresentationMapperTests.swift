@@ -1,16 +1,16 @@
 import Foundation
-import Testing
 @testable import PickOne
+import Testing
 
 @MainActor
 @Suite("AvailabilityPresentationMapper tests")
 struct AvailabilityPresentationMapperTests {
     @Test("eligible providers map logos, fallback names, order, and handoff")
-    func mapsEligibleProviders() throws {
+    func mapsEligibleProviders() {
         let evidence = AvailabilityTestFixtures.verifiedEvidence(
             flatrate: [
                 AvailabilityTestFixtures.offer(id: 8),
-                AvailabilityTestFixtures.offer(id: 119, logoPath: nil)
+                AvailabilityTestFixtures.offer(id: 119, logoPath: nil),
             ]
         )
         let outcome = AvailabilityOutcome.eligible(
@@ -26,20 +26,20 @@ struct AvailabilityPresentationMapperTests {
                     name: "Amazon Prime Video",
                     logoPath: nil,
                     productOrder: 2
-                )
+                ),
             ],
             evidence: evidence
         )
 
         let state = AvailabilityPresentationMapper.map(outcome: outcome)
 
-        guard case .eligible(let data) = state else {
+        guard case let .eligible(data) = state else {
             Issue.record("Expected eligible presentation")
             return
         }
         #expect(data.providers.map(\.name) == [
             "Netflix",
-            "Amazon Prime Video"
+            "Amazon Prime Video",
         ])
         #expect(
             data.providers[0].logoURL?.absoluteString
@@ -62,14 +62,14 @@ struct AvailabilityPresentationMapperTests {
                     name: "Netflix",
                     logoPath: nil,
                     productOrder: 1
-                )
+                ),
             ],
             evidence: evidence
         )
 
         let state = AvailabilityPresentationMapper.map(outcome: outcome)
 
-        guard case .eligible(let data) = state else {
+        guard case let .eligible(data) = state else {
             Issue.record("Expected eligible presentation")
             return
         }

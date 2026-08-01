@@ -23,7 +23,7 @@ final class MockURLProtocol: URLProtocol {
     )
 
     // MARK: - Mock Configuration
-    
+
     /// The handler that processes intercepted requests and returns mock responses.
     /// Set this before running tests to define expected behavior.
     static var requestHandler: RequestHandler? {
@@ -34,12 +34,12 @@ final class MockURLProtocol: URLProtocol {
             state.withLock { $0.requestHandler = newValue }
         }
     }
-    
+
     /// Tracks all requests made during tests for verification.
     static var capturedRequests: [URLRequest] {
         state.withLock { $0.capturedRequests }
     }
-    
+
     /// Resets all mock state. Call this in test teardown.
     static func reset() {
         state.withLock {
@@ -47,18 +47,20 @@ final class MockURLProtocol: URLProtocol {
             $0.capturedRequests = []
         }
     }
-    
+
     // MARK: - URLProtocol Overrides
-    
+
+    // swiftlint:disable:next static_over_final_class - URLProtocol requires this class override point
     override class func canInit(with request: URLRequest) -> Bool {
         // Intercept all requests
-        return true
+        true
     }
-    
+
+    // swiftlint:disable:next static_over_final_class - URLProtocol requires this class override point
     override class func canonicalRequest(for request: URLRequest) -> URLRequest {
-        return request
+        request
     }
-    
+
     override func startLoading() {
         let handler = MockURLProtocol.state.withLock { state in
             state.capturedRequests.append(request)
@@ -68,21 +70,21 @@ final class MockURLProtocol: URLProtocol {
         guard let handler else {
             fatalError("MockURLProtocol.requestHandler not set. Set it before running tests.")
         }
-        
+
         do {
             let (response, data) = try handler(request)
-            
+
             // Send response to client
             client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
             client?.urlProtocol(self, didLoad: data)
             client?.urlProtocolDidFinishLoading(self)
-            
+
         } catch {
             // Send error to client
             client?.urlProtocol(self, didFailWithError: error)
         }
     }
-    
+
     override func stopLoading() {
         // Required override, but nothing to do here
     }
@@ -91,14 +93,13 @@ final class MockURLProtocol: URLProtocol {
 // MARK: - Test Helpers
 
 extension MockURLProtocol {
-    
     /// Creates a URLSession configured to use this mock protocol.
     static func createMockSession() -> URLSession {
         let configuration = URLSessionConfiguration.ephemeral
         configuration.protocolClasses = [MockURLProtocol.self]
         return URLSession(configuration: configuration)
     }
-    
+
     /// Convenience method to set up a successful JSON response.
     static func setSuccessResponse(
         data: Data,
@@ -115,14 +116,14 @@ extension MockURLProtocol {
             return (response, data)
         }
     }
-    
+
     /// Convenience method to set up an error response.
     static func setErrorResponse(_ error: any Error & Sendable) {
         requestHandler = { _ in
             throw error
         }
     }
-    
+
     /// Convenience method to set up an HTTP error response.
     static func setHTTPErrorResponse(statusCode: Int, data: Data = Data()) {
         requestHandler = { request in

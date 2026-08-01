@@ -16,7 +16,7 @@ struct WatchlistView: View {
     let checkAvailability: CheckMovieAvailabilityUseCase
     let preparePlaybackOptions: PreparePlaybackOptionsUseCase
     let imagePipeline: ImagePipeline
-    
+
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
@@ -31,19 +31,19 @@ struct WatchlistView: View {
                 }
                 .pickerStyle(.segmented)
                 .padding()
-                
+
                 // Content
                 Group {
                     switch model.state {
-                    case .idle:
-                        ProgressView()
-                            .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        
-                    case .empty(let filter):
-                        emptyView(for: filter)
-                        
-                    case .loaded(let data):
-                        watchlistContent(data: data)
+                        case .idle:
+                            ProgressView()
+                                .frame(maxWidth: .infinity, maxHeight: .infinity)
+
+                        case let .empty(filter):
+                            emptyView(for: filter)
+
+                        case let .loaded(data):
+                            watchlistContent(data: data)
                     }
                 }
             }
@@ -66,9 +66,9 @@ struct WatchlistView: View {
             }
         }
     }
-    
+
     // MARK: - Subviews
-    
+
     @ViewBuilder
     private func emptyView(for filter: WatchlistFilter) -> some View {
         let (title, message) = emptyStateContent(for: filter)
@@ -80,23 +80,22 @@ struct WatchlistView: View {
                 action: nil
             )
             .padding(.top, 40)
-            
+
             Spacer()
         }
     }
-    
+
     private func emptyStateContent(for filter: WatchlistFilter) -> (title: String, message: String) {
         switch filter {
-        case .all:
-            return ("Your watchlist is empty", "Add movies from discovery or search to start building your list.")
-        case .toWatch:
-            return ("Nothing to watch", "Movies you haven't watched yet will appear here.")
-        case .watched:
-            return ("No watched movies", "Movies you've marked as watched will appear here.")
+            case .all:
+                ("Your watchlist is empty", "Add movies from discovery or search to start building your list.")
+            case .toWatch:
+                ("Nothing to watch", "Movies you haven't watched yet will appear here.")
+            case .watched:
+                ("No watched movies", "Movies you've marked as watched will appear here.")
         }
     }
-    
-    @ViewBuilder
+
     private func watchlistContent(data: WatchlistPresentationModel) -> some View {
         List {
             ForEach(data.items) { item in
@@ -151,7 +150,7 @@ struct WatchlistView: View {
 private struct WatchlistRow: View {
     let item: WatchlistItemPresentation
     let imagePipeline: ImagePipeline
-    
+
     var body: some View {
         HStack(spacing: 12) {
             // Poster
@@ -164,20 +163,20 @@ private struct WatchlistRow: View {
             .frame(width: 60, height: 90)
             .clipped()
             .cornerRadius(6)
-            
+
             // Info
             VStack(alignment: .leading, spacing: 4) {
                 Text(item.title)
                     .font(.headline)
                     .lineLimit(2)
-                
+
                 HStack(spacing: 8) {
                     if let year = item.releaseYear {
                         Text(year)
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
                     }
-                    
+
                     HStack(spacing: 2) {
                         Image(systemName: "star.fill")
                             .foregroundStyle(.yellow)
@@ -187,25 +186,25 @@ private struct WatchlistRow: View {
                             .foregroundStyle(.secondary)
                     }
                 }
-                
+
                 HStack(spacing: 4) {
                     Image(systemName: item.isWatched ? "eye.fill" : "bookmark.fill")
                         .font(.caption)
                         .foregroundStyle(item.isWatched ? .green : .blue)
-                    
+
                     Text(item.isWatched ? "Watched" : "To Watch")
                         .font(.caption)
                         .foregroundStyle(.secondary)
-                    
+
                     Text("·")
                         .foregroundStyle(.secondary)
-                    
+
                     Text(item.addedDate)
                         .font(.caption)
                         .foregroundStyle(.tertiary)
                 }
             }
-            
+
             Spacer()
         }
         .padding(.vertical, 4)

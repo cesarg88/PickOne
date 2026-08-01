@@ -6,11 +6,11 @@ protocol GetDiscoveryFeedUseCase {
 
 final class GetDiscoveryFeed: GetDiscoveryFeedUseCase {
     private let repository: MovieRepository
-    
+
     init(repository: MovieRepository) {
         self.repository = repository
     }
-    
+
     func execute(page: Int, policy: CachePolicy) async throws -> CacheResult<DiscoverySnapshot> {
         let result = try await repository.getTopRated(page: page, policy: policy)
         let snapshot = DiscoverySnapshot(

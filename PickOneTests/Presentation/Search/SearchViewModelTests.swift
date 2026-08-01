@@ -1,6 +1,6 @@
 import Foundation
-import Testing
 @testable import PickOne
+import Testing
 
 @MainActor
 @Suite("SearchViewModel Tests", .serialized)
@@ -25,7 +25,7 @@ struct SearchViewModelTests {
             with: .success(snapshot(query: "second", movieID: 2))
         )
         await waitUntil {
-            guard case .results(let model) = sut.state else { return false }
+            guard case let .results(model) = sut.state else { return false }
             return model.query == "second"
         }
 
@@ -36,7 +36,7 @@ struct SearchViewModelTests {
         )
         await Task.yield()
 
-        guard case .results(let model) = sut.state else {
+        guard case let .results(model) = sut.state else {
             Issue.record("Expected latest results")
             return
         }
@@ -77,7 +77,7 @@ struct SearchViewModelTests {
             with: .success(snapshot(query: "second", movieID: 2))
         )
         await waitUntil {
-            guard case .results(let model) = sut.state else { return false }
+            guard case let .results(model) = sut.state else { return false }
             return model.query == "second"
         }
 
@@ -90,7 +90,7 @@ struct SearchViewModelTests {
         )
         await paginationTask.value
 
-        guard case .results(let model) = sut.state else {
+        guard case let .results(model) = sut.state else {
             Issue.record("Expected new query results")
             return
         }
@@ -113,7 +113,7 @@ struct SearchViewModelTests {
                     posterPath: nil,
                     releaseYear: 2026,
                     rating: 7
-                )
+                ),
             ],
             currentPage: page,
             totalPages: totalPages,
@@ -124,7 +124,7 @@ struct SearchViewModelTests {
     private func waitUntil(
         _ condition: @escaping @MainActor () -> Bool
     ) async {
-        for _ in 0..<100 where !condition() {
+        for _ in 0 ..< 100 where !condition() {
             await Task.yield()
         }
         #expect(condition())
@@ -132,7 +132,10 @@ struct SearchViewModelTests {
 }
 
 private struct SearchHistoryStub: SearchHistoryUseCase {
-    func getHistory() -> [String] { [] }
+    func getHistory() -> [String] {
+        []
+    }
+
     func clear() {}
 }
 

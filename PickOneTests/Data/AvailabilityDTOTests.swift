@@ -1,6 +1,6 @@
 import Foundation
-import Testing
 @testable import PickOne
+import Testing
 
 @Suite("Availability DTO and mapping tests")
 struct AvailabilityDTOTests {
@@ -118,7 +118,7 @@ struct AvailabilityDTOTests {
                     buy: [.init(providerId: 11, providerName: "B", logoPath: nil)],
                     ads: [.init(providerId: 12, providerName: "A", logoPath: nil)],
                     free: [.init(providerId: 13, providerName: "F", logoPath: nil)]
-                )
+                ),
             ]
         )
 

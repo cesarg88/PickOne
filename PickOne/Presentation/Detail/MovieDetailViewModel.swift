@@ -19,11 +19,11 @@ final class MovieDetailViewModel {
     private let preparePlaybackOptionsUseCase: PreparePlaybackOptionsUseCase
     private var activeLoadID = UUID()
     private var availabilityOutcome: AvailabilityOutcome?
-    
+
     var state: MovieDetailViewState = .idle
     var availabilityState: MovieAvailabilityViewState = .loading
     var actionErrorMessage: String?
-    
+
     init(
         movieId: Int,
         getMovieDetail: GetMovieDetailUseCase,
@@ -37,11 +37,11 @@ final class MovieDetailViewModel {
         self.setMembership = setMembership
         self.setWatched = setWatched
         self.checkAvailability = checkAvailability
-        self.preparePlaybackOptionsUseCase = preparePlaybackOptions
+        preparePlaybackOptionsUseCase = preparePlaybackOptions
     }
-    
+
     // MARK: - Load
-    
+
     func load() async {
         let loadID = UUID()
         activeLoadID = loadID
@@ -113,16 +113,16 @@ final class MovieDetailViewModel {
             guard activeLoadID == loadID else { return nil }
 
             switch preparation {
-            case .open(let url):
-                return url
-            case .updatedOutcome(let outcome):
-                self.availabilityOutcome = outcome
-                availabilityState = AvailabilityPresentationMapper.map(
-                    outcome: outcome
-                )
-                return nil
-            case .unavailable:
-                return nil
+                case let .open(url):
+                    return url
+                case let .updatedOutcome(outcome):
+                    self.availabilityOutcome = outcome
+                    availabilityState = AvailabilityPresentationMapper.map(
+                        outcome: outcome
+                    )
+                    return nil
+                case .unavailable:
+                    return nil
             }
         } catch is CancellationError {
             return nil
@@ -130,12 +130,12 @@ final class MovieDetailViewModel {
             return nil
         }
     }
-    
+
     // MARK: - Watchlist Actions
-    
+
     func toggleWatchlist() {
-        guard case .loaded(var model) = state else { return }
-        
+        guard case var .loaded(model) = state else { return }
+
         let movie = MovieSummary(
             id: model.id,
             title: model.title,
@@ -143,7 +143,7 @@ final class MovieDetailViewModel {
             releaseYear: extractYear(from: model.releaseYear),
             rating: extractRating(from: model.rating)
         )
-        
+
         do {
             try setMembership.execute(movie: movie, isInWatchlist: !model.isInWatchlist)
             model.isInWatchlist.toggle()
@@ -155,11 +155,11 @@ final class MovieDetailViewModel {
             actionErrorMessage = error.localizedDescription
         }
     }
-    
+
     func toggleWatched() {
-        guard case .loaded(var model) = state,
+        guard case var .loaded(model) = state,
               model.isInWatchlist else { return }
-        
+
         do {
             try setWatched.execute(movieId: model.id, isWatched: !model.isWatched)
             model.isWatched.toggle()
@@ -168,9 +168,9 @@ final class MovieDetailViewModel {
             actionErrorMessage = error.localizedDescription
         }
     }
-    
+
     // MARK: - Helpers
-    
+
     private func extractPosterPath(from url: URL?) -> String? {
         guard let url else { return nil }
         // URL format: https://image.tmdb.org/t/p/w500/path.jpg
@@ -181,12 +181,12 @@ final class MovieDetailViewModel {
         }
         return path
     }
-    
+
     private func extractYear(from yearText: String?) -> Int? {
         guard let yearText else { return nil }
         return Int(yearText)
     }
-    
+
     private func extractRating(from ratingText: String) -> Double {
         // Rating format: "7.5 (1,234)"
         let components = ratingText.components(separatedBy: " ")

@@ -1,7 +1,7 @@
 import Foundation
+@testable import PickOne
 import Synchronization
 import Testing
-@testable import PickOne
 
 @Suite("AvailabilityRepository tests")
 struct AvailabilityRepositoryTests {
@@ -10,7 +10,7 @@ struct AvailabilityRepositoryTests {
         arguments: [
             (AvailabilityFreshness.interval - 1, 1),
             (AvailabilityFreshness.interval, 1),
-            (AvailabilityFreshness.interval + 1, 2)
+            (AvailabilityFreshness.interval + 1, 2),
         ]
     )
     func cacheFreshnessBoundary(
@@ -90,14 +90,14 @@ struct AvailabilityRepositoryTests {
                 results: [
                     "ES": AvailabilityTestFixtures.regionDTO(
                         flatrate: [
-                            AvailabilityTestFixtures.providerDTO(id: 8)
+                            AvailabilityTestFixtures.providerDTO(id: 8),
                         ]
                     ),
                     "FR": AvailabilityTestFixtures.regionDTO(
                         flatrate: [
-                            AvailabilityTestFixtures.providerDTO(id: 337)
+                            AvailabilityTestFixtures.providerDTO(id: 337),
                         ]
-                    )
+                    ),
                 ]
             )
         }
@@ -167,7 +167,7 @@ struct AvailabilityRepositoryTests {
         let gate = AvailabilityRequestGate()
         let client = MockMovieAvailabilityClient(gate: gate) {
             movieID,
-            _ in
+                _ in
             Self.response(movieID: movieID, providerID: 8)
         }
         let sut = DefaultAvailabilityRepository(
@@ -195,7 +195,7 @@ struct AvailabilityRepositoryTests {
                 policy: .useFreshCache
             )
         }
-        for _ in 0..<1_000 {
+        for _ in 0 ..< 1000 {
             guard await sut.activeWaiterCount(
                 movieID: 42,
                 region: .spain
@@ -212,7 +212,7 @@ struct AvailabilityRepositoryTests {
         )
 
         first.cancel()
-        for _ in 0..<1_000 {
+        for _ in 0 ..< 1000 {
             guard await sut.activeWaiterCount(
                 movieID: 42,
                 region: .spain
@@ -320,9 +320,9 @@ struct AvailabilityRepositoryTests {
             results: [
                 "ES": AvailabilityTestFixtures.regionDTO(
                     flatrate: [
-                        AvailabilityTestFixtures.providerDTO(id: providerID)
+                        AvailabilityTestFixtures.providerDTO(id: providerID),
                     ]
-                )
+                ),
             ]
         )
     }
@@ -372,7 +372,7 @@ private actor MockMovieAvailabilityClient: MovieAvailabilityClient {
     ) async throws -> WatchProvidersResponseDTO {
         let index = callCount
         callCount += 1
-        for _ in 0..<yieldsBeforeResponse {
+        for _ in 0 ..< yieldsBeforeResponse {
             await Task.yield()
         }
         if let gate {

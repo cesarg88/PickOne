@@ -1,6 +1,6 @@
 import Foundation
-import Testing
 @testable import PickOne
+import Testing
 
 @Suite("TMDBMovieAvailabilityClient tests", .serialized)
 struct TMDBMovieAvailabilityClientTests {

@@ -12,34 +12,35 @@ enum DiscoveryViewState: Equatable {
 @Observable
 final class DiscoveryViewModel {
     private let getDiscoveryFeed: GetDiscoveryFeedUseCase
-    
+
     var state: DiscoveryViewState = .idle
-    
+
     init(getDiscoveryFeed: GetDiscoveryFeedUseCase) {
         self.getDiscoveryFeed = getDiscoveryFeed
     }
-    
+
     func loadInitial() async {
-        if case .loaded(let data) = state, !data.movies.isEmpty {
+        if case let .loaded(data) = state, !data.movies.isEmpty {
             return
         }
         state = .loading
         await loadPage(1, shouldAppend: false)
     }
-    
+
     func loadNextPageIfNeeded(current movie: DiscoveryMovieItem) async {
         guard var data = currentData(),
               data.hasMorePages,
               !data.isLoadingNextPage,
-              data.movies.last?.id == movie.id else {
+              data.movies.last?.id == movie.id
+        else {
             return
         }
-        
+
         data.isLoadingNextPage = true
         state = .loaded(data)
         await loadPage(data.currentPage + 1, shouldAppend: true)
     }
-    
+
     private func loadPage(_ page: Int, shouldAppend: Bool) async {
         do {
             let cached = try await getDiscoveryFeed.execute(page: page, policy: .returnCacheElseLoad)
@@ -57,7 +58,7 @@ final class DiscoveryViewModel {
             }
         }
     }
-    
+
     private func apply(snapshot: DiscoverySnapshot, shouldAppend: Bool) {
         let mapped = DiscoveryPresentationMapper.map(snapshot: snapshot)
         if shouldAppend, let data = currentData() {
@@ -76,7 +77,7 @@ final class DiscoveryViewModel {
             )
         }
     }
-    
+
     private func mergeMovies(existing: [DiscoveryMovieItem], incoming: [DiscoveryMovieItem]) -> [DiscoveryMovieItem] {
         var seen = Set(existing.map(\.id))
         var merged = existing
@@ -86,9 +87,9 @@ final class DiscoveryViewModel {
         }
         return merged
     }
-    
+
     private func currentData() -> MovieSummaryPresentationModel? {
-        guard case .loaded(let data) = state else { return nil }
+        guard case let .loaded(data) = state else { return nil }
         return data
     }
 }

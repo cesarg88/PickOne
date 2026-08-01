@@ -8,32 +8,32 @@ struct RemoteImageView: View {
         case success(Image)
         case failure
     }
-    
+
     let url: URL?
     let loader: any ImageLoading
     let contentMode: ContentMode
     let accessibilityLabel: String
-    
+
     @State private var phase: Phase = .empty
-    
+
     var body: some View {
         ZStack {
             switch phase {
-            case .empty, .loading:
-                ProgressView()
-                    .progressViewStyle(.circular)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .background(Color(.systemGray6))
-            case .success(let image):
-                image
-                    .resizable()
-                    .aspectRatio(contentMode: contentMode)
-            case .failure:
-                Image(systemName: "photo")
-                    .font(.system(size: 24))
-                    .foregroundStyle(.secondary)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .background(Color(.systemGray6))
+                case .empty, .loading:
+                    ProgressView()
+                        .progressViewStyle(.circular)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .background(Color(.systemGray6))
+                case let .success(image):
+                    image
+                        .resizable()
+                        .aspectRatio(contentMode: contentMode)
+                case .failure:
+                    Image(systemName: "photo")
+                        .font(.system(size: 24))
+                        .foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .background(Color(.systemGray6))
             }
         }
         .accessibilityLabel(accessibilityLabel)
@@ -41,7 +41,7 @@ struct RemoteImageView: View {
             await load()
         }
     }
-    
+
     private func load() async {
         guard let url else {
             phase = .failure

@@ -1,6 +1,6 @@
 import Foundation
-import Testing
 @testable import PickOne
+import Testing
 
 @MainActor
 @Suite("MovieDetail availability tests", .serialized)
@@ -84,7 +84,7 @@ struct MovieDetailAvailabilityViewModelTests {
         let availability = SequenceAvailabilityUseCase(
             steps: [
                 .outcome(.unknown(reason: .verificationFailed)),
-                .outcome(eligibleOutcome())
+                .outcome(eligibleOutcome()),
             ]
         )
         let sut = makeSUT(
@@ -133,7 +133,7 @@ struct MovieDetailAvailabilityViewModelTests {
                 .gated(gate, eligibleOutcome()),
                 .outcome(.ineligible(
                     evidence: AvailabilityTestFixtures.verifiedEvidence()
-                ))
+                )),
             ]
         )
         let sut = makeSUT(
@@ -194,7 +194,7 @@ struct MovieDetailAvailabilityViewModelTests {
     private func yieldUntil(
         _ predicate: @MainActor () async -> Bool
     ) async {
-        for _ in 0..<200 {
+        for _ in 0 ..< 200 {
             if await predicate() {
                 return
             }
@@ -213,7 +213,7 @@ struct MovieDetailAvailabilityViewModelTests {
                     name: "Netflix",
                     logoPath: "/netflix.png",
                     productOrder: 1
-                )
+                ),
             ],
             evidence: evidence
         )
@@ -274,14 +274,14 @@ private actor SequenceAvailabilityUseCase: CheckMovieAvailabilityUseCase {
         index += 1
         callCount += 1
         switch step {
-        case .outcome(let outcome):
-            return outcome
-        case .gated(let gate, let outcome):
-            await gate.wait()
-            try Task.checkCancellation()
-            return outcome
-        case .failure:
-            throw MovieDetailAvailabilityTestError.failed
+            case let .outcome(outcome):
+                return outcome
+            case let .gated(gate, outcome):
+                await gate.wait()
+                try Task.checkCancellation()
+                return outcome
+            case .failure:
+                throw MovieDetailAvailabilityTestError.failed
         }
     }
 }

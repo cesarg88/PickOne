@@ -12,10 +12,10 @@ struct JSONResponseMapper: ResponseMapper {
             return try decoder.decode(T.self, from: data)
         } catch {
             #if DEBUG
-            print("❌ Decoding error: \(error)")
-            if let jsonString = String(data: data, encoding: .utf8) {
-                print("📄 Response body: \(jsonString.prefix(500))")
-            }
+                print("❌ Decoding error: \(error)")
+                if let jsonString = String(data: data, encoding: .utf8) {
+                    print("📄 Response body: \(jsonString.prefix(500))")
+                }
             #endif
             throw NetworkError.decodingError(error)
         }

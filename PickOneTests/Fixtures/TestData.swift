@@ -8,11 +8,10 @@
 import Foundation
 
 enum TestData {
-    
     // MARK: - Sample JSON Responses
-    
+
     /// A minimal valid movie list response (snake_case as TMDB returns it)
-    static let movieListResponseJSON = """
+    static let movieListResponseJSON = Data("""
     {
         "page": 1,
         "total_pages": 10,
@@ -52,10 +51,10 @@ enum TestData {
             }
         ]
     }
-    """.data(using: .utf8)!
-    
+    """.utf8)
+
     /// A movie detail response
-    static let movieDetailResponseJSON = """
+    static let movieDetailResponseJSON = Data("""
     {
         "id": 278,
         "title": "The Shawshank Redemption",
@@ -82,43 +81,43 @@ enum TestData {
         "vote_count": 25000,
         "video": false
     }
-    """.data(using: .utf8)!
-    
+    """.utf8)
+
     /// Empty results response
-    static let emptyResultsJSON = """
+    static let emptyResultsJSON = Data("""
     {
         "page": 1,
         "total_pages": 0,
         "total_results": 0,
         "results": []
     }
-    """.data(using: .utf8)!
-    
+    """.utf8)
+
     /// Invalid JSON (for testing error handling)
-    static let invalidJSON = "{ invalid json }".data(using: .utf8)!
-    
+    static let invalidJSON = Data("{ invalid json }".utf8)
+
     /// Empty data
     static let emptyData = Data()
-    
+
     // MARK: - Simple Test Models
-    
+
     /// A simple Codable struct for basic HTTPClient tests
     struct SimpleResponse: Codable, Equatable {
         let id: Int
         let name: String
-        let isActive: Bool  // Tests snake_case conversion (is_active → isActive)
+        let isActive: Bool // Tests snake_case conversion (is_active → isActive)
     }
-    
-    static let simpleResponseJSON = """
+
+    static let simpleResponseJSON = Data("""
     {
         "id": 42,
         "name": "Test Item",
         "is_active": true
     }
-    """.data(using: .utf8)!
-    
+    """.utf8)
+
     // MARK: - URLs
-    
+
     static let testBaseURL = "https://api.test.com"
     static let testEndpoint = "/test/endpoint"
 }

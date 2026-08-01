@@ -16,22 +16,22 @@ final class RecommendationViewModel {
     private let maxResults: Int
     private var currentTask: Task<ChatRecommendationSnapshot, Error>?
     private var latestRequestID: Int = 0
-    
+
     var state: RecommendationViewState = .idle
     var query: String = ""
-    
+
     var isLoading: Bool {
         if case .loading = state {
             return true
         }
-        
+
         return false
     }
-    
+
     var canSubmit: Bool {
         query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false && isLoading == false
     }
-    
+
     init(
         getChatRecommendations: GetChatRecommendationsUseCase,
         maxResults: Int? = nil
@@ -39,21 +39,21 @@ final class RecommendationViewModel {
         self.getChatRecommendations = getChatRecommendations
         self.maxResults = maxResults ?? AppConfiguration.maxAIRecommendations
     }
-    
+
     func submit() async {
         let trimmedQuery = query.trimmingCharacters(in: .whitespacesAndNewlines)
-        
+
         guard !trimmedQuery.isEmpty else {
             state = .idle
             return
         }
-        
+
         query = trimmedQuery
         currentTask?.cancel()
         latestRequestID += 1
         let requestID = latestRequestID
         state = .loading
-        
+
         let task = Task {
             try await getChatRecommendations.execute(
                 query: trimmedQuery,
@@ -61,14 +61,14 @@ final class RecommendationViewModel {
             )
         }
         currentTask = task
-        
+
         do {
             let snapshot = try await task.value
-            
+
             guard requestID == latestRequestID else {
                 return
             }
-            
+
             if snapshot.recommendations.isEmpty {
                 state = .empty(query: trimmedQuery)
             } else {
@@ -85,10 +85,10 @@ final class RecommendationViewModel {
                 return
             }
             switch error {
-            case .emptyQuery:
-                state = .idle
-            case .noRecommendations:
-                state = .empty(query: trimmedQuery)
+                case .emptyQuery:
+                    state = .idle
+                case .noRecommendations:
+                    state = .empty(query: trimmedQuery)
             }
             currentTask = nil
         } catch {
@@ -102,16 +102,16 @@ final class RecommendationViewModel {
             currentTask = nil
         }
     }
-    
+
     func retry() async {
         await submit()
     }
-    
+
     func submitSuggestedPrompt(_ prompt: String) async {
         query = prompt
         await submit()
     }
-    
+
     func clear() {
         latestRequestID += 1
         currentTask?.cancel()

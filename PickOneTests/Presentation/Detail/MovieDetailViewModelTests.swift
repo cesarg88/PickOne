@@ -1,55 +1,55 @@
-import Testing
 import Foundation
 @testable import PickOne
+import Testing
 
 @MainActor
 @Suite("MovieDetailViewModel Tests", .serialized)
 struct MovieDetailViewModelTests {
     @Test("load sets loaded state")
-    func loadSetsLoadedState() async throws {
+    func loadSetsLoadedState() async {
         let useCase = MockGetMovieDetailUseCase(results: [
-            .success(CacheResult(value: TestFixtures.snapshot, isStale: false))
+            .success(CacheResult(value: TestFixtures.snapshot, isStale: false)),
         ])
-        
+
         let sut = makeSUT(getMovieDetail: useCase)
         await sut.load()
-        
-        guard case .loaded(let data) = sut.state else {
+
+        guard case let .loaded(data) = sut.state else {
             Issue.record("Expected loaded state")
             return
         }
-        
+
         #expect(data.title == "Movie A")
         #expect(data.similar.count == 1)
     }
-    
+
     @Test("stale refresh overrides loaded state")
-    func staleRefreshOverridesLoadedState() async throws {
+    func staleRefreshOverridesLoadedState() async {
         let useCase = MockGetMovieDetailUseCase(results: [
             .success(CacheResult(value: TestFixtures.snapshot, isStale: true)),
-            .success(CacheResult(value: TestFixtures.refreshedSnapshot, isStale: false))
+            .success(CacheResult(value: TestFixtures.refreshedSnapshot, isStale: false)),
         ])
-        
+
         let sut = makeSUT(getMovieDetail: useCase)
         await sut.load()
-        
-        guard case .loaded(let data) = sut.state else {
+
+        guard case let .loaded(data) = sut.state else {
             Issue.record("Expected loaded state")
             return
         }
-        
+
         #expect(data.title == "Movie B")
     }
-    
+
     @Test("load error sets error state")
-    func loadErrorSetsErrorState() async throws {
+    func loadErrorSetsErrorState() async {
         let useCase = MockGetMovieDetailUseCase(results: [
-            .failure(TestError.fetchFailed)
+            .failure(TestError.fetchFailed),
         ])
-        
+
         let sut = makeSUT(getMovieDetail: useCase)
         await sut.load()
-        
+
         guard case .error = sut.state else {
             Issue.record("Expected error state")
             return
@@ -103,7 +103,7 @@ private actor MockGetMovieDetailUseCase: GetMovieDetailUseCase {
     init(results: [Result<CacheResult<MovieDetailSnapshot>, Error>]) {
         self.results = results
     }
-    
+
     func execute(id: Int, policy: CachePolicy) async throws -> CacheResult<MovieDetailSnapshot> {
         defer { callIndex += 1 }
         return try results[callIndex].get()
@@ -131,7 +131,7 @@ private enum TestFixtures {
             tagline: nil
         ),
         similar: [
-            MovieSummary(id: 2, title: "Movie B", posterPath: "/posterB.jpg", releaseYear: 2022, rating: 7.4)
+            MovieSummary(id: 2, title: "Movie B", posterPath: "/posterB.jpg", releaseYear: 2022, rating: 7.4),
         ],
         isInWatchlist: false,
         isWatched: false,
@@ -141,7 +141,7 @@ private enum TestFixtures {
         isCreditsUnavailable: false,
         asOf: Date()
     )
-    
+
     static let refreshedSnapshot = MovieDetailSnapshot(
         movie: Movie(
             id: 1,

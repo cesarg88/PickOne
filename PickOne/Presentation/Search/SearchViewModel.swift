@@ -23,18 +23,17 @@ enum SearchViewState: Equatable {
 @MainActor
 @Observable
 final class SearchViewModel {
-
     private let searchMovies: SearchMoviesUseCase
     private let searchHistory: SearchHistoryUseCase
-    
+
     var state: SearchViewState = .idle(history: [])
     var query: String = ""
-    
+
     private var currentPage: Int = 1
     private var currentQuery: String = ""
     private var searchTask: Task<Void, Never>?
     private var activeRequestID = UUID()
-    
+
     init(
         searchMovies: SearchMoviesUseCase,
         searchHistory: SearchHistoryUseCase
@@ -42,32 +41,32 @@ final class SearchViewModel {
         self.searchMovies = searchMovies
         self.searchHistory = searchHistory
     }
-    
+
     // MARK: - Actions
-    
+
     func loadHistory() {
         let history = searchHistory.getHistory()
         state = .idle(history: history)
     }
-    
+
     func onQueryChange(_ newQuery: String) {
         query = newQuery
-        
+
         // Cancel previous search
         searchTask?.cancel()
         let requestID = invalidateActiveRequest()
-        
+
         let trimmed = newQuery.trimmingCharacters(in: .whitespacesAndNewlines)
-        
+
         if trimmed.isEmpty {
             loadHistory()
             return
         }
-        
+
         // Debounce search
         searchTask = Task {
             try? await Task.sleep(for: .milliseconds(300))
-            
+
             guard !Task.isCancelled else { return }
             await performSearch(
                 query: trimmed,
@@ -77,10 +76,10 @@ final class SearchViewModel {
             )
         }
     }
-    
+
     func selectHistoryItem(_ historyQuery: String) {
         query = historyQuery
-        
+
         searchTask?.cancel()
         let requestID = invalidateActiveRequest()
         searchTask = Task {
@@ -92,23 +91,24 @@ final class SearchViewModel {
             )
         }
     }
-    
+
     func clearHistory() {
         searchHistory.clear()
         loadHistory()
     }
-    
+
     func loadNextPage() async {
-        guard case .results(var data) = state,
+        guard case var .results(data) = state,
               data.hasMorePages,
               !data.isLoadingNextPage,
-              !currentQuery.isEmpty else {
+              !currentQuery.isEmpty
+        else {
             return
         }
-        
+
         data.isLoadingNextPage = true
         state = .results(data)
-        
+
         let requestID = invalidateActiveRequest()
         await performSearch(
             query: currentQuery,
@@ -117,16 +117,16 @@ final class SearchViewModel {
             requestID: requestID
         )
     }
-    
+
     func clearSearch() {
         query = ""
         searchTask?.cancel()
         _ = invalidateActiveRequest()
         loadHistory()
     }
-    
+
     // MARK: - Private
-    
+
     @discardableResult
     private func invalidateActiveRequest() -> UUID {
         let requestID = UUID()
@@ -143,24 +143,24 @@ final class SearchViewModel {
         if !append {
             state = .searching
         }
-        
+
         do {
             let snapshot = try await searchMovies.execute(query: query, page: page)
             guard activeRequestID == requestID, !Task.isCancelled else {
                 return
             }
-            
-            if snapshot.results.isEmpty && page == 1 {
+
+            if snapshot.results.isEmpty, page == 1 {
                 state = .empty(query: query)
                 return
             }
-            
+
             currentQuery = query
             currentPage = snapshot.currentPage
-            
+
             var model = SearchPresentationMapper.map(snapshot: snapshot)
-            
-            if append, case .results(let existing) = state {
+
+            if append, case let .results(existing) = state {
                 // Merge results, avoiding duplicates
                 var seen = Set(existing.items.map(\.id))
                 var merged = existing.items
@@ -175,16 +175,16 @@ final class SearchViewModel {
                     isLoadingNextPage: false
                 )
             }
-            
+
             state = .results(model)
-            
+
         } catch {
             guard activeRequestID == requestID, !Task.isCancelled else {
                 return
             }
             if !append {
                 state = .error(error.localizedDescription)
-            } else if case .results(var data) = state {
+            } else if case var .results(data) = state {
                 data.isLoadingNextPage = false
                 state = .results(data)
             }

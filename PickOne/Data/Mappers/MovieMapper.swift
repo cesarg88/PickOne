@@ -10,7 +10,7 @@ enum MovieMapper {
             rating: dto.voteAverage ?? 0
         )
     }
-    
+
     static func mapDetail(from dto: MovieDetailDTO) -> Movie {
         Movie(
             id: dto.id,
@@ -27,7 +27,7 @@ enum MovieMapper {
             tagline: dto.tagline
         )
     }
-    
+
     static func mapCredits(from dto: CreditsResponseDTO) -> Credits {
         let director = dto.crew.first { $0.job?.lowercased() == "director" }
         let directorPerson = director.map {
@@ -38,7 +38,7 @@ enum MovieMapper {
                 role: .director
             )
         }
-        
+
         let topCast = dto.cast
             .sorted { ($0.order ?? 999) < ($1.order ?? 999) }
             .prefix(5)
@@ -50,20 +50,20 @@ enum MovieMapper {
                     role: .cast(character: cast.character ?? "")
                 )
             }
-        
+
         return Credits(director: directorPerson, topCast: topCast)
     }
-    
+
     private static func date(from value: String?) -> Date? {
         guard let value, !value.isEmpty else { return nil }
         return dateFormatter.date(from: value)
     }
-    
+
     private static func year(from value: String?) -> Int? {
         guard let value, let date = dateFormatter.date(from: value) else { return nil }
         return Calendar.current.component(.year, from: date)
     }
-    
+
     private static let dateFormatter: DateFormatter = {
         let formatter = DateFormatter()
         formatter.calendar = Calendar(identifier: .gregorian)

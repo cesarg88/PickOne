@@ -11,7 +11,7 @@ import SwiftUI
 @MainActor
 struct PickOneApp: App {
     private let container = AppContainer()
-    
+
     var body: some Scene {
         WindowGroup {
             MainTabView(container: container)

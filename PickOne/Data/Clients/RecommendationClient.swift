@@ -11,7 +11,7 @@ final class HTTPRecommendationClient {
     private let endpointPath: String
     private let apiKey: String?
     private let timeout: TimeInterval?
-    
+
     init(
         httpClient: HTTPClient,
         endpointPath: String = "recommendations",
@@ -29,7 +29,7 @@ extension HTTPRecommendationClient: RecommendationClient {
     func getRecommendations(
         request: AIRecommendationRequestDTO
     ) async throws -> AIRecommendationResponseDTO {
-        return try await httpClient.request(
+        try await httpClient.request(
             endpoint: endpointPath,
             method: .post,
             parameters: nil,
@@ -38,7 +38,7 @@ extension HTTPRecommendationClient: RecommendationClient {
             body: request
         )
     }
-    
+
     private var authHeaders: [String: String]? {
         guard let apiKey, !apiKey.isEmpty else {
             return nil

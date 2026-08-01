@@ -610,4 +610,3 @@ When in doubt:
 Choose the solution that maximizes learning and keeps the project moving forward.
 
 That has consistently been the guiding principle of PickOne.
-

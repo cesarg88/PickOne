@@ -17,16 +17,16 @@ final class ImagePipeline: ImageLoading {
         let configuration = sessionConfiguration
         configuration.urlCache = urlCache
         configuration.requestCachePolicy = .returnCacheDataElseLoad
-        self.session = URLSession(configuration: configuration)
+        session = URLSession(configuration: configuration)
         self.cache = cache
         self.urlCache = urlCache
     }
-    
+
     func loadImage(from url: URL) async throws -> UIImage {
         if let cached = cache.image(for: url) {
             return cached
         }
-        
+
         let request = URLRequest(url: url, cachePolicy: .returnCacheDataElseLoad)
         if let cachedResponse = urlCache.cachedResponse(for: request) {
             try validate(response: cachedResponse.response)
@@ -36,14 +36,14 @@ final class ImagePipeline: ImageLoading {
             cache.insert(image, for: url)
             return image
         }
-        
+
         let (data, response) = try await session.data(for: request)
         try validate(response: response)
-        
+
         guard let image = UIImage(data: data) else {
             throw ImagePipelineError.invalidImageData
         }
-        
+
         let cachedResponse = CachedURLResponse(response: response, data: data)
         urlCache.storeCachedResponse(cachedResponse, for: request)
         cache.insert(image, for: url)
@@ -54,7 +54,7 @@ final class ImagePipeline: ImageLoading {
         guard let httpResponse = response as? HTTPURLResponse else {
             throw ImagePipelineError.invalidResponse
         }
-        guard (200...299).contains(httpResponse.statusCode) else {
+        guard (200 ... 299).contains(httpResponse.statusCode) else {
             throw ImagePipelineError.httpStatus(httpResponse.statusCode)
         }
         guard httpResponse.mimeType?.lowercased().hasPrefix("image/") == true else {

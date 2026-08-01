@@ -9,50 +9,50 @@ struct RecommendationView: View {
     let checkAvailability: CheckMovieAvailabilityUseCase
     let preparePlaybackOptions: PreparePlaybackOptionsUseCase
     let imagePipeline: ImagePipeline
-    
+
     var body: some View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
                     promptComposer
-                    
+
                     switch model.state {
-                    case .idle:
-                        idleView
-                    case .loading:
-                        loadingView
-                    case .loaded(let data):
-                        loadedView(data: data)
-                    case .empty(let query):
-                        VStack(alignment: .leading, spacing: 16) {
-                            EmptyStateView(
-                                title: "No usable picks yet",
-                                message: "We couldn't resolve recommendations for \"\(query)\". Try being more specific about mood, genre, or era.",
-                                actionTitle: "Try again",
-                                action: { Task { await model.retry() } }
-                            )
-                            .frame(maxWidth: .infinity, minHeight: 180)
-                            
-                            suggestedPromptsSection(
-                                title: "Try one of these prompts",
-                                subtitle: "Start with one of these, or describe your own movie mood."
-                            )
-                        }
-                    case .error(let query, let message):
-                        VStack(alignment: .leading, spacing: 16) {
-                            EmptyStateView(
-                                title: "We couldn't finish that request",
-                                message: "Prompt: \"\(query)\"\n\n\(message)",
-                                actionTitle: "Retry",
-                                action: { Task { await model.retry() } }
-                            )
-                            .frame(maxWidth: .infinity, minHeight: 180)
-                            
-                            suggestedPromptsSection(
-                                title: "Need a quick reset?",
-                                subtitle: "Start from a prompt that already matches the current recommendation catalog."
-                            )
-                        }
+                        case .idle:
+                            idleView
+                        case .loading:
+                            loadingView
+                        case let .loaded(data):
+                            loadedView(data: data)
+                        case let .empty(query):
+                            VStack(alignment: .leading, spacing: 16) {
+                                EmptyStateView(
+                                    title: "No usable picks yet",
+                                    message: "We couldn't resolve recommendations for \"\(query)\". Try being more specific about mood, genre, or era.",
+                                    actionTitle: "Try again",
+                                    action: { Task { await model.retry() } }
+                                )
+                                .frame(maxWidth: .infinity, minHeight: 180)
+
+                                suggestedPromptsSection(
+                                    title: "Try one of these prompts",
+                                    subtitle: "Start with one of these, or describe your own movie mood."
+                                )
+                            }
+                        case let .error(query, message):
+                            VStack(alignment: .leading, spacing: 16) {
+                                EmptyStateView(
+                                    title: "We couldn't finish that request",
+                                    message: "Prompt: \"\(query)\"\n\n\(message)",
+                                    actionTitle: "Retry",
+                                    action: { Task { await model.retry() } }
+                                )
+                                .frame(maxWidth: .infinity, minHeight: 180)
+
+                                suggestedPromptsSection(
+                                    title: "Need a quick reset?",
+                                    subtitle: "Start from a prompt that already matches the current recommendation catalog."
+                                )
+                            }
                     }
                 }
                 .padding()
@@ -60,30 +60,30 @@ struct RecommendationView: View {
             .navigationTitle("Ask PickOne")
         }
     }
-    
+
     private var promptComposer: some View {
         VStack(alignment: .leading, spacing: 12) {
             VStack(alignment: .leading, spacing: 4) {
                 Text("Describe what you feel like watching")
                     .font(.headline)
-                
+
                 Text("Keep it simple: mood, genre, pace, decade, or a movie reference is enough.")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
             }
-            
+
             TextField(
                 "A tense sci-fi movie with emotional depth",
                 text: Bindable(model).query,
                 axis: .vertical
             )
             .textFieldStyle(.roundedBorder)
-            .lineLimit(2...4)
+            .lineLimit(2 ... 4)
             .submitLabel(.search)
             .onSubmit {
                 Task { await model.submit() }
             }
-            
+
             HStack(spacing: 12) {
                 Button {
                     Task { await model.submit() }
@@ -92,7 +92,7 @@ struct RecommendationView: View {
                 }
                 .buttonStyle(.borderedProminent)
                 .disabled(model.canSubmit == false)
-                
+
                 if !model.query.isEmpty {
                     Button("Clear") {
                         model.clear()
@@ -102,7 +102,7 @@ struct RecommendationView: View {
             }
         }
     }
-    
+
     private var idleView: some View {
         VStack(alignment: .leading, spacing: 16) {
             EmptyStateView(
@@ -112,14 +112,14 @@ struct RecommendationView: View {
                 action: nil
             )
             .frame(maxWidth: .infinity, minHeight: 180)
-            
+
             suggestedPromptsSection(
                 title: "Starter prompts",
                 subtitle: "Tap one to see how the recommendation flow behaves."
             )
         }
     }
-    
+
     private var loadingView: some View {
         VStack(alignment: .leading, spacing: 16) {
             VStack(alignment: .leading, spacing: 8) {
@@ -128,7 +128,7 @@ struct RecommendationView: View {
                     Text("Finding recommendations...")
                         .font(.headline)
                 }
-                
+
                 Text("We’re resolving the best available matches from the current recommendation source.")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
@@ -137,30 +137,30 @@ struct RecommendationView: View {
             .padding()
             .background(Color(uiColor: .secondarySystemBackground))
             .clipShape(RoundedRectangle(cornerRadius: 16))
-            
+
             suggestedPromptsSection(
                 title: "Good prompt ingredients",
                 subtitle: "Mood, genre, era, or a reference title usually works best."
             )
         }
     }
-    
+
     private func loadedView(data: RecommendationPresentationModel) -> some View {
         VStack(alignment: .leading, spacing: 16) {
             VStack(alignment: .leading, spacing: 6) {
                 Text(data.query)
                     .font(.headline)
-                
+
                 Text(data.explanation)
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
             }
-            
+
             HStack(spacing: 8) {
                 Label("\(data.items.count) picks", systemImage: "checkmark.seal")
                     .font(.subheadline.weight(.medium))
                     .foregroundStyle(.secondary)
-                
+
                 Text("Open any card for detail or save it to your watchlist.")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
@@ -168,7 +168,7 @@ struct RecommendationView: View {
             .padding()
             .background(Color(uiColor: .secondarySystemBackground))
             .clipShape(RoundedRectangle(cornerRadius: 16))
-            
+
             LazyVStack(spacing: 16) {
                 ForEach(data.items) { item in
                     RecommendationCard(
@@ -184,7 +184,7 @@ struct RecommendationView: View {
             }
         }
     }
-    
+
     private func suggestedPromptsSection(
         title: String,
         subtitle: String
@@ -193,12 +193,12 @@ struct RecommendationView: View {
             VStack(alignment: .leading, spacing: 4) {
                 Text(title)
                     .font(.headline)
-                
+
                 Text(subtitle)
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
             }
-            
+
             ForEach(samplePrompts, id: \.self) { prompt in
                 Button {
                     Task { await model.submitSuggestedPrompt(prompt) }
@@ -220,12 +220,12 @@ struct RecommendationView: View {
             }
         }
     }
-    
+
     private var samplePrompts: [String] {
         [
             "A smart sci-fi movie like Arrival",
             "Something funny but not dumb",
-            "A thriller from the 90s"
+            "A thriller from the 90s",
         ]
     }
 }
@@ -239,16 +239,16 @@ private struct RecommendationCard: View {
     let checkAvailability: CheckMovieAvailabilityUseCase
     let preparePlaybackOptions: PreparePlaybackOptionsUseCase
     let imagePipeline: ImagePipeline
-    
+
     @State private var didAddToWatchlist = false
     @State private var actionErrorMessage: String?
-    
+
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Why it fits")
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(.secondary)
-            
+
             NavigationLink {
                 MovieDetailView(
                     model: MovieDetailViewModel(
@@ -277,20 +277,20 @@ private struct RecommendationCard: View {
                     .frame(width: 72, height: 108)
                     .clipped()
                     .cornerRadius(8)
-                    
+
                     VStack(alignment: .leading, spacing: 6) {
                         Text(item.title)
                             .font(.headline)
                             .foregroundStyle(.primary)
                             .multilineTextAlignment(.leading)
-                        
+
                         HStack(spacing: 8) {
                             if let year = item.releaseYearText {
                                 Text(year)
                                     .font(.subheadline)
                                     .foregroundStyle(.secondary)
                             }
-                            
+
                             HStack(spacing: 4) {
                                 Image(systemName: "star.fill")
                                     .font(.caption)
@@ -300,7 +300,7 @@ private struct RecommendationCard: View {
                                     .foregroundStyle(.secondary)
                             }
                         }
-                        
+
                         if let reason = item.reason, !reason.isEmpty {
                             Text(reason)
                                 .font(.subheadline)
@@ -308,15 +308,15 @@ private struct RecommendationCard: View {
                                 .multilineTextAlignment(.leading)
                         }
                     }
-                    
+
                     Spacer()
                 }
             }
             .buttonStyle(.plain)
-            
+
             HStack {
                 Spacer()
-                
+
                 Button {
                     addToWatchlist()
                 } label: {
@@ -346,7 +346,7 @@ private struct RecommendationCard: View {
             Text(actionErrorMessage ?? "Please try again.")
         }
     }
-    
+
     private func addToWatchlist() {
         do {
             try setMembership.execute(movie: item.movieSummary, isInWatchlist: true)

@@ -46,6 +46,26 @@ xcodebuild test \
 The main scheme includes unit tests and the UI smoke test. `PickOneTests`
 alone is not the release gate.
 
+## Configure repository quality checks
+
+Run once per clone:
+
+```bash
+make setup
+```
+
+This installs the versioned SwiftFormat and SwiftLint pre-commit hooks. Before
+handing off a change, run the same complete delivery gate used by the project:
+
+```bash
+make verify
+```
+
+Individual commands such as `make format`, `make lint`, `make test`, and
+`make analyze` are available for focused iteration. See
+[`docs/process/repository-verification.md`](docs/process/repository-verification.md)
+for the authoritative workflow.
+
 ## Install a pilot build on an iPhone
 
 1. Connect and trust the iPhone, then enable Developer Mode if Xcode requests it.

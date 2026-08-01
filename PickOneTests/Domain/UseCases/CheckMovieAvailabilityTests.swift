@@ -1,6 +1,6 @@
 import Foundation
-import Testing
 @testable import PickOne
+import Testing
 
 @Suite("CheckMovieAvailability tests")
 struct CheckMovieAvailabilityTests {
@@ -13,7 +13,7 @@ struct CheckMovieAvailabilityTests {
 
         let outcome = try await sut.execute(movieID: 42)
 
-        guard case .eligible(let providers, _) = outcome else {
+        guard case let .eligible(providers, _) = outcome else {
             Issue.record("Expected eligible")
             return
         }
@@ -29,14 +29,14 @@ struct CheckMovieAvailabilityTests {
                 AvailabilityTestFixtures.offer(id: 8, name: "Source Netflix"),
                 AvailabilityTestFixtures.offer(id: 119),
                 AvailabilityTestFixtures.offer(id: 8, logoPath: "/duplicate.png"),
-                AvailabilityTestFixtures.offer(id: 337)
+                AvailabilityTestFixtures.offer(id: 337),
             ]
         )
         let sut = makeSUT(evidence: evidence)
 
         let outcome = try await sut.execute(movieID: 42)
 
-        guard case .eligible(let providers, _) = outcome else {
+        guard case let .eligible(providers, _) = outcome else {
             Issue.record("Expected eligible")
             return
         }
@@ -94,7 +94,7 @@ struct CheckMovieAvailabilityTests {
         let evidence = AvailabilityTestFixtures.verifiedEvidence(
             flatrate: [
                 AvailabilityTestFixtures.offer(id: 337),
-                AvailabilityTestFixtures.offer(id: 999)
+                AvailabilityTestFixtures.offer(id: 999),
             ]
         )
         let context = AvailabilityViewingContext(
@@ -105,7 +105,7 @@ struct CheckMovieAvailabilityTests {
                     providerID: 999,
                     name: "Unsupported",
                     productOrder: 0
-                )
+                ),
             ]
         )
         let sut = makeSUT(evidence: evidence, context: context)
@@ -188,12 +188,12 @@ private actor MockAvailabilityRepository: AvailabilityRepository {
         policy: AvailabilityFetchPolicy
     ) async throws -> VerifiedAvailabilityEvidence? {
         switch mode {
-        case .evidence(let evidence):
-            evidence
-        case .failure:
-            throw TestAvailabilityError.failed
-        case .cancelled:
-            throw CancellationError()
+            case let .evidence(evidence):
+                evidence
+            case .failure:
+                throw TestAvailabilityError.failed
+            case .cancelled:
+                throw CancellationError()
         }
     }
 }

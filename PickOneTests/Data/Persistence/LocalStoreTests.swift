@@ -1,6 +1,6 @@
 import Foundation
-import Testing
 @testable import PickOne
+import Testing
 
 @Suite("LocalStore Tests", .serialized)
 struct LocalStoreTests {
@@ -38,7 +38,7 @@ struct LocalStoreTests {
         let store = context.store
         defer { context.defaults.removePersistentDomain(forName: context.suiteName) }
 
-        let items = (1...20).map { id in
+        let items = (1 ... 20).map { id in
             PersistedWatchlistItem(
                 movieId: id,
                 title: "Movie \(id)",
@@ -58,7 +58,7 @@ struct LocalStoreTests {
             }
         }
 
-        #expect(Set(store.getWatchlistItems().map(\.movieId)) == Set(1...20))
+        #expect(Set(store.getWatchlistItems().map(\.movieId)) == Set(1 ... 20))
     }
 
     private func makeContext() -> (
@@ -83,7 +83,7 @@ struct LocalStoreTests {
             posterPath: "/arrival.jpg",
             releaseYear: 2016,
             rating: 7.6,
-            addedAt: Date(timeIntervalSince1970: 1_000),
+            addedAt: Date(timeIntervalSince1970: 1000),
             isWatched: false
         )
     }

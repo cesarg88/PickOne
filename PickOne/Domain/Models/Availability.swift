@@ -40,7 +40,7 @@ struct PilotStreamingService: Hashable, Sendable {
         netflix,
         amazonPrimeVideo,
         disneyPlus,
-        hboMax
+        hboMax,
     ]
 }
 
@@ -80,16 +80,16 @@ struct RegionalAvailabilityEvidence: Equatable, Sendable {
 
     func offers(for type: AvailabilityMonetizationType) -> [ProviderOfferEvidence] {
         switch type {
-        case .flatrate:
-            flatrate
-        case .rent:
-            rent
-        case .buy:
-            buy
-        case .ads:
-            ads
-        case .free:
-            free
+            case .flatrate:
+                flatrate
+            case .rent:
+                rent
+            case .buy:
+                buy
+            case .ads:
+                ads
+            case .free:
+                free
         }
     }
 }
@@ -148,10 +148,10 @@ enum AvailabilityOutcome: Equatable, Sendable {
 
     var evidence: VerifiedAvailabilityEvidence? {
         switch self {
-        case .eligible(_, let evidence), .ineligible(let evidence):
-            evidence
-        case .unknown:
-            nil
+            case let .eligible(_, evidence), let .ineligible(evidence):
+                evidence
+            case .unknown:
+                nil
         }
     }
 }
