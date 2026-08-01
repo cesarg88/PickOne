@@ -13,10 +13,10 @@ enum MovieDetailViewState: Equatable {
 final class MovieDetailViewModel {
     let movieId: Int
     private let getMovieDetail: GetMovieDetailUseCase
-    private let setMembership: SetWatchlistMembershipUseCase?
-    private let setWatched: SetWatchedUseCase?
-    private let checkAvailability: CheckMovieAvailabilityUseCase?
-    private let preparePlaybackOptionsUseCase: PreparePlaybackOptionsUseCase?
+    private let setMembership: SetWatchlistMembershipUseCase
+    private let setWatched: SetWatchedUseCase
+    private let checkAvailability: CheckMovieAvailabilityUseCase
+    private let preparePlaybackOptionsUseCase: PreparePlaybackOptionsUseCase
     private var activeLoadID = UUID()
     private var availabilityOutcome: AvailabilityOutcome?
     
@@ -24,24 +24,13 @@ final class MovieDetailViewModel {
     var availabilityState: MovieAvailabilityViewState = .loading
     var actionErrorMessage: String?
     
-    /// Convenience initializer for backwards compatibility
-    init(movieId: Int, getMovieDetail: GetMovieDetailUseCase) {
-        self.movieId = movieId
-        self.getMovieDetail = getMovieDetail
-        self.setMembership = nil
-        self.setWatched = nil
-        self.checkAvailability = nil
-        self.preparePlaybackOptionsUseCase = nil
-    }
-    
-    /// Full initializer with watchlist support
     init(
         movieId: Int,
         getMovieDetail: GetMovieDetailUseCase,
-        setMembership: SetWatchlistMembershipUseCase?,
-        setWatched: SetWatchedUseCase?,
-        checkAvailability: CheckMovieAvailabilityUseCase? = nil,
-        preparePlaybackOptions: PreparePlaybackOptionsUseCase? = nil
+        setMembership: SetWatchlistMembershipUseCase,
+        setWatched: SetWatchedUseCase,
+        checkAvailability: CheckMovieAvailabilityUseCase,
+        preparePlaybackOptions: PreparePlaybackOptionsUseCase
     ) {
         self.movieId = movieId
         self.getMovieDetail = getMovieDetail
@@ -86,7 +75,6 @@ final class MovieDetailViewModel {
     }
 
     private func loadAvailability(loadID: UUID) async {
-        guard let checkAvailability else { return }
         do {
             let outcome = try await checkAvailability.execute(
                 movieID: movieId,
@@ -111,10 +99,7 @@ final class MovieDetailViewModel {
     }
 
     func preparePlaybackOptions() async -> URL? {
-        guard
-            let preparePlaybackOptionsUseCase,
-            let availabilityOutcome
-        else {
+        guard let availabilityOutcome else {
             return nil
         }
 
@@ -149,10 +134,7 @@ final class MovieDetailViewModel {
     // MARK: - Watchlist Actions
     
     func toggleWatchlist() {
-        guard
-            let setMembership,
-            case .loaded(var model) = state
-        else { return }
+        guard case .loaded(var model) = state else { return }
         
         let movie = MovieSummary(
             id: model.id,
@@ -175,8 +157,7 @@ final class MovieDetailViewModel {
     }
     
     func toggleWatched() {
-        guard let setWatched,
-              case .loaded(var model) = state,
+        guard case .loaded(var model) = state,
               model.isInWatchlist else { return }
         
         do {

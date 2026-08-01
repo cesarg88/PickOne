@@ -6,9 +6,12 @@ protocol GetMovieDetailUseCase: Sendable {
 
 final class GetMovieDetail: GetMovieDetailUseCase, Sendable {
     private let repository: MovieRepository
-    private let watchlistRepository: WatchlistRepository?
+    private let watchlistRepository: WatchlistRepository
     
-    init(repository: MovieRepository, watchlistRepository: WatchlistRepository? = nil) {
+    init(
+        repository: MovieRepository,
+        watchlistRepository: WatchlistRepository
+    ) {
         self.repository = repository
         self.watchlistRepository = watchlistRepository
     }
@@ -83,7 +86,7 @@ final class GetMovieDetail: GetMovieDetailUseCase, Sendable {
         }
         
         // Get watchlist status
-        let watchlistStatus = watchlistRepository?.getStatus(movieId: id) ?? .notInWatchlist
+        let watchlistStatus = watchlistRepository.getStatus(movieId: id)
         let isInWatchlist = watchlistStatus != .notInWatchlist
         let isWatched = watchlistStatus == .watched
         

@@ -11,7 +11,7 @@ struct MovieDetailViewModelTests {
             .success(CacheResult(value: TestFixtures.snapshot, isStale: false))
         ])
         
-        let sut = MovieDetailViewModel(movieId: 1, getMovieDetail: useCase)
+        let sut = makeSUT(getMovieDetail: useCase)
         await sut.load()
         
         guard case .loaded(let data) = sut.state else {
@@ -30,7 +30,7 @@ struct MovieDetailViewModelTests {
             .success(CacheResult(value: TestFixtures.refreshedSnapshot, isStale: false))
         ])
         
-        let sut = MovieDetailViewModel(movieId: 1, getMovieDetail: useCase)
+        let sut = makeSUT(getMovieDetail: useCase)
         await sut.load()
         
         guard case .loaded(let data) = sut.state else {
@@ -47,13 +47,52 @@ struct MovieDetailViewModelTests {
             .failure(TestError.fetchFailed)
         ])
         
-        let sut = MovieDetailViewModel(movieId: 1, getMovieDetail: useCase)
+        let sut = makeSUT(getMovieDetail: useCase)
         await sut.load()
         
         guard case .error = sut.state else {
             Issue.record("Expected error state")
             return
         }
+    }
+
+    private func makeSUT(
+        getMovieDetail: GetMovieDetailUseCase
+    ) -> MovieDetailViewModel {
+        MovieDetailViewModel(
+            movieId: 1,
+            getMovieDetail: getMovieDetail,
+            setMembership: NoOpSetWatchlistMembership(),
+            setWatched: NoOpSetWatched(),
+            checkAvailability: UnknownMovieAvailability(),
+            preparePlaybackOptions: UnavailablePlaybackOptions()
+        )
+    }
+}
+
+private struct NoOpSetWatchlistMembership: SetWatchlistMembershipUseCase {
+    func execute(movie: MovieSummary, isInWatchlist: Bool) throws {}
+}
+
+private struct NoOpSetWatched: SetWatchedUseCase {
+    func execute(movieId: Int, isWatched: Bool) throws {}
+}
+
+private struct UnknownMovieAvailability: CheckMovieAvailabilityUseCase {
+    func execute(
+        movieID: Int,
+        policy: AvailabilityFetchPolicy
+    ) async throws -> AvailabilityOutcome {
+        .unknown(reason: .regionalEvidenceMissing)
+    }
+}
+
+private struct UnavailablePlaybackOptions: PreparePlaybackOptionsUseCase {
+    func execute(
+        movieID: Int,
+        currentOutcome: AvailabilityOutcome
+    ) async throws -> PlaybackOptionsPreparation {
+        .unavailable
     }
 }
 

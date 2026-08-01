@@ -8,44 +8,10 @@ struct MovieDetailView: View {
     let model: MovieDetailViewModel
     let imagePipeline: ImagePipeline
     let getMovieDetail: GetMovieDetailUseCase
-    let setMembership: SetWatchlistMembershipUseCase?
-    let setWatched: SetWatchedUseCase?
-    let checkAvailability: CheckMovieAvailabilityUseCase?
-    let preparePlaybackOptions: PreparePlaybackOptionsUseCase?
-    
-    /// Convenience initializer for backwards compatibility
-    init(
-        model: MovieDetailViewModel,
-        imagePipeline: ImagePipeline,
-        getMovieDetail: GetMovieDetailUseCase
-    ) {
-        self.model = model
-        self.imagePipeline = imagePipeline
-        self.getMovieDetail = getMovieDetail
-        self.setMembership = nil
-        self.setWatched = nil
-        self.checkAvailability = nil
-        self.preparePlaybackOptions = nil
-    }
-    
-    /// Full initializer with watchlist support
-    init(
-        model: MovieDetailViewModel,
-        imagePipeline: ImagePipeline,
-        getMovieDetail: GetMovieDetailUseCase,
-        setMembership: SetWatchlistMembershipUseCase?,
-        setWatched: SetWatchedUseCase?,
-        checkAvailability: CheckMovieAvailabilityUseCase? = nil,
-        preparePlaybackOptions: PreparePlaybackOptionsUseCase? = nil
-    ) {
-        self.model = model
-        self.imagePipeline = imagePipeline
-        self.getMovieDetail = getMovieDetail
-        self.setMembership = setMembership
-        self.setWatched = setWatched
-        self.checkAvailability = checkAvailability
-        self.preparePlaybackOptions = preparePlaybackOptions
-    }
+    let setMembership: SetWatchlistMembershipUseCase
+    let setWatched: SetWatchedUseCase
+    let checkAvailability: CheckMovieAvailabilityUseCase
+    let preparePlaybackOptions: PreparePlaybackOptionsUseCase
     
     var body: some View {
         ScrollView {
@@ -404,10 +370,10 @@ private struct SimilarMoviesSection: View {
     let pipeline: ImagePipeline
     let isUnavailable: Bool
     let getMovieDetail: GetMovieDetailUseCase
-    let setMembership: SetWatchlistMembershipUseCase?
-    let setWatched: SetWatchedUseCase?
-    let checkAvailability: CheckMovieAvailabilityUseCase?
-    let preparePlaybackOptions: PreparePlaybackOptionsUseCase?
+    let setMembership: SetWatchlistMembershipUseCase
+    let setWatched: SetWatchedUseCase
+    let checkAvailability: CheckMovieAvailabilityUseCase
+    let preparePlaybackOptions: PreparePlaybackOptionsUseCase
     
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {

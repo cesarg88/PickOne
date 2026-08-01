@@ -177,13 +177,15 @@ struct MovieDetailAvailabilityViewModelTests {
     private func makeSUT(
         detail: GetMovieDetailUseCase,
         availability: CheckMovieAvailabilityUseCase,
-        prepare: PreparePlaybackOptionsUseCase? = nil
+        prepare: PreparePlaybackOptionsUseCase = StubPreparePlaybackOptions(
+            result: .unavailable
+        )
     ) -> MovieDetailViewModel {
         MovieDetailViewModel(
             movieId: 42,
             getMovieDetail: detail,
-            setMembership: nil,
-            setWatched: nil,
+            setMembership: NoOpSetWatchlistMembership(),
+            setWatched: NoOpSetWatched(),
             checkAvailability: availability,
             preparePlaybackOptions: prepare
         )
@@ -216,6 +218,14 @@ struct MovieDetailAvailabilityViewModelTests {
             evidence: evidence
         )
     }
+}
+
+private struct NoOpSetWatchlistMembership: SetWatchlistMembershipUseCase {
+    func execute(movie: MovieSummary, isInWatchlist: Bool) throws {}
+}
+
+private struct NoOpSetWatched: SetWatchedUseCase {
+    func execute(movieId: Int, isWatched: Bool) throws {}
 }
 
 private actor AsyncAvailabilityGate {
