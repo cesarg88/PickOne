@@ -14,7 +14,10 @@ struct PickOneApp: App {
 
     var body: some Scene {
         WindowGroup {
-            MainTabView(container: container)
+            AppRootView(
+                container: container,
+                profileModel: container.viewerProfileViewModel
+            )
         }
     }
 }

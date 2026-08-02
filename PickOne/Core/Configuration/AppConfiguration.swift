@@ -11,6 +11,9 @@ import Foundation
 /// Centralized access to API keys and environment settings
 struct AppConfiguration {
     static let isUITesting = ProcessInfo.processInfo.arguments.contains("-ui-testing")
+    static let resetsViewerProfileForUITests = ProcessInfo.processInfo.arguments.contains(
+        "-ui-testing-reset-viewer-profile"
+    )
 
     // MARK: - TMDB Configuration
 

@@ -9,20 +9,29 @@ protocol CheckMovieAvailabilityUseCase: Sendable {
 
 struct CheckMovieAvailability: CheckMovieAvailabilityUseCase {
     private let repository: AvailabilityRepository
-    private let context: AvailabilityViewingContext
+    private let getCurrentViewingContext: GetCurrentViewingContextUseCase
 
     init(
         repository: AvailabilityRepository,
-        context: AvailabilityViewingContext
+        getCurrentViewingContext: GetCurrentViewingContextUseCase
     ) {
         self.repository = repository
-        self.context = context
+        self.getCurrentViewingContext = getCurrentViewingContext
     }
 
     func execute(
         movieID: Int,
         policy: AvailabilityFetchPolicy = .useFreshCache
     ) async throws -> AvailabilityOutcome {
+        let context: AvailabilityViewingContext
+        do {
+            context = try await getCurrentViewingContext.execute()
+        } catch is CancellationError {
+            throw CancellationError()
+        } catch {
+            return .unknown(reason: .viewingContextUnavailable)
+        }
+
         do {
             guard let evidence = try await repository.getVerifiedEvidence(
                 movieID: movieID,
@@ -31,7 +40,7 @@ struct CheckMovieAvailability: CheckMovieAvailabilityUseCase {
             ) else {
                 return .unknown(reason: .regionalEvidenceMissing)
             }
-            return evaluate(evidence)
+            return evaluate(evidence, context: context)
         } catch is CancellationError {
             throw CancellationError()
         } catch {
@@ -40,7 +49,8 @@ struct CheckMovieAvailability: CheckMovieAvailabilityUseCase {
     }
 
     private func evaluate(
-        _ evidence: VerifiedAvailabilityEvidence
+        _ evidence: VerifiedAvailabilityEvidence,
+        context: AvailabilityViewingContext
     ) -> AvailabilityOutcome {
         let selectedIDs = Set(context.selectedServices.map(\.providerID))
         let allowlistedByID = Dictionary(

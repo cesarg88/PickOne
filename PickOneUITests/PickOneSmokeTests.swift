@@ -9,13 +9,30 @@ final class PickOneSmokeTests: XCTestCase {
     func testMainTabsAreReachable() {
         let app = XCUIApplication()
         app.launchArguments.append("-ui-testing")
+        app.launchArguments.append("-ui-testing-reset-viewer-profile")
         app.launch()
 
-        let tabs = ["Discover", "Search", "Ask", "Watchlist"]
+        XCTAssertTrue(app.staticTexts["Streaming services"].waitForExistence(timeout: 5))
+        app.buttons["Netflix"].tap()
+        app.buttons["Continue"].tap()
 
-        let aboutButton = app.buttons["About"]
-        XCTAssertTrue(aboutButton.waitForExistence(timeout: 5))
-        aboutButton.tap()
+        for _ in 0 ..< 8 {
+            tapButton("Love it", in: app)
+        }
+        XCTAssertTrue(app.staticTexts["Your preferences are saved."].waitForExistence(timeout: 5))
+        app.buttons["Continue"].tap()
+
+        let tabs = ["Discover", "Search", "Ask", "Watchlist", "Settings"]
+
+        for tab in tabs {
+            let button = app.tabBars.buttons[tab]
+            XCTAssertTrue(button.waitForExistence(timeout: 5), "\(tab) tab is missing")
+            button.tap()
+            XCTAssertTrue(button.isSelected, "\(tab) tab did not become selected")
+        }
+
+        app.tabBars.buttons["Settings"].tap()
+        app.buttons["About"].tap()
         XCTAssertTrue(app.navigationBars["About"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.images["The Movie Database"].exists)
         XCTAssertTrue(
@@ -28,13 +45,19 @@ final class PickOneSmokeTests: XCTestCase {
                 "Streaming availability data is provided by JustWatch."
             ].exists
         )
-        app.buttons["Done"].tap()
+    }
 
-        for tab in tabs {
-            let button = app.tabBars.buttons[tab]
-            XCTAssertTrue(button.waitForExistence(timeout: 5), "\(tab) tab is missing")
-            button.tap()
-            XCTAssertTrue(button.isSelected, "\(tab) tab did not become selected")
+    @MainActor
+    private func tapButton(
+        _ label: String,
+        in app: XCUIApplication
+    ) {
+        let button = app.buttons[label]
+        XCTAssertTrue(button.waitForExistence(timeout: 5), "\(label) is missing")
+        for _ in 0 ..< 4 where !button.isHittable {
+            app.swipeUp()
         }
+        XCTAssertTrue(button.isHittable, "\(label) is not hittable")
+        button.tap()
     }
 }

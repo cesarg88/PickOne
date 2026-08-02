@@ -253,16 +253,14 @@ struct AvailabilityRepositoryTests {
         )
         let netflixChecker = CheckMovieAvailability(
             repository: repository,
-            context: AvailabilityViewingContext(
-                region: .spain,
-                selectedServices: [.netflix]
+            getCurrentViewingContext: TestViewingContext(
+                services: [.netflix]
             )
         )
         let disneyChecker = CheckMovieAvailability(
             repository: repository,
-            context: AvailabilityViewingContext(
-                region: .spain,
-                selectedServices: [.disneyPlus]
+            getCurrentViewingContext: TestViewingContext(
+                services: [.disneyPlus]
             )
         )
 
@@ -324,6 +322,17 @@ struct AvailabilityRepositoryTests {
                     ]
                 ),
             ]
+        )
+    }
+}
+
+private struct TestViewingContext: GetCurrentViewingContextUseCase {
+    let services: [PilotStreamingService]
+
+    func execute() async throws -> AvailabilityViewingContext {
+        AvailabilityViewingContext(
+            region: .spain,
+            selectedServices: services
         )
     }
 }

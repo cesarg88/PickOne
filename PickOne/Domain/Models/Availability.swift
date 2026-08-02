@@ -42,16 +42,21 @@ struct PilotStreamingService: Hashable, Sendable {
         disneyPlus,
         hboMax,
     ]
+
+    var preferencesName: String {
+        switch providerID {
+            case Self.netflix.providerID: "Netflix"
+            case Self.amazonPrimeVideo.providerID: "Prime Video"
+            case Self.disneyPlus.providerID: "Disney+"
+            case Self.hboMax.providerID: "Max"
+            default: name
+        }
+    }
 }
 
 struct AvailabilityViewingContext: Equatable, Sendable {
     let region: ViewingRegion
     let selectedServices: [PilotStreamingService]
-
-    static let spainPilot = AvailabilityViewingContext(
-        region: .spain,
-        selectedServices: PilotStreamingService.allowlist
-    )
 }
 
 enum AvailabilityMonetizationType: Sendable {
@@ -129,6 +134,7 @@ struct EligibleStreamingProvider: Identifiable, Equatable, Sendable {
 enum AvailabilityUnknownReason: Equatable, Sendable {
     case regionalEvidenceMissing
     case verificationFailed
+    case viewingContextUnavailable
 }
 
 enum AvailabilityOutcome: Equatable, Sendable {
