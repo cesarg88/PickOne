@@ -123,8 +123,15 @@ Priorities:
     presenting plan-variant choices
   - define the fixed 12-title primary calibration block, three-title normal
     reserve, optional low-signal extension, and response semantics
+  - include neutral `It was okay` alongside positive and negative watched
+    reactions, and calculate confidence from reactions rather than persist a
+    derived counter
+  - show Spain-localized movie titles with original or English title and year,
+    backed by deterministic bundled fallback metadata
   - define skip, retry, edit, reset, migration, and failure behavior
   - persist one versioned local profile per installation
+  - keep calibration-derived seen knowledge separate from Watchlist in
+    Milestone 5, then combine both sources for Milestone 6 exclusions
   - keep accounts, sync, and household profiles out of the first version
 - Done when:
   - every onboarding state and stored field has accepted behavior

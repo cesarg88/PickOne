@@ -7,7 +7,9 @@ Proposed — product catalog and architecture review required
 No implementation is authorized until the Product Owner accepts:
 
 1. the exact calibration catalog and order in this document;
-2. [ADR-010](../decisions/adr-010-local-viewer-profile-and-dynamic-context.md).
+2. the localized titles and bundled fallback metadata;
+3. `Settings` as a fifth main tab;
+4. [ADR-010](../decisions/adr-010-local-viewer-profile-and-dynamic-context.md).
 
 ## Identifiers
 
@@ -111,6 +113,7 @@ Use this exact English copy and semantic meaning:
 | --- | --- | --- | --- |
 | `Love it` | Yes | Yes | Strong positive stable taste signal |
 | `Like it` | Yes | Yes | Positive stable taste signal |
+| `It was okay` | Yes | Yes | Neutral seen-movie signal; neither positive nor negative |
 | `Didn't like it` | Yes | Yes | Negative stable taste signal |
 | `Haven't seen it` | No | No | Recognized, but not watched |
 | `Don't know it` | No | No | Movie is not identified |
@@ -118,14 +121,20 @@ Use this exact English copy and semantic meaning:
 Calibration never uses `Not for me`. It can conflate prior dislike, lack of
 interest, and temporary viewing intent.
 
-Every response is preserved by TMDB movie ID. Milestone 5 stores raw reactions
-and the informative-signal count; it does not translate them into weights or a
-recommendation score.
+Every response is preserved by TMDB movie ID. Milestone 5 stores raw reactions,
+but it does not persist a derived informative-signal count or translate
+reactions into weights or a recommendation score. Domain calculates the count
+as the number of `Love it`, `Like it`, `It was okay`, and `Didn't like it`
+reactions.
 
 Calibration does not add movies to Watchlist or its watched section. The raw
-profile reaction remains the source of calibration-derived viewing knowledge.
-Milestone 6 must consider the three informative reactions as watched when
-excluding prior viewing.
+profile reaction preserves calibration-derived knowledge that the movie was
+seen, but it is not a global definitive watched state. Watchlist and Movie
+Detail may temporarily continue to show their existing independent state.
+Milestone 6 must combine the four informative calibration reactions with the
+existing Watchlist watched state when excluding prior viewing from Three for
+Tonight. Milestone 5 does not create a global viewing history or synchronize
+these surfaces.
 
 ### Completion rules
 
@@ -134,7 +143,8 @@ The catalog is fixed, ordered, versioned, and identified by TMDB movie IDs.
 Normal flow:
 
 1. Begin with the 12-title primary block.
-2. After each reaction, persist the draft and recompute the informative count.
+2. After each reaction, persist the reaction and recalculate the derived
+   informative count.
 3. Finish calibration early as soon as eight informative signals are reached.
 4. If the primary block is exhausted below eight, show reserve titles one at a
    time, up to 15 normal responses total.
@@ -147,7 +157,8 @@ The low-signal decision offers:
 - `Rate more movies`
 - `Continue`
 
-`Continue` completes the profile with its honest zero-to-two signal count.
+`Continue` completes the profile with its honest zero-to-two calculated signal
+count.
 Milestone 6 must treat that profile conservatively and must not claim strong
 personalization.
 
@@ -166,9 +177,10 @@ Eight signals are a confidence target, never a mandatory completion gate.
 
 ### Review status
 
-Proposed, not yet accepted. All IDs and English metadata were verified against
-TMDB on 2026-08-02. Acceptance must evaluate recognition by the Product Owner
-as well as diversity; API correctness alone is insufficient.
+Proposed, not yet accepted. All IDs, Spain-localized titles, English or original
+titles, and years were verified against TMDB on 2026-08-02. Acceptance must
+evaluate recognition by the Product Owner as well as diversity; API correctness
+alone is insufficient.
 
 Persist the catalog identifier as:
 
@@ -179,49 +191,54 @@ es-household-calibration-v1
 The order below is product behavior. An implementation must not shuffle,
 replace, or remotely re-rank it.
 
+The proposed first eight deliberately mix genre, pace, era, and tone and place
+Spanish-language and Japanese titles before early completion can occur.
+
 ### Primary block — positions 1–12
 
-| # | TMDB ID | English title | Year | Original language | Deliberate coverage |
-| ---: | ---: | --- | ---: | --- | --- |
-| 1 | `238` | The Godfather | 1972 | English | classic, crime, slow prestige drama |
-| 2 | `155` | The Dark Knight | 2008 | English | superhero, action, crime, blockbuster |
-| 3 | `157336` | Interstellar | 2014 | English | science fiction, emotional, long runtime |
-| 4 | `11036` | The Notebook | 2004 | English | romance, melodrama |
-| 5 | `18785` | The Hangover | 2009 | English | broad comedy, irreverent tone |
-| 6 | `419430` | Get Out | 2017 | English | horror, social thriller |
-| 7 | `129` | Spirited Away | 2001 | Japanese | animation, family, fantasy, subtitled cinema |
-| 8 | `496243` | Parasite | 2019 | Korean | thriller, dark comedy, contemporary international cinema |
-| 9 | `1417` | Pan's Labyrinth | 2006 | Spanish | dark fantasy, war drama, Spanish-language cinema |
-| 10 | `354912` | Coco | 2017 | English | family animation, music, warm emotional tone |
-| 11 | `546554` | Knives Out | 2019 | English | mystery, ensemble comedy, lighter suspense |
-| 12 | `76341` | Mad Max: Fury Road | 2015 | English | intense action, spectacle, fast pace |
+| # | TMDB ID | Title known in Spain | Original or English title | Year | Original language | Deliberate coverage |
+| ---: | ---: | --- | --- | ---: | --- | --- |
+| 1 | `238` | El padrino | The Godfather | 1972 | English | classic, crime, slow prestige drama |
+| 2 | `11036` | El diario de Noa | The Notebook | 2004 | English | romance, melodrama |
+| 3 | `155` | El caballero oscuro | The Dark Knight | 2008 | English | superhero, action, crime, blockbuster |
+| 4 | `1417` | El laberinto del fauno | Pan's Labyrinth | 2006 | Spanish | dark fantasy, war drama, Spanish-language cinema |
+| 5 | `18785` | Resacón en Las Vegas | The Hangover | 2009 | English | broad comedy, irreverent tone |
+| 6 | `129` | El viaje de Chihiro | Spirited Away | 2001 | Japanese | animation, family, fantasy, subtitled cinema |
+| 7 | `157336` | Interstellar | Interstellar | 2014 | English | science fiction, emotional, long runtime |
+| 8 | `419430` | Déjame salir | Get Out | 2017 | English | horror, social thriller |
+| 9 | `496243` | Parásitos | Parasite | 2019 | Korean | thriller, dark comedy, contemporary international cinema |
+| 10 | `354912` | Coco | Coco | 2017 | English | family animation, music, warm emotional tone |
+| 11 | `546554` | Puñales por la espalda | Knives Out | 2019 | English | mystery, ensemble comedy, lighter suspense |
+| 12 | `76341` | Mad Max: Furia en la carretera | Mad Max: Fury Road | 2015 | English | intense action, spectacle, fast pace |
 
 ### Normal reserve — positions 13–15
 
-| # | TMDB ID | English title | Year | Original language | Deliberate coverage |
-| ---: | ---: | --- | ---: | --- | --- |
-| 13 | `120` | The Lord of the Rings: The Fellowship of the Ring | 2001 | English | epic fantasy, adventure, long runtime |
-| 14 | `313369` | La La Land | 2016 | English | musical, romance, bittersweet tone |
-| 15 | `77338` | The Intouchables | 2011 | French | feel-good comedy-drama, international cinema |
+| # | TMDB ID | Title known in Spain | Original or English title | Year | Original language | Deliberate coverage |
+| ---: | ---: | --- | --- | ---: | --- | --- |
+| 13 | `120` | El señor de los anillos: La comunidad del anillo | The Lord of the Rings: The Fellowship of the Ring | 2001 | English | epic fantasy, adventure, long runtime |
+| 14 | `313369` | La ciudad de las estrellas (La La Land) | La La Land | 2016 | English | musical, romance, bittersweet tone |
+| 15 | `77338` | Intocable | The Intouchables | 2011 | French | feel-good comedy-drama, international cinema |
 
 ### Optional low-signal extension — positions 16–21
 
-| # | TMDB ID | English title | Year | Original language | Deliberate coverage |
-| ---: | ---: | --- | ---: | --- | --- |
-| 16 | `278` | The Shawshank Redemption | 1994 | English | hopeful prison drama, modern classic |
-| 17 | `98` | Gladiator | 2000 | English | historical epic, action, tragedy |
-| 18 | `194` | Amélie | 2001 | French | whimsical romance, stylized international cinema |
-| 19 | `120467` | The Grand Budapest Hotel | 2014 | English | stylized comedy, eccentric tone |
-| 20 | `447332` | A Quiet Place | 2018 | English | suspense, horror, restrained dialogue |
-| 21 | `906126` | Society of the Snow | 2023 | Spanish | survival drama, history, recent Spanish-language cinema |
+| # | TMDB ID | Title known in Spain | Original or English title | Year | Original language | Deliberate coverage |
+| ---: | ---: | --- | --- | ---: | --- | --- |
+| 16 | `278` | Cadena perpetua | The Shawshank Redemption | 1994 | English | hopeful prison drama, modern classic |
+| 17 | `98` | Gladiator | Gladiator | 2000 | English | historical epic, action, tragedy |
+| 18 | `194` | Amelie | Amélie | 2001 | French | whimsical romance, stylized international cinema |
+| 19 | `120467` | El gran hotel Budapest | The Grand Budapest Hotel | 2014 | English | stylized comedy, eccentric tone |
+| 20 | `447332` | Un lugar tranquilo | A Quiet Place | 2018 | English | suspense, horror, restrained dialogue |
+| 21 | `906126` | La sociedad de la nieve | Society of the Snow | 2023 | Spanish | survival drama, history, recent Spanish-language cinema |
 
 ### Catalog delivery behavior
 
-- Bundle the catalog identity, order, TMDB IDs, English fallback titles, and
-  years with the application.
-- TMDB remains the metadata source for artwork and hydrated movie information.
+- Bundle the catalog identity, order, TMDB IDs, Spain-localized fallback
+  titles, original or English fallback titles, and years with the application.
+- TMDB with Spanish localization remains the primary metadata source for
+  artwork and hydrated movie information.
 - A poster failure shows a stable placeholder and does not prevent reacting.
-- A metadata request failure falls back to the bundled English title and year.
+- A metadata request failure still presents the bundled Spain-localized title
+  followed by the bundled original or English title and year.
 - A missing or invalid bundled catalog is a build-time/test failure, not a
   recoverable runtime catalog assembled from arbitrary TMDB content.
 - Every ID is unique across primary, reserve, and extension blocks.
@@ -245,7 +262,7 @@ main tabs.
 | Completed profile plus recalibration draft | Enter the main application; Preferences offers `Continue calibration` |
 | Unsupported stored version | Show explicit recovery; never reset silently |
 | Corrupt stored data | Show explicit recovery; never reset silently |
-| Transient load failure | Show retry without modifying stored bytes |
+| Detectable repository load error | Preserve stored bytes and show retry |
 
 Initial onboarding is a root application state, not a dismissible sheet over
 the tabs. A completed profile is required to reach the main application, but a
@@ -275,17 +292,18 @@ Behavior:
 Each card shows:
 
 - artwork or a stable placeholder;
-- English title;
-- release year;
+- title known in Spain as the primary title;
+- original or English title and release year as secondary recognition context;
 - progress through the current catalog block;
-- the five accepted reactions.
+- the six accepted reactions.
 
 Behavior:
 
 - one reaction per title;
 - selecting a reaction persists before advancing;
 - Back returns to the prior title and permits replacing its reaction;
-- replacing a reaction recomputes and persists the informative count;
+- replacing a reaction recalculates the Domain informative count from stored
+  reactions;
 - Back from the first title returns to service selection;
 - previously answered titles and order survive relaunch;
 - no passive impression, poster failure, or navigation action creates a
@@ -335,14 +353,14 @@ The persisted completed profile contains at minimum:
 - `calibrationCatalogVersion`;
 - region (`ES`);
 - selected supported provider IDs;
-- every calibration reaction keyed by TMDB movie ID;
-- persisted informative-signal count;
-- completed-onboarding state.
+- every calibration reaction keyed by TMDB movie ID.
 
-The informative count is derivable but is intentionally persisted as part of
-the contract for Milestone 6. Loading validates that it equals the count of
-`Love it`, `Like it`, and `Didn't like it` reactions. A mismatch is invalid
-stored data, not a value to trust silently.
+The existence of `completedProfile` represents completed onboarding; no
+redundant completion boolean is persisted. `informativeSignalCount` is a
+calculated Domain property equal to the number of `Love it`, `Like it`,
+`It was okay`, and `Didn't like it` reactions. It is never persisted in the
+profile or validated against a stored counter. Milestone 6 consumes this
+calculated value.
 
 ### Required onboarding-draft data
 
@@ -353,7 +371,6 @@ The draft contains enough information to resume deterministically:
 - current step;
 - selected provider IDs;
 - reactions keyed by TMDB movie ID;
-- informative-signal count;
 - current catalog position;
 - whether the optional extension has been accepted.
 
@@ -361,7 +378,7 @@ Draft persistence rules:
 
 - save every meaningful service-selection and reaction change;
 - save the current step before navigation completes;
-- retry a failed write without advancing;
+- retry a detectable encoding or repository write error without advancing;
 - relaunch resumes the last successfully stored state;
 - Back never discards saved answers;
 - `Start over` deletes only the draft and creates a new empty draft;
@@ -369,9 +386,12 @@ Draft persistence rules:
 
 ### Atomic completion
 
-Completing onboarding writes one new completed profile and removes its draft as
-one atomic persisted-state replacement. A failure leaves the previous persisted
-state intact, keeps the completion UI visible, and offers `Try again`.
+Completing onboarding encodes one new completed profile and removes its draft
+as one whole-envelope replacement. A detectable encoding failure or error from
+an injected test double or future storage implementation leaves the previous
+persisted state intact, keeps the completion UI visible, and offers `Try again`.
+The chosen `UserDefaults` implementation cannot claim confirmation that bytes
+have been physically persisted after `set` returns.
 
 During recalibration from Preferences, the existing completed profile remains
 active until the replacement completes successfully. The recalibration draft
@@ -404,7 +424,7 @@ avatar, or household-profile concept.
 - Show Spain as fixed context.
 - Show the same four services and ordering as onboarding.
 - Require at least one selected service.
-- Save atomically.
+- Save as one serialized whole-envelope replacement.
 - Every availability check started after successful save resolves the new
   context.
 - An already-open Movie Detail does not update live.
@@ -416,8 +436,8 @@ avatar, or household-profile concept.
 - Starts a new draft using the current accepted catalog version.
 - Does not replace or clear the active completed profile.
 - Can resume from Preferences after interruption.
-- Successful completion replaces reactions, catalog version, and signal count
-  atomically while preserving region and the latest saved service selection.
+- Successful completion replaces reactions and catalog version as one complete
+  envelope while preserving region and the latest saved service selection.
 - Individual reaction editing is not available in v1.
 
 ### Reset onboarding draft
@@ -489,7 +509,14 @@ Distinguish:
 | Valid profile plus recalibration draft | Enter application and offer resume in Settings |
 | Unsupported version with no migrator | Explicit reset choice |
 | Corrupt bytes or invalid invariant | Explicit reset choice |
-| Transient read/write failure | Preserve data and offer retry |
+| Detectable decoding or repository load error | Preserve data and offer retry |
+| Detectable encoding or repository save error | Preserve the last complete envelope and offer retry |
+
+The v1 `UserDefaults` implementation can detect encoding and decoding failures,
+unsupported schemas, invalid invariants, and errors injected by a test double
+or a future store that exposes failures. `UserDefaults.set` does not report
+whether bytes have been physically persisted, so the product does not present
+that unobservable condition as a distinct runtime state.
 
 ### Unsupported version
 
@@ -511,14 +538,18 @@ Do not attempt best-effort decoding into the current schema.
 
 Corrupt bytes remain untouched until the viewer confirms reset.
 
-### Transient save failure
+### Detectable save failure
 
 - remain on the current step;
 - keep the in-memory selection or reaction visible;
 - do not advance or claim completion;
 - show a local error and `Try again`;
-- retry the same atomic operation;
+- retry the same whole-envelope operation;
 - never reset the stored profile or draft as error recovery.
+
+This behavior applies to encoding failures and errors explicitly surfaced by a
+test double or future storage implementation. It does not claim detection of a
+physical `UserDefaults` write failure that the API does not expose.
 
 ## Architecture
 
@@ -542,7 +573,7 @@ Add focused values and contracts equivalent to:
 
 Domain owns:
 
-- reaction semantics and informative-count validation;
+- reaction semantics and informative-count calculation;
 - completion and low-signal rules;
 - supported service and region validation;
 - state transitions between draft and completed profile;
@@ -563,14 +594,14 @@ Data owns:
 - persisted DTOs and schema decoding;
 - one serialized state envelope capable of containing a completed profile and
   an optional draft;
-- atomic whole-envelope replacement;
+- serialized whole-envelope replacement after complete encoding;
 - schema migration dispatch;
 - preservation of corrupt or unsupported bytes until explicit reset;
 - mapping persisted values to validated Domain values.
 
 The profile and draft must not be spread across independent UserDefaults keys
-whose partial writes could produce a completed profile without its reactions
-or signal count.
+whose separate logical updates could produce a completed profile without its
+reactions.
 
 ### Presentation
 
@@ -603,7 +634,7 @@ read UserDefaults, persisted DTOs, or provider IDs directly.
 - supported service selection with no defaults;
 - proposed fixed versioned calibration catalog;
 - resumable first-onboarding and recalibration drafts;
-- atomic completed local profile;
+- serialized whole-envelope completed local profile;
 - signal counting and low-signal exit;
 - root routing and explicit recovery states;
 - stable Settings entry, Preferences, and About relocation;
@@ -624,11 +655,14 @@ read UserDefaults, persisted DTOs, or provider IDs directly.
 - manual genres, languages, subtitle preferences, or maturity controls;
 - individual reaction editing;
 - modifying Watchlist or Search History from calibration;
+- creating a global viewing history or synchronizing calibration reactions with
+  Watchlist and Movie Detail watched state;
 - analytics;
 - backend or AI integration;
 - persistent availability evidence;
 - live refresh of a Movie Detail already open during service editing;
-- localization of the current English UI;
+- localization of the general English UI beyond the accepted Spain-localized
+  movie-title recognition treatment;
 - broad navigation or persistence refactors outside the new Settings/profile
   boundary.
 
@@ -637,12 +671,12 @@ read UserDefaults, persisted DTOs, or provider IDs directly.
 | Condition | Behavior |
 | --- | --- |
 | No service selected | `Continue` disabled |
-| Draft write fails | Stay on current interaction and retry |
+| Draft encoding or surfaced repository write fails | Stay on current interaction and retry |
 | App closes after persisted reaction | Resume after that reaction |
 | App closes before failed reaction write | Resume before that reaction |
 | Catalog artwork fails | Placeholder; reaction remains available |
-| Metadata hydration fails | Bundled title/year fallback |
-| Completion write fails | Keep draft and active prior profile; retry |
+| Metadata hydration fails | Bundled Spain-localized title, original or English title, and year fallback |
+| Completion encoding or surfaced repository write fails | Keep draft and active prior profile; retry |
 | First onboarding cancelled by process termination | Resume draft on launch |
 | Recalibration interrupted | Active profile remains; resume from Settings |
 | Stored profile unsupported | Recovery UI; no automatic reset |
@@ -663,10 +697,14 @@ publishes no false success or recovery state.
 - all four services use accepted names and order;
 - none is preselected;
 - at least one service is required;
-- the five reactions use exact accepted copy and semantics;
-- only the first three increment informative count;
-- each first-three reaction records that the calibration movie was seen without
+- the six reactions use exact accepted copy and semantics;
+- only the first four increment the calculated informative count;
+- `It was okay` is informative and watched but neither positive nor negative;
+- each first-four reaction records calibration-derived knowledge that the movie
+  was seen without asserting a global watched state or
   mutating Watchlist;
+- Milestone 6 combines informative calibration reactions and Watchlist watched
+  state when excluding movies from Three for Tonight;
 - the flow stops immediately at eight informative signals;
 - reserve titles are used only when the primary block ends below eight;
 - normal responses never exceed 15;
@@ -674,7 +712,14 @@ publishes no false success or recovery state.
 - zero to two signals show `Rate more movies` and `Continue`;
 - optional extension stops at eight signals or six additional answers;
 - completion is possible after extension exhaustion with any count;
-- the persisted count matches informative reactions;
+- informative count is calculated from reactions and is absent from persisted
+  profile and draft data;
+- each card presents the title known in Spain, then the original or English
+  title and year;
+- hydration failure retains the same recognition fields from bundled fallback
+  metadata;
+- at least one Spanish-language or clearly international movie appears before
+  early completion can occur;
 - no copy claims current Ask or Discovery is personalized.
 
 ### Draft and persistence
@@ -682,8 +727,9 @@ publishes no false success or recovery state.
 - progress persists after every service or reaction change;
 - Back preserves and can revise reactions;
 - relaunch resumes first onboarding at the saved position;
-- completion replaces draft with profile atomically;
-- failed completion preserves the last valid draft;
+- completion encodes the full replacement envelope before replacing its single
+  stored value;
+- a detectable failed completion preserves the last valid draft;
 - a recalibration draft coexists with the active profile;
 - an interrupted recalibration does not affect current availability context;
 - a future app build can decode the accepted v1 profile;
@@ -695,7 +741,7 @@ publishes no false success or recovery state.
 
 - Settings remains available independently of Discover;
 - About attribution remains reachable after relocation;
-- service editing requires one selection and persists atomically;
+- service editing requires one selection and replaces one complete envelope;
 - repeating calibration replaces reactions only after successful completion;
 - individual reaction editing is absent;
 - reset confirmation describes exactly what is and is not deleted.
@@ -724,16 +770,21 @@ publishes no false success or recovery state.
 
 At minimum:
 
-1. catalog uniqueness, order, block sizes, version, fallback metadata, and
-   accepted TMDB IDs;
-2. reaction semantic mapping and informative-count validation;
+1. catalog uniqueness, order, block sizes, version, localized and original or
+   English fallback metadata, first-eight diversity, and accepted TMDB IDs;
+2. reaction semantic mapping and informative-count calculation, including the
+   neutral watched semantics of `It was okay` and the absence of a persisted
+   counter;
 3. primary, reserve, early-eight, three-to-seven, zero-to-two, Continue, and
    optional-extension state transitions;
 4. draft save after service/reaction change, Back revision, and deterministic
    resume;
-5. first completion and recalibration atomic replacement;
+5. first completion and recalibration serialized whole-envelope replacement,
+   using one key and persisted DTOs with neither a signal counter nor a
+   redundant completion boolean;
 6. active-profile preservation during recalibration and failed completion;
-7. absent, valid, unsupported, corrupt, and transient repository outcomes;
+7. absent, valid, unsupported, corrupt, encoding, decoding, and injected
+   repository-error outcomes;
 8. reset-draft and reset-profile isolation from Watchlist/Search History;
 9. root routing for every persisted state;
 10. exact service, completion, low-signal, reset, and recovery copy;
@@ -744,6 +795,13 @@ At minimum:
 15. cancellation and stale-response protection in onboarding and Preferences
     view models;
 16. Settings and About navigation accessibility.
+17. all four informative reactions expose calibration-derived seen semantics
+    while calibration persistence leaves Watchlist and Movie Detail state
+    unchanged.
+
+Repository tests verify only observable contracts. They must not simulate a
+generic physical `UserDefaults` durability acknowledgement that the production
+API does not provide.
 
 Tests must not use live TMDB requests, actual UserDefaults standard storage,
 wall-clock waiting, Safari, or a real credential. Use isolated suites and
@@ -822,7 +880,8 @@ Implementation remains blocked pending review. After acceptance:
 1. Add Domain profile, draft, reaction, catalog, state, and repository contracts.
 2. Add deterministic catalog and calibration state-machine tests.
 3. Implement the single-envelope local repository and recovery tests.
-4. Implement onboarding use cases and atomic completion/recalibration.
+4. Implement onboarding use cases and serialized whole-envelope
+   completion/recalibration.
 5. Replace immutable availability context with current-profile resolution.
 6. Add root routing and resumable onboarding presentation.
 7. Add Settings, Preferences, reset flows, and About relocation.
@@ -852,11 +911,11 @@ The future implementation agent must:
 
 Before changing this status to `Accepted — Ready for implementation`, review:
 
-1. Are all 21 proposed titles recognized enough by the Product Owner?
-2. Does the order produce acceptable early diversity before the eight-signal
-   stop?
-3. Is a six-title optional extension sufficient?
-4. Should the stable main-navigation entry be the proposed fifth `Settings`
+1. Are the exact 21 proposed titles and their order accepted, including early
+   diversity before the eight-signal stop?
+2. Are the Spain-localized titles, original or English titles, and bundled
+   fallbacks recognizable and sufficient?
+3. Should the stable main-navigation entry be the proposed fifth `Settings`
    tab with About moved into it?
-5. Does ADR-010 select the correct profile repository, atomic envelope, and
+4. Does ADR-010 select the correct profile repository, envelope, and
    dynamic availability-context boundaries?

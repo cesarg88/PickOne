@@ -192,14 +192,17 @@ responses:
 
 - `Love it`
 - `Like it`
+- `It was okay`
 - `Didn't like it`
 - `Haven't seen it`
 - `Don't know it`
 
-The first three responses are informative taste signals and mean the viewer has
-seen the movie. `Haven't seen it` means the viewer recognizes the movie but has
-not watched it. `Don't know it` means the viewer does not identify the movie.
-Neither of the latter responses is a positive or negative taste signal.
+The first four responses are informative taste signals and mean the viewer has
+seen the movie. `It was okay` is neutral and must not be interpreted as a
+positive or negative signal. `Haven't seen it` means the viewer recognizes the
+movie but has not watched it. `Don't know it` means the viewer does not identify
+the movie. Neither of the latter responses is a positive or negative taste
+signal.
 
 The normal flow starts from 12 titles, may use reserve titles up to 15 total
 responses, and finishes early after eight informative signals. Reaching eight
@@ -213,6 +216,17 @@ Concrete title reactions are more informative than genre selection alone. The
 catalog should be optimized for recognition in the household pilot while
 remaining deliberately diverse in genre, tone, pace, era, popularity, and
 language without claiming scientific precision.
+
+Calibration cards use the title known in Spain as the primary title and an
+original or English title with the release year as secondary recognition
+context. The bundled catalog preserves both title forms and year as fallback
+metadata when localized TMDB hydration is unavailable.
+
+Calibration reactions preserve local knowledge that an informative title was
+seen, but they do not mutate Watchlist or Movie Detail watched state in this
+milestone. Milestone 6 combines calibration reactions with existing Watchlist
+state when excluding watched titles. Milestone 5 does not create a unified
+viewing-history model.
 
 #### Deferred preference controls
 
@@ -519,8 +533,12 @@ As of the last review:
   materially and reliably changes availability.
 - Onboarding shows Spain inside service selection rather than as a separate
   non-interactive screen, requires at least one service, and preselects none.
-- Onboarding progress is resumable, and completion atomically creates a
-  versioned local profile without changing Watchlist or Search History.
+- Onboarding progress is resumable, and completion replaces one fully encoded
+  local profile envelope without changing Watchlist or Search History.
+- Informative-signal count is calculated in Domain from the four informative
+  reactions and is not persisted independently.
+- Calibration uses Spain-localized titles with bundled localized, original or
+  English, and year fallbacks to reduce false `Don't know it` responses.
 - Preferences can edit services, restart full calibration, or reset the profile
   with confirmation. Individual reaction editing is outside v1.
 - Eligibility means included in the selected plan without an additional

@@ -16,20 +16,19 @@ Milestone 5 introduces one editable local viewer profile. It must persist:
 
 - fixed Spain region;
 - selected supported services;
-- versioned calibration reactions and signal count;
-- completed onboarding state;
+- versioned calibration reactions;
 - resumable onboarding or recalibration progress.
 
 The profile becomes the current source of availability context. A service edit
 must affect every availability check started after the save without discarding
 fresh TMDB evidence. The system must also distinguish absent, incomplete,
-unsupported, corrupt, and transiently unavailable state without silently
+unsupported, corrupt, and detectably unreadable state without silently
 manufacturing a default profile.
 
 The profile and onboarding draft have different lifecycles. During first
 onboarding there is no completed profile. During recalibration, a completed
 profile must remain active while a replacement draft is saved. Completion must
-replace the profile and remove the draft atomically.
+replace the profile and remove the draft in one serialized envelope update.
 
 ## Decision
 
@@ -74,9 +73,10 @@ A completed `ViewerProfile` contains:
 - calibration catalog version;
 - Spain region;
 - one or more selected allowlisted service IDs;
-- reactions keyed by TMDB movie ID;
-- informative-signal count;
-- completed onboarding state.
+- reactions keyed by TMDB movie ID.
+
+The existence of `completedProfile` is the completed-onboarding state. No
+additional persisted boolean represents completion.
 
 An `OnboardingDraft` contains:
 
@@ -85,9 +85,14 @@ An `OnboardingDraft` contains:
 - current flow step;
 - selected service IDs;
 - reactions keyed by TMDB movie ID;
-- informative-signal count;
 - current ordered catalog position;
 - optional-extension state.
+
+Domain exposes `informativeSignalCount` as a calculated property over the
+stored reactions. It counts `Love it`, `Like it`, `It was okay`, and
+`Didn't like it`. The neutral `It was okay` case means watched and informative
+but is neither positive nor negative. The count is not persisted in either the
+profile or draft.
 
 Domain validates:
 
@@ -95,9 +100,9 @@ Domain validates:
 - at least one selected service is allowlisted before completion;
 - reaction IDs belong to the stored catalog version;
 - response values are recognized;
-- informative count equals the three informative reaction cases;
 - current position and extension state are valid for the catalog;
-- a completed profile cannot claim incomplete onboarding.
+- any persisted catalog position is consistent with the stored reactions and
+  extension state.
 
 Invalid invariants are not repaired by guessing.
 
@@ -114,13 +119,15 @@ resetDraft()
 resetProfileAndDraft()
 ```
 
-Operations may be grouped differently if atomicity and distinct outcomes remain
-explicit. Errors must distinguish at least:
+Operations may be grouped differently if whole-envelope replacement and
+distinct outcomes remain explicit. Repository outcomes distinguish at least:
 
 - unsupported schema;
 - corrupt or invariant-invalid data;
-- transient read failure;
-- transient write failure.
+- encoding failure;
+- decoding failure;
+- a storage error explicitly surfaced by a test double or future storage
+  implementation.
 
 Repository operations are serialized under one concurrency owner.
 
@@ -151,16 +158,27 @@ The envelope enables these valid combinations:
 | Yes | Yes | Active profile plus replacement recalibration draft |
 
 Write the complete encoded envelope as one UserDefaults `Data` value. Do not
-store profile fields, reactions, signal count, or draft progress in separate
-keys that can be partially updated.
+store profile fields, reactions, or draft progress in separate keys whose
+independent logical updates could expose an inconsistent aggregate.
 
 UserDefaults is accepted for this small local pilot aggregate. A database or
 file-based store is not justified by the current scale.
 
 ### Atomicity
 
-Atomic means that readers observe either the last complete encoded envelope or
-the next complete encoded envelope, never a partially updated aggregate.
+For this ADR, atomicity is a logical repository guarantee with these precise
+properties:
+
+- one concurrency owner serializes repository operations;
+- the complete envelope is encoded before its stored value is replaced;
+- the aggregate occupies one key rather than multiple independently updated
+  keys;
+- readers observe complete envelopes produced by repository logic, not partial
+  states assembled from several field writes.
+
+This does not mean that `UserDefaults.set` confirms physical persistence. That
+API does not expose a physical-write acknowledgement, so v1 neither detects nor
+promises recovery from an unreported durability failure.
 
 Required transitions:
 
@@ -173,8 +191,11 @@ Required transitions:
 - reset draft: remove only draft and preserve profile;
 - reset profile: remove both profile and draft.
 
-Encoding completes before replacing the stored value. A failed encode or write
-leaves the previous persisted bytes unchanged.
+An encoding failure occurs before replacement and therefore leaves the previous
+stored bytes unchanged. The same guarantee applies when a test double or future
+storage implementation rejects a replacement before mutation. The
+`UserDefaults` implementation does not manufacture a generic write-failure
+state for a condition its API cannot report.
 
 ### Migration and byte preservation
 
@@ -199,13 +220,17 @@ profile, or overwrite bytes while merely loading.
 
 ### Calibration catalog boundary
 
-The catalog identity, order, TMDB IDs, fallback English titles, and years are
-bundled deterministic product data. Domain receives an immutable catalog value
-through composition. No remote response may change its membership or order.
+The catalog identity, order, TMDB IDs, Spain-localized fallback titles, original
+or English fallback titles, and years are bundled deterministic product data.
+Domain receives an immutable catalog value through composition. No remote
+response may change its membership or order.
 
-Existing movie/catalog infrastructure may hydrate artwork and metadata. Failed
-hydration falls back to bundled display data and does not change catalog
-identity or block reaction entry.
+Existing movie/catalog infrastructure may hydrate artwork and Spanish-localized
+metadata. Cards show the title known in Spain first and the original or English
+title plus year second. Failed hydration falls back to the same bundled display
+fields and does not change catalog identity or block reaction entry. The first
+eight positions include Spanish-language or clearly international cinema before
+early completion can occur.
 
 No generalized remote configuration or catalog-management abstraction is
 introduced.
@@ -310,13 +335,13 @@ the evidence cache key or Data boundary.
 ### Add profile methods to existing `LocalStore`
 
 Rejected. `LocalStore` already combines Watchlist and Search History. Extending
-it would create a broad persistence service and make atomic profile/draft
-transitions harder to model and test independently.
+it would create a broad persistence service and make whole-envelope
+profile/draft transitions harder to model and test independently.
 
 ### Store profile and draft under separate keys
 
-Rejected. Recalibration completion and reset could leave partial state after
-one successful write and one failed write.
+Rejected. Recalibration completion and reset would require multiple logical
+updates and could expose an intermediate combination between them.
 
 ### Replace UserDefaults with SwiftData or a database
 
@@ -335,17 +360,31 @@ profile exists.
 Rejected. Discover will stop being the primary surface in Milestone 6, making
 the entry temporary and requiring another navigation migration.
 
+### Calibration knowledge and Watchlist
+
+An informative calibration reaction preserves evidence that the viewer saw the
+movie during calibration. It does not become the movie's global definitive
+watched state and does not mutate Watchlist or Movie Detail in Milestone 5.
+Those existing surfaces may therefore remain temporarily independent.
+
+Milestone 6 must combine the four informative calibration reactions with the
+existing Watchlist watched state to exclude previously seen movies from Three
+for Tonight. A unified viewing-history model and synchronization between these
+surfaces remain outside Milestone 5.
+
 ## Consequences
 
 ### Positive
 
 - One authoritative local profile drives onboarding, future ranking, and
   availability context.
-- Profile replacement and draft progress have explicit atomic semantics.
+- Profile replacement and draft progress have explicit serialized-envelope
+  semantics.
 - Existing Watchlist and Search History remain independent.
 - Service edits take effect predictably without unnecessary TMDB requests.
 - Corrupt and unsupported data cannot silently become an empty/default profile.
-- Milestone 6 receives raw, versioned reactions and an honest confidence count.
+- Milestone 6 receives raw, versioned reactions and an honestly calculated
+  confidence count.
 - Architecture remains layered and testable under Swift 6.
 
 ### Costs
@@ -362,12 +401,14 @@ the entry temporary and requiring another navigation migration.
 
 ### Risks and mitigations
 
-- **Risk:** profile and informative count diverge.
-  **Mitigation:** validate count against reactions on every load and completion.
+- **Risk:** a persisted catalog position conflicts with stored reactions.
+  **Mitigation:** validate both against the versioned catalog on every load and
+  completion.
 - **Risk:** service change causes unnecessary network requests.
   **Mitigation:** preserve evidence cache key as movie plus region.
 - **Risk:** recalibration weakens a usable profile before completion.
-  **Mitigation:** keep active profile until atomic replacement succeeds.
+  **Mitigation:** keep active profile until whole-envelope replacement
+  completes.
 - **Risk:** future schema update silently loses data.
   **Mitigation:** explicit version dispatch and migration registry.
 - **Risk:** Settings becomes overcrowded later.
@@ -378,14 +419,12 @@ the entry temporary and requiring another navigation migration.
 
 Before changing this ADR to `Accepted`, confirm:
 
-1. the single-envelope model satisfies first onboarding and recalibration;
-2. preserving the active profile during recalibration is the desired product
-   behavior;
-3. current-context resolution inside availability orchestration is preferable
-   to caller-provided context;
-4. the fifth `Settings` tab is an acceptable stable navigation cost;
-5. calibration reactions should remain separate from Watchlist mutations;
-6. bundled catalog fallback metadata is acceptable when TMDB hydration fails.
+1. the exact catalog and order described by Milestone 5;
+2. the Spain-localized, original or English, and bundled fallback title
+   treatment;
+3. the fifth `Settings` tab as the stable Preferences entry;
+4. this ADR's repository, serialized-envelope, recovery, and dynamic
+   availability-context boundaries as a whole.
 
 ## Related Documents
 
