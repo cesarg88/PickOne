@@ -108,6 +108,10 @@ Priorities:
 - Priority: `P0`
 - Roadmap relationship: Milestone 5
 - Depends on: IMP-009 availability identity and entitlement decisions
+- Draft specification:
+  [`Milestone 5 — Viewer Profile & Onboarding`](../milestones/milestone-5-viewer-profile-onboarding.md)
+- Proposed architecture:
+  [`ADR-010 — Local Viewer Profile and Dynamic Viewing Context`](../decisions/adr-010-local-viewer-profile-and-dynamic-context.md)
 - Why:
   PickOne cannot personalize or enforce watchability without a small, editable
   source of viewer context.
@@ -117,7 +121,8 @@ Priorities:
   - capture the supported services without exposing TMDB internals
   - map the Product Owner's confirmed plan entitlements internally instead of
     presenting plan-variant choices
-  - define the 10–15 title calibration set and response semantics
+  - define the fixed 12-title primary calibration block, three-title normal
+    reserve, optional low-signal extension, and response semantics
   - define skip, retry, edit, reset, migration, and failure behavior
   - persist one versioned local profile per installation
   - keep accounts, sync, and household profiles out of the first version

@@ -125,7 +125,10 @@ attribution, and the secondary fallback watch-page handoff.
 
 ### Milestone 5
 
-Viewer Profile & Onboarding
+[Viewer Profile & Onboarding](../milestones/milestone-5-viewer-profile-onboarding.md)
+
+Status:
+Specification in review
 
 Purpose:
 

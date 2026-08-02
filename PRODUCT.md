@@ -3,7 +3,7 @@
 ## Document Status
 
 - Status: `Canonical`
-- Last product review: `2026-07-30`
+- Last product review: `2026-08-02`
 - Product name: `PickOne` is a codename until the decision experience is
   validated.
 
@@ -170,6 +170,8 @@ language. Region editing is deferred until PickOne supports another market.
 
 - ask which supported services the user currently has
 - allow multiple selections
+- require at least one selected service
+- do not preselect a service
 - make the list editable after onboarding
 - distinguish access included without an additional transaction from rental,
   purchase, and separately paid add-on channels
@@ -185,28 +187,39 @@ represent that distinction reliably.
 
 #### Taste calibration
 
-Use approximately 10–15 recognizable movie examples with fast responses:
+Use a fixed, versioned catalog of recognizable movie examples with fast
+responses:
 
 - `Love it`
 - `Like it`
-- `Not for me`
-- `Already watched`
-- `Do not know it`
+- `Didn't like it`
+- `Haven't seen it`
+- `Don't know it`
 
-Concrete title reactions are more informative than genre selection alone.
-Examples should be diverse enough to reveal genre, tone, pace, era, popularity,
-and language preferences without claiming scientific precision.
+The first three responses are informative taste signals and mean the viewer has
+seen the movie. `Haven't seen it` means the viewer recognizes the movie but has
+not watched it. `Don't know it` means the viewer does not identify the movie.
+Neither of the latter responses is a positive or negative taste signal.
 
-#### Optional preference controls
+The normal flow starts from 12 titles, may use reserve titles up to 15 total
+responses, and finishes early after eight informative signals. Reaching eight
+signals is a target, not a completion requirement. After 15 responses, a
+profile with three to seven signals is accepted with conservative future
+personalization. With zero to two signals, the viewer may rate an additional
+optional block or continue with broad, availability-filtered future
+recommendations without a strong-personalization claim.
 
-The user may additionally select:
+Concrete title reactions are more informative than genre selection alone. The
+catalog should be optimized for recognition in the household pilot while
+remaining deliberately diverse in genre, tone, pace, era, popularity, and
+language without claiming scientific precision.
 
-- genres they usually enjoy
-- genres or content they want to avoid
-- openness to subtitles or original-language films
-- family or maturity constraints where relevant
+#### Deferred preference controls
 
-Optional controls must not make onboarding feel mandatory or exhaustive.
+Names, avatars, manual genre choices, language preferences, family or maturity
+constraints, accounts, and household profiles are outside Onboarding v1. They
+may be introduced later only when observed product needs justify the added
+questions.
 
 ### 2. Home — “Three for Tonight”
 
@@ -498,12 +511,18 @@ As of the last review:
 - The first pilot market is Spain (`ES`).
 - The pilot stores `ES` explicitly but does not expose a country selector.
 - The pilot provider allowlist is Netflix `8`, Amazon Prime Video `119`,
-  Disney Plus `337`, and HBO Max `1899`, presented to the user as HBO Max.
+  Disney Plus `337`, and Max `1899`, presented to the user as Max.
 - The pilot entitlement maps Netflix's highest plan to provider `8` and
   ad-free Prime Video to provider `119`.
 - Onboarding asks for supported services, not plan variants. The known pilot
   entitlements are mapped internally; plan selection remains deferred until it
   materially and reliably changes availability.
+- Onboarding shows Spain inside service selection rather than as a separate
+  non-interactive screen, requires at least one service, and preselects none.
+- Onboarding progress is resumable, and completion atomically creates a
+  versioned local profile without changing Watchlist or Search History.
+- Preferences can edit services, restart full calibration, or reset the profile
+  with confirmation. Individual reaction editing is outside v1.
 - Eligibility means included in the selected plan without an additional
   transaction. Advertising alone is not a universal exclusion.
 - Amazon Video stores, rent, buy, unselected Amazon Channels, and other
@@ -550,6 +569,10 @@ They must be resolved in product steering or explicitly bounded by a milestone.
 
 ## Related Documents
 
+- [`docs/milestones/milestone-5-viewer-profile-onboarding.md`](docs/milestones/milestone-5-viewer-profile-onboarding.md)
+  is the proposed specification for the next viewer-profile milestone.
+- [`docs/decisions/adr-010-local-viewer-profile-and-dynamic-context.md`](docs/decisions/adr-010-local-viewer-profile-and-dynamic-context.md)
+  proposes its persistence and dynamic availability-context architecture.
 - [`docs/milestones/milestone-4-availability-foundation.md`](docs/milestones/milestone-4-availability-foundation.md)
   is the active specification for availability behavior.
 - [`docs/decisions/adr-009-availability-boundary-verification.md`](docs/decisions/adr-009-availability-boundary-verification.md)
