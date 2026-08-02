@@ -40,7 +40,7 @@ actor DefaultViewerProfileRepository: ViewerProfileRepository {
         } catch ViewerProfileCodingError.unsupportedVersion {
             return .recovery(.unsupportedVersion)
         } catch ViewerProfileValidationError.unsupportedCatalog,
-                ViewerProfileValidationError.unsupportedProfileVersion
+            ViewerProfileValidationError.unsupportedProfileVersion
         {
             return .recovery(.unsupportedVersion)
         } catch is ViewerProfileCodingError {
@@ -125,11 +125,11 @@ actor DefaultViewerProfileRepository: ViewerProfileRepository {
         else {
             throw ViewerProfileRepositoryError.invalidTransition
         }
-        let destination = CalibrationFlow.destination(
+        let destination = try CalibrationFlow.destination(
             position: draft.currentCatalogPosition,
             reactions: draft.reactions,
             optionalExtensionAccepted: draft.optionalExtensionAccepted,
-            catalog: try catalog(for: draft.catalogID)
+            catalog: catalog(for: draft.catalogID)
         )
         guard destination == .completion || destination == .lowSignalDecision else {
             throw ViewerProfileRepositoryError.invalidTransition
@@ -219,7 +219,7 @@ actor DefaultViewerProfileRepository: ViewerProfileRepository {
         do {
             try ViewerProfileValidator.validate(
                 profile: profile,
-                catalog: try catalog(for: profile.catalogID)
+                catalog: catalog(for: profile.catalogID)
             )
         } catch let error as ViewerProfileValidationError {
             throw ViewerProfileRepositoryError.validation(error)
@@ -230,7 +230,7 @@ actor DefaultViewerProfileRepository: ViewerProfileRepository {
         do {
             try ViewerProfileValidator.validate(
                 draft: draft,
-                catalog: try catalog(for: draft.catalogID)
+                catalog: catalog(for: draft.catalogID)
             )
         } catch let error as ViewerProfileValidationError {
             throw ViewerProfileRepositoryError.validation(error)
@@ -241,7 +241,7 @@ actor DefaultViewerProfileRepository: ViewerProfileRepository {
         do {
             try ViewerProfileValidator.validate(
                 draft: draft,
-                catalog: try catalog(for: draft.catalogID)
+                catalog: catalog(for: draft.catalogID)
             )
         } catch let error as ViewerProfileValidationError {
             throw ViewerProfileRepositoryError.validation(error)
@@ -269,14 +269,14 @@ actor DefaultViewerProfileRepository: ViewerProfileRepository {
 
     private func map(_ dto: ViewerProfileV1DTO) throws -> ViewerProfile {
         let catalogID = CalibrationCatalogID(rawValue: dto.calibrationCatalogVersion)
-        let profile = ViewerProfile(
+        let profile = try ViewerProfile(
             profileSchemaVersion: dto.profileSchemaVersion,
             catalogID: catalogID,
             region: ViewingRegion(code: dto.regionCode),
-            selectedServices: try services(from: dto.selectedProviderIDs),
-            reactions: try reactions(from: dto.reactionsByMovieID)
+            selectedServices: services(from: dto.selectedProviderIDs),
+            reactions: reactions(from: dto.reactionsByMovieID)
         )
-        try ViewerProfileValidator.validate(profile: profile, catalog: try catalog(for: catalogID))
+        try ViewerProfileValidator.validate(profile: profile, catalog: catalog(for: catalogID))
         return profile
     }
 
@@ -286,12 +286,12 @@ actor DefaultViewerProfileRepository: ViewerProfileRepository {
                 guard dto.recalibration == nil, let payload = dto.firstOnboarding else {
                     throw ViewerProfileValidationError.inconsistentProgress
                 }
-                return .firstOnboarding(try map(payload))
+                return try .firstOnboarding(map(payload))
             case .recalibration:
                 guard dto.firstOnboarding == nil, let payload = dto.recalibration else {
                     throw ViewerProfileValidationError.inconsistentProgress
                 }
-                return .recalibration(try map(payload))
+                return try .recalibration(map(payload))
         }
     }
 
@@ -300,27 +300,27 @@ actor DefaultViewerProfileRepository: ViewerProfileRepository {
             throw ViewerProfileValidationError.inconsistentProgress
         }
         let catalogID = CalibrationCatalogID(rawValue: dto.calibrationCatalogVersion)
-        let draft = FirstOnboardingDraft(
+        let draft = try FirstOnboardingDraft(
             catalogID: catalogID,
             step: step,
-            selectedServices: try services(from: dto.selectedProviderIDs),
-            reactions: try reactions(from: dto.reactionsByMovieID),
+            selectedServices: services(from: dto.selectedProviderIDs),
+            reactions: reactions(from: dto.reactionsByMovieID),
             currentCatalogPosition: dto.currentCatalogPosition,
             optionalExtensionAccepted: dto.optionalExtensionAccepted
         )
-        try ViewerProfileValidator.validate(draft: draft, catalog: try catalog(for: catalogID))
+        try ViewerProfileValidator.validate(draft: draft, catalog: catalog(for: catalogID))
         return draft
     }
 
     private func map(_ dto: RecalibrationDraftV1DTO) throws -> RecalibrationDraft {
         let catalogID = CalibrationCatalogID(rawValue: dto.calibrationCatalogVersion)
-        let draft = RecalibrationDraft(
+        let draft = try RecalibrationDraft(
             catalogID: catalogID,
-            reactions: try reactions(from: dto.reactionsByMovieID),
+            reactions: reactions(from: dto.reactionsByMovieID),
             currentCatalogPosition: dto.currentCatalogPosition,
             optionalExtensionAccepted: dto.optionalExtensionAccepted
         )
-        try ViewerProfileValidator.validate(draft: draft, catalog: try catalog(for: catalogID))
+        try ViewerProfileValidator.validate(draft: draft, catalog: catalog(for: catalogID))
         return draft
     }
 

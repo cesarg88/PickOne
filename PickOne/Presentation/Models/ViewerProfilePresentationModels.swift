@@ -12,9 +12,13 @@ enum ViewerProfileCopy {
     static let resetTitle = "Reset preferences?"
     static let resetBody = "This removes your streaming services and movie calibration. Your Watchlist and Search History will stay."
     static let unsupportedTitle = "Preferences need to be reset"
-    static let unsupportedBody = "This saved preference version isn't supported by this build. Your Watchlist and Search History won't be affected."
+    static let unsupportedBody =
+        "This saved preference version isn't supported by this build. " +
+        "Your Watchlist and Search History won't be affected."
     static let corruptTitle = "Preferences couldn't be read"
-    static let corruptBody = "Your saved preferences are damaged. You can try again or reset them. Your Watchlist and Search History won't be affected."
+    static let corruptBody =
+        "Your saved preferences are damaged. You can try again or reset them. " +
+        "Your Watchlist and Search History won't be affected."
 }
 
 enum AppRootViewState: Equatable {

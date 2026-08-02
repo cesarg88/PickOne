@@ -102,7 +102,9 @@ enum ViewerProfileValidator {
         guard position >= 0, position <= catalog.movies.count else {
             throw ViewerProfileValidationError.invalidCatalogPosition
         }
-        guard optionalExtensionAccepted ? position >= CalibrationFlow.normalLimit : position <= CalibrationFlow.normalLimit else {
+        guard optionalExtensionAccepted ? position >= CalibrationFlow.normalLimit : position <= CalibrationFlow
+            .normalLimit
+        else {
             throw ViewerProfileValidationError.inconsistentProgress
         }
         let precedingIDs = catalog.movies.prefix(position).map(\.id)

@@ -53,10 +53,10 @@ struct ManageViewerProfile: ManageViewerProfileUseCase {
         _ services: [PilotStreamingService],
         in draft: FirstOnboardingDraft
     ) async throws -> FirstOnboardingDraft {
-        let updated = FirstOnboardingDraft(
+        let updated = try FirstOnboardingDraft(
             catalogID: draft.catalogID,
             step: draft.step,
-            selectedServices: try validatedServices(services),
+            selectedServices: validatedServices(services),
             reactions: draft.reactions,
             currentCatalogPosition: draft.currentCatalogPosition,
             optionalExtensionAccepted: draft.optionalExtensionAccepted
@@ -117,11 +117,10 @@ struct ManageViewerProfile: ManageViewerProfileUseCase {
     }
 
     func goBack(in draft: FirstOnboardingDraft) async throws -> FirstOnboardingDraft {
-        let updated: FirstOnboardingDraft
-        if draft.currentCatalogPosition == 0 {
-            updated = firstDraft(draft, step: .services)
+        let updated: FirstOnboardingDraft = if draft.currentCatalogPosition == 0 {
+            firstDraft(draft, step: .services)
         } else {
-            updated = FirstOnboardingDraft(
+            FirstOnboardingDraft(
                 catalogID: draft.catalogID,
                 step: .calibration,
                 selectedServices: draft.selectedServices,

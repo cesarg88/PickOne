@@ -14,9 +14,9 @@ struct ViewerProfileCatalogTests {
         #expect(Set(catalog.movies.map(\.id)).count == 21)
         #expect(
             catalog.movies.map(\.id) == [
-                238, 11036, 155, 1417, 18785, 129, 157336, 419430,
-                496243, 354912, 546554, 76341, 120, 313369, 77338,
-                278, 98, 194, 120467, 447332, 906126,
+                238, 11036, 155, 1417, 18785, 129, 157_336, 419_430,
+                496_243, 354_912, 546_554, 76341, 120, 313_369, 77338,
+                278, 98, 194, 120_467, 447_332, 906_126,
             ]
         )
         #expect(catalog.movies.allSatisfy { !$0.titleKnownInSpain.isEmpty })
