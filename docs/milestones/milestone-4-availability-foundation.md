@@ -2,7 +2,8 @@
 
 ## Status
 
-Accepted — Ready for implementation
+Completed — implementation merged in PR #16 and targeted iPhone validation
+passed
 
 ## Identifiers
 
@@ -11,6 +12,33 @@ Accepted — Ready for implementation
 - Research:
   [SPIKE-001 findings](../research/tmdb-es-streaming-availability-findings.md)
 - Product authority: [`PRODUCT.md`](../../PRODUCT.md)
+
+## Completion Record
+
+Milestone 4 is complete as a bounded availability vertical slice.
+
+- Implementation merged into `develop` in
+  [PR #16](https://github.com/cesarg88/PickOne/pull/16), commit `0fac7a8`.
+- The delivered architecture follows accepted
+  [ADR-009](../decisions/adr-009-availability-boundary-verification.md): a
+  dedicated availability boundary, tri-state Domain outcome, actor-isolated
+  memory cache, and independent Movie Detail presentation.
+- The implementation includes exact `ES.flatrate` provider verification,
+  24-hour evidence freshness, revalidation before the optional TMDB handoff,
+  JustWatch attribution, multiple-provider presentation, fallback names, and
+  cancellation/stale-response protection.
+- Closure validation on 2026-08-02 passed the repository `make verify` gate:
+  formatting and lint, secret scan, 140 unit tests, the UI smoke test, static
+  analysis, unsigned Release build, and app-bundle inspection.
+- On the pilot iPhone, the Product Owner confirmed that existing application
+  behavior still works, unavailable titles show the accepted message, and
+  eligible titles show the service logos where they are included.
+- Broader exhaustive device testing and visual-polish adjustments remain later
+  release work; neither changes the accepted M4 capability or architecture.
+
+The immutable Spain pilot context is intentionally retained as the completed M4
+boundary. Milestone 5 replaces only its source with the accepted editable local
+profile and dynamic viewing-context resolution.
 
 ## Goal
 
@@ -29,7 +57,7 @@ where the movie is reported as included without tapping to discover that
 information or waiting for availability before the rest of Detail becomes
 usable.
 
-## Current Baseline
+## Baseline Before Implementation
 
 - Movie Detail loads movie metadata, similar movies, credits, and local
   watchlist state.

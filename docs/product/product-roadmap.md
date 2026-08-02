@@ -115,7 +115,8 @@ trust restrictions.
 [Availability Foundation](../milestones/milestone-4-availability-foundation.md)
 
 Status:
-In Progress
+Complete — implementation merged in PR #16 and targeted iPhone validation
+passed
 
 Purpose:
 

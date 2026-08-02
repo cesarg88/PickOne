@@ -12,7 +12,7 @@ It contains only work that remains pending after Milestone 3.3. Completed work
 should remain in this file with its status changed to `Completed` and a link to
 the implementing PR or milestone.
 
-Last reviewed: 2026-07-30, at the start of Milestone 4.
+Last reviewed: 2026-08-02, at the documentary closure of Milestone 4.
 
 ## Product Direction
 
@@ -286,10 +286,11 @@ Priorities:
 
 ### IMP-009 — Add regional availability and a path to watch
 
-- Status: `In Progress`
+- Status: `Completed`
 - Priority: `P0`
 - Evidence:
   [`TMDB Spain Streaming Availability Findings`](../research/tmdb-es-streaming-availability-findings.md)
+- Implementation: [PR #16](https://github.com/cesarg88/PickOne/pull/16)
 - Specification:
   [`Milestone 4 — Availability Foundation`](../milestones/milestone-4-availability-foundation.md)
 - Architecture:
@@ -297,7 +298,7 @@ Priorities:
 - Roadmap relationship: Milestone 4
 - Why: a good movie recommendation is less useful if it is not available in
   the user's country or services.
-- Implementation:
+- Completed result:
   - use Spain and the accepted provider allowlist: Netflix `8`, Amazon Prime
     Video `119`, Disney Plus `337`, and HBO Max `1899`
   - require the exact selected provider in movie-level `ES.flatrate`
