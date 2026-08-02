@@ -128,7 +128,8 @@ attribution, and the secondary fallback watch-page handoff.
 [Viewer Profile & Onboarding](../milestones/milestone-5-viewer-profile-onboarding.md)
 
 Status:
-Specification in review
+Specification approved; awaiting Milestone 4 documentary closure and
+reconciliation
 
 Purpose:
 

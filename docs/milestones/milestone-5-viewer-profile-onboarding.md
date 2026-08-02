@@ -2,14 +2,15 @@
 
 ## Status
 
-Proposed — product catalog and architecture review required
+Proposed — product and architecture approved; awaiting Milestone 4 documentary
+closure
 
-No implementation is authorized until the Product Owner accepts:
-
-1. the exact calibration catalog and order in this document;
-2. the localized titles and bundled fallback metadata;
-3. `Settings` as a fifth main tab;
-4. [ADR-010](../decisions/adr-010-local-viewer-profile-and-dynamic-context.md).
+The Product Owner and CTO approved the catalog, localized-title behavior,
+fifth `Settings` tab, persistence model, dynamic availability context, and
+ADR-010 architecture on 2026-08-02. Keep this milestone `Proposed` and this PR
+in draft until Milestone 4 is closed in its isolated documentation PR, this PR
+is updated or rebased, and the resulting documents are checked for conflicts.
+No Milestone 5 implementation is authorized yet.
 
 ## Identifiers
 
@@ -173,14 +174,13 @@ viewer is not trapped in onboarding.
 
 Eight signals are a confidence target, never a mandatory completion gate.
 
-## Proposed Calibration Catalog v1
+## Calibration Catalog v1
 
 ### Review status
 
-Proposed, not yet accepted. All IDs, Spain-localized titles, English or original
-titles, and years were verified against TMDB on 2026-08-02. Acceptance must
-evaluate recognition by the Product Owner as well as diversity; API correctness
-alone is insufficient.
+Approved for Milestone 5. All IDs, Spain-localized titles, English or original
+titles, and years were verified against TMDB on 2026-08-02. The Product Owner
+accepted the catalog membership, order, recognition, and early diversity.
 
 Persist the catalog identifier as:
 
@@ -292,10 +292,24 @@ Behavior:
 Each card shows:
 
 - artwork or a stable placeholder;
-- title known in Spain as the primary title;
-- original or English title and release year as secondary recognition context;
+- when title forms differ, the title known in Spain as the primary title and
+  the original or English title with release year as secondary context;
+- when title forms are equivalent, one title with the release year rather than
+  two visually duplicated lines;
 - progress through the current catalog block;
 - the six accepted reactions.
+
+Presentation determines title equivalence by trimming surrounding whitespace,
+collapsing repeated whitespace, and comparing without case sensitivity. It does
+not remove punctuation or diacritics and does not attempt linguistic
+normalization. Examples:
+
+```text
+Interstellar · 2014
+
+El viaje de Chihiro
+Spirited Away · 2001
+```
 
 Behavior:
 
@@ -362,26 +376,41 @@ calculated Domain property equal to the number of `Love it`, `Like it`,
 profile or validated against a stored counter. Milestone 6 consumes this
 calculated value.
 
-### Required onboarding-draft data
+### Required draft variants
 
-The draft contains enough information to resume deterministically:
+The envelope identifies the draft schema and stores one explicit draft variant.
+The variants do not share a payload that can accidentally give recalibration
+ownership of service selection.
 
-- draft schema version;
+A first-onboarding draft contains enough information to resume the whole flow:
+
 - calibration catalog version;
-- current step;
+- current onboarding step;
 - selected provider IDs;
 - reactions keyed by TMDB movie ID;
 - current catalog position;
 - whether the optional extension has been accepted.
 
+A recalibration draft contains calibration state only:
+
+- calibration catalog version;
+- reactions keyed by TMDB movie ID;
+- current catalog position;
+- whether the optional extension has been accepted.
+
+A recalibration draft contains neither region nor selected provider IDs. It
+does not snapshot, copy, or own viewing context from the active profile.
+
 Draft persistence rules:
 
-- save every meaningful service-selection and reaction change;
-- save the current step before navigation completes;
+- save every meaningful service-selection change to a first-onboarding draft;
+- save every meaningful reaction change to the active draft variant;
+- save the current onboarding step before first-onboarding navigation completes;
 - retry a detectable encoding or repository write error without advancing;
 - relaunch resumes the last successfully stored state;
 - Back never discards saved answers;
-- `Start over` deletes only the draft and creates a new empty draft;
+- `Start over` deletes only the active draft and creates an empty draft of the
+  same variant;
 - starting first onboarding never modifies Watchlist or Search History.
 
 ### Atomic completion
@@ -395,12 +424,21 @@ have been physically persisted after `set` returns.
 
 During recalibration from Preferences, the existing completed profile remains
 active until the replacement completes successfully. The recalibration draft
-may coexist with it. Cancelling or resetting that draft preserves the active
-profile.
+may coexist with it. Completion constructs the replacement profile from:
+
+```text
+region and selected services from the current active profile
++ reactions and catalog version from the recalibration draft
+```
+
+The active profile is read at completion time, so service changes made after
+recalibration starts remain authoritative and cannot be overwritten by stale
+draft data. Cancelling or resetting the recalibration draft preserves the
+active profile.
 
 ## Preferences and Stable Navigation
 
-### Proposed stable entry — requires review
+### Stable entry
 
 Add a fifth main tab:
 
@@ -434,13 +472,17 @@ avatar, or household-profile concept.
 ### Repeat calibration
 
 - Starts a new draft using the current accepted catalog version.
+- Stores calibration state only; it never copies region or selected services.
 - Does not replace or clear the active completed profile.
 - Can resume from Preferences after interruption.
 - Successful completion replaces reactions and catalog version as one complete
-  envelope while preserving region and the latest saved service selection.
+  envelope while taking region and services from the current active profile at
+  completion time.
+- A service edit made while recalibration is in progress remains authoritative
+  and cannot be restored to an older value by completing the draft.
 - Individual reaction editing is not available in v1.
 
-### Reset onboarding draft
+### Reset profile draft
 
 - Requires confirmation.
 - Deletes only the draft.
@@ -452,7 +494,7 @@ avatar, or household-profile concept.
 ### Reset profile
 
 - Requires confirmation.
-- Deletes the completed profile and any onboarding draft.
+- Deletes the completed profile and any profile draft.
 - Never deletes Watchlist or Search History.
 - Returns immediately to first onboarding.
 - Does not clear availability evidence; evidence remains region-keyed and can
@@ -559,7 +601,7 @@ Milestone 5 preserves `Presentation → Domain ← Data` and follows ADR-010.
 
 Add focused values and contracts equivalent to:
 
-- viewer profile and onboarding draft;
+- viewer profile, first-onboarding draft, and recalibration draft;
 - calibration reaction and catalog identity;
 - viewer-profile load/recovery state;
 - `ViewerProfileRepository`;
@@ -576,7 +618,10 @@ Domain owns:
 - reaction semantics and informative-count calculation;
 - completion and low-signal rules;
 - supported service and region validation;
-- state transitions between draft and completed profile;
+- state transitions between each draft variant and completed profile;
+- the invariant that recalibration owns no region or selected-service state;
+- recalibration completion composition from the current active profile and the
+  calibration-only draft;
 - dynamic conversion from current profile to `AvailabilityViewingContext`;
 - rules that preserve an active profile during recalibration.
 
@@ -593,7 +638,7 @@ Data owns:
 
 - persisted DTOs and schema decoding;
 - one serialized state envelope capable of containing a completed profile and
-  an optional draft;
+  an optional tagged first-onboarding or recalibration draft;
 - serialized whole-envelope replacement after complete encoding;
 - schema migration dispatch;
 - preservation of corrupt or unsupported bytes until explicit reset;
@@ -617,6 +662,9 @@ Add explicit states for:
 
 Presentation talks only to profile and availability use cases. Views never
 read UserDefaults, persisted DTOs, or provider IDs directly.
+Presentation also owns calibration title display mapping, including suppression
+of an equivalent secondary title after the accepted case-and-whitespace-only
+comparison.
 
 ### Composition and concurrency
 
@@ -714,8 +762,12 @@ publishes no false success or recovery state.
 - completion is possible after extension exhaustion with any count;
 - informative count is calculated from reactions and is absent from persisted
   profile and draft data;
-- each card presents the title known in Spain, then the original or English
-  title and year;
+- each card presents distinct title forms as title known in Spain, then original
+  or English title and year;
+- equivalent title forms are shown once with the year after a case-insensitive
+  comparison that trims and collapses whitespace;
+- punctuation and diacritics remain significant and no linguistic title
+  normalization occurs;
 - hydration failure retains the same recognition fields from bundled fallback
   metadata;
 - at least one Spanish-language or clearly international movie appears before
@@ -727,10 +779,20 @@ publishes no false success or recovery state.
 - progress persists after every service or reaction change;
 - Back preserves and can revise reactions;
 - relaunch resumes first onboarding at the saved position;
+- a first-onboarding draft owns selected services and full onboarding progress;
+- a recalibration draft owns only catalog version, reactions, catalog position,
+  and extension state, with no region or selected services;
+- an envelope containing a completed profile plus first-onboarding draft, or a
+  recalibration draft without a completed profile, is invalid and is not
+  silently reinterpreted;
 - completion encodes the full replacement envelope before replacing its single
   stored value;
 - a detectable failed completion preserves the last valid draft;
 - a recalibration draft coexists with the active profile;
+- recalibration completion takes region and selected services from the current
+  active profile and calibration data from the draft;
+- changing services during recalibration cannot be undone by completing that
+  recalibration;
 - an interrupted recalibration does not affect current availability context;
 - a future app build can decode the accepted v1 profile;
 - unsupported and corrupt data remain distinct and are never silently reset;
@@ -777,12 +839,15 @@ At minimum:
    counter;
 3. primary, reserve, early-eight, three-to-seven, zero-to-two, Continue, and
    optional-extension state transitions;
-4. draft save after service/reaction change, Back revision, and deterministic
-   resume;
+4. first-onboarding and recalibration draft save, Back revision, tagged variant
+   decoding, and deterministic resume;
 5. first completion and recalibration serialized whole-envelope replacement,
    using one key and persisted DTOs with neither a signal counter nor a
    redundant completion boolean;
 6. active-profile preservation during recalibration and failed completion;
+   recalibration DTOs contain no region or selected services, completion reads
+   both from the current active profile, and a concurrent service edit cannot
+   be restored to an older selection;
 7. absent, valid, unsupported, corrupt, encoding, decoding, and injected
    repository-error outcomes;
 8. reset-draft and reset-profile isolation from Watchlist/Search History;
@@ -798,6 +863,9 @@ At minimum:
 17. all four informative reactions expose calibration-derived seen semantics
     while calibration persistence leaves Watchlist and Movie Detail state
     unchanged.
+18. title presentation shows one `Title · Year` line for forms equivalent after
+    case and whitespace normalization, two lines for distinct forms, and uses
+    the same rule for hydrated and bundled fallback metadata.
 
 Repository tests verify only observable contracts. They must not simulate a
 generic physical `UserDefaults` durability acknowledgement that the production
@@ -907,15 +975,16 @@ The future implementation agent must:
 - leave the PR open through device validation and close the milestone in that
   same PR before merge.
 
-## Review Decisions Still Required
+## Acceptance Transition Pending
 
-Before changing this status to `Accepted — Ready for implementation`, review:
+Product and architecture decisions are approved. Before changing this status
+to `Accepted — Ready for implementation`:
 
-1. Are the exact 21 proposed titles and their order accepted, including early
-   diversity before the eight-signal stop?
-2. Are the Spain-localized titles, original or English titles, and bundled
-   fallbacks recognizable and sufficient?
-3. Should the stable main-navigation entry be the proposed fifth `Settings`
-   tab with About moved into it?
-4. Does ADR-010 select the correct profile repository, envelope, and
-   dynamic availability-context boundaries?
+1. merge the isolated Milestone 4 documentary-closure PR;
+2. update or rebase PR #18 onto that `develop` state;
+3. confirm the Milestone 4 closure introduces no documentary conflict;
+4. update this milestone, ADR-010, roadmap, backlog, and PR description to the
+   accepted state.
+
+That documentary transition does not authorize the current task to begin
+Milestone 5 production implementation.

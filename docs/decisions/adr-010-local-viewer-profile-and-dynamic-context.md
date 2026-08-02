@@ -2,7 +2,12 @@
 
 ## Status
 
-Proposed — requires architecture review before Milestone 5 implementation
+Proposed — architecture approved; awaiting Milestone 4 documentary closure and
+reconciliation
+
+The Product Owner and CTO approved this architecture on 2026-08-02. Keep the
+ADR `Proposed` until the isolated Milestone 4 closure is merged, PR #18 is
+updated or rebased, and the resulting documentation is confirmed conflict-free.
 
 ## Context
 
@@ -25,10 +30,11 @@ fresh TMDB evidence. The system must also distinguish absent, incomplete,
 unsupported, corrupt, and detectably unreadable state without silently
 manufacturing a default profile.
 
-The profile and onboarding draft have different lifecycles. During first
+The profile and the two draft variants have different lifecycles. During first
 onboarding there is no completed profile. During recalibration, a completed
-profile must remain active while a replacement draft is saved. Completion must
-replace the profile and remove the draft in one serialized envelope update.
+profile must remain active while a calibration-only replacement draft is saved.
+Completion must replace the profile and remove the draft in one serialized
+envelope update.
 
 ## Decision
 
@@ -57,7 +63,9 @@ Add values equivalent to:
 
 ```text
 ViewerProfile
-OnboardingDraft
+ViewerProfileDraft
+FirstOnboardingDraft
+RecalibrationDraft
 CalibrationReaction
 CalibrationCatalogID
 ViewerProfileLoadState
@@ -78,15 +86,28 @@ A completed `ViewerProfile` contains:
 The existence of `completedProfile` is the completed-onboarding state. No
 additional persisted boolean represents completion.
 
-An `OnboardingDraft` contains:
+`ViewerProfileDraft` is a tagged choice between two semantically different
+payloads. Draft schema identification belongs to the envelope/variant encoding.
 
-- draft schema version;
+A `FirstOnboardingDraft` contains:
+
 - calibration catalog version;
-- current flow step;
+- current onboarding step;
 - selected service IDs;
 - reactions keyed by TMDB movie ID;
 - current ordered catalog position;
 - optional-extension state.
+
+A `RecalibrationDraft` contains calibration state only:
+
+- calibration catalog version;
+- reactions keyed by TMDB movie ID;
+- current ordered catalog position;
+- optional-extension state.
+
+`RecalibrationDraft` has no region or selected-service field. This exclusion is
+part of the model and persisted DTO shape, not a convention that callers must
+remember.
 
 Domain exposes `informativeSignalCount` as a calculated property over the
 stored reactions. It counts `Love it`, `Like it`, `It was okay`, and
@@ -102,7 +123,11 @@ Domain validates:
 - response values are recognized;
 - current position and extension state are valid for the catalog;
 - any persisted catalog position is consistent with the stored reactions and
-  extension state.
+  extension state;
+- a first-onboarding draft exists only without a completed profile;
+- a recalibration draft exists only with a completed profile;
+- recalibration completion combines region and selected services from the
+  current active profile with reactions and catalog version from the draft.
 
 Invalid invariants are not repaired by guessing.
 
@@ -113,14 +138,18 @@ The Domain repository supports behavior equivalent to:
 ```text
 loadState()
 saveDraft(draft)
-complete(profile, replacingDraft)
+completeFirstOnboarding()
+completeRecalibration()
 updateServices(selection)
 resetDraft()
 resetProfileAndDraft()
 ```
 
 Operations may be grouped differently if whole-envelope replacement and
-distinct outcomes remain explicit. Repository outcomes distinguish at least:
+distinct outcomes remain explicit. `completeRecalibration` must load the active
+profile inside the same serialized repository operation that replaces the
+envelope; it cannot accept region or services copied from the draft or captured
+when recalibration began. Repository outcomes distinguish at least:
 
 - unsupported schema;
 - corrupt or invariant-invalid data;
@@ -137,7 +166,7 @@ Persist one encoded envelope under one dedicated local key. The envelope can
 contain both:
 
 - an optional completed profile;
-- an optional onboarding or recalibration draft.
+- an optional tagged first-onboarding or recalibration draft.
 
 Conceptually:
 
@@ -145,17 +174,23 @@ Conceptually:
 ViewerStateEnvelopeV1
 ├── envelopeSchemaVersion
 ├── completedProfile?
-└── onboardingDraft?
+└── profileDraft?
+    ├── firstOnboarding(FirstOnboardingDraft)
+    └── recalibration(RecalibrationDraft)
 ```
 
 The envelope enables these valid combinations:
 
 | Completed profile | Draft | Meaning |
 | --- | --- | --- |
-| No | No | First launch/profile absent |
-| No | Yes | Incomplete first onboarding |
-| Yes | No | Normal completed state |
-| Yes | Yes | Active profile plus replacement recalibration draft |
+| No | None | First launch/profile absent |
+| No | First onboarding | Incomplete first onboarding |
+| Yes | None | Normal completed state |
+| Yes | Recalibration | Active profile plus calibration-only replacement draft |
+
+A profile with a first-onboarding draft and a recalibration draft without a
+profile are invalid envelope combinations. They are reported as invalid data,
+not coerced into another state.
 
 Write the complete encoded envelope as one UserDefaults `Data` value. Do not
 store profile fields, reactions, or draft progress in separate keys whose
@@ -186,8 +221,11 @@ Required transitions:
 - first completion: replace draft-only envelope with profile-only envelope;
 - begin recalibration: replace profile-only envelope with profile-plus-draft;
 - recalibration change: replace only the draft inside a full envelope;
+- service edit during recalibration: replace the active profile selection while
+  preserving the calibration-only draft;
 - recalibration completion: replace profile-plus-draft with replacement
-  profile-only envelope;
+  profile-only envelope, taking current region and services from the active
+  profile and reactions/catalog version from the draft;
 - reset draft: remove only draft and preserve profile;
 - reset profile: remove both profile and draft.
 
@@ -231,6 +269,13 @@ title plus year second. Failed hydration falls back to the same bundled display
 fields and does not change catalog identity or block reaction entry. The first
 eight positions include Spanish-language or clearly international cinema before
 early completion can occur.
+
+Presentation suppresses the secondary title when both forms are equivalent
+after trimming surrounding whitespace, collapsing repeated whitespace, and a
+case-insensitive comparison. It then shows one `Title · Year` line. Distinct
+forms use two lines. Punctuation and diacritics remain significant; the mapper
+does not perform linguistic normalization. Hydrated and fallback metadata use
+the same rule.
 
 No generalized remote configuration or catalog-management abstraction is
 introduced.
@@ -380,6 +425,7 @@ surfaces remain outside Milestone 5.
   availability context.
 - Profile replacement and draft progress have explicit serialized-envelope
   semantics.
+- Recalibration cannot own or restore stale service selection.
 - Existing Watchlist and Search History remain independent.
 - Service edits take effect predictably without unnecessary TMDB requests.
 - Corrupt and unsupported data cannot silently become an empty/default profile.
@@ -396,8 +442,7 @@ surfaces remain outside Milestone 5.
   simple record.
 - `CheckMovieAvailability` gains a Domain dependency on current-context
   resolution.
-- A fifth tab consumes permanent primary-navigation space unless the proposal
-  is revised during review.
+- The accepted fifth tab consumes permanent primary-navigation space.
 
 ### Risks and mitigations
 
@@ -409,22 +454,25 @@ surfaces remain outside Milestone 5.
 - **Risk:** recalibration weakens a usable profile before completion.
   **Mitigation:** keep active profile until whole-envelope replacement
   completes.
+- **Risk:** a service edit races with recalibration completion.
+  **Mitigation:** serialize both operations and compose completion from the
+  active profile inside the replacement operation; the calibration-only draft
+  has no service fields to restore.
 - **Risk:** future schema update silently loses data.
   **Mitigation:** explicit version dispatch and migration registry.
 - **Risk:** Settings becomes overcrowded later.
   **Mitigation:** keep v1 limited to Preferences and About; reassess from
   observed use rather than introduce a generic navigation framework.
 
-## Validation Required for Acceptance
+## Acceptance Transition Pending
 
-Before changing this ADR to `Accepted`, confirm:
+The architecture is approved. Keep this ADR `Proposed` until:
 
-1. the exact catalog and order described by Milestone 5;
-2. the Spain-localized, original or English, and bundled fallback title
-   treatment;
-3. the fifth `Settings` tab as the stable Preferences entry;
-4. this ADR's repository, serialized-envelope, recovery, and dynamic
-   availability-context boundaries as a whole.
+1. the isolated Milestone 4 documentary-closure PR is merged;
+2. PR #18 is updated or rebased onto that `develop` state;
+3. the resulting milestone and ADR boundaries are confirmed conflict-free;
+4. ADR-010, Milestone 5, roadmap, backlog, and the PR description are moved to
+   the accepted state together.
 
 ## Related Documents
 

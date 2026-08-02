@@ -222,6 +222,11 @@ original or English title with the release year as secondary recognition
 context. The bundled catalog preserves both title forms and year as fallback
 metadata when localized TMDB hydration is unavailable.
 
+When both title forms are equivalent after ignoring case and trivial whitespace
+differences, the card shows the title only once with the year. Distinct title
+forms remain on two lines. This comparison does not perform linguistic,
+punctuation, or diacritic normalization.
+
 Calibration reactions preserve local knowledge that an informative title was
 seen, but they do not mutate Watchlist or Movie Detail watched state in this
 milestone. Milestone 6 combines calibration reactions with existing Watchlist
@@ -539,8 +544,16 @@ As of the last review:
   reactions and is not persisted independently.
 - Calibration uses Spain-localized titles with bundled localized, original or
   English, and year fallbacks to reduce false `Don't know it` responses.
+- Equivalent localized and original or English titles are shown once with the
+  year; distinct title forms remain visible together.
+- The exact Milestone 5 calibration catalog and order are accepted for the
+  household pilot.
 - Preferences can edit services, restart full calibration, or reset the profile
   with confirmation. Individual reaction editing is outside v1.
+- Preferences and About use `Settings` as the accepted fifth main tab.
+- Recalibration owns only calibration progress. Completing it preserves the
+  region and current service selection from the active profile, including
+  service edits made while recalibration is in progress.
 - Eligibility means included in the selected plan without an additional
   transaction. Advertising alone is not a universal exclusion.
 - Amazon Video stores, rent, buy, unselected Amazon Channels, and other
@@ -576,10 +589,9 @@ As of the last review:
 
 These require explicit product decisions before their related implementation:
 
-1. What exact title set and selection logic should calibrate initial taste?
-2. What confirmation language best distinguishes intent to watch from verified
+1. What confirmation language best distinguishes intent to watch from verified
    viewing?
-3. Which deterministic scoring and diversity rules produce the first
+2. Which deterministic scoring and diversity rules produce the first
    personalized recommendation set?
 
 Open questions are not permission for implementation agents to invent behavior.
