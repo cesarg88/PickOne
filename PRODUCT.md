@@ -600,11 +600,12 @@ They must be resolved in product steering or explicitly bounded by a milestone.
 ## Related Documents
 
 - [`docs/milestones/milestone-5-viewer-profile-onboarding.md`](docs/milestones/milestone-5-viewer-profile-onboarding.md)
-  is the proposed specification for the next viewer-profile milestone.
+  is the accepted specification for the next viewer-profile milestone.
 - [`docs/decisions/adr-010-local-viewer-profile-and-dynamic-context.md`](docs/decisions/adr-010-local-viewer-profile-and-dynamic-context.md)
-  proposes its persistence and dynamic availability-context architecture.
+  defines its accepted persistence and dynamic availability-context
+  architecture.
 - [`docs/milestones/milestone-4-availability-foundation.md`](docs/milestones/milestone-4-availability-foundation.md)
-  is the active specification for availability behavior.
+  is the completed specification and record for availability behavior.
 - [`docs/decisions/adr-009-availability-boundary-verification.md`](docs/decisions/adr-009-availability-boundary-verification.md)
   defines the availability architecture boundary and verification policy.
 - [`docs/product/product-roadmap.md`](docs/product/product-roadmap.md) tracks

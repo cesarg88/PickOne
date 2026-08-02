@@ -2,15 +2,14 @@
 
 ## Status
 
-Proposed — product and architecture approved; awaiting Milestone 4 documentary
-closure
+Accepted — Ready for implementation
 
 The Product Owner and CTO approved the catalog, localized-title behavior,
 fifth `Settings` tab, persistence model, dynamic availability context, and
-ADR-010 architecture on 2026-08-02. Keep this milestone `Proposed` and this PR
-in draft until Milestone 4 is closed in its isolated documentation PR, this PR
-is updated or rebased, and the resulting documents are checked for conflicts.
-No Milestone 5 implementation is authorized yet.
+ADR-010 architecture on 2026-08-02. Milestone 4 was closed independently in
+PR #19, this specification was updated onto that `develop` state, and the
+resulting documents were confirmed conflict-free. Implementation belongs in a
+new branch and PR after this specification PR is merged.
 
 ## Identifiers
 
@@ -191,7 +190,7 @@ es-household-calibration-v1
 The order below is product behavior. An implementation must not shuffle,
 replace, or remotely re-rank it.
 
-The proposed first eight deliberately mix genre, pace, era, and tone and place
+The accepted first eight deliberately mix genre, pace, era, and tone and place
 Spanish-language and Japanese titles before early completion can occur.
 
 ### Primary block — positions 1–12
@@ -325,7 +324,7 @@ Behavior:
 - the UI does not display an inferred score or taste label.
 
 Progress copy should describe activity rather than promise a fixed denominator
-because the flow may stop at eight signals or extend beyond 12. Proposed copy:
+because the flow may stop at eight signals or extend beyond 12. Accepted copy:
 
 ```text
 8 taste signals help us start with more confidence.
@@ -454,7 +453,7 @@ Move the current About entry from Discover into Settings so settings and legal
 information do not remain tied to a surface that Milestone 6 will replace with
 Home. The Settings tab survives the Discover-to-Home transition unchanged.
 
-This proposal deliberately avoids a profile tab: v1 has no identity, account,
+This decision deliberately avoids a profile tab: v1 has no identity, account,
 avatar, or household-profile concept.
 
 ### Edit services
@@ -500,7 +499,7 @@ avatar, or household-profile concept.
 - Does not clear availability evidence; evidence remains region-keyed and can
   be reevaluated after a new service selection.
 
-Proposed confirmation copy:
+Accepted confirmation copy:
 
 - Title: `Reset preferences?`
 - Body:
@@ -535,7 +534,7 @@ Behavior:
 - playback-options preparation uses the same dynamic check path and therefore
   cannot retain stale service selection.
 
-Exact architecture is proposed in ADR-010 and must be accepted before code.
+Exact architecture is defined by accepted ADR-010.
 
 ## Persistence and Recovery
 
@@ -680,7 +679,7 @@ comparison.
 
 - fixed Spain region presentation;
 - supported service selection with no defaults;
-- proposed fixed versioned calibration catalog;
+- accepted fixed versioned calibration catalog;
 - resumable first-onboarding and recalibration drafts;
 - serialized whole-envelope completed local profile;
 - signal counting and low-signal exit;
@@ -941,9 +940,10 @@ status, and records any accepted deviations before merge.
   PR text.
 - Reset affects only the explicitly described local profile state.
 
-## Proposed Implementation Order
+## Implementation Order
 
-Implementation remains blocked pending review. After acceptance:
+Implementation starts only from a new branch and PR after this documentation
+PR is merged:
 
 1. Add Domain profile, draft, reaction, catalog, state, and repository contracts.
 2. Add deterministic catalog and calibration state-machine tests.
@@ -975,16 +975,17 @@ The future implementation agent must:
 - leave the PR open through device validation and close the milestone in that
   same PR before merge.
 
-## Acceptance Transition Pending
+## Acceptance Record
 
-Product and architecture decisions are approved. Before changing this status
-to `Accepted — Ready for implementation`:
+The Product Owner and CTO accepted the product and architecture decisions on
+2026-08-02. The remaining documentary prerequisites are also complete:
 
-1. merge the isolated Milestone 4 documentary-closure PR;
-2. update or rebase PR #18 onto that `develop` state;
-3. confirm the Milestone 4 closure introduces no documentary conflict;
-4. update this milestone, ADR-010, roadmap, backlog, and PR description to the
-   accepted state.
+1. the isolated Milestone 4 documentary closure was merged in PR #19;
+2. PR #18 was updated onto the resulting `develop` state;
+3. the Milestone 4 completion record, ADR-009 boundary, and this specification
+   were checked and introduce no conflict;
+4. Milestone 5, ADR-010, roadmap, backlog, and PR description were moved to the
+   accepted state together.
 
-That documentary transition does not authorize the current task to begin
-Milestone 5 production implementation.
+Acceptance makes the specification executable. It does not add production code
+to PR #18; Milestone 5 implementation remains a separate delivery task.

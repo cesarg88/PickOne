@@ -108,11 +108,10 @@ Priorities:
 - Priority: `P0`
 - Roadmap relationship: Milestone 5
 - Depends on: IMP-009 availability identity and entitlement decisions
-- Specification state: product and architecture approved; acceptance awaits
-  isolated Milestone 4 documentary closure and PR #18 reconciliation
-- Draft specification:
+- Specification state: `Accepted — Ready for implementation`
+- Accepted specification:
   [`Milestone 5 — Viewer Profile & Onboarding`](../milestones/milestone-5-viewer-profile-onboarding.md)
-- Approved architecture pending acceptance transition:
+- Accepted architecture:
   [`ADR-010 — Local Viewer Profile and Dynamic Viewing Context`](../decisions/adr-010-local-viewer-profile-and-dynamic-context.md)
 - Why:
   PickOne cannot personalize or enforce watchability without a small, editable

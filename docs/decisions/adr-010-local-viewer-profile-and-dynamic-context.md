@@ -2,12 +2,11 @@
 
 ## Status
 
-Proposed — architecture approved; awaiting Milestone 4 documentary closure and
-reconciliation
+Accepted
 
-The Product Owner and CTO approved this architecture on 2026-08-02. Keep the
-ADR `Proposed` until the isolated Milestone 4 closure is merged, PR #18 is
-updated or rebased, and the resulting documentation is confirmed conflict-free.
+The Product Owner and CTO accepted this architecture on 2026-08-02. Milestone 4
+was closed independently in PR #19, PR #18 was updated onto that `develop`
+state, and the resulting documentation was confirmed conflict-free.
 
 ## Context
 
@@ -329,7 +328,7 @@ choose screens.
 
 ### Stable Preferences entry
 
-Propose a fifth main `Settings` tab containing Preferences and About.
+Use a fifth main `Settings` tab containing Preferences and About.
 
 Rationale:
 
@@ -338,8 +337,8 @@ Rationale:
 - it does not imply account or multi-profile identity;
 - it gives attribution and recovery-related settings a permanent home.
 
-The current Discover-specific About action moves to Settings. The exact tab
-decision remains subject to Product Owner review before this ADR is accepted.
+The current Discover-specific About action moves to Settings. The Product Owner
+and CTO accepted this tab decision with the ADR.
 
 ### Concurrency
 
@@ -464,14 +463,15 @@ surfaces remain outside Milestone 5.
   **Mitigation:** keep v1 limited to Preferences and About; reassess from
   observed use rather than introduce a generic navigation framework.
 
-## Acceptance Transition Pending
+## Acceptance Record
 
-The architecture is approved. Keep this ADR `Proposed` until:
+The architecture and its documentary prerequisites are accepted:
 
-1. the isolated Milestone 4 documentary-closure PR is merged;
-2. PR #18 is updated or rebased onto that `develop` state;
-3. the resulting milestone and ADR boundaries are confirmed conflict-free;
-4. ADR-010, Milestone 5, roadmap, backlog, and the PR description are moved to
+1. the isolated Milestone 4 documentary closure was merged in PR #19;
+2. PR #18 was updated onto the resulting `develop` state;
+3. the resulting Milestone 4, ADR-009, Milestone 5, and ADR-010 boundaries were
+   confirmed conflict-free;
+4. ADR-010, Milestone 5, roadmap, backlog, and the PR description were moved to
    the accepted state together.
 
 ## Related Documents
