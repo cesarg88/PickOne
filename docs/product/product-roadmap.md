@@ -126,14 +126,19 @@ attribution, and the secondary fallback watch-page handoff.
 
 ### Milestone 5
 
-Viewer Profile & Onboarding
+[Viewer Profile & Onboarding](../milestones/milestone-5-viewer-profile-onboarding.md)
+
+Status:
+Accepted — Ready for implementation
 
 Purpose:
 
 Collect the supported services and title-based taste calibration, then persist
 one editable local profile per installation. The pilot fixes the region to
 Spain and maps the Product Owner's known plan entitlements internally rather
-than exposing country or plan-variant selectors.
+than exposing country or plan-variant selectors. Calibration includes positive,
+neutral, and negative watched reactions, uses localized recognition metadata,
+and derives confidence from stored reactions rather than persisting a counter.
 
 ### Milestone 6
 
@@ -144,7 +149,9 @@ Purpose:
 Define and implement TMDB candidate generation, the first deterministic
 decision engine, a persistent three-title Home set, honest smaller sets,
 reasons, and explicit refresh. Discover results remain candidates until
-Milestone 4 verification proves exact movie-level eligibility.
+Milestone 4 verification proves exact movie-level eligibility. Previously seen
+exclusion combines informative calibration reactions with the independent
+Watchlist watched state.
 
 ### Utility Checkpoint after Milestone 6
 

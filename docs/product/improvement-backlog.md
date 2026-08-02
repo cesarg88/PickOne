@@ -108,6 +108,11 @@ Priorities:
 - Priority: `P0`
 - Roadmap relationship: Milestone 5
 - Depends on: IMP-009 availability identity and entitlement decisions
+- Specification state: `Accepted — Ready for implementation`
+- Accepted specification:
+  [`Milestone 5 — Viewer Profile & Onboarding`](../milestones/milestone-5-viewer-profile-onboarding.md)
+- Accepted architecture:
+  [`ADR-010 — Local Viewer Profile and Dynamic Viewing Context`](../decisions/adr-010-local-viewer-profile-and-dynamic-context.md)
 - Why:
   PickOne cannot personalize or enforce watchability without a small, editable
   source of viewer context.
@@ -117,9 +122,21 @@ Priorities:
   - capture the supported services without exposing TMDB internals
   - map the Product Owner's confirmed plan entitlements internally instead of
     presenting plan-variant choices
-  - define the 10–15 title calibration set and response semantics
+  - define the fixed 12-title primary calibration block, three-title normal
+    reserve, optional low-signal extension, and response semantics
+  - include neutral `It was okay` alongside positive and negative watched
+    reactions, and calculate confidence from reactions rather than persist a
+    derived counter
+  - show Spain-localized movie titles with original or English title and year,
+    backed by deterministic bundled fallback metadata
+  - suppress a duplicate secondary title when both forms differ only by case
+    and trivial whitespace
   - define skip, retry, edit, reset, migration, and failure behavior
   - persist one versioned local profile per installation
+  - keep services in first-onboarding progress and out of recalibration drafts;
+    recalibration completion uses the current active profile selection
+  - keep calibration-derived seen knowledge separate from Watchlist in
+    Milestone 5, then combine both sources for Milestone 6 exclusions
   - keep accounts, sync, and household profiles out of the first version
 - Done when:
   - every onboarding state and stored field has accepted behavior
