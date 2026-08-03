@@ -4,23 +4,41 @@ import Testing
 @MainActor
 @Suite("Viewer profile completion presentation tests", .serialized)
 struct ViewerProfileCompletionViewModelTests {
-    @Test("failed first-onboarding completion stays unsaved and can retry")
-    func firstCompletionFailureStaysUnsavedAndRetries() async {
-        let draft = firstCompletionDraft()
+    @Test("last informative reaction completes first onboarding automatically")
+    func informativeReactionCompletesFirstOnboardingAutomatically() async {
         let manage = CompletionManageSpy(
-            loadState: .firstOnboarding(draft),
+            loadState: .firstOnboarding(firstDraftBeforeFinalSignal())
+        )
+        let sut = makeSUT(manage: manage)
+
+        await sut.load()
+        await sut.react(.loveIt, mode: .firstOnboarding)
+
+        #expect(sut.rootState == .main)
+        #expect(sut.activeProfile != nil)
+        #expect(sut.firstDraft == nil)
+        #expect(await manage.firstReactionCallCount == 1)
+        #expect(await manage.firstCompletionCallCount == 1)
+        #expect(await manage.didPersistFirstCompletion)
+    }
+
+    @Test("failed automatic completion keeps the completed draft and can retry")
+    func automaticCompletionFailureKeepsDraftAndRetries() async {
+        let manage = CompletionManageSpy(
+            loadState: .firstOnboarding(firstDraftBeforeFinalSignal()),
             firstCompletionFailures: 1
         )
         let sut = makeSUT(manage: manage)
 
         await sut.load()
-        await sut.complete(mode: .firstOnboarding)
+        await sut.react(.loveIt, mode: .firstOnboarding)
 
         #expect(sut.rootState == .onboarding)
         #expect(sut.activeProfile == nil)
-        #expect(sut.firstDraft == draft)
+        #expect(sut.firstDraft == firstCompletionDraft())
         #expect(sut.currentDestination(for: .firstOnboarding) == .completion)
         #expect(sut.saveErrorMessage != nil)
+        #expect(sut.hasPendingCompletionRetry)
         #expect(await !(manage.didPersistFirstCompletion))
 
         await sut.retryLastAction()
@@ -29,8 +47,32 @@ struct ViewerProfileCompletionViewModelTests {
         #expect(sut.activeProfile != nil)
         #expect(sut.firstDraft == nil)
         #expect(sut.saveErrorMessage == nil)
+        #expect(!sut.hasPendingCompletionRetry)
         #expect(await manage.didPersistFirstCompletion)
         #expect(await manage.firstCompletionCallCount == 2)
+    }
+
+    @Test("last informative reaction completes recalibration automatically")
+    func informativeReactionCompletesRecalibrationAutomatically() async {
+        let manage = CompletionManageSpy(
+            loadState: .completed(
+                profile: completedProfile(),
+                recalibrationDraft: recalibrationDraftBeforeFinalSignal()
+            )
+        )
+        let sut = makeSUT(manage: manage)
+
+        await sut.load()
+        await sut.startRecalibration()
+        await sut.react(.loveIt, mode: .recalibration)
+
+        #expect(sut.rootState == .main)
+        #expect(sut.activeProfile != nil)
+        #expect(sut.recalibrationDraft == nil)
+        #expect(sut.presentedCalibration == nil)
+        #expect(await manage.recalibrationReactionCallCount == 1)
+        #expect(await manage.recalibrationCompletionCallCount == 1)
+        #expect(await manage.didPersistRecalibrationCompletion)
     }
 
     @Test("failed low-signal recalibration completion stays open and can retry")
@@ -69,8 +111,8 @@ struct ViewerProfileCompletionViewModelTests {
         #expect(await manage.recalibrationCompletionCallCount == 2)
     }
 
-    @Test("low-signal Continue creates a pre-save draft before entering main")
-    func lowSignalContinueRequiresFinalPersistence() async {
+    @Test("low-signal Continue persists completion and enters main automatically")
+    func lowSignalContinueCompletesAutomatically() async {
         let manage = CompletionManageSpy(
             loadState: .firstOnboarding(lowSignalFirstDraft())
         )
@@ -81,18 +123,37 @@ struct ViewerProfileCompletionViewModelTests {
 
         await sut.continueWithLowSignals()
 
+        #expect(sut.rootState == .main)
+        #expect(sut.activeProfile != nil)
+        #expect(sut.firstDraft == nil)
+        #expect(await manage.didPersistFirstCompletion)
+        #expect(await manage.firstCompletionCallCount == 1)
+    }
+
+    @Test("failed low-signal completion keeps onboarding open and retries completion")
+    func lowSignalCompletionFailureKeepsOnboardingOpenAndRetries() async {
+        let manage = CompletionManageSpy(
+            loadState: .firstOnboarding(lowSignalFirstDraft()),
+            firstCompletionFailures: 1
+        )
+        let sut = makeSUT(manage: manage)
+
+        await sut.load()
+        await sut.continueWithLowSignals()
+
         #expect(sut.rootState == .onboarding)
         #expect(sut.activeProfile == nil)
         #expect(sut.firstDraft?.step == .completion)
-        #expect(sut.currentDestination(for: .firstOnboarding) == .completion)
+        #expect(sut.hasPendingCompletionRetry)
         #expect(await !(manage.didPersistFirstCompletion))
 
-        await sut.complete(mode: .firstOnboarding)
+        await sut.retryLastAction()
 
         #expect(sut.rootState == .main)
         #expect(sut.activeProfile != nil)
         #expect(sut.firstDraft == nil)
         #expect(await manage.didPersistFirstCompletion)
+        #expect(await manage.firstCompletionCallCount == 2)
     }
 
     @Test("first onboarding cannot enter main while persistence is suspended")
@@ -104,10 +165,9 @@ struct ViewerProfileCompletionViewModelTests {
             firstCompletionGate: gate
         )
         let sut = makeSUT(manage: manage)
-        await sut.load()
 
-        let completionTask = Task {
-            await sut.complete(mode: .firstOnboarding)
+        let loadTask = Task {
+            await sut.load()
         }
         await waitUntil { await manage.firstCompletionCallCount == 1 }
 
@@ -118,7 +178,7 @@ struct ViewerProfileCompletionViewModelTests {
         #expect(await !(manage.didPersistFirstCompletion))
 
         await gate.open()
-        await completionTask.value
+        await loadTask.value
 
         #expect(!sut.isSaving)
         #expect(await manage.didPersistFirstCompletion)
@@ -144,11 +204,8 @@ struct ViewerProfileCompletionViewModelTests {
             getMovieMetadata: CompletionMetadataStub()
         )
 
-        await sut.load()
         #expect(await repository.loadState() == .firstOnboarding(draft))
-        #expect(sut.rootState == .onboarding)
-
-        await sut.complete(mode: .firstOnboarding)
+        await sut.load()
 
         guard case let .completed(profile, recalibrationDraft) = await repository.loadState()
         else {
@@ -220,6 +277,8 @@ private actor CompletionManageSpy: ManageViewerProfileUseCase {
     private let firstCompletionGate: CompletionGate?
     private var firstCompletionFailures: Int
     private var recalibrationCompletionFailures: Int
+    private(set) var firstReactionCallCount = 0
+    private(set) var recalibrationReactionCallCount = 0
     private(set) var firstCompletionCallCount = 0
     private(set) var recalibrationCompletionCallCount = 0
     private(set) var didPersistFirstCompletion = false
@@ -296,17 +355,35 @@ private actor CompletionManageSpy: ManageViewerProfileUseCase {
     }
 
     func react(
-        _: CalibrationReaction,
-        in _: FirstOnboardingDraft
+        _ reaction: CalibrationReaction,
+        in draft: FirstOnboardingDraft
     ) async throws -> FirstOnboardingDraft {
-        throw CompletionTestError.unexpectedCall
+        firstReactionCallCount += 1
+        var reactions = draft.reactions
+        reactions[catalog.movies[draft.currentCatalogPosition].id] = reaction
+        return FirstOnboardingDraft(
+            catalogID: draft.catalogID,
+            step: .completion,
+            selectedServices: draft.selectedServices,
+            reactions: reactions,
+            currentCatalogPosition: draft.currentCatalogPosition + 1,
+            optionalExtensionAccepted: draft.optionalExtensionAccepted
+        )
     }
 
     func react(
-        _: CalibrationReaction,
-        in _: RecalibrationDraft
+        _ reaction: CalibrationReaction,
+        in draft: RecalibrationDraft
     ) async throws -> RecalibrationDraft {
-        throw CompletionTestError.unexpectedCall
+        recalibrationReactionCallCount += 1
+        var reactions = draft.reactions
+        reactions[catalog.movies[draft.currentCatalogPosition].id] = reaction
+        return RecalibrationDraft(
+            catalogID: draft.catalogID,
+            reactions: reactions,
+            currentCatalogPosition: draft.currentCatalogPosition + 1,
+            optionalExtensionAccepted: draft.optionalExtensionAccepted
+        )
     }
 
     func goBack(
@@ -359,6 +436,26 @@ private func firstCompletionDraft() -> FirstOnboardingDraft {
         selectedServices: [.netflix],
         reactions: ViewerProfileTestFixtures.reactions(count: 8),
         currentCatalogPosition: 8,
+        optionalExtensionAccepted: false
+    )
+}
+
+private func firstDraftBeforeFinalSignal() -> FirstOnboardingDraft {
+    FirstOnboardingDraft(
+        catalogID: ViewerProfileTestFixtures.catalog.id,
+        step: .calibration,
+        selectedServices: [.netflix],
+        reactions: ViewerProfileTestFixtures.reactions(count: 7),
+        currentCatalogPosition: 7,
+        optionalExtensionAccepted: false
+    )
+}
+
+private func recalibrationDraftBeforeFinalSignal() -> RecalibrationDraft {
+    RecalibrationDraft(
+        catalogID: ViewerProfileTestFixtures.catalog.id,
+        reactions: ViewerProfileTestFixtures.reactions(count: 7),
+        currentCatalogPosition: 7,
         optionalExtensionAccepted: false
     )
 }

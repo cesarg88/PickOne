@@ -7,8 +7,6 @@ enum ViewerProfileCopy {
     static let progress = "8 taste signals help us start with more confidence."
     static let lowSignalTitle = "Want to rate a few more?"
     static let lowSignalBody = "We can start broadly with what you have told us, or you can rate a few more movies first."
-    static let saveTitle = "Ready to save your preferences?"
-    static let saveBody = "Save them to finish and improve what you can watch and your future recommendations."
     static let resetTitle = "Reset preferences?"
     static let resetBody = "This removes your streaming services and movie calibration. Your Watchlist and Search History will stay."
     static let unsupportedTitle = "Preferences need to be reset"
