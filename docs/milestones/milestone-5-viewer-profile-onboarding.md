@@ -2,19 +2,8 @@
 
 ## Status
 
-Accepted — Ready for implementation
-
-The Product Owner and CTO approved the catalog, localized-title behavior,
-fifth `Settings` tab, persistence model, dynamic availability context, and
-ADR-010 architecture on 2026-08-02. Milestone 4 was closed independently in
-PR #19, this specification was updated onto that `develop` state, and the
-resulting documents were confirmed conflict-free. Implementation belongs in a
-new branch and PR after this specification PR is merged.
-
-After physical-device validation on 2026-08-03, the Product Owner removed the
-implementation-driven completion confirmation. The accepted flow now persists
-the completed profile and enters the application automatically after the last
-valid onboarding action.
+Completed — implementation, automated gates, and physical-device validation
+passed
 
 ## Identifiers
 
@@ -23,6 +12,30 @@ valid onboarding action.
   [ADR-010](../decisions/adr-010-local-viewer-profile-and-dynamic-context.md)
 - Product authority: [`PRODUCT.md`](../../PRODUCT.md)
 - Depends on: Milestone 4 availability contracts and ADR-009
+
+## Completion Record
+
+Milestone 5 is complete as the local viewer-profile and onboarding foundation
+for the Spain household pilot.
+
+- [PR #20](https://github.com/cesarg88/PickOne/pull/20) delivers the accepted
+  profile, onboarding, Preferences, persistence, recovery, and dynamic
+  availability-context scope.
+- [PR #21](https://github.com/cesarg88/PickOne/pull/21) removed the redundant
+  completion confirmation after physical-device feedback and was merged into
+  the PR #20 branch. The completed profile is now persisted automatically
+  before the application enters its main state.
+- The implementation preserves the accepted ADR-010 profile boundary,
+  ADR-009 availability boundary, single-envelope persistence model, and
+  `Presentation → Domain ← Data` dependency direction.
+- Local `make verify` and GitHub Actions passed for the implemented flow,
+  including formatting, linting, secret scanning, unit and UI tests, static
+  analysis, the unsigned Release build, and app-bundle inspection.
+- On 2026-08-04, the Product Owner reported satisfactory real-device pilot
+  validation and approved PR #21 for merge and PR #20 technically.
+- No accepted Milestone 5 capability was deferred or moved into Milestone 6.
+  Onboarding progress visualization, animation, transitions, and completion
+  feedback remain the separate `IMP-021` follow-up.
 
 ## Goal
 
@@ -984,6 +997,13 @@ The implementation PR must also demonstrate:
 
 ## Physical-Device Validation
 
+Status: Passed on 2026-08-04.
+
+The Product Owner completed the real-device pilot validation, reported the
+result as satisfactory, and approved the delivered behavior. The validation
+covered the bounded Milestone 5 flow described below; no accepted product or
+architecture deviation remains open.
+
 On the pilot iPhone:
 
 1. Install over the existing build.
@@ -1009,9 +1029,8 @@ On the pilot iPhone:
 14. Smoke-test Discovery, Search, Ask, Watchlist, Detail, availability handoff,
     Settings, and About.
 
-The implementation PR remains open until this validation is recorded. Its
-final documentation commit closes Milestone 5, updates roadmap and backlog
-status, and records any accepted deviations before merge.
+This completion record, roadmap update, and backlog update form the final
+documentary closure before PR #20 is merged.
 
 ## Rollout and Compatibility
 
@@ -1037,8 +1056,7 @@ status, and records any accepted deviations before merge.
 
 ## Implementation Order
 
-Implementation starts only from a new branch and PR after this documentation
-PR is merged:
+Implementation followed this accepted order:
 
 1. Add Domain profile, draft, reaction, catalog, state, and repository contracts.
 2. Add deterministic catalog and calibration state-machine tests.
@@ -1054,7 +1072,7 @@ PR is merged:
 
 ## Agent Constraints
 
-The future implementation agent must:
+The implementation agent was required to:
 
 - treat `PRODUCT.md`, this accepted specification, ADR-010, ADR-009, and
   `AGENTS.md` as authoritative;
@@ -1073,17 +1091,22 @@ The future implementation agent must:
 ## Acceptance Record
 
 The Product Owner and CTO accepted the product and architecture decisions on
-2026-08-02. The remaining documentary prerequisites are also complete:
+2026-08-02. Delivery and validation are now also complete:
 
 1. the isolated Milestone 4 documentary closure was merged in PR #19;
 2. PR #18 was updated onto the resulting `develop` state;
 3. the Milestone 4 completion record, ADR-009 boundary, and this specification
    were checked and introduce no conflict;
 4. Milestone 5, ADR-010, roadmap, backlog, and PR description were moved to the
-   accepted state together.
+   accepted state together;
 5. The automatic-completion amendment was accepted after physical-device
-   validation on 2026-08-03. This amendment is documentation-only and does not
-   authorize unrelated production changes.
+   feedback on 2026-08-03 and delivered through PR #21 without unrelated UX
+   additions;
+6. PR #21 was merged into the PR #20 branch after local verification, green CI,
+   and satisfactory real-device validation;
+7. on 2026-08-04, the Product Owner approved PR #21 for merge and PR #20
+   technically, with this documentary closure and final green CI as the only
+   remaining pre-merge steps.
 
-Acceptance makes the specification executable. It does not add production code
-to PR #18; Milestone 5 implementation remains a separate delivery task.
+Milestone 5 is complete. PR #20 remains the delivery vehicle to `develop`, and
+Milestone 6 remains a separate product and implementation scope.

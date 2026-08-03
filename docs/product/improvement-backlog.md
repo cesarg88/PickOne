@@ -12,7 +12,7 @@ It contains only work that remains pending after Milestone 3.3. Completed work
 should remain in this file with its status changed to `Completed` and a link to
 the implementing PR or milestone.
 
-Last reviewed: 2026-08-02, at the documentary closure of Milestone 4.
+Last reviewed: 2026-08-04, at the documentary closure of Milestone 5.
 
 ## Product Direction
 
@@ -104,11 +104,17 @@ Priorities:
 
 ### IMP-019 — Define Viewer Profile & Onboarding v1
 
-- Status: `Planned`
+- Status: `Completed`
 - Priority: `P0`
 - Roadmap relationship: Milestone 5
 - Depends on: IMP-009 availability identity and entitlement decisions
-- Specification state: `Accepted — Ready for implementation`
+- Specification state: `Completed`
+- Implementation: [PR #20](https://github.com/cesarg88/PickOne/pull/20)
+- Automatic-completion correction:
+  [PR #21](https://github.com/cesarg88/PickOne/pull/21)
+- Validation evidence:
+  local repository verification and GitHub Actions passed; the Product Owner
+  reported satisfactory real-device pilot validation on 2026-08-04.
 - Accepted specification:
   [`Milestone 5 — Viewer Profile & Onboarding`](../milestones/milestone-5-viewer-profile-onboarding.md)
 - Accepted architecture:
@@ -116,7 +122,7 @@ Priorities:
 - Why:
   PickOne cannot personalize or enforce watchability without a small, editable
   source of viewer context.
-- Implementation:
+- Completed result:
   - define the two-minute onboarding flow
   - store Spain (`ES`) as the pilot region without exposing a country selector
   - capture the supported services without exposing TMDB internals

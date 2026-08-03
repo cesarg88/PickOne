@@ -129,7 +129,8 @@ attribution, and the secondary fallback watch-page handoff.
 [Viewer Profile & Onboarding](../milestones/milestone-5-viewer-profile-onboarding.md)
 
 Status:
-Accepted — Ready for implementation
+Complete — implementation in PR #20, automatic completion correction merged
+from PR #21, and physical iPhone validation passed
 
 Purpose:
 
