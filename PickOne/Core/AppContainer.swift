@@ -82,6 +82,7 @@ final class AppContainer {
 private extension AppContainer {
     struct Repositories {
         let movie: DefaultMovieRepository
+        let calibrationMovieMetadata: DefaultCalibrationMetadataRepository
         let availability: DefaultAvailabilityRepository
         let viewerProfile: DefaultViewerProfileRepository
         let watchlist: DefaultWatchlistRepository
@@ -112,8 +113,7 @@ private extension AppContainer {
         )
         let movieClient = TMDBMovieCatalogClient(
             httpClient: httpClient,
-            apiKey: AppConfiguration.tmdbAPIKey,
-            language: "es-ES"
+            apiKey: AppConfiguration.tmdbAPIKey
         )
         let availabilityClock = SystemAvailabilityClock()
         let localStore = UserDefaultsLocalStore()
@@ -126,6 +126,12 @@ private extension AppContainer {
                     detail: AppConfiguration.movieDetailCacheTTL,
                     similar: AppConfiguration.movieDetailCacheTTL,
                     credits: AppConfiguration.movieDetailCacheTTL
+                )
+            ),
+            calibrationMovieMetadata: DefaultCalibrationMetadataRepository(
+                client: TMDBCalibrationMovieMetadataClient(
+                    httpClient: httpClient,
+                    apiKey: AppConfiguration.tmdbAPIKey
                 )
             ),
             availability: DefaultAvailabilityRepository(
@@ -182,7 +188,7 @@ private extension AppContainer {
                 catalog: .spainHouseholdV1
             ),
             getCalibrationMovieMetadata: GetCalibrationMovieMetadata(
-                repository: repositories.movie
+                repository: repositories.calibrationMovieMetadata
             )
         )
     }

@@ -4,6 +4,12 @@ import Observation
 @MainActor
 @Observable
 final class ViewerProfileViewModel {
+    private enum OperationResult: Equatable {
+        case success
+        case cancelled
+        case failed
+    }
+
     private enum RetryAction {
         case load
         case selectServices
@@ -28,6 +34,7 @@ final class ViewerProfileViewModel {
     private let resetsProfileForUITests: Bool
     private var retryAction: RetryAction?
     private var metadataLoadID = UUID()
+    @ObservationIgnored private var metadataTask: Task<Void, Never>?
     private var didApplyUITestReset = false
 
     var rootState: AppRootViewState = .loading
@@ -55,6 +62,7 @@ final class ViewerProfileViewModel {
     }
 
     func load() async {
+        cancelMetadataHydration()
         rootState = .loading
         if resetsProfileForUITests, !didApplyUITestReset {
             didApplyUITestReset = true
@@ -85,26 +93,33 @@ final class ViewerProfileViewModel {
         guard let draft = firstDraft, !draft.selectedServices.isEmpty else { return }
         await perform(.beginCalibration) {
             self.firstDraft = try await self.manageProfile.beginCalibration(from: draft)
-            await self.loadCurrentMovie(mode: .firstOnboarding)
+            self.presentCurrentMovie(mode: .firstOnboarding)
         }
     }
 
     func react(_ reaction: CalibrationReaction, mode: CalibrationPresentationMode) async {
-        pendingReaction = reaction
         switch mode {
             case .firstOnboarding:
                 guard let draft = firstDraft else { return }
-                await perform(.firstReaction(reaction)) {
+                pendingReaction = reaction
+                let result = await perform(.firstReaction(reaction)) {
                     self.firstDraft = try await self.manageProfile.react(reaction, in: draft)
                     self.pendingReaction = nil
-                    await self.loadCurrentMovieIfNeeded(mode: mode)
+                    self.presentCurrentMovieIfNeeded(mode: mode)
+                }
+                if result == .cancelled {
+                    pendingReaction = nil
                 }
             case .recalibration:
                 guard let draft = recalibrationDraft else { return }
-                await perform(.recalibrationReaction(reaction)) {
+                pendingReaction = reaction
+                let result = await perform(.recalibrationReaction(reaction)) {
                     self.recalibrationDraft = try await self.manageProfile.react(reaction, in: draft)
                     self.pendingReaction = nil
-                    await self.loadCurrentMovieIfNeeded(mode: mode)
+                    self.presentCurrentMovieIfNeeded(mode: mode)
+                }
+                if result == .cancelled {
+                    pendingReaction = nil
                 }
         }
     }
@@ -115,7 +130,7 @@ final class ViewerProfileViewModel {
                 guard let draft = firstDraft else { return }
                 await perform(.firstBack) {
                     self.firstDraft = try await self.manageProfile.goBack(in: draft)
-                    await self.loadCurrentMovieIfNeeded(mode: mode)
+                    self.presentCurrentMovieIfNeeded(mode: mode)
                 }
             case .recalibration:
                 guard let draft = recalibrationDraft else { return }
@@ -125,7 +140,7 @@ final class ViewerProfileViewModel {
                 }
                 await perform(.recalibrationBack) {
                     self.recalibrationDraft = try await self.manageProfile.goBack(in: draft)
-                    await self.loadCurrentMovie(mode: mode)
+                    self.presentCurrentMovie(mode: mode)
                 }
         }
     }
@@ -136,13 +151,13 @@ final class ViewerProfileViewModel {
                 guard let draft = firstDraft else { return }
                 await perform(.firstExtension) {
                     self.firstDraft = try await self.manageProfile.acceptOptionalExtension(in: draft)
-                    await self.loadCurrentMovie(mode: mode)
+                    self.presentCurrentMovie(mode: mode)
                 }
             case .recalibration:
                 guard let draft = recalibrationDraft else { return }
                 await perform(.recalibrationExtension) {
                     self.recalibrationDraft = try await self.manageProfile.acceptOptionalExtension(in: draft)
-                    await self.loadCurrentMovie(mode: mode)
+                    self.presentCurrentMovie(mode: mode)
                 }
         }
     }
@@ -151,7 +166,7 @@ final class ViewerProfileViewModel {
         guard let draft = firstDraft else { return }
         await perform(.lowSignalContinue) {
             self.firstDraft = try await self.manageProfile.continueWithLowSignals(in: draft)
-            self.currentMovie = nil
+            self.clearCurrentMovie()
         }
     }
 
@@ -174,18 +189,19 @@ final class ViewerProfileViewModel {
     func startRecalibration() async {
         if recalibrationDraft != nil {
             presentedCalibration = .recalibration
-            await loadCurrentMovieIfNeeded(mode: .recalibration)
+            presentCurrentMovieIfNeeded(mode: .recalibration)
             return
         }
         await perform(.startRecalibration) {
             self.recalibrationDraft = try await self.manageProfile.beginRecalibration()
             self.presentedCalibration = .recalibration
-            await self.loadCurrentMovie(mode: .recalibration)
+            self.presentCurrentMovie(mode: .recalibration)
         }
     }
 
     func dismissRecalibration() {
         presentedCalibration = nil
+        clearCurrentMovie()
     }
 
     func updateServices(_ services: [PilotStreamingService]) async -> Bool {
@@ -199,29 +215,34 @@ final class ViewerProfileViewModel {
     }
 
     func resetDraft() async {
-        await perform(.resetDraft) {
+        let resetsFirstOnboarding = activeProfile == nil
+        let result = await perform(.resetDraft) {
             try await self.manageProfile.resetDraft()
-            if self.activeProfile == nil {
-                self.firstDraft = try await self.manageProfile.beginFirstOnboarding()
-                self.rootState = .onboarding
-            } else {
+            if !resetsFirstOnboarding {
                 self.recalibrationDraft = nil
                 self.presentedCalibration = nil
             }
-            self.currentMovie = nil
+            self.clearCurrentMovie()
+        }
+        if resetsFirstOnboarding, result == .success {
+            firstDraft = nil
+            rootState = .loading
+            await load()
         }
     }
 
     func resetProfile() async {
-        await perform(.resetProfile) {
+        let result = await perform(.resetProfile) {
             try await self.manageProfile.resetProfileAndDraft()
-            self.activeProfile = nil
-            self.recalibrationDraft = nil
-            self.presentedCalibration = nil
-            self.firstDraft = try await self.manageProfile.beginFirstOnboarding()
-            self.rootState = .onboarding
-            self.currentMovie = nil
         }
+        guard result == .success else { return }
+        activeProfile = nil
+        recalibrationDraft = nil
+        presentedCalibration = nil
+        firstDraft = nil
+        clearCurrentMovie()
+        rootState = .loading
+        await load()
     }
 
     func retryLastAction() async {
@@ -303,7 +324,9 @@ final class ViewerProfileViewModel {
             case .recalibration: return recalibrationDraft?.reactions[movieID]
         }
     }
+}
 
+private extension ViewerProfileViewModel {
     private func apply(loadState: ViewerProfileLoadState) async {
         saveErrorMessage = nil
         switch loadState {
@@ -317,10 +340,11 @@ final class ViewerProfileViewModel {
             case let .firstOnboarding(draft):
                 firstDraft = draft
                 rootState = .onboarding
-                await loadCurrentMovieIfNeeded(mode: .firstOnboarding)
+                presentCurrentMovieIfNeeded(mode: .firstOnboarding)
             case let .completed(profile, draft):
                 enterMain(profile: profile, recalibrationDraft: draft)
             case let .recovery(reason):
+                clearCurrentMovie()
                 rootState = .recovery(reason)
                 retryAction = .load
         }
@@ -336,21 +360,22 @@ final class ViewerProfileViewModel {
         }
     }
 
-    private func loadCurrentMovieIfNeeded(mode: CalibrationPresentationMode) async {
+    private func presentCurrentMovieIfNeeded(mode: CalibrationPresentationMode) {
         guard case .movie = currentDestination(for: mode) else {
-            currentMovie = nil
+            clearCurrentMovie()
             return
         }
-        await loadCurrentMovie(mode: mode)
+        presentCurrentMovie(mode: mode)
     }
 
-    private func loadCurrentMovie(mode: CalibrationPresentationMode) async {
+    private func presentCurrentMovie(mode: CalibrationPresentationMode) {
         let position = draftPosition(for: mode)
         guard catalog.movies.indices.contains(position) else {
-            currentMovie = nil
+            clearCurrentMovie()
             return
         }
         let movie = catalog.movies[position]
+        cancelMetadataHydration()
         currentMovie = CalibrationMoviePresentationMapper.map(
             catalogMovie: movie,
             metadata: nil
@@ -359,23 +384,46 @@ final class ViewerProfileViewModel {
 
         let loadID = UUID()
         metadataLoadID = loadID
-        do {
-            let metadata = try await getMovieMetadata.execute(movieID: movie.id)
-            try Task.checkCancellation()
-            guard metadataLoadID == loadID, draftPosition(for: mode) == position else { return }
-            currentMovie = CalibrationMoviePresentationMapper.map(
-                catalogMovie: movie,
-                metadata: metadata
-            )
-        } catch {
-            // The bundled recognition metadata is the stable fallback.
+        let metadataProvider = getMovieMetadata
+        metadataTask = Task { [weak self, metadataProvider] in
+            do {
+                let metadata = try await metadataProvider.execute(movieID: movie.id)
+                try Task.checkCancellation()
+                guard let self,
+                      metadataLoadID == loadID,
+                      draftPosition(for: mode) == position,
+                      currentMovie?.id == movie.id
+                else { return }
+                currentMovie = CalibrationMoviePresentationMapper.map(
+                    catalogMovie: movie,
+                    metadata: metadata
+                )
+                metadataTask = nil
+            } catch {
+                // The bundled recognition metadata is the stable fallback.
+                if self?.metadataLoadID == loadID {
+                    self?.metadataTask = nil
+                }
+            }
         }
+    }
+
+    private func clearCurrentMovie() {
+        cancelMetadataHydration()
+        currentMovie = nil
+    }
+
+    private func cancelMetadataHydration() {
+        metadataTask?.cancel()
+        metadataTask = nil
+        metadataLoadID = UUID()
     }
 
     private func enterMain(
         profile: ViewerProfile,
         recalibrationDraft: RecalibrationDraft?
     ) {
+        clearCurrentMovie()
         activeProfile = profile
         self.recalibrationDraft = recalibrationDraft
         firstDraft = nil
@@ -401,21 +449,24 @@ final class ViewerProfileViewModel {
         return PilotStreamingService.allowlist.filter { ids.contains($0.providerID) }
     }
 
+    @discardableResult
     private func perform(
         _ action: RetryAction,
         operation: () async throws -> Void
-    ) async {
-        guard !isSaving else { return }
+    ) async -> OperationResult {
+        guard !isSaving else { return .failed }
         isSaving = true
         defer { isSaving = false }
         do {
             try await operation()
             retryAction = nil
             saveErrorMessage = nil
+            return .success
         } catch is CancellationError {
-            return
+            return .cancelled
         } catch {
             showError(for: action)
+            return .failed
         }
     }
 

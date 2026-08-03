@@ -39,6 +39,40 @@ struct CalibrationFlowTests {
         )
     }
 
+    @Test("Back may retain later answers only as one coherent prefix")
+    func backPreservesCoherentPrefix() throws {
+        let valid = FirstOnboardingDraft(
+            catalogID: ViewerProfileTestFixtures.catalog.id,
+            step: .calibration,
+            selectedServices: [.netflix],
+            reactions: ViewerProfileTestFixtures.reactions(count: 5),
+            currentCatalogPosition: 2,
+            optionalExtensionAccepted: false
+        )
+
+        try ViewerProfileValidator.validate(
+            draft: valid,
+            catalog: ViewerProfileTestFixtures.catalog
+        )
+
+        var reactionsWithGap = valid.reactions
+        reactionsWithGap[ViewerProfileTestFixtures.catalog.movies[3].id] = nil
+        let invalid = FirstOnboardingDraft(
+            catalogID: valid.catalogID,
+            step: valid.step,
+            selectedServices: valid.selectedServices,
+            reactions: reactionsWithGap,
+            currentCatalogPosition: valid.currentCatalogPosition,
+            optionalExtensionAccepted: valid.optionalExtensionAccepted
+        )
+        #expect(throws: ViewerProfileValidationError.inconsistentProgress) {
+            try ViewerProfileValidator.validate(
+                draft: invalid,
+                catalog: ViewerProfileTestFixtures.catalog
+            )
+        }
+    }
+
     private func destination(
         position: Int,
         informativeCount: Int,

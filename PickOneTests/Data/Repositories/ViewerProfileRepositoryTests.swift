@@ -211,6 +211,131 @@ struct ViewerProfileRepositoryTests {
         #expect(await repository.loadState() == .recovery(.corruptData))
     }
 
+    @Test("empty completed profile is corrupt")
+    func emptyCompletedProfileIsCorrupt() async throws {
+        let state = try await loadCompletedProfile(reactions: [:])
+
+        #expect(state == .recovery(.corruptData))
+    }
+
+    @Test("completed profile with a reaction gap is corrupt")
+    func completedProfileWithGapIsCorrupt() async throws {
+        var reactions = ViewerProfileTestFixtures.reactions(count: 8)
+        reactions[ViewerProfileTestFixtures.catalog.movies[3].id] = nil
+        reactions[ViewerProfileTestFixtures.catalog.movies[8].id] = .loveIt
+
+        let state = try await loadCompletedProfile(reactions: reactions)
+
+        #expect(state == .recovery(.corruptData))
+    }
+
+    @Test("incomplete completed profile is corrupt")
+    func incompleteCompletedProfileIsCorrupt() async throws {
+        let reactions = ViewerProfileTestFixtures.reactions(
+            count: 7,
+            reaction: .loveIt
+        )
+
+        let state = try await loadCompletedProfile(reactions: reactions)
+
+        #expect(state == .recovery(.corruptData))
+    }
+
+    @Test("partial extension below target is corrupt")
+    func impossibleExtensionIsCorrupt() async throws {
+        let reactions = ViewerProfileTestFixtures.reactions(
+            count: 16,
+            reaction: .haveNotSeenIt
+        )
+
+        let state = try await loadCompletedProfile(reactions: reactions)
+
+        #expect(state == .recovery(.corruptData))
+    }
+
+    @Test("early target is a valid completed profile")
+    func earlyTargetIsValid() async throws {
+        let reactions = ViewerProfileTestFixtures.reactions(count: 8)
+
+        let state = try await loadCompletedProfile(reactions: reactions)
+
+        guard case let .completed(profile, nil) = state else {
+            Issue.record("Expected a completed profile")
+            return
+        }
+        #expect(profile.reactions == reactions)
+    }
+
+    @Test("normal exhaustion with few signals is a valid completed profile")
+    func normalExhaustionIsValid() async throws {
+        var reactions = ViewerProfileTestFixtures.reactions(
+            count: CalibrationFlow.normalLimit,
+            reaction: .haveNotSeenIt
+        )
+        for movie in ViewerProfileTestFixtures.catalog.movies.prefix(3) {
+            reactions[movie.id] = .likeIt
+        }
+
+        let state = try await loadCompletedProfile(reactions: reactions)
+
+        guard case let .completed(profile, nil) = state else {
+            Issue.record("Expected a completed profile")
+            return
+        }
+        #expect(profile.informativeSignalCount == 3)
+    }
+
+    @Test("normal low-signal Continue is a valid completed profile")
+    func normalLowSignalContinueIsValid() async throws {
+        let reactions = ViewerProfileTestFixtures.reactions(
+            count: CalibrationFlow.normalLimit,
+            reaction: .doNotKnowIt
+        )
+
+        let state = try await loadCompletedProfile(reactions: reactions)
+
+        guard case let .completed(profile, nil) = state else {
+            Issue.record("Expected a completed profile")
+            return
+        }
+        #expect(profile.informativeSignalCount == 0)
+    }
+
+    @Test("extension exhaustion with any signal count is a valid completed profile")
+    func extensionExhaustionIsValid() async throws {
+        let reactions = ViewerProfileTestFixtures.reactions(
+            count: ViewerProfileTestFixtures.catalog.movies.count,
+            reaction: .doNotKnowIt
+        )
+
+        let state = try await loadCompletedProfile(reactions: reactions)
+
+        guard case let .completed(profile, nil) = state else {
+            Issue.record("Expected a completed profile")
+            return
+        }
+        #expect(profile.informativeSignalCount == 0)
+    }
+
+    @Test("target reached inside the extension is a valid completed profile")
+    func extensionTargetIsValid() async throws {
+        var reactions = ViewerProfileTestFixtures.reactions(
+            count: 16,
+            reaction: .haveNotSeenIt
+        )
+        for movie in ViewerProfileTestFixtures.catalog.movies.prefix(8) {
+            reactions[movie.id] = .itWasOkay
+        }
+
+        let state = try await loadCompletedProfile(reactions: reactions)
+
+        guard case let .completed(profile, nil) = state else {
+            Issue.record("Expected a completed profile")
+            return
+        }
+        #expect(profile.informativeSignalCount == 8)
+    }
+
     @Test("reset draft preserves profile while profile reset removes both")
     func resetsAreIsolated() async throws {
         let repository = DefaultViewerProfileRepository(
@@ -229,6 +354,28 @@ struct ViewerProfileRepositoryTests {
 
         try await repository.resetProfileAndDraft()
         #expect(await repository.loadState() == .absent)
+    }
+
+    private func loadCompletedProfile(
+        reactions: [Int: CalibrationReaction]
+    ) async throws -> ViewerProfileLoadState {
+        let profile = ViewerProfileV1DTO(
+            profileSchemaVersion: ViewerProfile.currentSchemaVersion,
+            calibrationCatalogVersion: ViewerProfileTestFixtures.catalog.id.rawValue,
+            regionCode: ViewingRegion.spain.code,
+            selectedProviderIDs: [PilotStreamingService.netflix.providerID],
+            reactionsByMovieID: reactions.mapValues(\.rawValue)
+        )
+        let envelope = ViewerStateEnvelopeV1DTO(
+            envelopeSchemaVersion: ViewerStateEnvelopeV1DTO.schemaVersion,
+            completedProfile: profile,
+            profileDraft: nil
+        )
+        let data = try JSONViewerProfileEnvelopeCoder().encodeEnvelope(envelope)
+        let repository = DefaultViewerProfileRepository(
+            store: InMemoryViewerProfileDataStore(data: data)
+        )
+        return await repository.loadState()
     }
 }
 

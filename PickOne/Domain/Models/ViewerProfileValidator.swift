@@ -14,7 +14,7 @@ enum ViewerProfileValidator {
         }
         try validateCatalog(profile.catalogID, expected: catalog)
         try validateServices(profile.selectedServices)
-        try validateReactions(profile.reactions, catalog: catalog)
+        try validateCompletedReactions(profile.reactions, catalog: catalog)
     }
 
     static func validate(
@@ -83,12 +83,34 @@ enum ViewerProfileValidator {
         }
     }
 
-    private static func validateReactions(
+    private static func validateReactionPrefix(
+        _ reactions: [Int: CalibrationReaction],
+        catalog: CalibrationCatalog
+    ) throws -> Int {
+        guard reactions.keys.allSatisfy(catalog.contains(movieID:)) else {
+            throw ViewerProfileValidationError.unknownMovie
+        }
+        guard reactions.count <= catalog.movies.count else {
+            throw ViewerProfileValidationError.inconsistentProgress
+        }
+        let expectedIDs = Set(catalog.movies.prefix(reactions.count).map(\.id))
+        guard Set(reactions.keys) == expectedIDs else {
+            throw ViewerProfileValidationError.inconsistentProgress
+        }
+        return reactions.count
+    }
+
+    private static func validateCompletedReactions(
         _ reactions: [Int: CalibrationReaction],
         catalog: CalibrationCatalog
     ) throws {
-        guard reactions.keys.allSatisfy(catalog.contains(movieID:)) else {
-            throw ViewerProfileValidationError.unknownMovie
+        let prefixLength = try validateReactionPrefix(reactions, catalog: catalog)
+        let informativeCount = reactions.values.count(where: \.isInformativeSignal)
+        let reachedTarget = informativeCount >= CalibrationFlow.confidenceTarget
+        let exhaustedNormalFlow = prefixLength == CalibrationFlow.normalLimit
+        let exhaustedExtension = prefixLength == catalog.movies.count
+        guard reachedTarget || exhaustedNormalFlow || exhaustedExtension else {
+            throw ViewerProfileValidationError.inconsistentProgress
         }
     }
 
@@ -98,7 +120,7 @@ enum ViewerProfileValidator {
         optionalExtensionAccepted: Bool,
         catalog: CalibrationCatalog
     ) throws {
-        try validateReactions(reactions, catalog: catalog)
+        let reactionPrefixLength = try validateReactionPrefix(reactions, catalog: catalog)
         guard position >= 0, position <= catalog.movies.count else {
             throw ViewerProfileValidationError.invalidCatalogPosition
         }
@@ -107,8 +129,7 @@ enum ViewerProfileValidator {
         else {
             throw ViewerProfileValidationError.inconsistentProgress
         }
-        let precedingIDs = catalog.movies.prefix(position).map(\.id)
-        guard precedingIDs.allSatisfy({ reactions[$0] != nil }) else {
+        guard position <= reactionPrefixLength else {
             throw ViewerProfileValidationError.inconsistentProgress
         }
     }
