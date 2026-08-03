@@ -47,6 +47,15 @@ final class ViewerProfileViewModel {
     var saveErrorMessage: String?
     var isSaving = false
 
+    var hasPendingCompletionRetry: Bool {
+        switch retryAction {
+            case .firstCompletion, .recalibrationCompletion:
+                true
+            default:
+                false
+        }
+    }
+
     var catalog: CalibrationCatalog {
         manageProfile.catalog
     }
@@ -105,10 +114,11 @@ final class ViewerProfileViewModel {
                 let result = await perform(.firstReaction(reaction)) {
                     self.firstDraft = try await self.manageProfile.react(reaction, in: draft)
                     self.pendingReaction = nil
-                    self.presentCurrentMovieIfNeeded(mode: mode)
                 }
                 if result == .cancelled {
                     pendingReaction = nil
+                } else if result == .success {
+                    await advanceAfterPersistedCalibration(mode: mode)
                 }
             case .recalibration:
                 guard let draft = recalibrationDraft else { return }
@@ -116,10 +126,11 @@ final class ViewerProfileViewModel {
                 let result = await perform(.recalibrationReaction(reaction)) {
                     self.recalibrationDraft = try await self.manageProfile.react(reaction, in: draft)
                     self.pendingReaction = nil
-                    self.presentCurrentMovieIfNeeded(mode: mode)
                 }
                 if result == .cancelled {
                     pendingReaction = nil
+                } else if result == .success {
+                    await advanceAfterPersistedCalibration(mode: mode)
                 }
         }
     }
@@ -164,9 +175,12 @@ final class ViewerProfileViewModel {
 
     func continueWithLowSignals() async {
         guard let draft = firstDraft else { return }
-        await perform(.lowSignalContinue) {
+        let result = await perform(.lowSignalContinue) {
             self.firstDraft = try await self.manageProfile.continueWithLowSignals(in: draft)
             self.clearCurrentMovie()
+        }
+        if result == .success {
+            await complete(mode: .firstOnboarding)
         }
     }
 
@@ -189,7 +203,7 @@ final class ViewerProfileViewModel {
     func startRecalibration() async {
         if recalibrationDraft != nil {
             presentedCalibration = .recalibration
-            presentCurrentMovieIfNeeded(mode: .recalibration)
+            await advanceAfterPersistedCalibration(mode: .recalibration)
             return
         }
         await perform(.startRecalibration) {
@@ -343,7 +357,7 @@ private extension ViewerProfileViewModel {
             case let .firstOnboarding(draft):
                 firstDraft = draft
                 rootState = .onboarding
-                presentCurrentMovieIfNeeded(mode: .firstOnboarding)
+                await advanceAfterPersistedCalibration(mode: .firstOnboarding)
             case let .completed(profile, draft):
                 enterMain(profile: profile, recalibrationDraft: draft)
             case let .recovery(reason):
@@ -369,6 +383,17 @@ private extension ViewerProfileViewModel {
             return
         }
         presentCurrentMovie(mode: mode)
+    }
+
+    private func advanceAfterPersistedCalibration(
+        mode: CalibrationPresentationMode
+    ) async {
+        if currentDestination(for: mode) == .completion {
+            clearCurrentMovie()
+            await complete(mode: mode)
+        } else {
+            presentCurrentMovieIfNeeded(mode: mode)
+        }
     }
 
     private func presentCurrentMovie(mode: CalibrationPresentationMode) {

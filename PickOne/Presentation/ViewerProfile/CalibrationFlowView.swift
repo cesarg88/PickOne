@@ -15,7 +15,7 @@ struct CalibrationFlowView: View {
                 case .lowSignalDecision:
                     lowSignalDecision
                 case .completion:
-                    saveConfirmation
+                    completionRetry
                 case nil:
                     ProgressView()
             }
@@ -144,26 +144,17 @@ struct CalibrationFlowView: View {
         .padding()
     }
 
-    private var saveConfirmation: some View {
-        VStack(spacing: 20) {
-            Spacer()
-            Image(systemName: "square.and.arrow.down")
-                .font(.system(size: 64))
-                .foregroundStyle(Color.accentColor)
-            Text(ViewerProfileCopy.saveTitle)
-                .font(.largeTitle.bold())
-                .multilineTextAlignment(.center)
-            Text(ViewerProfileCopy.saveBody)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
-            Spacer()
-            Button("Save preferences") {
-                Task { await model.complete(mode: mode) }
+    @ViewBuilder
+    private var completionRetry: some View {
+        if model.hasPendingCompletionRetry {
+            Button("Try again") {
+                Task { await model.retryLastAction() }
             }
             .buttonStyle(.borderedProminent)
-            .controlSize(.large)
             .disabled(model.isSaving)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        } else {
+            Color.clear
         }
-        .padding()
     }
 }

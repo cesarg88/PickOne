@@ -19,10 +19,6 @@ final class PickOneSmokeTests: XCTestCase {
         for _ in 0 ..< 8 {
             tapButton("Love it", in: app)
         }
-        XCTAssertTrue(
-            app.staticTexts["Ready to save your preferences?"].waitForExistence(timeout: 15)
-        )
-        tapButton("Save preferences", in: app)
 
         let tabs = ["Discover", "Search", "Ask", "Watchlist", "Settings"]
 

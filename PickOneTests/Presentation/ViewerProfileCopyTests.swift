@@ -3,7 +3,7 @@ import Testing
 
 @Suite("Viewer profile copy tests")
 struct ViewerProfileCopyTests {
-    @Test("accepted onboarding, completion, reset, and recovery copy is exact")
+    @Test("accepted onboarding, reset, and recovery copy is exact")
     func acceptedCopy() {
         #expect(ViewerProfileCopy.serviceTitle == "Streaming services")
         #expect(ViewerProfileCopy.region == "Availability region: Spain")
@@ -14,9 +14,6 @@ struct ViewerProfileCopyTests {
         #expect(ViewerProfileCopy
             .lowSignalBody ==
             "We can start broadly with what you have told us, or you can rate a few more movies first.")
-        #expect(ViewerProfileCopy.saveTitle == "Ready to save your preferences?")
-        #expect(ViewerProfileCopy
-            .saveBody == "Save them to finish and improve what you can watch and your future recommendations.")
         #expect(ViewerProfileCopy.resetTitle == "Reset preferences?")
         #expect(ViewerProfileCopy
             .resetBody ==
