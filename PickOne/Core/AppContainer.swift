@@ -28,127 +28,168 @@ final class AppContainer {
 
     let getChatRecommendations: GetChatRecommendationsUseCase
 
+    // MARK: - Use Cases - Viewer Profile
+
+    let manageViewerProfile: ManageViewerProfileUseCase
+
     // MARK: - ViewModels
 
     let discoveryViewModel: DiscoveryViewModel
     let watchlistViewModel: WatchlistViewModel
     let searchViewModel: SearchViewModel
     let recommendationViewModel: RecommendationViewModel
+    let viewerProfileViewModel: ViewerProfileViewModel
 
     init() {
-        // MARK: - Network Layer
+        let repositories = Self.makeRepositories()
+        let useCases = Self.makeUseCases(repositories: repositories)
 
+        getDiscoveryFeed = useCases.getDiscoveryFeed
+        getMovieDetail = useCases.getMovieDetail
+        checkMovieAvailability = useCases.checkMovieAvailability
+        preparePlaybackOptions = useCases.preparePlaybackOptions
+        getWatchlist = useCases.getWatchlist
+        setWatchlistMembership = useCases.setWatchlistMembership
+        setWatched = useCases.setWatched
+        searchMovies = useCases.searchMovies
+        searchHistory = useCases.searchHistory
+        getChatRecommendations = useCases.getChatRecommendations
+        manageViewerProfile = useCases.manageViewerProfile
+        imagePipeline = ImagePipeline()
+        discoveryViewModel = DiscoveryViewModel(
+            getDiscoveryFeed: useCases.getDiscoveryFeed
+        )
+        watchlistViewModel = WatchlistViewModel(
+            getWatchlist: useCases.getWatchlist,
+            setMembership: useCases.setWatchlistMembership,
+            setWatched: useCases.setWatched
+        )
+        searchViewModel = SearchViewModel(
+            searchMovies: useCases.searchMovies,
+            searchHistory: useCases.searchHistory
+        )
+        recommendationViewModel = RecommendationViewModel(
+            getChatRecommendations: useCases.getChatRecommendations
+        )
+        viewerProfileViewModel = ViewerProfileViewModel(
+            manageProfile: useCases.manageViewerProfile,
+            getMovieMetadata: useCases.getCalibrationMovieMetadata,
+            resetsProfileForUITests: AppConfiguration.resetsViewerProfileForUITests
+        )
+    }
+}
+
+private extension AppContainer {
+    struct Repositories {
+        let movie: DefaultMovieRepository
+        let calibrationMovieMetadata: DefaultCalibrationMetadataRepository
+        let availability: DefaultAvailabilityRepository
+        let viewerProfile: DefaultViewerProfileRepository
+        let watchlist: DefaultWatchlistRepository
+        let searchHistory: DefaultSearchHistoryRepository
+        let recommendation: StubRecommendationRepository
+        let availabilityClock: SystemAvailabilityClock
+    }
+
+    struct UseCases {
+        let getDiscoveryFeed: GetDiscoveryFeed
+        let getMovieDetail: GetMovieDetail
+        let checkMovieAvailability: CheckMovieAvailability
+        let preparePlaybackOptions: PreparePlaybackOptions
+        let getWatchlist: GetWatchlist
+        let setWatchlistMembership: SetWatchlistMembership
+        let setWatched: SetWatched
+        let searchMovies: SearchMovies
+        let searchHistory: SearchHistory
+        let getChatRecommendations: GetChatRecommendations
+        let manageViewerProfile: ManageViewerProfile
+        let getCalibrationMovieMetadata: GetCalibrationMovieMetadata
+    }
+
+    static func makeRepositories() -> Repositories {
         let httpClient = URLSessionHTTPClient(
             baseURL: AppConfiguration.tmdbBaseURL,
             defaultTimeout: AppConfiguration.defaultRequestTimeout
         )
-
         let movieClient = TMDBMovieCatalogClient(
             httpClient: httpClient,
             apiKey: AppConfiguration.tmdbAPIKey
         )
-        let availabilityClient = TMDBMovieAvailabilityClient(
-            httpClient: httpClient,
-            apiKey: AppConfiguration.tmdbAPIKey
-        )
-
-        // MARK: - Persistence Layer
-
-        let localStore = UserDefaultsLocalStore()
-        let cacheStore = MemoryCacheStore()
-        let ttl = CacheTTL(
-            discovery: AppConfiguration.discoveryFeedCacheTTL,
-            detail: AppConfiguration.movieDetailCacheTTL,
-            similar: AppConfiguration.movieDetailCacheTTL,
-            credits: AppConfiguration.movieDetailCacheTTL
-        )
-
-        // MARK: - Repositories
-
-        let movieRepository = DefaultMovieRepository(
-            client: movieClient,
-            cacheStore: cacheStore,
-            ttl: ttl
-        )
         let availabilityClock = SystemAvailabilityClock()
-        let availabilityRepository = DefaultAvailabilityRepository(
-            client: availabilityClient,
-            clock: availabilityClock
+        let localStore = UserDefaultsLocalStore()
+        return Repositories(
+            movie: DefaultMovieRepository(
+                client: movieClient,
+                cacheStore: MemoryCacheStore(),
+                ttl: CacheTTL(
+                    discovery: AppConfiguration.discoveryFeedCacheTTL,
+                    detail: AppConfiguration.movieDetailCacheTTL,
+                    similar: AppConfiguration.movieDetailCacheTTL,
+                    credits: AppConfiguration.movieDetailCacheTTL
+                )
+            ),
+            calibrationMovieMetadata: DefaultCalibrationMetadataRepository(
+                client: TMDBCalibrationMovieMetadataClient(
+                    httpClient: httpClient,
+                    apiKey: AppConfiguration.tmdbAPIKey
+                )
+            ),
+            availability: DefaultAvailabilityRepository(
+                client: TMDBMovieAvailabilityClient(
+                    httpClient: httpClient,
+                    apiKey: AppConfiguration.tmdbAPIKey
+                ),
+                clock: availabilityClock
+            ),
+            viewerProfile: DefaultViewerProfileRepository(
+                store: UserDefaultsViewerProfileDataStore()
+            ),
+            watchlist: DefaultWatchlistRepository(localStore: localStore),
+            searchHistory: DefaultSearchHistoryRepository(localStore: localStore),
+            recommendation: StubRecommendationRepository(),
+            availabilityClock: availabilityClock
         )
+    }
 
-        let watchlistRepository = DefaultWatchlistRepository(
-            localStore: localStore
+    static func makeUseCases(repositories: Repositories) -> UseCases {
+        let checkAvailability = CheckMovieAvailability(
+            repository: repositories.availability,
+            getCurrentViewingContext: GetCurrentViewingContext(
+                repository: repositories.viewerProfile
+            )
         )
-
-        let searchHistoryRepository = DefaultSearchHistoryRepository(
-            localStore: localStore
-        )
-
-        let recommendationRepository = StubRecommendationRepository()
-
-        // MARK: - Use Cases - Discovery
-
-        getDiscoveryFeed = GetDiscoveryFeed(repository: movieRepository)
-        getMovieDetail = GetMovieDetail(
-            repository: movieRepository,
-            watchlistRepository: watchlistRepository
-        )
-        let checkMovieAvailability = CheckMovieAvailability(
-            repository: availabilityRepository,
-            context: .spainPilot
-        )
-        self.checkMovieAvailability = checkMovieAvailability
-        preparePlaybackOptions = PreparePlaybackOptions(
-            checkAvailability: checkMovieAvailability,
-            clock: availabilityClock
-        )
-
-        // MARK: - Use Cases - Watchlist
-
-        getWatchlist = GetWatchlist(repository: watchlistRepository)
-        setWatchlistMembership = SetWatchlistMembership(repository: watchlistRepository)
-        setWatched = SetWatched(repository: watchlistRepository)
-
-        // MARK: - Use Cases - Search
-
-        searchMovies = SearchMovies(
-            movieRepository: movieRepository,
-            searchHistoryRepository: searchHistoryRepository
-        )
-        searchHistory = SearchHistory(repository: searchHistoryRepository)
-
-        // MARK: - Use Cases - Recommendations
-
-        getChatRecommendations = GetChatRecommendations(
-            repository: recommendationRepository,
-            movieRepository: movieRepository,
-            minResults: AppConfiguration.minAIRecommendations,
-            maxAllowedResults: AppConfiguration.maxAIRecommendations
-        )
-
-        // MARK: - Infrastructure
-
-        imagePipeline = ImagePipeline()
-
-        // MARK: - ViewModels
-
-        discoveryViewModel = DiscoveryViewModel(
-            getDiscoveryFeed: getDiscoveryFeed
-        )
-
-        watchlistViewModel = WatchlistViewModel(
-            getWatchlist: getWatchlist,
-            setMembership: setWatchlistMembership,
-            setWatched: setWatched
-        )
-
-        searchViewModel = SearchViewModel(
-            searchMovies: searchMovies,
-            searchHistory: searchHistory
-        )
-
-        recommendationViewModel = RecommendationViewModel(
-            getChatRecommendations: getChatRecommendations
+        return UseCases(
+            getDiscoveryFeed: GetDiscoveryFeed(repository: repositories.movie),
+            getMovieDetail: GetMovieDetail(
+                repository: repositories.movie,
+                watchlistRepository: repositories.watchlist
+            ),
+            checkMovieAvailability: checkAvailability,
+            preparePlaybackOptions: PreparePlaybackOptions(
+                checkAvailability: checkAvailability,
+                clock: repositories.availabilityClock
+            ),
+            getWatchlist: GetWatchlist(repository: repositories.watchlist),
+            setWatchlistMembership: SetWatchlistMembership(repository: repositories.watchlist),
+            setWatched: SetWatched(repository: repositories.watchlist),
+            searchMovies: SearchMovies(
+                movieRepository: repositories.movie,
+                searchHistoryRepository: repositories.searchHistory
+            ),
+            searchHistory: SearchHistory(repository: repositories.searchHistory),
+            getChatRecommendations: GetChatRecommendations(
+                repository: repositories.recommendation,
+                movieRepository: repositories.movie,
+                minResults: AppConfiguration.minAIRecommendations,
+                maxAllowedResults: AppConfiguration.maxAIRecommendations
+            ),
+            manageViewerProfile: ManageViewerProfile(
+                repository: repositories.viewerProfile,
+                catalog: .spainHouseholdV1
+            ),
+            getCalibrationMovieMetadata: GetCalibrationMovieMetadata(
+                repository: repositories.calibrationMovieMetadata
+            )
         )
     }
 }

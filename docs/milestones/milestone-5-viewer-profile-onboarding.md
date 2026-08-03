@@ -2,14 +2,8 @@
 
 ## Status
 
-Accepted — Ready for implementation
-
-The Product Owner and CTO approved the catalog, localized-title behavior,
-fifth `Settings` tab, persistence model, dynamic availability context, and
-ADR-010 architecture on 2026-08-02. Milestone 4 was closed independently in
-PR #19, this specification was updated onto that `develop` state, and the
-resulting documents were confirmed conflict-free. Implementation belongs in a
-new branch and PR after this specification PR is merged.
+Completed — implementation, automated gates, and physical-device validation
+passed
 
 ## Identifiers
 
@@ -18,6 +12,30 @@ new branch and PR after this specification PR is merged.
   [ADR-010](../decisions/adr-010-local-viewer-profile-and-dynamic-context.md)
 - Product authority: [`PRODUCT.md`](../../PRODUCT.md)
 - Depends on: Milestone 4 availability contracts and ADR-009
+
+## Completion Record
+
+Milestone 5 is complete as the local viewer-profile and onboarding foundation
+for the Spain household pilot.
+
+- [PR #20](https://github.com/cesarg88/PickOne/pull/20) delivers the accepted
+  profile, onboarding, Preferences, persistence, recovery, and dynamic
+  availability-context scope.
+- [PR #21](https://github.com/cesarg88/PickOne/pull/21) removed the redundant
+  completion confirmation after physical-device feedback and was merged into
+  the PR #20 branch. The completed profile is now persisted automatically
+  before the application enters its main state.
+- The implementation preserves the accepted ADR-010 profile boundary,
+  ADR-009 availability boundary, single-envelope persistence model, and
+  `Presentation → Domain ← Data` dependency direction.
+- Local `make verify` and GitHub Actions passed for the implemented flow,
+  including formatting, linting, secret scanning, unit and UI tests, static
+  analysis, the unsigned Release build, and app-bundle inspection.
+- On 2026-08-04, the Product Owner reported satisfactory real-device pilot
+  validation and approved PR #21 for merge and PR #20 technically.
+- No accepted Milestone 5 capability was deferred or moved into Milestone 6.
+  Onboarding progress visualization, animation, transitions, and completion
+  feedback remain the separate `IMP-021` follow-up.
 
 ## Goal
 
@@ -39,8 +57,9 @@ The Product Owner can:
 - close and reopen the app during onboarding and continue from the saved point;
 - choose the services currently available in Spain;
 - provide useful taste signals without being forced to recognize every title;
-- enter the current application after saving the profile without a false claim
-  that Ask is personalized;
+- enter the current application automatically after the final valid onboarding
+  action and successful profile persistence, without a redundant save
+  confirmation or a false claim that Ask is personalized;
 - edit services, repeat calibration, or reset only the viewer profile;
 - observe that Movie Detail availability checks started after a service change
   use the newly selected services.
@@ -173,6 +192,18 @@ viewer is not trapped in onboarding.
 
 Eight signals are a confidence target, never a mandatory completion gate.
 
+When any accepted completion condition is reached, the application immediately
+attempts to persist the completed profile. It does not present a
+`Ready to save your preferences?` state, completion confirmation screen, or
+`Save preferences` button. The user does not confirm a state the application
+already knows.
+
+The only explicit completion-related product decision is the low-signal choice
+between `Rate more movies` and `Continue`. Choosing `Continue` starts automatic
+persistence. Choosing `Rate more movies` enters the optional extension, which
+starts automatic persistence when it later reaches eight signals or exhausts
+its six titles.
+
 ## Calibration Catalog v1
 
 ### Review status
@@ -295,7 +326,6 @@ Each card shows:
   the original or English title with release year as secondary context;
 - when title forms are equivalent, one title with the release year rather than
   two visually duplicated lines;
-- progress through the current catalog block;
 - the six accepted reactions.
 
 Presentation determines title equivalence by trimming surrounding whitespace,
@@ -323,8 +353,8 @@ Behavior:
   reaction;
 - the UI does not display an inferred score or taste label.
 
-Progress copy should describe activity rather than promise a fixed denominator
-because the flow may stop at eight signals or extend beyond 12. Accepted copy:
+Milestone 5 may retain this instructional copy, which explains the confidence
+target without acting as a progress indicator or promising a fixed denominator:
 
 ```text
 8 taste signals help us start with more confidence.
@@ -342,19 +372,75 @@ After the fifteenth normal response with zero to two signals:
 
 Do not describe the profile as incomplete or invalid.
 
-### Completion
+### Automatic completion
 
-Copy:
+The application owns completion. After the last valid onboarding action:
 
-- Title: `Your preferences are saved.`
-- Secondary text:
-  `We'll use them to improve what you can watch and your future recommendations.`
-- Action: `Continue`
+1. retain the completed draft as the retry source;
+2. attempt the whole-envelope completed-profile replacement immediately;
+3. on success, enter the current application automatically;
+4. on a detectable failure, remain in the current onboarding state, keep the
+   completed draft, show retry UI, and never enter the application.
 
-Completion enters the current application. It does not claim that Ask, the
-current Discovery feed, or any existing recommendation is personalized.
+There is no success-confirmation screen and no user-facing save action.
+Persistence remains invisible unless it fails, and success should feel
+immediate. Automatic entry does not claim that Ask, the current Discovery feed,
+or any existing recommendation is personalized. Milestones 5 and 6 remain
+separate.
 
-Milestones 5 and 6 remain separate.
+The following state flow is authoritative:
+
+```mermaid
+stateDiagram-v2
+    [*] --> ActiveOnboarding
+    ActiveOnboarding --> LowSignalDecision: 15 responses and 0-2 signals
+    LowSignalDecision --> ActiveOnboarding: Rate more movies
+    LowSignalDecision --> PersistingProfile: Continue
+    ActiveOnboarding --> PersistingProfile: 8 signals, 15 responses with 3-7 signals, or extension exhausted
+    PersistingProfile --> MainApplication: success
+    PersistingProfile --> CurrentOnboardingWithRetry: detectable failure / preserve originating state and draft
+    CurrentOnboardingWithRetry --> PersistingProfile: Try again
+```
+
+`CurrentOnboardingWithRetry` is the originating onboarding UI with local error
+and retry presentation. It is not a new navigation or confirmation screen.
+
+The corresponding persistence sequence is:
+
+```mermaid
+sequenceDiagram
+    actor Viewer
+    participant Presentation
+    participant Domain
+    participant Repository
+    participant Store
+    participant MainApplication
+
+    Viewer->>Presentation: Last valid onboarding action
+    Presentation->>Domain: Apply action and evaluate completion
+    Domain-->>Presentation: Completion condition reached
+    Presentation->>Repository: Complete onboarding from retained draft
+    Repository->>Repository: Encode complete replacement envelope
+    alt encoding succeeds
+        Repository->>Store: Replace single stored envelope
+        alt replacement accepted
+            Store-->>Repository: Accepted
+            Repository-->>Presentation: Completed profile
+            Presentation->>MainApplication: Enter automatically
+        else surfaced store error
+            Store-->>Repository: Failure
+            Repository-->>Presentation: Failure
+            Presentation-->>Viewer: Keep current state and show Try again
+        end
+    else encoding fails
+        Repository-->>Presentation: Failure
+        Presentation-->>Viewer: Keep current state and show Try again
+    end
+```
+
+No progress indicator, animation, transition treatment, or new completion
+feedback is defined by this change. A dedicated onboarding UX-polish milestone
+will define those concerns later.
 
 ## Draft and Completed Profile Behavior
 
@@ -384,11 +470,16 @@ ownership of service selection.
 A first-onboarding draft contains enough information to resume the whole flow:
 
 - calibration catalog version;
-- current onboarding step;
+- current user-facing onboarding step: service selection, calibration, or the
+  low-signal decision;
 - selected provider IDs;
 - reactions keyed by TMDB movie ID;
 - current catalog position;
 - whether the optional extension has been accepted.
+
+The first-onboarding draft has no persisted `readyToSave` or
+completion-confirmation state. When completion is due, the same completed draft
+data remains available for an automatic persistence retry.
 
 A recalibration draft contains calibration state only:
 
@@ -417,7 +508,9 @@ Draft persistence rules:
 Completing onboarding encodes one new completed profile and removes its draft
 as one whole-envelope replacement. A detectable encoding failure or error from
 an injected test double or future storage implementation leaves the previous
-persisted state intact, keeps the completion UI visible, and offers `Try again`.
+persisted state intact, keeps the current onboarding state visible and the
+completed draft intact, and offers `Try again`. Successful replacement routes
+directly into the application without a separate confirmation state.
 The chosen `UserDefaults` implementation cannot claim confirmation that bytes
 have been physically persisted after `set` returns.
 
@@ -655,7 +748,7 @@ Add explicit states for:
 - service selection;
 - calibration loading and reaction entry;
 - low-signal choice;
-- completion save/retry;
+- automatic completion persistence and retry on the current onboarding state;
 - unsupported/corrupt recovery;
 - Settings and recalibration.
 
@@ -683,6 +776,7 @@ comparison.
 - resumable first-onboarding and recalibration drafts;
 - serialized whole-envelope completed local profile;
 - signal counting and low-signal exit;
+- automatic completion without an intermediate confirmation screen;
 - root routing and explicit recovery states;
 - stable Settings entry, Preferences, and About relocation;
 - service editing, full recalibration, draft reset, and profile reset;
@@ -723,7 +817,7 @@ comparison.
 | App closes before failed reaction write | Resume before that reaction |
 | Catalog artwork fails | Placeholder; reaction remains available |
 | Metadata hydration fails | Bundled Spain-localized title, original or English title, and year fallback |
-| Completion encoding or surfaced repository write fails | Keep draft and active prior profile; retry |
+| Completion encoding or surfaced repository write fails | Keep the completed draft and active prior profile, remain on the current onboarding state, show retry, and never enter the application |
 | First onboarding cancelled by process termination | Resume draft on launch |
 | Recalibration interrupted | Active profile remains; resume from Settings |
 | Stored profile unsupported | Recovery UI; no automatic reset |
@@ -759,6 +853,15 @@ publishes no false success or recovery state.
 - zero to two signals show `Rate more movies` and `Continue`;
 - optional extension stops at eight signals or six additional answers;
 - completion is possible after extension exhaustion with any count;
+- reaching any accepted completion condition starts completed-profile
+  persistence automatically;
+- successful final persistence enters the application without a
+  `Ready to save your preferences?` state, completion screen,
+  `Save preferences` button, or additional user confirmation;
+- the only explicit completion-related decision is `Rate more movies` or
+  `Continue` after 15 responses with zero to two signals;
+- this milestone does not add a progress indicator, animation, transition, or
+  completion-feedback treatment;
 - informative count is calculated from reactions and is absent from persisted
   profile and draft data;
 - each card presents distinct title forms as title known in Spain, then original
@@ -786,7 +889,8 @@ publishes no false success or recovery state.
   silently reinterpreted;
 - completion encodes the full replacement envelope before replacing its single
   stored value;
-- a detectable failed completion preserves the last valid draft;
+- a detectable failed completion preserves the completed draft, remains on the
+  current onboarding state with retry UI, and never enters the application;
 - a recalibration draft coexists with the active profile;
 - recalibration completion takes region and selected services from the current
   active profile and calibration data from the draft;
@@ -836,8 +940,9 @@ At minimum:
 2. reaction semantic mapping and informative-count calculation, including the
    neutral watched semantics of `It was okay` and the absence of a persisted
    counter;
-3. primary, reserve, early-eight, three-to-seven, zero-to-two, Continue, and
-   optional-extension state transitions;
+3. primary, reserve, early-eight, three-to-seven, zero-to-two, Continue,
+   optional-extension, and automatic-completion state transitions, including
+   the absence of a confirmation state or save button;
 4. first-onboarding and recalibration draft save, Back revision, tagged variant
    decoding, and deterministic resume;
 5. first completion and recalibration serialized whole-envelope replacement,
@@ -851,7 +956,8 @@ At minimum:
    repository-error outcomes;
 8. reset-draft and reset-profile isolation from Watchlist/Search History;
 9. root routing for every persisted state;
-10. exact service, completion, low-signal, reset, and recovery copy;
+10. exact service, low-signal, reset, recovery, and completion-retry copy, plus
+    the absence of obsolete completion-confirmation copy;
 11. Preferences service validation, full recalibration, and reset confirmation;
 12. current-context resolution on every availability execution;
 13. fresh evidence reuse after service changes without another client request;
@@ -891,6 +997,13 @@ The implementation PR must also demonstrate:
 
 ## Physical-Device Validation
 
+Status: Passed on 2026-08-04.
+
+The Product Owner completed the real-device pilot validation, reported the
+result as satisfactory, and approved the delivered behavior. The validation
+covered the bounded Milestone 5 flow described below; no accepted product or
+architecture deviation remains open.
+
 On the pilot iPhone:
 
 1. Install over the existing build.
@@ -898,9 +1011,11 @@ On the pilot iPhone:
 3. Confirm onboarding appears once when no profile exists.
 4. Select services, react to several titles, terminate the app, relaunch, and
    confirm exact progress resumes.
-5. Complete onboarding and confirm subsequent launches enter the application
-   without showing first onboarding again.
-6. Confirm completion uses accepted copy and does not claim Ask is personalized.
+5. Trigger an accepted completion condition and confirm the application enters
+   automatically after successful persistence, without a confirmation screen
+   or save button; confirm subsequent launches do not show first onboarding
+   again.
+6. Confirm the automatic transition does not claim Ask is personalized.
 7. Open Detail and record availability for a title.
 8. Change services in Settings, start a new Detail availability check, and
    confirm the new service context is used.
@@ -914,9 +1029,8 @@ On the pilot iPhone:
 14. Smoke-test Discovery, Search, Ask, Watchlist, Detail, availability handoff,
     Settings, and About.
 
-The implementation PR remains open until this validation is recorded. Its
-final documentation commit closes Milestone 5, updates roadmap and backlog
-status, and records any accepted deviations before merge.
+This completion record, roadmap update, and backlog update form the final
+documentary closure before PR #20 is merged.
 
 ## Rollout and Compatibility
 
@@ -942,8 +1056,7 @@ status, and records any accepted deviations before merge.
 
 ## Implementation Order
 
-Implementation starts only from a new branch and PR after this documentation
-PR is merged:
+Implementation followed this accepted order:
 
 1. Add Domain profile, draft, reaction, catalog, state, and repository contracts.
 2. Add deterministic catalog and calibration state-machine tests.
@@ -959,7 +1072,7 @@ PR is merged:
 
 ## Agent Constraints
 
-The future implementation agent must:
+The implementation agent was required to:
 
 - treat `PRODUCT.md`, this accepted specification, ADR-010, ADR-009, and
   `AGENTS.md` as authoritative;
@@ -978,14 +1091,22 @@ The future implementation agent must:
 ## Acceptance Record
 
 The Product Owner and CTO accepted the product and architecture decisions on
-2026-08-02. The remaining documentary prerequisites are also complete:
+2026-08-02. Delivery and validation are now also complete:
 
 1. the isolated Milestone 4 documentary closure was merged in PR #19;
 2. PR #18 was updated onto the resulting `develop` state;
 3. the Milestone 4 completion record, ADR-009 boundary, and this specification
    were checked and introduce no conflict;
 4. Milestone 5, ADR-010, roadmap, backlog, and PR description were moved to the
-   accepted state together.
+   accepted state together;
+5. The automatic-completion amendment was accepted after physical-device
+   feedback on 2026-08-03 and delivered through PR #21 without unrelated UX
+   additions;
+6. PR #21 was merged into the PR #20 branch after local verification, green CI,
+   and satisfactory real-device validation;
+7. on 2026-08-04, the Product Owner approved PR #21 for merge and PR #20
+   technically, with this documentary closure and final green CI as the only
+   remaining pre-merge steps.
 
-Acceptance makes the specification executable. It does not add production code
-to PR #18; Milestone 5 implementation remains a separate delivery task.
+Milestone 5 is complete. PR #20 remains the delivery vehicle to `develop`, and
+Milestone 6 remains a separate product and implementation scope.

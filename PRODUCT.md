@@ -3,7 +3,7 @@
 ## Document Status
 
 - Status: `Canonical`
-- Last product review: `2026-08-02`
+- Last product review: `2026-08-03`
 - Product name: `PickOne` is a codename until the decision experience is
   validated.
 
@@ -212,6 +212,20 @@ personalization. With zero to two signals, the viewer may rate an additional
 optional block or continue with broad, availability-filtered future
 recommendations without a strong-personalization claim.
 
+Onboarding completion is automatic. PickOne already knows when calibration has
+finished because eight informative signals have been reached, the normal flow
+has ended with three to seven signals, the viewer has explicitly chosen
+`Continue` from the low-signal decision, or the optional extension has reached
+eight signals or exhausted its six titles. These conditions trigger completed-
+profile persistence immediately; they do not lead to a separate confirmation
+screen or require a `Save preferences` action.
+
+The only explicit completion-related choice is the meaningful low-signal
+decision between `Rate more movies` and `Continue`. After the last valid action,
+successful persistence enters the application automatically. A detectable
+persistence failure keeps the completed draft and current onboarding state,
+shows retry UI, and never enters the application.
+
 Concrete title reactions are more informative than genre selection alone. The
 catalog should be optimized for recognition in the household pilot while
 remaining deliberately diverse in genre, tone, pace, era, popularity, and
@@ -232,6 +246,10 @@ seen, but they do not mutate Watchlist or Movie Detail watched state in this
 milestone. Milestone 6 combines calibration reactions with existing Watchlist
 state when excluding watched titles. Milestone 5 does not create a unified
 viewing-history model.
+
+Progress visualization, animations, transitions, and completion feedback are
+deferred to a dedicated onboarding UX-polish milestone. This completion-flow
+decision does not introduce a progress indicator.
 
 #### Deferred preference controls
 
@@ -540,6 +558,15 @@ As of the last review:
   non-interactive screen, requires at least one service, and preselects none.
 - Onboarding progress is resumable, and completion replaces one fully encoded
   local profile envelope without changing Watchlist or Search History.
+- Onboarding completes automatically after the last valid action. There is no
+  intermediate `Ready to save your preferences?` state, completion confirmation
+  screen, or `Save preferences` button.
+- The viewer's only explicit completion-related choice is `Rate more movies`
+  or `Continue` when normal calibration ends with zero to two informative
+  signals.
+- A detectable final-persistence failure retains the completed draft and
+  current onboarding state, exposes retry, and never routes into the
+  application.
 - Informative-signal count is calculated in Domain from the four informative
   reactions and is not persisted independently.
 - Calibration uses Spain-localized titles with bundled localized, original or

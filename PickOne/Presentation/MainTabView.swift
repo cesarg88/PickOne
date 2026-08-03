@@ -10,6 +10,7 @@ import SwiftUI
 @MainActor
 struct MainTabView: View {
     let container: AppContainer
+    @Bindable var profileModel: ViewerProfileViewModel
 
     var body: some View {
         TabView {
@@ -63,6 +64,25 @@ struct MainTabView: View {
             )
             .tabItem {
                 Label("Watchlist", systemImage: "bookmark")
+            }
+
+            SettingsView(model: profileModel)
+                .tabItem {
+                    Label("Settings", systemImage: "gearshape")
+                }
+        }
+        .fullScreenCover(
+            isPresented: Binding(
+                get: { profileModel.presentedCalibration == .recalibration },
+                set: { if !$0 { profileModel.dismissRecalibration() } }
+            )
+        ) {
+            NavigationStack {
+                CalibrationFlowView(
+                    model: profileModel,
+                    mode: .recalibration,
+                    imagePipeline: container.imagePipeline
+                )
             }
         }
     }

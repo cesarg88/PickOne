@@ -129,7 +129,8 @@ attribution, and the secondary fallback watch-page handoff.
 [Viewer Profile & Onboarding](../milestones/milestone-5-viewer-profile-onboarding.md)
 
 Status:
-Accepted — Ready for implementation
+Complete — implementation in PR #20, automatic completion correction merged
+from PR #21, and physical iPhone validation passed
 
 Purpose:
 
@@ -139,6 +140,9 @@ Spain and maps the Product Owner's known plan entitlements internally rather
 than exposing country or plan-variant selectors. Calibration includes positive,
 neutral, and negative watched reactions, uses localized recognition metadata,
 and derives confidence from stored reactions rather than persisting a counter.
+After the last valid onboarding action, PickOne persists the completed profile
+and enters the application automatically; only the low-signal choice between
+`Rate more movies` and `Continue` requires an explicit decision.
 
 ### Milestone 6
 

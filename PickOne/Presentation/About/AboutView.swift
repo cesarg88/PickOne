@@ -3,6 +3,11 @@ import SwiftUI
 @MainActor
 struct AboutView: View {
     @Environment(\.dismiss) private var dismiss
+    let showsDoneButton: Bool
+
+    init(showsDoneButton: Bool = true) {
+        self.showsDoneButton = showsDoneButton
+    }
 
     private var versionText: String {
         let version = Bundle.main.object(
@@ -15,62 +20,75 @@ struct AboutView: View {
     }
 
     var body: some View {
-        NavigationStack {
-            ScrollView {
-                VStack(spacing: 24) {
-                    Image("PilotIcon")
+        Group {
+            if showsDoneButton {
+                NavigationStack {
+                    content
+                        .toolbar { doneToolbar }
+                }
+            } else {
+                content
+            }
+        }
+    }
+
+    private var content: some View {
+        ScrollView {
+            VStack(spacing: 24) {
+                Image("PilotIcon")
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 96, height: 96)
+                    .clipShape(RoundedRectangle(cornerRadius: 22))
+
+                VStack(spacing: 6) {
+                    Text("PickOne")
+                        .font(.title.bold())
+                    Text(versionText)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+
+                Divider()
+
+                VStack(spacing: 16) {
+                    Image("TMDBLogo")
                         .resizable()
                         .scaledToFit()
-                        .frame(width: 96, height: 96)
-                        .clipShape(RoundedRectangle(cornerRadius: 22))
+                        .frame(maxWidth: 140, maxHeight: 100)
+                        .accessibilityLabel("The Movie Database")
 
-                    VStack(spacing: 6) {
-                        Text("PickOne")
-                            .font(.title.bold())
-                        Text(versionText)
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                    }
+                    Text(
+                        "This product uses the TMDB API but is not endorsed or certified by TMDB."
+                    )
+                    .font(.footnote)
+                    .multilineTextAlignment(.center)
 
-                    Divider()
+                    Text(
+                        "Streaming availability data is provided by JustWatch."
+                    )
+                    .font(.footnote)
+                    .multilineTextAlignment(.center)
 
-                    VStack(spacing: 16) {
-                        Image("TMDBLogo")
-                            .resizable()
-                            .scaledToFit()
-                            .frame(maxWidth: 140, maxHeight: 100)
-                            .accessibilityLabel("The Movie Database")
-
-                        Text(
-                            "This product uses the TMDB API but is not endorsed or certified by TMDB."
-                        )
-                        .font(.footnote)
-                        .multilineTextAlignment(.center)
-
-                        Text(
-                            "Streaming availability data is provided by JustWatch."
-                        )
-                        .font(.footnote)
-                        .multilineTextAlignment(.center)
-
-                        Link(
-                            "Visit The Movie Database",
-                            destination: URL(string: "https://www.themoviedb.org")!
-                        )
-                        .font(.footnote.weight(.semibold))
-                    }
+                    Link(
+                        "Visit The Movie Database",
+                        destination: URL(string: "https://www.themoviedb.org")!
+                    )
+                    .font(.footnote.weight(.semibold))
                 }
-                .padding(24)
-                .frame(maxWidth: .infinity)
             }
-            .navigationTitle("About")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Done") {
-                        dismiss()
-                    }
-                }
+            .padding(24)
+            .frame(maxWidth: .infinity)
+        }
+        .navigationTitle("About")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+
+    @ToolbarContentBuilder
+    private var doneToolbar: some ToolbarContent {
+        ToolbarItem(placement: .confirmationAction) {
+            Button("Done") {
+                dismiss()
             }
         }
     }

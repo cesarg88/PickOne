@@ -135,7 +135,7 @@ struct CheckMovieAvailabilityTests {
         let repository = MockAvailabilityRepository(mode: .failure)
         let sut = CheckMovieAvailability(
             repository: repository,
-            context: .spainPilot
+            getCurrentViewingContext: StaticViewingContext(context: spainPilotContext)
         )
 
         let outcome = try await sut.execute(movieID: 42)
@@ -148,7 +148,7 @@ struct CheckMovieAvailabilityTests {
         let repository = MockAvailabilityRepository(mode: .cancelled)
         let sut = CheckMovieAvailability(
             repository: repository,
-            context: .spainPilot
+            getCurrentViewingContext: StaticViewingContext(context: spainPilotContext)
         )
 
         await #expect(throws: CancellationError.self) {
@@ -158,14 +158,27 @@ struct CheckMovieAvailabilityTests {
 
     private func makeSUT(
         evidence: VerifiedAvailabilityEvidence?,
-        context: AvailabilityViewingContext = .spainPilot
+        context: AvailabilityViewingContext = spainPilotContext
     ) -> CheckMovieAvailability {
         CheckMovieAvailability(
             repository: MockAvailabilityRepository(
                 mode: .evidence(evidence)
             ),
-            context: context
+            getCurrentViewingContext: StaticViewingContext(context: context)
         )
+    }
+}
+
+private let spainPilotContext = AvailabilityViewingContext(
+    region: .spain,
+    selectedServices: PilotStreamingService.allowlist
+)
+
+private struct StaticViewingContext: GetCurrentViewingContextUseCase {
+    let context: AvailabilityViewingContext
+
+    func execute() async throws -> AvailabilityViewingContext {
+        context
     }
 }
 
