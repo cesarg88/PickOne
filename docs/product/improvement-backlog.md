@@ -137,6 +137,9 @@ Priorities:
     recalibration completion uses the current active profile selection
   - keep calibration-derived seen knowledge separate from Watchlist in
     Milestone 5, then combine both sources for Milestone 6 exclusions
+  - complete onboarding automatically after the last valid action, without a
+    confirmation screen or save button; retain the completed draft and show
+    retry if final persistence fails
   - keep accounts, sync, and household profiles out of the first version
 - Done when:
   - every onboarding state and stored field has accepted behavior
@@ -225,6 +228,27 @@ Priorities:
   - privacy boundaries and data retention are explicit
 
 ## P1 — Build a Credible Recommendation Beta
+
+### IMP-021 — Define onboarding UX polish
+
+- Status: `Proposed`
+- Priority: `P1`
+- Roadmap relationship: dedicated future UX-polish milestone, not Milestone 5
+- Why:
+  automatic onboarding completion should feel immediate, but progress and
+  motion must be designed deliberately rather than added as part of the
+  completion-flow correction.
+- Future definition:
+  - onboarding progress visualization
+  - animations
+  - transitions
+  - completion feedback
+- Constraint:
+  Milestone 5 removes the redundant completion confirmation without adding a
+  new progress indicator or prescribing these treatments.
+- Done when:
+  the Product Owner and CTO accept an executable UX specification grounded in
+  physical-device use.
 
 ### IMP-006 — Use real Watchlist state in recommendation cards
 

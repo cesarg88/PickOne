@@ -8,6 +8,10 @@ The Product Owner and CTO accepted this architecture on 2026-08-02. Milestone 4
 was closed independently in PR #19, PR #18 was updated onto that `develop`
 state, and the resulting documentation was confirmed conflict-free.
 
+On 2026-08-03, physical-device validation led to an accepted automatic-
+completion flow. This amendment changes Presentation orchestration but does not
+change the repository boundary, envelope model, or atomicity definition.
+
 ## Context
 
 Milestone 4 introduced a dedicated availability boundary with evidence cached
@@ -33,7 +37,9 @@ The profile and the two draft variants have different lifecycles. During first
 onboarding there is no completed profile. During recalibration, a completed
 profile must remain active while a calibration-only replacement draft is saved.
 Completion must replace the profile and remove the draft in one serialized
-envelope update.
+envelope update. Once Domain determines that calibration is complete,
+Presentation triggers this replacement automatically; completion is not a
+separate user confirmation.
 
 ## Decision
 
@@ -91,7 +97,8 @@ payloads. Draft schema identification belongs to the envelope/variant encoding.
 A `FirstOnboardingDraft` contains:
 
 - calibration catalog version;
-- current onboarding step;
+- current user-facing onboarding step: service selection, calibration, or the
+  low-signal decision;
 - selected service IDs;
 - reactions keyed by TMDB movie ID;
 - current ordered catalog position;
@@ -228,6 +235,14 @@ Required transitions:
 - reset draft: remove only draft and preserve profile;
 - reset profile: remove both profile and draft.
 
+First-onboarding completion is invoked immediately after the last valid action
+reaches an accepted Domain completion condition. There is no persisted
+`readyToSave` state or user-confirmed save transition. A detectable failure
+leaves the completed draft envelope intact so Presentation can remain on the
+current onboarding state and retry the same completion operation. Presentation
+enters the main application only after the repository returns the completed
+profile successfully.
+
 An encoding failure occurs before replacement and therefore leaves the previous
 stored bytes unchanged. The same guarantee applies when a test double or future
 storage implementation rejects a replacement before mutation. The
@@ -325,6 +340,25 @@ Settings exposes the resume path while the completed profile remains active.
 
 This routing belongs to Presentation and app composition. Persistence does not
 choose screens.
+
+### Automatic completion orchestration
+
+Presentation owns the orchestration between Domain completion rules and the
+repository's whole-envelope replacement:
+
+```text
+last valid onboarding action
+    → Domain reports completion due
+    → completeFirstOnboarding()
+        → success: enter the main application
+        → detectable failure: retain draft, stay on the current onboarding
+          state, and expose retry
+```
+
+No completion-confirmation screen, `readyToSave` presentation state, or
+`Save preferences` action sits between the Domain outcome and the repository
+operation. The only explicit completion-related user decision remains the
+low-signal choice between `Rate more movies` and `Continue`.
 
 ### Stable Preferences entry
 
@@ -448,6 +482,10 @@ surfaces remain outside Milestone 5.
 - **Risk:** a persisted catalog position conflicts with stored reactions.
   **Mitigation:** validate both against the versioned catalog on every load and
   completion.
+- **Risk:** automatic final persistence fails after the last valid action.
+  **Mitigation:** preserve the completed draft, keep Presentation on the current
+  onboarding state with retry, and route into the application only after a
+  successful repository result.
 - **Risk:** service change causes unnecessary network requests.
   **Mitigation:** preserve evidence cache key as movie plus region.
 - **Risk:** recalibration weakens a usable profile before completion.
@@ -473,6 +511,9 @@ The architecture and its documentary prerequisites are accepted:
    confirmed conflict-free;
 4. ADR-010, Milestone 5, roadmap, backlog, and the PR description were moved to
    the accepted state together.
+5. The Product Owner accepted automatic completion after physical-device
+   validation on 2026-08-03; it changes orchestration only and leaves this
+   persistence architecture intact.
 
 ## Related Documents
 
