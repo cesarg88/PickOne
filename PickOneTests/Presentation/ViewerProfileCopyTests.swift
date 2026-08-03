@@ -14,9 +14,9 @@ struct ViewerProfileCopyTests {
         #expect(ViewerProfileCopy
             .lowSignalBody ==
             "We can start broadly with what you have told us, or you can rate a few more movies first.")
-        #expect(ViewerProfileCopy.completionTitle == "Your preferences are saved.")
+        #expect(ViewerProfileCopy.saveTitle == "Ready to save your preferences?")
         #expect(ViewerProfileCopy
-            .completionBody == "We'll use them to improve what you can watch and your future recommendations.")
+            .saveBody == "Save them to finish and improve what you can watch and your future recommendations.")
         #expect(ViewerProfileCopy.resetTitle == "Reset preferences?")
         #expect(ViewerProfileCopy
             .resetBody ==

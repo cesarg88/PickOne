@@ -15,7 +15,7 @@ struct CalibrationFlowView: View {
                 case .lowSignalDecision:
                     lowSignalDecision
                 case .completion:
-                    completion
+                    saveConfirmation
                 case nil:
                     ProgressView()
             }
@@ -144,20 +144,20 @@ struct CalibrationFlowView: View {
         .padding()
     }
 
-    private var completion: some View {
+    private var saveConfirmation: some View {
         VStack(spacing: 20) {
             Spacer()
-            Image(systemName: "checkmark.circle.fill")
+            Image(systemName: "square.and.arrow.down")
                 .font(.system(size: 64))
-                .foregroundStyle(.green)
-            Text(ViewerProfileCopy.completionTitle)
+                .foregroundStyle(Color.accentColor)
+            Text(ViewerProfileCopy.saveTitle)
                 .font(.largeTitle.bold())
                 .multilineTextAlignment(.center)
-            Text(ViewerProfileCopy.completionBody)
+            Text(ViewerProfileCopy.saveBody)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
             Spacer()
-            Button("Continue") {
+            Button("Save preferences") {
                 Task { await model.complete(mode: mode) }
             }
             .buttonStyle(.borderedProminent)

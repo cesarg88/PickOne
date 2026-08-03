@@ -291,6 +291,9 @@ final class ViewerProfileViewModel {
         switch mode {
             case .firstOnboarding:
                 guard let draft = firstDraft else { return nil }
+                if draft.step == .completion {
+                    return .completion
+                }
                 return CalibrationFlow.destination(
                     position: draft.currentCatalogPosition,
                     reactions: draft.reactions,
