@@ -1,4 +1,4 @@
-# Product-Led Agent Delivery Model
+# Product and Engineering Agent Delivery Model
 
 ## Status
 
@@ -6,7 +6,7 @@ Accepted
 
 ## Purpose
 
-Keep product and architecture decisions coherent while allowing implementation
+Keep product and engineering decisions coherent while allowing implementation
 work to run in focused, disposable agent tasks with limited context.
 
 The repository, not a long-running chat, is the durable source of truth.
@@ -16,18 +16,26 @@ The repository, not a long-running chat, is the durable source of truth.
 ### Product Owner
 
 - owns product intent and final scope decisions
+- works with the designated product agent to maintain `PRODUCT.md` and product
+  specifications
 - validates behavior on physical devices
 - provides qualitative pilot feedback
 - approves tradeoffs that change the user experience
 
-### CTO / Product Engineer
+### Technical Lead
 
-- helps shape product decisions with the Product Owner
-- writes and maintains specifications, ADRs, milestones, and acceptance criteria
+- owns engineering readiness, architecture, technical quality, and the technical
+  debt policy
+- translates accepted product behavior into technical contracts and delivery
+  slices without changing that behavior
+- writes and maintains `ENGINEERING.md`, technical ADRs, engineering sections of
+  milestones, and verification requirements
 - identifies architecture constraints and integration risks
 - reviews implementation pull requests
-- verifies automated evidence and protects scope
-- updates durable documentation after decisions and merges
+- verifies automated evidence, protects scope, and may block a merge on technical
+  quality grounds
+- returns unresolved product questions to the Product Owner instead of deciding
+  them
 
 ### Implementation Agent
 
@@ -44,6 +52,10 @@ The repository, not a long-running chat, is the durable source of truth.
 
 For product intent and user-visible behavior, [`PRODUCT.md`](../../PRODUCT.md)
 is canonical.
+
+For current technical invariants, [`ENGINEERING.md`](../../ENGINEERING.md) is
+canonical. Accepted ADRs preserve the reasoning and consequences of individual
+technical decisions.
 
 Within that product definition, use this order for delivery details:
 
@@ -65,38 +77,50 @@ All GitHub operations must also follow the mandatory
 
 ## Definition of Ready for Autonomous Implementation
 
-An implementation task is ready only when its specification includes:
+### Product Ready
+
+The Product Owner has accepted:
 
 - problem and desired outcome
 - user or system behavior
 - scope and explicit non-goals
 - acceptance criteria
+- privacy constraints and required physical-device validation
+- no unresolved product decision that could materially change implementation
+
+### Engineering Ready
+
+The Technical Lead has accepted:
+
 - relevant architecture constraints and ADRs
 - data, error, loading, empty, and cancellation behavior
-- privacy and security constraints
+- concurrency, persistence, migration, security, and dependency implications
 - required tests and CI gates
 - rollout or feature-flag expectations
-- physical-device validation required from the Product Owner
-- no unresolved decision that could materially change the implementation
+- PR dependency graph, stack order when applicable, and documentation closure
+- no unresolved technical decision that could materially change contracts,
+  implementation, migration, or verification
 
 If one of these is intentionally irrelevant, the specification should say so.
 
 ## Delivery Workflow
 
-1. Product Owner and CTO/Product Engineer discuss the problem in the steering
-   task.
-2. The decision is written into a versioned specification, ADR, roadmap item,
-   or backlog entry.
-3. The specification is reviewed until it meets the Definition of Ready.
-4. A new implementation task and branch are created for one bounded outcome.
-5. The implementation agent works from repository documents, not from the full
+1. The Product Owner and product agent define and accept user-visible behavior.
+2. The product decision is written into `PRODUCT.md`, a versioned specification,
+   roadmap item, or backlog entry.
+3. The Technical Lead reviews feasibility and defines the technical contracts,
+   ADRs, risks, verification, and delivery slices.
+4. Product Ready and Engineering Ready are recorded before implementation.
+5. A new implementation task and branch are created for one bounded outcome.
+6. The implementation agent works from repository documents, not from the full
    steering-chat history.
-6. The agent opens a PR with automated validation and a concise handoff.
-7. The CTO/Product Engineer reviews correctness, architecture, scope, tests,
+7. The agent opens a PR with automated validation and a concise handoff.
+8. The Technical Lead reviews correctness, architecture, scope, tests,
    failure behavior, and documentation.
-8. The Product Owner performs the specified physical-device validation.
-9. Required changes are returned to the implementation task.
-10. After merge, roadmap, backlog, milestone, and ADR status are updated.
+9. The Product Owner performs the specified physical-device validation.
+10. Required changes are returned to the implementation task.
+11. Before merge, the implementation PR records final validation and closes the
+    milestone, roadmap, backlog, and ADR status required by its specification.
 
 ## Pull Request Handoff Requirements
 
@@ -105,6 +129,7 @@ Every implementation PR should state:
 - what changed
 - why it changed
 - specification and backlog identifiers
+- base branch, dependent PRs, and merge order when stacked
 - important architecture decisions
 - tests and commands executed
 - CI result
@@ -114,32 +139,22 @@ Every implementation PR should state:
 
 ## Context Management
 
-- keep this steering task focused on product, architecture, specifications, and
-  PR review
+- keep product steering and technical leadership in separate tasks
 - use one separate implementation task per milestone or small feature
 - avoid carrying full implementation transcripts back into the steering task
 - return only the PR, decisions, validation evidence, and unresolved questions
 - write every accepted decision into the repository
-- start a new steering task when the active product phase changes materially,
-  using repository documents as its context package
+- use repository documents rather than chat history as the context package for
+  product, technical, and implementation agents
 
 ## Scope and Review Rules
 
 - one PR should deliver one coherent outcome
+- large milestones should be divided into independently green PRs; stacking is
+  reserved for real dependency constraints
 - agents may refactor only where required by the specification
 - architecture changes require an ADR or explicit review decision
 - new dependencies require justification and approval
 - automated green checks do not replace product/device validation
 - device validation does not replace automated regression coverage
 - a reviewer should reject accidental scope expansion even when the code works
-
-## First Application of This Model
-
-- Steering work:
-  define Decision Engine v1 and the product measurement contract.
-- Delegated implementation:
-  Milestone 3.4 — Swift 6 Concurrency Migration.
-- Product Owner validation:
-  short physical-device smoke test after automated migration gates pass.
-- CTO/Product Engineer validation:
-  review isolation design, strict-concurrency correctness, tests, and final PR.

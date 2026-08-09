@@ -1,0 +1,4 @@
+interface:
+  display_name: "Plan PickOne Technical Slice"
+  short_description: "Turn accepted behavior into bounded iOS work"
+  default_prompt: "Use $plan-pickone-technical-slice to create an executable technical plan from this accepted PickOne specification."

@@ -8,6 +8,9 @@ pilot and remains under active development.
 The canonical product definition, target experience, accepted decisions, and
 open product questions live in [`PRODUCT.md`](PRODUCT.md).
 
+The canonical engineering principles, architecture boundaries, quality gates,
+and technical-debt policy live in [`ENGINEERING.md`](ENGINEERING.md).
+
 ---
 
 ## Requirements

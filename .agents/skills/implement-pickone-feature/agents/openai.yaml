@@ -1,0 +1,4 @@
+interface:
+  display_name: "Implement PickOne Feature"
+  short_description: "Implement an accepted PickOne technical scope"
+  default_prompt: "Use $implement-pickone-feature to implement the accepted PickOne milestone on a focused branch."
