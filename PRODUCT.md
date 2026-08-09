@@ -3,7 +3,7 @@
 ## Document Status
 
 - Status: `Canonical`
-- Last product review: `2026-08-03`
+- Last product review: `2026-08-09`
 - Product name: `PickOne` is a codename until the decision experience is
   validated.
 
@@ -57,7 +57,7 @@ one.
 
 ## Product Promise
 
-> Open PickOne, receive three strong choices for tonight, understand why they
+> Open PickOne, receive a few strong movie choices for tonight, understand why they
 > fit, and know where each one is included with your subscriptions.
 
 The ideal outcome is not a longer PickOne session. It is a confident viewing
@@ -95,6 +95,9 @@ PickOne becomes useful by combining three kinds of context:
 3. **Availability context** — the viewer's active country and subscribed
    streaming services.
 
+These contexts are combined to reduce decision fatigue, not to maximize
+catalogue exploration.
+
 A title is not a valid primary recommendation merely because it matches a
 genre. It must be a plausible fit for the viewer and the moment, and it must be
 watchable under the active availability constraints.
@@ -103,23 +106,54 @@ watchable under the active availability constraints.
 
 ### Decisions over discovery
 
-Optimize for a confident choice, not catalog exploration, content impressions,
-or time spent in the app.
+Streaming has an abundance problem. People rarely fail because no movie exists;
+they fail because comparing too many plausible options becomes exhausting.
+PickOne therefore optimizes for a confident choice, not catalog exploration,
+content impressions, or time spent in the app.
 
-### Few strong options
+PickOne does not exist to make browsing more efficient. It exists to do the
+difficult filtering before presenting an answer. A feature that makes browsing
+easier while making the final decision harder does not support the core product.
+
+### Few strong, purposeful options
 
 Default to three recommendations. More options should be requested explicitly,
-not exposed through an infinite feed.
+not exposed through an infinite feed. One option provides no meaningful
+alternative; larger sets recreate the comparison burden PickOne is intended to
+remove.
 
-### Watchability is part of relevance
+The three recommendations form a balanced decision set rather than three
+interchangeable ranking results:
+
+1. **Safe Choice** — the highest-confidence option and the one most likely to
+   minimize regret.
+2. **Stretch Choice** — still compatible with the viewer, but meaningfully
+   different in mood, style, genre, or another useful dimension.
+3. **Discovery Choice** — less obvious than the other two, while retaining a
+   credible and explainable connection to the available evidence.
+
+Discovery must feel earned rather than random. When PickOne cannot produce
+three eligible choices at the required quality, an honest smaller set is better
+than filling a role with a weak recommendation.
+
+### Watchability is eligibility
 
 For the primary experience, a movie unavailable in the active region and
-subscriptions is not a useful recommendation.
+subscriptions is not a useful recommendation. Availability is evaluated before
+a movie enters the final decision set; it is not decorative metadata added
+after ranking.
 
-### Explain the recommendation
+### Honesty and explainability over false precision
 
 Every recommendation must state briefly why it fits. Explanations should build
-confidence rather than expose technical scoring or generic marketing copy.
+confidence rather than expose technical scoring or generic marketing copy. They
+must be supported by evidence PickOne actually possesses and must never imply
+knowledge, certainty, personalization, or availability that has not been
+established.
+
+When preference evidence or candidate quality is limited, the experience must
+represent that uncertainty honestly. A plausible, understandable recommendation
+is more trustworthy than unsupported claims of algorithmic intelligence.
 
 ### Learn without interrogating
 
@@ -139,16 +173,45 @@ Do not silently replace a useful recommendation set, claim unsupported
 personalization, hide availability uncertainty, or imply that rent/buy offers
 are included subscriptions.
 
-### AI is an implementation option
+### Reduce unnecessary decisions
 
-The product is a decision assistant, not a chatbot. AI may improve reasoning,
-but the experience and success criteria must not depend on AI novelty.
+Ask viewers only for choices that are meaningful to them. Persistence,
+orchestration, and other implementation details should remain invisible unless
+an error requires the viewer to act.
+
+### Decisions over engagement
+
+PickOne optimizes for decision confidence, not clicks, screen views, or session
+length. The ideal session is short: the viewer opens PickOne, finds a movie,
+starts watching, and leaves the application. Success means helping the viewer
+leave with a decision.
+
+### Build confidence before sophistication
+
+The first recommendation experience must demonstrate that PickOne understands
+enough about the viewer to be useful without overstating what it knows.
+Onboarding, the viewer profile, availability, the Decision Engine, and concise
+explanations all exist to establish that confidence.
+
+### AI is optional and the promise is durable
+
+The product is a decision assistant, not a chatbot. The Decision Engine must
+produce meaningful recommendation sets from deterministic product rules. AI may
+later improve explanations, ranking, personalization, or reasoning, but the
+core experience must remain useful when no AI service is available.
+
+Algorithms, scoring models, providers, and implementation technologies may
+change. The promise to provide a small, deliberate, watchable, and explainable
+decision set should remain stable.
 
 ## Target First Product Version
 
 The first product version validates a recommendation-first experience for
 individual viewing. It consists of onboarding, a persistent home selection,
 movie detail, availability, trailers when available, and explicit feedback.
+The first complete recommendation experience is the initial confidence test:
+technical sophistication has no value unless the resulting choices make sense
+to the viewer.
 
 ### 1. Onboarding
 
@@ -261,13 +324,18 @@ questions.
 ### 2. Home — “Three for Tonight”
 
 Home is the primary product surface. It opens with three recommendations, not a
-generic catalog and not an empty text composer.
+generic catalog and not an empty text composer. It should feel as if PickOne has
+already done the difficult filtering rather than asking the viewer to search a
+database.
 
 The set should contain:
 
-1. a high-confidence or safest choice
-2. a complementary choice with a different tone or tradeoff
-3. a discovery choice that remains credible but is less obvious
+1. **Safe Choice** — the highest-confidence option based on the available
+   evidence
+2. **Stretch Choice** — a compatible option with a meaningful difference in
+   tone, style, genre, or tradeoff
+3. **Discovery Choice** — a less obvious option with a credible connection to
+   the viewer's preferences or current context
 
 The labels presented to users may evolve, but the set should feel deliberate
 rather than like three interchangeable results.
@@ -501,11 +569,14 @@ The current application already provides:
 - movie detail, similar movies, and credits
 - local watchlist and watched state
 - a stubbed free-text Ask experience
+- regional subscription-availability evidence in Movie Detail
+- resumable onboarding with streaming-service selection and taste calibration
+- a persistent editable local viewer profile and Settings surface
 
 It does not yet deliver the target first product version described here.
-Specifically, onboarding, taste calibration, subscription-aware regional
-eligibility, persistent “Three for Tonight,” explicit decision feedback, and
-trailer presentation remain product work.
+Specifically, the deterministic Decision Engine, persistent “Three for
+Tonight,” explicit decision feedback, and trailer presentation remain product
+work.
 
 Technical migration or architecture work may continue without changing current
 behavior, but new product implementation must be specified against this target.
@@ -533,6 +604,9 @@ As of the last review:
 - The pilot uses one editable local profile representing the Product Owner.
 - Home, not Ask or generic discovery, is the primary product surface.
 - The default recommendation set contains three movies.
+- The default set is deliberately composed as Safe Choice, Stretch Choice, and
+  Discovery Choice; these are product roles rather than three interchangeable
+  ranking positions.
 - Onboarding captures region, subscriptions, and title-based taste signals.
 - Subscription and regional availability are primary eligibility constraints.
 - Included subscription access is distinct from rent or buy availability.
@@ -627,7 +701,8 @@ They must be resolved in product steering or explicitly bounded by a milestone.
 ## Related Documents
 
 - [`docs/milestones/milestone-5-viewer-profile-onboarding.md`](docs/milestones/milestone-5-viewer-profile-onboarding.md)
-  is the accepted specification for the next viewer-profile milestone.
+  is the completed specification and implementation record for viewer-profile
+  onboarding.
 - [`docs/decisions/adr-010-local-viewer-profile-and-dynamic-context.md`](docs/decisions/adr-010-local-viewer-profile-and-dynamic-context.md)
   defines its accepted persistence and dynamic availability-context
   architecture.
