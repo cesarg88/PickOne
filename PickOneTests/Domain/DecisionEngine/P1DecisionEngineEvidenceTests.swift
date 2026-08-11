@@ -138,7 +138,7 @@ struct P1DecisionEngineEvidenceTests {
         #expect(selection.recommendations.isEmpty)
     }
 
-    @Test("diversity is secondary context backed by the existing primary reason")
+    @Test("diversity is secondary context and never replaces the primary reason")
     func diversityIsSecondary() throws {
         let candidates = try [
             candidate(1, [.scienceFiction, .drama], rating: 8.5),
@@ -147,9 +147,7 @@ struct P1DecisionEngineEvidenceTests {
         ]
         let selection = engine.select(from: input(candidates: candidates))
         let stretch = try #require(selection.recommendations.first(where: { $0.role == .stretchChoice }))
-        let diversity = try #require(stretch.evidence.diversity)
-
-        #expect(diversity.supportedBy == stretch.evidence.primary)
+        #expect(stretch.evidence.diversity == .diverseDirection)
         #expect(stretch.evidence.primary == .sparseQuality)
     }
 

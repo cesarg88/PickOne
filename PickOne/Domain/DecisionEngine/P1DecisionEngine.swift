@@ -281,9 +281,7 @@ struct P1DecisionEngine: DecisionSelecting, Sendable {
         guard maximumOverlap < 1 else {
             return nil
         }
-        return RecommendationDiversityEvidence(
-            supportedBy: candidate.primaryEvidence
-        )
+        return .diverseDirection
     }
 }
 

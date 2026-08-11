@@ -82,8 +82,8 @@ enum RecommendationPrimaryEvidence: Equatable, Sendable {
     case sparseQuality
 }
 
-struct RecommendationDiversityEvidence: Equatable, Sendable {
-    let supportedBy: RecommendationPrimaryEvidence
+enum RecommendationDiversityEvidence: Equatable, Sendable {
+    case diverseDirection
 }
 
 struct RecommendationEvidence: Equatable, Sendable {
