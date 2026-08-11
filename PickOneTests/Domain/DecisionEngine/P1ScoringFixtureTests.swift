@@ -14,7 +14,7 @@ struct P1ScoringFixtureTests {
     }
 
     @Test("Fixture B keeps sparse known fit first and unrelated quality credible")
-    func fixtureB() {
+    func fixtureB() throws {
         let profile = P1TasteProfile(evidence: [
             evidence(1, .loveIt, [.thriller, .drama], 2015),
             evidence(2, .didNotLikeIt, [.comedy], 2012),
@@ -29,14 +29,14 @@ struct P1ScoringFixtureTests {
         let ranked = rank(candidates, profile: profile)
 
         #expect(ranked.first?.name == "C1")
-        #expect(score(named: "C2", in: ranked).isCredible)
-        #expect(score(named: "C3", in: ranked).isCredible)
-        #expect(score(named: "C4", in: ranked).isCredible)
+        #expect(try score(named: "C2", in: ranked).isCredible)
+        #expect(try score(named: "C3", in: ranked).isCredible)
+        #expect(try score(named: "C4", in: ranked).isCredible)
         #expect(P1Scoring.affinity(for: .comedy, in: profile) > -1)
     }
 
     @Test("Fixture C keeps Science Fiction positive after one negative observation")
-    func fixtureC() {
+    func fixtureC() throws {
         let profile = P1TasteProfile(evidence: [
             evidence(1, .didNotLikeIt, [.scienceFiction, .horror], 2011),
             evidence(2, .loveIt, [.scienceFiction, .drama], 2014),
@@ -52,8 +52,8 @@ struct P1ScoringFixtureTests {
         let ranked = rank(candidates, profile: profile)
 
         #expect(P1Scoring.affinity(for: .scienceFiction, in: profile) > 0)
-        #expect(score(named: "C1", in: ranked).rankScore > score(named: "C3", in: ranked).rankScore)
-        #expect(score(named: "C2", in: ranked).rankScore > score(named: "C3", in: ranked).rankScore)
+        #expect(try score(named: "C1", in: ranked).rankScore > score(named: "C3", in: ranked).rankScore)
+        #expect(try score(named: "C2", in: ranked).rankScore > score(named: "C3", in: ranked).rankScore)
     }
 
     @Test("Fixture F lets the two-point intent bonus change only a close result")
@@ -131,7 +131,7 @@ struct P1ScoringFixtureTests {
     }
 
     @Test("Fixture J keeps personalized Horror and Mystery above unrelated acclaimed quality")
-    func fixtureJ() {
+    func fixtureJ() throws {
         let profile = P1TasteProfile(evidence: [
             evidence(1, .loveIt, [.horror, .mystery], 2017),
             evidence(2, .loveIt, [.horror, .thriller], 2019),
@@ -144,8 +144,8 @@ struct P1ScoringFixtureTests {
         ]
         let ranked = rank(candidates, profile: profile)
 
-        #expect(score(named: "C1", in: ranked).rankScore > score(named: "C2", in: ranked).rankScore)
-        #expect(score(named: "C3", in: ranked).rankScore > score(named: "C2", in: ranked).rankScore)
+        #expect(try score(named: "C1", in: ranked).rankScore > score(named: "C2", in: ranked).rankScore)
+        #expect(try score(named: "C3", in: ranked).rankScore > score(named: "C2", in: ranked).rankScore)
     }
 
     @Test("Fixture K makes okay watched evidence with zero directional affinity")
@@ -172,8 +172,8 @@ struct P1ScoringFixtureTests {
     private func score(
         named name: String,
         in scores: [(name: String, score: P1Score)]
-    ) -> P1Score {
-        scores.first(where: { $0.name == name })!.score
+    ) throws -> P1Score {
+        try #require(scores.first(where: { $0.name == name })).score
     }
 
     private func evidence(
