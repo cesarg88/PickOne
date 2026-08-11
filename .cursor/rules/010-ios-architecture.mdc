@@ -1,22 +1,17 @@
 ---
 name: ios-architecture
-description: PickOne layering and implementation rules
+description: PickOne architecture compatibility entrypoint
+alwaysApply: false
 ---
 
-# Layering
+# PickOne Architecture
 
-- Preserve `Presentation -> Domain -> Data`.
-- Presentation talks only to use cases.
-- Domain owns orchestration and business rules.
-- Data owns DTOs, persistence, clients, and repository implementations.
+Read `ENGINEERING.md` before implementation, architecture, refactoring,
+migration, or review. Preserve its canonical dependency direction:
 
-# Boundaries
+```text
+Presentation -> Domain <- Data
+```
 
-- DTOs never enter Domain.
-- UI never talks directly to repositories.
-- View models map domain entities and snapshots into presentation state.
-
-# Recommendation Rule
-
-- Recommendation outputs are candidates.
-- Candidates must be enriched through `MovieRepository` before becoming final recommendations.
+Read `.agents/skills/apply-pickone-swift-style/SKILL.md` before writing or
+reviewing Swift. Do not duplicate architecture or recommendation policy here.

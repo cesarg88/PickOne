@@ -70,11 +70,13 @@ struct AboutView: View {
                     .font(.footnote)
                     .multilineTextAlignment(.center)
 
-                    Link(
-                        "Visit The Movie Database",
-                        destination: URL(string: "https://www.themoviedb.org")!
-                    )
-                    .font(.footnote.weight(.semibold))
+                    if let tmdbURL = URL(string: "https://www.themoviedb.org") {
+                        Link(
+                            "Visit The Movie Database",
+                            destination: tmdbURL
+                        )
+                        .font(.footnote.weight(.semibold))
+                    }
                 }
             }
             .padding(24)

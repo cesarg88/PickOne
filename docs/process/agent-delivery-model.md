@@ -114,7 +114,8 @@ If one of these is intentionally irrelevant, the specification should say so.
 5. A new implementation task and branch are created for one bounded outcome.
 6. The implementation agent works from repository documents, not from the full
    steering-chat history.
-7. The agent opens a PR with automated validation and a concise handoff.
+7. The agent opens a PR using `.github/PULL_REQUEST_TEMPLATE.md`, automated
+   validation, and a concise handoff.
 8. The Technical Lead reviews correctness, architecture, scope, tests,
    failure behavior, and documentation.
 9. The Product Owner performs the specified physical-device validation.
@@ -124,7 +125,9 @@ If one of these is intentionally irrelevant, the specification should say so.
 
 ## Pull Request Handoff Requirements
 
-Every implementation PR should state:
+Every implementation PR must start from `.github/PULL_REQUEST_TEMPLATE.md` and
+retain all of its headings, including when created through an API or CLI. Its
+content must state:
 
 - what changed
 - why it changed
@@ -136,6 +139,19 @@ Every implementation PR should state:
 - known limitations
 - device checks requested from the Product Owner
 - follow-up work intentionally excluded
+
+## Commit Requirements
+
+Use a Conventional Commit subject:
+
+```text
+<type>(<optional-scope>): <imperative lowercase subject>
+```
+
+Allowed types are `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`,
+`chore`, and `ci`. Keep each commit coherent, avoid vague subjects, and do not
+end the subject with a period. Let the repository hook run and use only the
+identity required by the GitHub App authentication policy.
 
 ## Context Management
 

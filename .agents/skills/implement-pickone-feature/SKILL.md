@@ -9,10 +9,11 @@ description: Implement accepted PickOne iOS features and behavior changes with t
 
 1. Read `AGENTS.md`, `ENGINEERING.md`, the active milestone, and relevant ADRs.
 2. Read `PRODUCT.md` when the change affects user-visible behavior.
-3. Confirm that product behavior is accepted and the technical scope has no
+3. Read and apply `../apply-pickone-swift-style/SKILL.md` for every Swift change.
+4. Confirm that product behavior is accepted and the technical scope has no
    unresolved decision that would change behavior or a public contract.
-4. Read the GitHub authentication and repository verification policies.
-5. Stop and request clarification instead of inventing missing product behavior.
+5. Read the GitHub authentication and repository verification policies.
+6. Stop and request clarification instead of inventing missing product behavior.
 
 ## Bound the change
 
@@ -41,11 +42,12 @@ description: Implement accepted PickOne iOS features and behavior changes with t
 ## Verify and hand off
 
 1. Run focused tests while iterating.
-2. Review the complete diff for scope, naming, dead code, accidental API
-   exposure, and missing documentation.
+2. Review the complete diff for scope, naming, forced operations, lint
+   suppressions, dead code, accidental API exposure, and missing documentation.
 3. Run `make verify` from the repository root before handoff.
 4. Let the commit hook run; never use `--no-verify`.
 5. Use only the `Cesar-IA-Agent` identity for commits and GitHub writes.
-6. In the PR, record the specification, changes, trade-offs, exact validation,
+6. Start the PR body from `.github/PULL_REQUEST_TEMPLATE.md`, keep every required
+   heading, and record the specification, changes, trade-offs, exact validation,
    stack dependency and merge order, device checks, exclusions, and milestone
    closure state.

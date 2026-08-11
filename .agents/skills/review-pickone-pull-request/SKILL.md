@@ -11,9 +11,11 @@ description: Review PickOne pull requests for correctness, specification complia
    dependency or required merge order.
 2. Read `AGENTS.md`, `ENGINEERING.md`, the linked specification, and relevant
    ADRs. Read `PRODUCT.md` for user-visible behavior.
-3. Compare the entire base-to-head diff, not only the last commit. Inspect the
+3. Read and apply `../apply-pickone-swift-style/SKILL.md` when Swift changes are
+   present.
+4. Compare the entire base-to-head diff, not only the last commit. Inspect the
    last commit separately when it claims to fix review or CI findings.
-4. Do not publish an approval, review, comment, or PR mutation unless the user
+5. Do not publish an approval, review, comment, or PR mutation unless the user
    explicitly asks for that write.
 
 ## Review tests before implementation
@@ -41,6 +43,10 @@ Evaluate five axes:
 Treat repository conventions as the default. Do not request a rewrite merely
 because another valid style exists.
 
+Block merge when an `@unchecked Sendable`, forced operation, lint suppression,
+new dependency, target, module, or architectural pattern lacks the narrow
+justification required by `ENGINEERING.md` and the Swift style skill.
+
 ## Classify findings
 
 Order findings by severity and include file and line evidence:
@@ -60,3 +66,7 @@ Require the final SHA to have green CI, the required physical-device evidence,
 an accurate PR description, and documentation closure in the same implementation
 PR. For stacked work, approve and merge in dependency order, then revalidate the
 new final SHA of the parent PR.
+
+Require the PR description to retain every heading from
+`.github/PULL_REQUEST_TEMPLATE.md`; evaluate the content, not merely the presence
+of headings or checked boxes.
