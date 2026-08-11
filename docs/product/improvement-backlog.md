@@ -12,7 +12,7 @@ It contains only work that remains pending after Milestone 3.3. Completed work
 should remain in this file with its status changed to `Completed` and a link to
 the implementing PR or milestone.
 
-Last reviewed: 2026-08-04, at the documentary closure of Milestone 5.
+Last reviewed: 2026-08-11, at the Engineering Ready definition of Milestone 6.
 
 ## Product Direction
 
@@ -80,27 +80,33 @@ Priorities:
 
 ### IMP-002 — Define Decision Engine v1
 
-- Status: `Planned`
+- Status: `Completed`
 - Priority: `P0`
 - Roadmap relationship: Milestone 6
+- Accepted specification:
+  [`Milestone 6 — Three for Tonight`](../milestones/milestone-6-three-for-tonight.md)
+- Accepted architecture:
+  [`ADR-011 — Deterministic Decision Engine v1`](../decisions/adr-011-deterministic-decision-engine-v1.md)
 - Why: provider integration should implement an accepted product reasoning
   model rather than define the product accidentally.
-- Implementation:
-  - define stable preference, current-context, region, subscription,
-    availability, and watched-state inputs
-  - define supported intent dimensions: mood, genre, pace, runtime, company,
-    era, references, and exclusions
-  - define behavior for sparse, conflicting, and impossible constraints
-  - generate the candidate pool with TMDB Discover using the active region and
-    selected providers without treating Discover as availability proof
-  - default to three strong recommendations
-  - define how one item becomes the best choice
-  - specify diversity, constraint, duplicate, and already-watched policies
-  - turn Home, quick-context, and future Ask strategy into executable
-    acceptance cases
-- Done when:
-  - representative prompt fixtures and expected decisions are documented
-  - the rules can be tested independently of an AI provider
+- Completed result:
+  - accepted the deterministic P1 affinity, similarity, quality, confidence,
+    credibility, Watchlist-bonus, diversity, role, and tie-breaking rules
+  - defined exact watched, cycle-history, and movie-level availability gates
+  - separated pure scoring and selection from asynchronous candidate,
+    availability, persistence, and refresh orchestration
+  - accepted structured explanation evidence and semantic precedence
+  - defined persistent Decision Sets, cycle identity, mutable eligibility,
+    recovery, and deliberate refresh
+  - translated synthetic fixtures A–L and frozen real-profile snapshots into
+    mandatory automated regression coverage
+  - kept Apple Foundation Models, runtime intent, feedback, backend, and
+    physical module extraction outside Milestone 6
+- Completion evidence:
+  - accepted ADR-011 and its fixture, sanity-check, scoring, and AI-feasibility
+    support documents
+  - an Engineering Ready Milestone 6 specification with dependency-ordered PRs
+    and no unresolved implementation decision
 
 ### IMP-019 — Define Viewer Profile & Onboarding v1
 
@@ -179,6 +185,8 @@ Priorities:
 - Status: `Planned`
 - Priority: `P0`
 - Depends on: IMP-002, IMP-009, and IMP-019
+- Implementation specification:
+  [`Milestone 6 — Three for Tonight`](../milestones/milestone-6-three-for-tonight.md)
 - Why: opening on a generic Top Rated grid communicates that PickOne is a
   catalog, while opening on Ask requires effort before the product demonstrates
   value.
@@ -186,8 +194,10 @@ Priorities:
   - introduce onboarding for region, subscriptions, and taste calibration
   - make persistent `Three for Tonight` recommendations the first screen
   - add a visible `Give me three more` action
-  - provide optional quick context without requiring free text
-  - keep Discovery and Search available as supporting paths
+  - keep optional quick-context controls deferred; Milestone 6 uses one
+    versioned default context without adding another user decision
+  - expose `Home`, `Search`, `Discover`, `Watchlist`, and `Settings` in that
+    order; retain Ask code without exposing its later-milestone tab
   - design first-use, returning-use, loading, empty, and failure states
 - Done when:
   - a fresh launch exposes the core decision proposition immediately
@@ -488,20 +498,17 @@ the added complexity.
 
 ## Suggested Sequence
 
-1. Define Availability Foundation v1 from the accepted SPIKE-001 evidence.
-2. Define Viewer Profile & Onboarding v1.
-3. Define Decision Engine v1 against preferences, viewing context, and
-   availability.
-4. Implement Availability Foundation and Onboarding as bounded milestones.
-5. Implement persistent `Three for Tonight`.
-6. Run the required household utility checkpoint and use its findings to
+1. Implement Milestone 6 through its accepted dependency-ordered PR slices.
+2. Merge the Home experience and documentary closure only after all earlier
+   engine, Data, persistence, and orchestration slices are green.
+3. Run the required household utility checkpoint and use its findings to
    confirm or revise the next milestone.
-7. Add explicit decision feedback and resolve Recommendation/Watchlist state
+4. Add explicit decision feedback and resolve Recommendation/Watchlist state
    only after the checkpoint supports that direction.
-8. Add trailers and the minimum pilot measurement contract.
-9. Introduce a backend or AI provider only if product validation demonstrates
+5. Add trailers and the minimum pilot measurement contract.
+6. Introduce a backend or AI provider only if product validation demonstrates
    a need that deterministic recommendation cannot meet.
-10. Complete distribution, accessibility, and persistence hardening as the
+7. Complete distribution, accessibility, and persistence hardening as the
    audience expands.
 
 ## Update Rules

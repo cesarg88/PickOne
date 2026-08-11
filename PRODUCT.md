@@ -3,7 +3,7 @@
 ## Document Status
 
 - Status: `Canonical`
-- Last product review: `2026-08-09`
+- Last product review: `2026-08-11`
 - Product name: `PickOne` is a codename until the decision experience is
   validated.
 
@@ -349,6 +349,16 @@ Each recommendation communicates at a glance:
 - release year and useful genre or tone context
 - whether it has already been saved or watched
 
+The short reason uses the strongest supported semantic evidence in this order:
+
+1. saved Watchlist intent combined with a real taste match;
+2. a positive `Love it` or `Like it` movie anchor;
+3. learned positive genre affinities;
+4. general quality evidence while the profile is sparse.
+
+The Safe, Stretch, or Discovery role communicates how the set was composed.
+Diversity alone never replaces the reason that the movie fits.
+
 ### 3. Recommendation-set persistence and refresh
 
 The current set persists when the app is closed and reopened. A user must not
@@ -367,6 +377,18 @@ as a secondary shortcut, but it must not be the only way to request a new set.
 
 Avoid immediate repeats from the active set, dismissed movies, and already
 watched movies unless the user explicitly asks for them.
+
+The recommendation cycle is identified by the engine version, profile and
+reactions, region, selected services, and explicit viewing context. Watchlist
+save or watched changes do not create a new cycle. They invalidate or repair
+the current set while preserving every movie already shown in that cycle, so a
+state correction cannot make an earlier recommendation repeat.
+
+If the stored recommendation envelope is corrupt or incompatible, PickOne
+preserves the unread bytes for diagnosis and attempts to generate and persist a
+replacement set from current trusted inputs. If recovery cannot complete, Home
+shows a retryable failure. Recommendation recovery never resets or modifies the
+Viewer Profile, Watchlist, or Search History.
 
 ### 4. Lightweight viewing context
 
@@ -468,6 +490,12 @@ may open only the country-specific watch URL returned by TMDB and must clearly
 identify TMDB as its destination.
 
 ### 8. Supporting surfaces
+
+The first-version main tabs are, in order: `Home`, `Search`, `Discover`,
+`Watchlist`, and `Settings`. Home replaces the current first Discovery surface,
+and Discovery takes the tab position currently occupied by Ask. The existing
+Ask code is retained as a later-milestone asset but is not exposed as a main
+tab in Milestone 6.
 
 Search, discovery, watchlist, and movie detail remain useful, but support the
 decision product:
@@ -685,6 +713,20 @@ As of the last review:
   JustWatch attribution in About.
 - The TMDB regional watch page is exposed only as a secondary
   `View playback options on TMDB` action, never as a provider deep link.
+- Decision Engine v1 uses the accepted deterministic P1 formula, eligibility,
+  diversity, role, tie-breaking, and evidence rules in ADR-011.
+- Main navigation for Milestone 6 is `Home`, `Search`, `Discover`, `Watchlist`,
+  and `Settings`; Ask remains implemented but hidden until its later milestone.
+- Recommendation-cycle identity includes engine version, profile reactions,
+  region, selected services, and viewing context. Watchlist changes repair or
+  invalidate current eligibility without clearing already-shown cycle history.
+- Recommendation-envelope corruption or incompatibility preserves the unread
+  bytes, attempts regeneration, and exposes Retry if recovery fails without
+  modifying profile, Watchlist, or Search History.
+- Recommendation explanations prefer Watchlist intent plus a real taste match,
+  then a positive movie anchor, then positive genre affinity, then quality for
+  sparse profiles. Product roles communicate composition; diversity is not a
+  substitute for fit evidence.
 
 ## Open Product Questions
 
@@ -692,14 +734,18 @@ These require explicit product decisions before their related implementation:
 
 1. What confirmation language best distinguishes intent to watch from verified
    viewing?
-2. Which deterministic scoring and diversity rules produce the first
-   personalized recommendation set?
 
 Open questions are not permission for implementation agents to invent behavior.
 They must be resolved in product steering or explicitly bounded by a milestone.
 
 ## Related Documents
 
+- [`docs/milestones/milestone-6-three-for-tonight.md`](docs/milestones/milestone-6-three-for-tonight.md)
+  is the accepted, Engineering Ready implementation specification for the
+  deterministic Decision Engine and persistent Home set.
+- [`docs/decisions/adr-011-deterministic-decision-engine-v1.md`](docs/decisions/adr-011-deterministic-decision-engine-v1.md)
+  defines the accepted P1 model, eligibility, composition, explanation, and
+  persistence architecture.
 - [`docs/milestones/milestone-5-viewer-profile-onboarding.md`](docs/milestones/milestone-5-viewer-profile-onboarding.md)
   is the completed specification and implementation record for viewer-profile
   onboarding.

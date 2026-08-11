@@ -146,7 +146,11 @@ and enters the application automatically; only the low-signal choice between
 
 ### Milestone 6
 
-Three for Tonight
+[Three for Tonight](../milestones/milestone-6-three-for-tonight.md)
+
+Status:
+Engineering Ready — implementation may begin after the D0 documentation PR is
+merged
 
 Purpose:
 
@@ -156,6 +160,12 @@ reasons, and explicit refresh. Discover results remain candidates until
 Milestone 4 verification proves exact movie-level eligibility. Previously seen
 exclusion combines informative calibration reactions with the independent
 Watchlist watched state.
+
+Delivery is split into dependency-ordered PRs for the pure P1 score, pure
+selection and explanations, TMDB Discover recall, trusted input assembly,
+Decision Set persistence, asynchronous orchestration, and the Home experience.
+The application remains one physical target while the Decision Engine is kept
+as an explicit internal boundary.
 
 ### Utility Checkpoint after Milestone 6
 
