@@ -28,6 +28,7 @@ opt_in_rules:
   - explicit_init
   - fatal_error_message
   - first_where
+  - force_unwrapping
   - last_where
   - modifier_order
   - operator_usage_whitespace

@@ -1,24 +1,13 @@
 ---
 name: project-baseline
-description: PickOne project identity, strategic state, and baseline constraints
+description: Canonical PickOne authority and workflow entrypoints
+alwaysApply: true
 ---
 
 # PickOne Baseline
 
-- Project name: `PickOne`
-- Product: iOS app for helping users decide what to watch faster
-- UI stack: SwiftUI
-- Concurrency model: Swift Concurrency
-- Deployment target: iOS 18+
+Read `AGENTS.md` before work. It routes each task to the current product,
+engineering, delivery, verification, authentication, and skill authorities.
 
-# Current Strategic State
-
-- Recommendation UX is being validated with a stubbed recommendation source.
-- No real recommendation backend has been introduced yet.
-- Do not introduce backend, auth, deployment, or provider integration without explicit approval.
-
-# Working Rules
-
-- Keep PRs small and reviewable.
-- Respect existing product, architecture, and milestone docs.
-- Do not expand scope silently.
+Do not duplicate strategic state here. `PRODUCT.md`, `ENGINEERING.md`, accepted
+specifications, and ADRs remain authoritative as described by `AGENTS.md`.

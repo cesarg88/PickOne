@@ -7,7 +7,7 @@ import UIKit
 struct ImagePipelineTests {
     @Test("rejects unsuccessful HTTP responses")
     func rejectsHTTPFailure() async throws {
-        let sut = makeSUT(
+        let sut = try makeSUT(
             statusCode: 404,
             contentType: "image/png",
             data: validPNGData
@@ -35,7 +35,7 @@ struct ImagePipelineTests {
 
     @Test("decodes valid image responses")
     func decodesValidImage() async throws {
-        let sut = makeSUT(
+        let sut = try makeSUT(
             statusCode: 200,
             contentType: "image/png",
             data: validPNGData
@@ -56,12 +56,18 @@ struct ImagePipelineTests {
     ) -> ImagePipeline {
         MockURLProtocol.reset()
         MockURLProtocol.requestHandler = { request in
+            guard let url = request.url else {
+                throw URLError(.badURL)
+            }
             let response = HTTPURLResponse(
-                url: request.url!,
+                url: url,
                 statusCode: statusCode,
                 httpVersion: nil,
                 headerFields: ["Content-Type": contentType]
-            )!
+            )
+            guard let response else {
+                throw URLError(.badServerResponse)
+            }
             return (response, data)
         }
 
@@ -77,9 +83,11 @@ struct ImagePipelineTests {
     }
 
     private var validPNGData: Data {
-        Data(
-            base64Encoded:
-            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Wl2nWQAAAAASUVORK5CYII="
-        )!
+        get throws {
+            try #require(Data(
+                base64Encoded:
+                "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Wl2nWQAAAAASUVORK5CYII="
+            ))
+        }
     }
 }

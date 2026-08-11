@@ -107,12 +107,11 @@ extension MockURLProtocol {
         headers: [String: String] = ["Content-Type": "application/json"]
     ) {
         requestHandler = { request in
-            let response = HTTPURLResponse(
-                url: request.url!,
+            let response = try makeResponse(
+                for: request,
                 statusCode: statusCode,
-                httpVersion: nil,
-                headerFields: headers
-            )!
+                headers: headers
+            )
             return (response, data)
         }
     }
@@ -127,13 +126,31 @@ extension MockURLProtocol {
     /// Convenience method to set up an HTTP error response.
     static func setHTTPErrorResponse(statusCode: Int, data: Data = Data()) {
         requestHandler = { request in
-            let response = HTTPURLResponse(
-                url: request.url!,
+            let response = try makeResponse(
+                for: request,
                 statusCode: statusCode,
-                httpVersion: nil,
-                headerFields: ["Content-Type": "application/json"]
-            )!
+                headers: ["Content-Type": "application/json"]
+            )
             return (response, data)
         }
+    }
+
+    private static func makeResponse(
+        for request: URLRequest,
+        statusCode: Int,
+        headers: [String: String]
+    ) throws -> HTTPURLResponse {
+        guard let url = request.url else {
+            throw URLError(.badURL)
+        }
+        guard let response = HTTPURLResponse(
+            url: url,
+            statusCode: statusCode,
+            httpVersion: nil,
+            headerFields: headers
+        ) else {
+            throw URLError(.badServerResponse)
+        }
+        return response
     }
 }

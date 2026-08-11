@@ -1,12 +1,13 @@
 ---
 name: testing
-description: PickOne testing expectations
+description: PickOne testing compatibility entrypoint
+alwaysApply: false
 ---
 
-# Testing Expectations
+# PickOne Testing
 
-- Add or maintain unit tests for new use cases, repositories, mappers, and view models.
-- Use fakes or mocks, not live network calls.
-- Test success and failure paths.
-- Test async cancellation and out-of-order behavior where relevant.
-- Do not weaken existing tests just to make implementation easier.
+Read the testing and verification section of `ENGINEERING.md` and
+`.agents/skills/apply-pickone-swift-style/SKILL.md` before adding or reviewing
+tests. Follow `docs/process/repository-verification.md` for executable gates.
+
+Do not duplicate test policy here.

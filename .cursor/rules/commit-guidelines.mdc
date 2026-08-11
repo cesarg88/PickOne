@@ -1,44 +1,13 @@
 ---
 name: commit-guidelines
-description: PickOne commit message and verification requirements
+description: PickOne commit and verification compatibility entrypoint
+alwaysApply: false
 ---
 
-# Overview
+# PickOne Commits
 
-Use Conventional Commit subjects:
+Read the commit requirements in `docs/process/agent-delivery-model.md`, the
+verification contract in `docs/process/repository-verification.md`, and the
+identity policy in `docs/process/github-app-authentication.md` before committing.
 
-```text
-<type>(<optional-scope>): <subject>
-```
-
-Allowed types: `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`,
-`chore`, and `ci`.
-
-## Scope (recommended)
-
-The scope should indicate the area of the codebase affected:
-- Module name (e.g., `auth`, `profile`, `events`)
-- Feature name (e.g., `notifications`, `payments`)
-- Component name (e.g., `HomeViewController`, `EventCell`)
-
-## Subject (required)
-
-- Use imperative mood: "add" not "added" or "adds"
-- Don't capitalize first letter
-- No period (.) at the end
-- Limit to 50 characters
-
-## Body (optional)
-
-- Explain the "what" and "why" vs. "how"
-- Use imperative mood
-- Wrap at 72 characters
-- Separate from subject with blank line
-
-## Verification
-
-- Every commit must pass the formatting and linting pre-commit hook.
-- Run `make verify` before handing off implementation work or opening a PR.
-- Never bypass hooks with `--no-verify`.
-- Follow `docs/process/github-app-authentication.md`; commits must use the
-  configured `Cesar-IA-Agent` identity.
+Do not duplicate commit policy here.

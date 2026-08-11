@@ -1,3 +1,5 @@
+<!-- Required for every PR. Keep all headings, including when creating the PR through an API or CLI. -->
+
 ## Context
 
 <!-- Link the active milestone, specification, ADR, backlog item, or issue. Explain why this change exists. -->

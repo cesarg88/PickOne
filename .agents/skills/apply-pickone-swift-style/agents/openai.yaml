@@ -1,0 +1,4 @@
+interface:
+  display_name: "Apply PickOne Swift Style"
+  short_description: "Apply PickOne Swift code conventions"
+  default_prompt: "Use $apply-pickone-swift-style when writing or reviewing Swift code in PickOne."

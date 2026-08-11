@@ -6,7 +6,7 @@ import Testing
 struct LocalStoreTests {
     @Test("watchlist survives a new store instance")
     func watchlistPersists() throws {
-        let context = makeContext()
+        let context = try makeContext()
         defer { context.defaults.removePersistentDomain(forName: context.suiteName) }
 
         let item = makeItem()
@@ -18,7 +18,7 @@ struct LocalStoreTests {
 
     @Test("corrupted watchlist is preserved when a mutation is attempted")
     func corruptedWatchlistIsNotOverwritten() throws {
-        let context = makeContext()
+        let context = try makeContext()
         defer { context.defaults.removePersistentDomain(forName: context.suiteName) }
 
         let corruptedData = Data("not-json".utf8)
@@ -33,8 +33,8 @@ struct LocalStoreTests {
     }
 
     @Test("concurrent watchlist writes preserve every item")
-    func concurrentWatchlistWritesPreserveEveryItem() async {
-        let context = makeContext()
+    func concurrentWatchlistWritesPreserveEveryItem() async throws {
+        let context = try makeContext()
         let store = context.store
         defer { context.defaults.removePersistentDomain(forName: context.suiteName) }
 
@@ -61,13 +61,13 @@ struct LocalStoreTests {
         #expect(Set(store.getWatchlistItems().map(\.movieId)) == Set(1 ... 20))
     }
 
-    private func makeContext() -> (
+    private func makeContext() throws -> (
         suiteName: String,
         defaults: UserDefaults,
         store: UserDefaultsLocalStore
     ) {
         let suiteName = "PickOneTests.LocalStore.\(UUID().uuidString)"
-        let defaults = UserDefaults(suiteName: suiteName)!
+        let defaults = try #require(UserDefaults(suiteName: suiteName))
         defaults.removePersistentDomain(forName: suiteName)
         return (
             suiteName,
