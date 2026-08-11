@@ -1,5 +1,21 @@
+import Foundation
+
 struct DecisionGenre: Hashable, Sendable {
     let id: Int
+    let name: String?
+
+    init(id: Int, name: String? = nil) {
+        self.id = id
+        self.name = name?.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty
+    }
+
+    static func == (lhs: DecisionGenre, rhs: DecisionGenre) -> Bool {
+        lhs.id == rhs.id
+    }
+
+    func hash(into hasher: inout Hasher) {
+        hasher.combine(id)
+    }
 }
 
 struct DecisionDecade: Hashable, Sendable {
@@ -19,9 +35,24 @@ struct DecisionDecade: Hashable, Sendable {
 
 struct TasteReactionEvidence: Equatable, Sendable {
     let movieID: Int
+    let movieTitle: String?
     let reaction: CalibrationReaction
     let genres: Set<DecisionGenre>
     let releaseYear: Int?
+
+    init(
+        movieID: Int,
+        movieTitle: String? = nil,
+        reaction: CalibrationReaction,
+        genres: Set<DecisionGenre>,
+        releaseYear: Int?
+    ) {
+        self.movieID = movieID
+        self.movieTitle = movieTitle?.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty
+        self.reaction = reaction
+        self.genres = genres
+        self.releaseYear = releaseYear
+    }
 }
 
 struct P1TasteProfile: Equatable, Sendable {
@@ -79,4 +110,10 @@ struct P1Score: Equatable, Sendable {
     let watchlistIntentBonus: Double
     let rankScore: Double
     let isCredible: Bool
+}
+
+private extension String {
+    var nilIfEmpty: String? {
+        isEmpty ? nil : self
+    }
 }
