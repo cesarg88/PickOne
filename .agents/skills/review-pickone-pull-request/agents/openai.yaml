@@ -1,0 +1,4 @@
+interface:
+  display_name: "Review PickOne Pull Request"
+  short_description: "Review PickOne changes against quality gates"
+  default_prompt: "Use $review-pickone-pull-request to review this PickOne pull request for merge readiness."

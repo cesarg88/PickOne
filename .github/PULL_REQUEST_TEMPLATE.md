@@ -2,6 +2,10 @@
 
 <!-- Link the active milestone, specification, ADR, backlog item, or issue. Explain why this change exists. -->
 
+## Dependency and merge order
+
+<!-- State the base branch, dependent PRs, and required merge order. Write "Independent" when this PR can merge directly. -->
+
 ## Changes
 
 <!-- Summarize what changed. Keep implementation detail proportional to review risk. -->
@@ -24,3 +28,7 @@
 ## Out of scope
 
 <!-- List intentionally excluded follow-up work so it is not lost or silently added to this PR. -->
+
+## Documentation closure
+
+<!-- For implementation work, record milestone, ADR, roadmap, and backlog status against the final validated SHA. Write "Not applicable" for documentation-only engineering changes. -->

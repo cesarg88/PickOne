@@ -1,0 +1,4 @@
+interface:
+  display_name: "Debug PickOne iOS"
+  short_description: "Diagnose PickOne failures from evidence"
+  default_prompt: "Use $debug-pickone-ios to reproduce and diagnose this PickOne failure before proposing a fix."
