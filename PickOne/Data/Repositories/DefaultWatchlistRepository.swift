@@ -16,6 +16,10 @@ final class DefaultWatchlistRepository: WatchlistRepository {
 
     // MARK: - WatchlistRepository
 
+    func loadAllItems() throws -> [WatchlistItem] {
+        try localStore.loadWatchlistItems().map(WatchlistItemMapper.toDomain)
+    }
+
     func getAllItems() -> [WatchlistItem] {
         localStore.getWatchlistItems().map(WatchlistItemMapper.toDomain)
     }

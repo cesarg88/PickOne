@@ -12,6 +12,7 @@ import Synchronization
 final class MockLocalStore: LocalStore {
     private struct State: Sendable {
         var watchlistItems: [PersistedWatchlistItem] = []
+        var loadWatchlistItemsError: LocalStoreError?
         var searchHistory: [String] = []
         var saveWatchlistItemCallCount = 0
         var removeWatchlistItemCallCount = 0
@@ -60,6 +61,20 @@ final class MockLocalStore: LocalStore {
     }
 
     // MARK: - Watchlist Items
+
+    var loadWatchlistItemsError: LocalStoreError? {
+        get { state.withLock { $0.loadWatchlistItemsError } }
+        set { state.withLock { $0.loadWatchlistItemsError = newValue } }
+    }
+
+    func loadWatchlistItems() throws -> [PersistedWatchlistItem] {
+        try state.withLock {
+            if let error = $0.loadWatchlistItemsError {
+                throw error
+            }
+            return $0.watchlistItems.sorted { $0.addedAt > $1.addedAt }
+        }
+    }
 
     func getWatchlistItems() -> [PersistedWatchlistItem] {
         state.withLock {

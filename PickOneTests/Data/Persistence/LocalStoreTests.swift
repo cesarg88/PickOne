@@ -32,6 +32,22 @@ struct LocalStoreTests {
         )
     }
 
+    @Test("trusted watchlist read reports corruption without changing stored bytes")
+    func trustedWatchlistReadReportsCorruption() throws {
+        let context = try makeContext()
+        defer { context.defaults.removePersistentDomain(forName: context.suiteName) }
+
+        let corruptedData = Data("not-json".utf8)
+        context.defaults.set(corruptedData, forKey: "watchlist_items_v2")
+
+        #expect(throws: LocalStoreError.corruptedWatchlist) {
+            _ = try context.store.loadWatchlistItems()
+        }
+        #expect(
+            context.defaults.data(forKey: "watchlist_items_v2") == corruptedData
+        )
+    }
+
     @Test("concurrent watchlist writes preserve every item")
     func concurrentWatchlistWritesPreserveEveryItem() async throws {
         let context = try makeContext()

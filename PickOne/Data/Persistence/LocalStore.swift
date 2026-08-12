@@ -25,6 +25,7 @@ struct PersistedWatchlistItem: Codable, Equatable, Sendable {
 
 protocol LocalStore: Sendable {
     // Watchlist with persisted summaries
+    func loadWatchlistItems() throws -> [PersistedWatchlistItem]
     func getWatchlistItems() -> [PersistedWatchlistItem]
     func saveWatchlistItem(_ item: PersistedWatchlistItem) throws
     func removeWatchlistItem(movieId: Int) throws
@@ -71,6 +72,12 @@ final class UserDefaultsLocalStore: LocalStore {
     }
 
     // MARK: - Watchlist Items
+
+    func loadWatchlistItems() throws -> [PersistedWatchlistItem] {
+        try backend.withLock { backend in
+            try Self.loadWatchlistItems(from: backend.makeUserDefaults())
+        }
+    }
 
     func getWatchlistItems() -> [PersistedWatchlistItem] {
         backend.withLock { backend in

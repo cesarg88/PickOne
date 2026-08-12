@@ -10,6 +10,9 @@ import Foundation
 /// Repository for managing watchlist state
 /// Returns domain models only - no snapshots or UI models
 protocol WatchlistRepository: Sendable {
+    /// Returns all items or throws when persisted Watchlist evidence is unreadable.
+    func loadAllItems() throws -> [WatchlistItem]
+
     /// Returns all watchlist items ordered by date added (most recent first)
     func getAllItems() -> [WatchlistItem]
 
