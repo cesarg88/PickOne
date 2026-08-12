@@ -10,14 +10,20 @@ import SwiftUI
 @main
 @MainActor
 struct PickOneApp: App {
-    private let container = AppContainer()
+    private let container: AppContainer?
+
+    init() {
+        container = AppConfiguration.isUnitTesting ? nil : AppContainer()
+    }
 
     var body: some Scene {
         WindowGroup {
-            AppRootView(
-                container: container,
-                profileModel: container.viewerProfileViewModel
-            )
+            if let container {
+                AppRootView(
+                    container: container,
+                    profileModel: container.viewerProfileViewModel
+                )
+            }
         }
     }
 }

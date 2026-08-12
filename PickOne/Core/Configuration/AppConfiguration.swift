@@ -11,9 +11,16 @@ import Foundation
 /// Centralized access to API keys and environment settings
 struct AppConfiguration {
     static let isUITesting = ProcessInfo.processInfo.arguments.contains("-ui-testing")
+    static let isUnitTesting = detectsUnitTestHost(
+        in: ProcessInfo.processInfo.environment
+    )
     static let resetsViewerProfileForUITests = ProcessInfo.processInfo.arguments.contains(
         "-ui-testing-reset-viewer-profile"
     )
+
+    static func detectsUnitTestHost(in environment: [String: String]) -> Bool {
+        environment["XCTestConfigurationFilePath"] != nil
+    }
 
     // MARK: - TMDB Configuration
 
