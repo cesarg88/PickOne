@@ -374,7 +374,11 @@ struct DecisionSetRepositoryTests {
         role: DecisionRole,
         evidence suppliedEvidence: RecommendationEvidence? = nil
     ) throws -> PersistedDecisionRecommendation {
-        let drama = DecisionGenre(id: 18, name: "Drama")
+        let genre = switch role {
+            case .safeChoice: DecisionGenre(id: 18, name: "Drama")
+            case .stretchChoice: DecisionGenre(id: 35, name: "Comedy")
+            case .discoveryChoice: DecisionGenre(id: 53, name: "Thriller")
+        }
         let defaultEvidence: RecommendationEvidence = switch role {
             case .safeChoice:
                 RecommendationEvidence(
@@ -384,7 +388,7 @@ struct DecisionSetRepositoryTests {
                                 movieID: 155,
                                 movieTitle: "El caballero oscuro",
                                 reaction: .loved,
-                                sharedGenres: [drama],
+                                sharedGenres: [genre],
                                 eraMatch: .adjacentDecade(
                                     candidate: DecisionDecade(year: 2020),
                                     anchor: DecisionDecade(year: 2010)
@@ -398,7 +402,7 @@ struct DecisionSetRepositoryTests {
                 RecommendationEvidence(
                     primary: .positiveGenreAffinity(
                         PositiveAffinityEvidence(
-                            genres: [drama],
+                            genres: [genre],
                             era: DecisionDecade(year: 2020)
                         )
                     ),
@@ -417,7 +421,7 @@ struct DecisionSetRepositoryTests {
                 backdropPath: "/backdrop.jpg",
                 runtimeMinutes: 120,
                 releaseYear: 2024,
-                genres: [drama]
+                genres: [genre]
             ),
             availability: DecisionAvailabilitySnapshot(
                 matchingProviders: [
