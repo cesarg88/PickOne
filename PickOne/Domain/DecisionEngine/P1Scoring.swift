@@ -80,21 +80,34 @@ enum P1Scoring {
         profile: P1TasteProfile
     ) -> Double {
         profile.evidence.reduce(0) { strongest, anchor in
-            guard
-                anchor.reaction.isPositiveP1Anchor,
-                let anchorStrength = anchor.reaction.p1AnchorStrength
-            else {
+            guard anchor.reaction.isPositiveP1Anchor else {
                 return strongest
             }
 
-            let overlap = jaccard(candidateGenres, anchor.genres)
-            let eraSimilarity = eraSimilarity(
-                releaseYear,
-                anchor.releaseYear
+            return max(
+                strongest,
+                positiveAnchorSimilarity(
+                    candidateGenres: candidateGenres,
+                    releaseYear: releaseYear,
+                    anchor: anchor
+                )
             )
-            let metadataSimilarity = overlap * 0.80 + eraSimilarity * 0.20
-            return max(strongest, metadataSimilarity * anchorStrength)
         }
+    }
+
+    static func positiveAnchorSimilarity(
+        candidateGenres: Set<DecisionGenre>,
+        releaseYear: Int?,
+        anchor: TasteReactionEvidence
+    ) -> Double {
+        guard let anchorStrength = anchor.reaction.p1AnchorStrength else {
+            return 0
+        }
+
+        let overlap = genreJaccard(candidateGenres, anchor.genres)
+        let era = eraSimilarity(releaseYear, anchor.releaseYear)
+        let metadataSimilarity = overlap * 0.80 + era * 0.20
+        return metadataSimilarity * anchorStrength
     }
 
     static func quality(
@@ -211,7 +224,7 @@ enum P1Scoring {
         return rawMean * evidenceConfidence
     }
 
-    private static func jaccard(
+    static func genreJaccard(
         _ first: Set<DecisionGenre>,
         _ second: Set<DecisionGenre>
     ) -> Double {
@@ -222,7 +235,7 @@ enum P1Scoring {
         return Double(first.intersection(second).count) / Double(unionCount)
     }
 
-    private static func eraSimilarity(
+    static func eraSimilarity(
         _ firstYear: Int?,
         _ secondYear: Int?
     ) -> Double {
