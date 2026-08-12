@@ -107,6 +107,10 @@ final class MockWatchlistRepository: WatchlistRepository {
 
     // MARK: - WatchlistRepository
 
+    func loadAllItems() throws -> [WatchlistItem] {
+        getAllItems()
+    }
+
     func getAllItems() -> [WatchlistItem] {
         state.withLock {
             $0.getAllItemsCallCount += 1

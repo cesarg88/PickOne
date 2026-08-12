@@ -60,6 +60,17 @@ struct WatchlistRepositoryTests {
         #expect(items[1].isWatched == true)
     }
 
+    @Test("loadAllItems propagates a corrupted Watchlist read")
+    func loadAllItemsPropagatesCorruption() {
+        let localStore = MockLocalStore()
+        localStore.loadWatchlistItemsError = .corruptedWatchlist
+        let sut = DefaultWatchlistRepository(localStore: localStore)
+
+        #expect(throws: LocalStoreError.corruptedWatchlist) {
+            _ = try sut.loadAllItems()
+        }
+    }
+
     // MARK: - add
 
     @Test("add saves item to local store")

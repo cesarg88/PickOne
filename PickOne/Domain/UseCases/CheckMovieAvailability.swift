@@ -40,18 +40,30 @@ struct CheckMovieAvailability: CheckMovieAvailabilityUseCase {
             ) else {
                 return .unknown(reason: .regionalEvidenceMissing)
             }
-            return evaluate(evidence, context: context)
+            return DecisionAvailabilityEvaluator().evaluate(
+                evidence,
+                context: context
+            )
         } catch is CancellationError {
             throw CancellationError()
         } catch {
             return .unknown(reason: .verificationFailed)
         }
     }
+}
 
-    private func evaluate(
+struct DecisionAvailabilityEvaluator: Sendable {
+    func evaluate(
         _ evidence: VerifiedAvailabilityEvidence,
         context: AvailabilityViewingContext
     ) -> AvailabilityOutcome {
+        guard
+            evidence.regionalEvidence.movieID > 0,
+            evidence.regionalEvidence.region == context.region
+        else {
+            return .unknown(reason: .regionalEvidenceMissing)
+        }
+
         let selectedIDs = Set(context.selectedServices.map(\.providerID))
         let allowlistedByID = Dictionary(
             uniqueKeysWithValues: PilotStreamingService.allowlist.map {
