@@ -38,12 +38,132 @@ struct DecisionEngineInputAssemblyTests {
         #expect(snapshot.input.watchlistWatchedMovieIDs == [20])
         #expect(snapshot.input.savedUnwatchedMovieIDs == [30])
         #expect(snapshot.input.currentCycleShownMovieIDs == [40])
-        #expect(snapshot.candidates.map(\.availability) == [
-            .eligible,
-            .ineligible,
-            .eligible,
-        ])
+        #expect(snapshot.candidates.map(\.seed.movieID) == [30])
+        #expect(snapshot.candidates.map(\.availability) == [.ineligible])
         #expect(snapshot.input.candidates == snapshot.candidates.map(\.decisionCandidate))
+    }
+
+    @Test("local exclusions never reach availability verification")
+    func localExclusionsSkipAvailability() async throws {
+        let reactions = ViewerProfileTestFixtures.reactions(count: 8)
+        let calibrationMovieID = try #require(reactions.keys.min())
+        let watchlistWatchedMovieID = 20
+        let shownMovieID = 30
+        let remainingMovieID = 40
+        let candidateIDs = [
+            calibrationMovieID,
+            watchlistWatchedMovieID,
+            shownMovieID,
+            remainingMovieID,
+        ]
+        let availabilityRepository = InputAssemblyAvailabilityRepository(
+            evidenceByMovieID: [
+                remainingMovieID: verifiedEvidence(
+                    movieID: remainingMovieID,
+                    providerID: 8
+                ),
+            ]
+        )
+        let sut = try await AssembleDecisionEngineInput(
+            viewerProfileRepository: makeCompletedProfileRepository(),
+            watchlistRepository: InputAssemblyWatchlistRepository(
+                items: [watchlistItem(id: watchlistWatchedMovieID, isWatched: true)]
+            ),
+            candidateRepository: InputAssemblyCandidateRepository(
+                candidates: candidateIDs.map { try candidateSeed(id: $0) }
+            ),
+            movieRepository: InputAssemblyMovieRepository(
+                movies: calibrationMovies(for: reactions)
+            ),
+            availabilityRepository: availabilityRepository
+        )
+
+        let snapshot = try await sut.execute(
+            currentCycleShownMovieIDs: [shownMovieID]
+        )
+
+        #expect(snapshot.candidates.map(\.seed.movieID) == [remainingMovieID])
+        #expect(await availabilityRepository.requestedMovieIDs == [remainingMovieID])
+    }
+
+    @Test("an entirely locally excluded pool succeeds as empty")
+    func entirelyExcludedPoolSucceedsAsEmpty() async throws {
+        let reactions = ViewerProfileTestFixtures.reactions(count: 8)
+        let calibrationMovieID = try #require(reactions.keys.min())
+        let watchlistWatchedMovieID = 20
+        let shownMovieID = 30
+        let availabilityRepository = InputAssemblyAvailabilityRepository(
+            failingMovieIDs: [calibrationMovieID, watchlistWatchedMovieID, shownMovieID]
+        )
+        let sut = try await AssembleDecisionEngineInput(
+            viewerProfileRepository: makeCompletedProfileRepository(),
+            watchlistRepository: InputAssemblyWatchlistRepository(
+                items: [watchlistItem(id: watchlistWatchedMovieID, isWatched: true)]
+            ),
+            candidateRepository: InputAssemblyCandidateRepository(
+                candidates: [
+                    candidateSeed(id: calibrationMovieID),
+                    candidateSeed(id: watchlistWatchedMovieID),
+                    candidateSeed(id: shownMovieID),
+                ]
+            ),
+            movieRepository: InputAssemblyMovieRepository(
+                movies: calibrationMovies(for: reactions)
+            ),
+            availabilityRepository: availabilityRepository
+        )
+
+        let snapshot = try await sut.execute(
+            currentCycleShownMovieIDs: [shownMovieID]
+        )
+
+        #expect(snapshot.candidates.isEmpty)
+        #expect(snapshot.input.candidates.isEmpty)
+        #expect(await availabilityRepository.requestedMovieIDs.isEmpty)
+    }
+
+    @Test("mixed pools verify remaining candidates in recall order")
+    func mixedPoolsPreserveRemainingRecallOrder() async throws {
+        let reactions = ViewerProfileTestFixtures.reactions(count: 8)
+        let calibrationMovieID = try #require(reactions.keys.min())
+        let watchedMovieID = 20
+        let shownMovieID = 30
+        let remainingMovieIDs = [50, 40, 60]
+        let recalledMovieIDs = [
+            50,
+            calibrationMovieID,
+            40,
+            watchedMovieID,
+            shownMovieID,
+            60,
+        ]
+        let availabilityRepository = InputAssemblyAvailabilityRepository(
+            evidenceByMovieID: Dictionary(
+                uniqueKeysWithValues: remainingMovieIDs.map {
+                    ($0, verifiedEvidence(movieID: $0, providerID: 8))
+                }
+            )
+        )
+        let sut = try await AssembleDecisionEngineInput(
+            viewerProfileRepository: makeCompletedProfileRepository(),
+            watchlistRepository: InputAssemblyWatchlistRepository(
+                items: [watchlistItem(id: watchedMovieID, isWatched: true)]
+            ),
+            candidateRepository: InputAssemblyCandidateRepository(
+                candidates: recalledMovieIDs.map { try candidateSeed(id: $0) }
+            ),
+            movieRepository: InputAssemblyMovieRepository(
+                movies: calibrationMovies(for: reactions)
+            ),
+            availabilityRepository: availabilityRepository
+        )
+
+        let snapshot = try await sut.execute(
+            currentCycleShownMovieIDs: [shownMovieID]
+        )
+
+        #expect(snapshot.candidates.map(\.seed.movieID) == remainingMovieIDs)
+        #expect(await Set(availabilityRepository.requestedMovieIDs) == Set(remainingMovieIDs))
     }
 
     @Test("Watchlist corruption blocks assembly instead of becoming empty")
@@ -134,6 +254,38 @@ struct DecisionEngineInputAssemblyTests {
         #expect(snapshot.candidates.count == 9)
         #expect(await availabilityRepository.maximumActiveRequestCount <= 8)
         #expect(await availabilityRepository.requestCount == 9)
+    }
+
+    @Test("cancellation stops bounded availability scheduling and propagates")
+    func cancellationStopsAvailabilityScheduling() async throws {
+        let candidateIDs = Array(30 ... 41)
+        let availabilityRepository = InputAssemblyAvailabilityRepository(
+            suspendsUntilCancelled: true
+        )
+        let sut = try await AssembleDecisionEngineInput(
+            viewerProfileRepository: makeCompletedProfileRepository(),
+            watchlistRepository: InputAssemblyWatchlistRepository(),
+            candidateRepository: InputAssemblyCandidateRepository(
+                candidates: candidateIDs.map { try candidateSeed(id: $0) }
+            ),
+            movieRepository: InputAssemblyMovieRepository(
+                movies: calibrationMovies(for: ViewerProfileTestFixtures.reactions(count: 8))
+            ),
+            availabilityRepository: availabilityRepository
+        )
+        let assembly = Task {
+            try await sut.execute(currentCycleShownMovieIDs: [])
+        }
+
+        await availabilityRepository.waitUntilRequestCount(8)
+        assembly.cancel()
+
+        await #expect(throws: CancellationError.self) {
+            _ = try await assembly.value
+        }
+        let requestedMovieIDs = await availabilityRepository.requestedMovieIDs
+        #expect(requestedMovieIDs.count == 8)
+        #expect(Set(requestedMovieIDs) == Set(candidateIDs.prefix(8)))
     }
 
     @Test("calibration hydration failure blocks an incomplete taste profile")
@@ -287,18 +439,23 @@ private actor InputAssemblyAvailabilityRepository: AvailabilityRepository {
     private let evidenceByMovieID: [Int: VerifiedAvailabilityEvidence]
     private let failingMovieIDs: Set<Int>
     private let delay: Duration?
+    private let suspendsUntilCancelled: Bool
     private(set) var requestCount = 0
     private(set) var maximumActiveRequestCount = 0
+    private(set) var requestedMovieIDs: [Int] = []
     private var activeRequestCount = 0
+    private var requestCountWaiters: [RequestCountWaiter] = []
 
     init(
         evidenceByMovieID: [Int: VerifiedAvailabilityEvidence] = [:],
         failingMovieIDs: Set<Int> = [],
-        delay: Duration? = nil
+        delay: Duration? = nil,
+        suspendsUntilCancelled: Bool = false
     ) {
         self.evidenceByMovieID = evidenceByMovieID
         self.failingMovieIDs = failingMovieIDs
         self.delay = delay
+        self.suspendsUntilCancelled = suspendsUntilCancelled
     }
 
     func getVerifiedEvidence(
@@ -307,12 +464,17 @@ private actor InputAssemblyAvailabilityRepository: AvailabilityRepository {
         policy: AvailabilityFetchPolicy
     ) async throws -> VerifiedAvailabilityEvidence? {
         requestCount += 1
+        requestedMovieIDs.append(movieID)
         activeRequestCount += 1
         maximumActiveRequestCount = max(
             maximumActiveRequestCount,
             activeRequestCount
         )
+        resumeSatisfiedRequestCountWaiters()
         defer { activeRequestCount -= 1 }
+        if suspendsUntilCancelled {
+            try await Task.sleep(for: .seconds(60))
+        }
         if let delay {
             try await Task.sleep(for: delay)
         }
@@ -321,6 +483,35 @@ private actor InputAssemblyAvailabilityRepository: AvailabilityRepository {
         }
         return evidenceByMovieID[movieID]
     }
+
+    func waitUntilRequestCount(_ expectedCount: Int) async {
+        guard requestCount < expectedCount else {
+            return
+        }
+        await withCheckedContinuation { continuation in
+            requestCountWaiters.append(RequestCountWaiter(
+                expectedCount: expectedCount,
+                continuation: continuation
+            ))
+        }
+    }
+
+    private func resumeSatisfiedRequestCountWaiters() {
+        var pending: [RequestCountWaiter] = []
+        for waiter in requestCountWaiters {
+            if requestCount >= waiter.expectedCount {
+                waiter.continuation.resume()
+            } else {
+                pending.append(waiter)
+            }
+        }
+        requestCountWaiters = pending
+    }
+}
+
+private struct RequestCountWaiter {
+    let expectedCount: Int
+    let continuation: CheckedContinuation<Void, Never>
 }
 
 private func makeCompletedProfileRepository() async throws -> DefaultViewerProfileRepository {

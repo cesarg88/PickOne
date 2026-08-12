@@ -70,15 +70,26 @@ struct AssembleDecisionEngineInput: Sendable {
             throw DecisionEngineInputAssemblyError.candidateRecallFailed
         }
 
+        let calibrationWatchedMovieIDs = Set(
+            tasteProfile.evidence.lazy
+                .filter(\.reaction.meansWatchedInCalibration)
+                .map(\.movieID)
+        )
+        let watchlistWatchedMovieIDs = Set(
+            watchlistItems.lazy.filter(\.isWatched).map(\.id)
+        )
+        let locallyExcludedMovieIDs = calibrationWatchedMovieIDs
+            .union(watchlistWatchedMovieIDs)
+            .union(currentCycleShownMovieIDs)
+        let locallyEligibleSeeds = seeds.filter {
+            !locallyExcludedMovieIDs.contains($0.movieID)
+        }
         let candidates = try await enrichAvailability(
-            seeds,
+            locallyEligibleSeeds,
             context: AvailabilityViewingContext(
                 region: profile.region,
                 selectedServices: profile.selectedServices
             )
-        )
-        let watchedMovieIDs = Set(
-            watchlistItems.lazy.filter(\.isWatched).map(\.id)
         )
         let savedUnwatchedMovieIDs = Set(
             watchlistItems.lazy.filter { !$0.isWatched }.map(\.id)
@@ -86,7 +97,7 @@ struct AssembleDecisionEngineInput: Sendable {
         let input = DecisionEngineInput(
             profile: tasteProfile,
             candidates: candidates.map(\.decisionCandidate),
-            watchlistWatchedMovieIDs: watchedMovieIDs,
+            watchlistWatchedMovieIDs: watchlistWatchedMovieIDs,
             savedUnwatchedMovieIDs: savedUnwatchedMovieIDs,
             currentCycleShownMovieIDs: currentCycleShownMovieIDs
         )
