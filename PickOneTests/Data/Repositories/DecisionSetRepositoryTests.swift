@@ -118,6 +118,89 @@ struct DecisionSetRepositoryTests {
         }
     }
 
+    @Test("persisted Domain recommendations reject semantically invalid evidence")
+    func domainEvidenceValidation() {
+        let drama = DecisionGenre(id: 18, name: "Drama")
+        let invalidEvidence: [(DecisionRole, RecommendationEvidence)] = [
+            (
+                .stretchChoice,
+                RecommendationEvidence(
+                    primary: .positiveAnchor(
+                        PositiveAnchorEvidence(
+                            movieID: 155,
+                            movieTitle: "Anchor",
+                            reaction: .loved,
+                            sharedGenres: [],
+                            eraMatch: nil
+                        )
+                    ),
+                    diversity: nil
+                )
+            ),
+            (
+                .stretchChoice,
+                RecommendationEvidence(
+                    primary: .positiveGenreAffinity(
+                        PositiveAffinityEvidence(genres: [], era: DecisionDecade(year: 2020))
+                    ),
+                    diversity: nil
+                )
+            ),
+            (
+                .safeChoice,
+                RecommendationEvidence(primary: .sparseQuality, diversity: .diverseDirection)
+            ),
+            (
+                .stretchChoice,
+                RecommendationEvidence(
+                    primary: .positiveAnchor(
+                        PositiveAnchorEvidence(
+                            movieID: 155,
+                            movieTitle: "Anchor",
+                            reaction: .liked,
+                            sharedGenres: [drama],
+                            eraMatch: .adjacentDecade(
+                                candidate: DecisionDecade(year: 2020),
+                                anchor: DecisionDecade(year: 1990)
+                            )
+                        )
+                    ),
+                    diversity: nil
+                )
+            ),
+            (
+                .stretchChoice,
+                RecommendationEvidence(
+                    primary: .positiveAnchor(
+                        PositiveAnchorEvidence(
+                            movieID: 155,
+                            movieTitle: "Anchor",
+                            reaction: .liked,
+                            sharedGenres: [],
+                            eraMatch: .sameDecade(DecisionDecade(year: -1))
+                        )
+                    ),
+                    diversity: nil
+                )
+            ),
+            (
+                .stretchChoice,
+                RecommendationEvidence(
+                    primary: .watchlistIntent(
+                        match: .positiveAffinity(PositiveAffinityEvidence(genres: [], era: nil))
+                    ),
+                    diversity: nil
+                )
+            ),
+        ]
+
+        for (role, evidence) in invalidEvidence {
+            #expect(throws: DecisionSetValidationError.invalidEvidence) {
+                _ = try recommendation(movieID: 10, role: role, evidence: evidence)
+            }
+        }
+    }
+
     @Test("versioned envelope survives repository recreation")
     func relaunchRoundTrip() async throws {
         let store = InMemoryDecisionSetDataStore()
@@ -187,6 +270,23 @@ struct DecisionSetRepositoryTests {
         try await repository.replace(replacement)
 
         #expect(await repository.load() == .available(replacement))
+        #expect(store.quarantineData == corrupt)
+    }
+
+    @Test("failed active replacement preserves corrupt and quarantined recovery bytes")
+    func recoveryReplacementFailure() async throws {
+        let corrupt = Data("not-json".utf8)
+        let store = InMemoryDecisionSetDataStore(activeData: corrupt)
+        let repository = DefaultDecisionSetRepository(store: store)
+
+        #expect(await repository.load() == .recovery(.corruptData))
+        #expect(store.quarantineData == corrupt)
+        store.rejectActiveReplacements = true
+
+        await #expect(throws: DecisionSetRepositoryError.storageFailed) {
+            try await repository.replace(decisionSet())
+        }
+        #expect(store.activeData == corrupt)
         #expect(store.quarantineData == corrupt)
     }
 
@@ -271,10 +371,11 @@ struct DecisionSetRepositoryTests {
 
     private func recommendation(
         movieID: Int,
-        role: DecisionRole
+        role: DecisionRole,
+        evidence suppliedEvidence: RecommendationEvidence? = nil
     ) throws -> PersistedDecisionRecommendation {
         let drama = DecisionGenre(id: 18, name: "Drama")
-        let evidence: RecommendationEvidence = switch role {
+        let defaultEvidence: RecommendationEvidence = switch role {
             case .safeChoice:
                 RecommendationEvidence(
                     primary: .watchlistIntent(
@@ -308,7 +409,7 @@ struct DecisionSetRepositoryTests {
         }
         return try PersistedDecisionRecommendation(
             role: role,
-            evidence: evidence,
+            evidence: suppliedEvidence ?? defaultEvidence,
             display: DecisionDisplaySnapshot(
                 movieID: movieID,
                 localizedTitle: "Movie \(movieID)",
@@ -334,7 +435,7 @@ struct DecisionSetRepositoryTests {
     }
 }
 
-private final class InMemoryDecisionSetDataStore: DecisionSetDataStore {
+final class InMemoryDecisionSetDataStore: DecisionSetDataStore {
     private struct State: Sendable {
         var activeData: Data?
         var quarantineData: Data?

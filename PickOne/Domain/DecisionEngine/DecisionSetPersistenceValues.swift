@@ -192,6 +192,19 @@ struct PersistedDecisionRecommendation: Equatable, Sendable {
     let evidence: RecommendationEvidence
     let display: DecisionDisplaySnapshot
     let availability: DecisionAvailabilitySnapshot
+
+    init(
+        role: DecisionRole,
+        evidence: RecommendationEvidence,
+        display: DecisionDisplaySnapshot,
+        availability: DecisionAvailabilitySnapshot
+    ) throws {
+        try evidence.validateForPersistence(role: role)
+        self.role = role
+        self.evidence = evidence
+        self.display = display
+        self.availability = availability
+    }
 }
 
 struct PersistedDecisionSet: Equatable, Sendable {
@@ -254,4 +267,81 @@ enum DecisionSetValidationError: Error, Equatable, Sendable {
     case invalidRoleOrder
     case invalidShownHistory
     case invalidEvidence
+}
+
+private extension RecommendationEvidence {
+    func validateForPersistence(role: DecisionRole) throws {
+        guard role != .safeChoice || diversity == nil else {
+            throw DecisionSetValidationError.invalidEvidence
+        }
+
+        switch primary {
+            case let .watchlistIntent(match):
+                switch match {
+                    case let .positiveAnchor(anchor):
+                        try anchor.validateForPersistence()
+                    case let .positiveAffinity(affinity):
+                        try affinity.validateForPersistence(requiresGenre: false)
+                }
+            case let .positiveAnchor(anchor):
+                try anchor.validateForPersistence()
+            case let .positiveGenreAffinity(affinity):
+                try affinity.validateForPersistence(requiresGenre: true)
+            case .sparseQuality:
+                break
+        }
+    }
+}
+
+private extension PositiveAnchorEvidence {
+    func validateForPersistence() throws {
+        let title = movieTitle.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard
+            movieID > 0,
+            !title.isEmpty,
+            sharedGenres.allSatisfy({ $0.id > 0 }),
+            Set(sharedGenres.map(\.id)).count == sharedGenres.count,
+            !sharedGenres.isEmpty || eraMatch != nil
+        else {
+            throw DecisionSetValidationError.invalidEvidence
+        }
+
+        switch eraMatch {
+            case let .sameDecade(decade):
+                try decade.validateForPersistence()
+            case let .adjacentDecade(candidate, anchor):
+                try candidate.validateForPersistence()
+                try anchor.validateForPersistence()
+                let difference = candidate.startingYear > anchor.startingYear
+                    ? candidate.startingYear - anchor.startingYear
+                    : anchor.startingYear - candidate.startingYear
+                guard difference == 10 else {
+                    throw DecisionSetValidationError.invalidEvidence
+                }
+            case nil:
+                break
+        }
+    }
+}
+
+private extension PositiveAffinityEvidence {
+    func validateForPersistence(requiresGenre: Bool) throws {
+        guard
+            genres.allSatisfy({ $0.id > 0 }),
+            Set(genres.map(\.id)).count == genres.count,
+            !genres.isEmpty || era != nil,
+            !requiresGenre || !genres.isEmpty
+        else {
+            throw DecisionSetValidationError.invalidEvidence
+        }
+        try era?.validateForPersistence()
+    }
+}
+
+private extension DecisionDecade {
+    func validateForPersistence() throws {
+        guard startingYear > 0, startingYear.isMultiple(of: 10) else {
+            throw DecisionSetValidationError.invalidEvidence
+        }
+    }
 }

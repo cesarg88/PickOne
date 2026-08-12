@@ -267,46 +267,46 @@ actor DefaultDecisionSetRepository: DecisionSetRepository {
             case "diverseDirection":
                 diversity = .diverseDirection
             default:
-                throw DecisionSetCodingError.corruptData
+                throw DecisionSetValidationError.invalidEvidence
         }
 
         let primary: RecommendationPrimaryEvidence
         switch dto.primaryKind {
             case "watchlistIntent":
                 guard let tasteKind = dto.tasteKind else {
-                    throw DecisionSetCodingError.corruptData
+                    throw DecisionSetValidationError.invalidEvidence
                 }
                 switch tasteKind {
                     case "positiveAnchor":
                         guard let anchor = dto.anchor, dto.affinity == nil else {
-                            throw DecisionSetCodingError.corruptData
+                            throw DecisionSetValidationError.invalidEvidence
                         }
                         primary = try .watchlistIntent(match: .positiveAnchor(map(anchor)))
                     case "positiveAffinity":
                         guard let affinity = dto.affinity, dto.anchor == nil else {
-                            throw DecisionSetCodingError.corruptData
+                            throw DecisionSetValidationError.invalidEvidence
                         }
                         primary = try .watchlistIntent(match: .positiveAffinity(map(affinity)))
                     default:
-                        throw DecisionSetCodingError.corruptData
+                        throw DecisionSetValidationError.invalidEvidence
                 }
             case "positiveAnchor":
                 guard dto.tasteKind == nil, let anchor = dto.anchor, dto.affinity == nil else {
-                    throw DecisionSetCodingError.corruptData
+                    throw DecisionSetValidationError.invalidEvidence
                 }
                 primary = try .positiveAnchor(map(anchor))
             case "positiveGenreAffinity":
                 guard dto.tasteKind == nil, let affinity = dto.affinity, dto.anchor == nil else {
-                    throw DecisionSetCodingError.corruptData
+                    throw DecisionSetValidationError.invalidEvidence
                 }
                 primary = try .positiveGenreAffinity(map(affinity))
             case "sparseQuality":
                 guard dto.tasteKind == nil, dto.anchor == nil, dto.affinity == nil else {
-                    throw DecisionSetCodingError.corruptData
+                    throw DecisionSetValidationError.invalidEvidence
                 }
                 primary = .sparseQuality
             default:
-                throw DecisionSetCodingError.corruptData
+                throw DecisionSetValidationError.invalidEvidence
         }
         return RecommendationEvidence(primary: primary, diversity: diversity)
     }
@@ -314,19 +314,19 @@ actor DefaultDecisionSetRepository: DecisionSetRepository {
     private func map(_ dto: PositiveAnchorEvidenceV1DTO) throws -> PositiveAnchorEvidence {
         let title = dto.movieTitle.trimmingCharacters(in: .whitespacesAndNewlines)
         guard dto.movieID > 0, !title.isEmpty else {
-            throw DecisionSetCodingError.corruptData
+            throw DecisionSetValidationError.invalidEvidence
         }
         let reaction: PositiveAnchorReaction = switch dto.reaction {
             case "loved": .loved
             case "liked": .liked
-            default: throw DecisionSetCodingError.corruptData
+            default: throw DecisionSetValidationError.invalidEvidence
         }
         let genres = dto.sharedGenres.map(map)
         guard
             genres.allSatisfy({ $0.id > 0 }),
             Set(genres.map(\.id)).count == genres.count
         else {
-            throw DecisionSetCodingError.corruptData
+            throw DecisionSetValidationError.invalidEvidence
         }
         let eraMatch: RecommendationEraMatch?
         switch dto.eraMatch?.kind {
@@ -334,19 +334,19 @@ actor DefaultDecisionSetRepository: DecisionSetRepository {
                 eraMatch = nil
             case "sameDecade":
                 guard let match = dto.eraMatch, match.candidateStartingYear == nil else {
-                    throw DecisionSetCodingError.corruptData
+                    throw DecisionSetValidationError.invalidEvidence
                 }
-                eraMatch = .sameDecade(DecisionDecade(year: match.anchorStartingYear))
+                eraMatch = try .sameDecade(mapDecade(match.anchorStartingYear))
             case "adjacentDecade":
                 guard let match = dto.eraMatch, let candidate = match.candidateStartingYear else {
-                    throw DecisionSetCodingError.corruptData
+                    throw DecisionSetValidationError.invalidEvidence
                 }
-                eraMatch = .adjacentDecade(
-                    candidate: DecisionDecade(year: candidate),
-                    anchor: DecisionDecade(year: match.anchorStartingYear)
+                eraMatch = try .adjacentDecade(
+                    candidate: mapDecade(candidate),
+                    anchor: mapDecade(match.anchorStartingYear)
                 )
             default:
-                throw DecisionSetCodingError.corruptData
+                throw DecisionSetValidationError.invalidEvidence
         }
         return PositiveAnchorEvidence(
             movieID: dto.movieID,
@@ -364,12 +364,19 @@ actor DefaultDecisionSetRepository: DecisionSetRepository {
             Set(genres.map(\.id)).count == genres.count,
             !genres.isEmpty || dto.eraStartingYear != nil
         else {
-            throw DecisionSetCodingError.corruptData
+            throw DecisionSetValidationError.invalidEvidence
         }
-        return PositiveAffinityEvidence(
+        return try PositiveAffinityEvidence(
             genres: genres,
-            era: dto.eraStartingYear.map(DecisionDecade.init(year:))
+            era: dto.eraStartingYear.map(mapDecade)
         )
+    }
+
+    private func mapDecade(_ startingYear: Int) throws -> DecisionDecade {
+        guard startingYear > 0, startingYear.isMultiple(of: 10) else {
+            throw DecisionSetValidationError.invalidEvidence
+        }
+        return DecisionDecade(year: startingYear)
     }
 
     private func map(_ dto: DecisionGenreV1DTO) -> DecisionGenre {
