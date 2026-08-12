@@ -121,7 +121,12 @@ extension URLSessionHTTPClient: HTTPClient {
 
         } catch let error as NetworkError {
             throw error
+        } catch is CancellationError {
+            throw CancellationError()
         } catch let urlError as URLError {
+            if Task.isCancelled, urlError.code == .cancelled {
+                throw CancellationError()
+            }
             throw mapURLError(urlError)
         } catch {
             throw NetworkError.unknown(error)

@@ -337,6 +337,27 @@ struct HTTPClientTests {
         }
     }
 
+    @Test("task cancellation remains cancellation instead of becoming a network error")
+    func taskCancellationRemainsCancellation() async throws {
+        let sut = makeSUT()
+        MockURLProtocol.setErrorResponse(URLError(.cancelled))
+        let task = Task {
+            withUnsafeCurrentTask { $0?.cancel() }
+            let _: TestData.SimpleResponse = try await sut.request(
+                endpoint: TestData.testEndpoint,
+                method: .get,
+                parameters: nil,
+                headers: nil,
+                timeout: nil,
+                body: nil
+            )
+        }
+
+        await #expect(throws: CancellationError.self) {
+            try await task.value
+        }
+    }
+
     // MARK: - Endpoint Normalization Tests
 
     @Test("Endpoint with leading slash is normalized correctly")
