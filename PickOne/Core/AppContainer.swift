@@ -27,6 +27,7 @@ final class AppContainer {
     // MARK: - Use Cases - Recommendations
 
     let getChatRecommendations: GetChatRecommendationsUseCase
+    let threeForTonight: any ThreeForTonightUseCase
 
     // MARK: - Use Cases - Viewer Profile
 
@@ -54,6 +55,7 @@ final class AppContainer {
         searchMovies = useCases.searchMovies
         searchHistory = useCases.searchHistory
         getChatRecommendations = useCases.getChatRecommendations
+        threeForTonight = useCases.threeForTonight
         manageViewerProfile = useCases.manageViewerProfile
         imagePipeline = ImagePipeline()
         discoveryViewModel = DiscoveryViewModel(
@@ -88,6 +90,8 @@ private extension AppContainer {
         let watchlist: DefaultWatchlistRepository
         let searchHistory: DefaultSearchHistoryRepository
         let recommendation: StubRecommendationRepository
+        let decisionCandidate: DefaultDecisionCandidateRepository
+        let decisionSet: DefaultDecisionSetRepository
         let availabilityClock: SystemAvailabilityClock
     }
 
@@ -102,6 +106,7 @@ private extension AppContainer {
         let searchMovies: SearchMovies
         let searchHistory: SearchHistory
         let getChatRecommendations: GetChatRecommendations
+        let threeForTonight: ThreeForTonightCoordinator
         let manageViewerProfile: ManageViewerProfile
         let getCalibrationMovieMetadata: GetCalibrationMovieMetadata
     }
@@ -147,6 +152,15 @@ private extension AppContainer {
             watchlist: DefaultWatchlistRepository(localStore: localStore),
             searchHistory: DefaultSearchHistoryRepository(localStore: localStore),
             recommendation: StubRecommendationRepository(),
+            decisionCandidate: DefaultDecisionCandidateRepository(
+                client: TMDBDecisionCandidateClient(
+                    httpClient: httpClient,
+                    apiKey: AppConfiguration.tmdbAPIKey
+                )
+            ),
+            decisionSet: DefaultDecisionSetRepository(
+                store: UserDefaultsDecisionSetDataStore()
+            ),
             availabilityClock: availabilityClock
         )
     }
@@ -157,6 +171,13 @@ private extension AppContainer {
             getCurrentViewingContext: GetCurrentViewingContext(
                 repository: repositories.viewerProfile
             )
+        )
+        let inputAssembler = AssembleDecisionEngineInput(
+            viewerProfileRepository: repositories.viewerProfile,
+            watchlistRepository: repositories.watchlist,
+            candidateRepository: repositories.decisionCandidate,
+            movieRepository: repositories.movie,
+            availabilityRepository: repositories.availability
         )
         return UseCases(
             getDiscoveryFeed: GetDiscoveryFeed(repository: repositories.movie),
@@ -182,6 +203,15 @@ private extension AppContainer {
                 movieRepository: repositories.movie,
                 minResults: AppConfiguration.minAIRecommendations,
                 maxAllowedResults: AppConfiguration.maxAIRecommendations
+            ),
+            threeForTonight: ThreeForTonightCoordinator(
+                viewerProfileRepository: repositories.viewerProfile,
+                watchlistRepository: repositories.watchlist,
+                decisionSetRepository: repositories.decisionSet,
+                inputAssembler: inputAssembler,
+                movieRepository: repositories.movie,
+                availabilityRepository: repositories.availability,
+                signer: StableDecisionCycleSigner()
             ),
             manageViewerProfile: ManageViewerProfile(
                 repository: repositories.viewerProfile,

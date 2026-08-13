@@ -2,7 +2,7 @@ import CryptoKit
 import Foundation
 import Synchronization
 
-struct StableDecisionCycleSigner: Sendable {
+struct StableDecisionCycleSigner: DecisionCycleSigning, Sendable {
     func signature(for identity: DecisionCycleIdentity) throws -> DecisionCycleSignature {
         let dto = DecisionCycleIdentityV1DTO(
             engineModelVersion: identity.engineModelVersion.rawValue,
