@@ -280,9 +280,11 @@ protocol DecisionSetRepository: Sendable {
 }
 
 protocol ThreeForTonightUseCase: Sendable {
-    func load() async -> ThreeForTonightResult
-    func refresh() async -> ThreeForTonightResult
-    func repairAfterEligibilityChange() async -> ThreeForTonightResult
+    func load() async throws -> ThreeForTonightResult
+    func refresh() async throws -> ThreeForTonightResult
+    func repairAfterEligibilityChange(
+        _ change: DecisionEligibilityChange
+    ) async throws -> ThreeForTonightResult
 }
 ```
 
@@ -293,6 +295,25 @@ and must not be repurposed for Home.
 The coordinator reuses the existing `ViewerProfileRepository`,
 `WatchlistRepository`, `MovieRepository`, and `AvailabilityRepository` through
 Domain contracts. Presentation never constructs a Data implementation.
+
+`ThreeForTonightResult` is a Domain result, not a persistence DTO or a
+Presentation state. It distinguishes:
+
+- a usable zero-to-three-item snapshot;
+- a retryable failure with a still-usable retained snapshot;
+- a retryable failure with no safe retained content.
+
+The usable snapshot combines the persisted Decision Set with current mutable
+Watchlist membership for its movie IDs. Watchlist membership is calculated
+from the same trusted read used by the operation and is not added to the
+recommendation envelope. This lets Home show current saved state without
+turning mutable Watchlist intent into cycle identity or duplicated storage.
+
+Cancellation propagates as `CancellationError`; it is not converted into an
+empty result or user-visible failure. Other failures are mapped into bounded
+Domain reasons such as profile unavailable, Watchlist unavailable, generation
+unavailable, persistence failed, or recovery failed. Data-layer and TMDB error
+types do not cross the Domain boundary.
 
 ### Trusted input snapshot
 
@@ -336,6 +357,103 @@ as unknown when the remaining snapshot is usable. A source-wide failure with a
 usable retained set is a refresh failure; without a retained set it is a
 generation failure.
 
+### PR6 executable orchestration contract
+
+`load()` follows this order:
+
+1. Load a completed Viewer Profile and compute the current stable cycle
+   signature.
+2. Load the recommendation repository.
+3. For an absent envelope, generate a new cycle.
+4. For a corrupt or unsupported envelope already quarantined by the
+   repository, generate a new cycle and replace only the active recommendation
+   envelope. Failure returns recovery failure and leaves the diagnostic bytes
+   intact.
+5. For a compatible envelope whose signature differs, generate a new cycle;
+   the old set is not usable under the new profile, region, services, context,
+   or engine version.
+6. For a matching envelope, read Watchlist through the throwing boundary and
+   reconcile current watched state and any now-unsupported Watchlist-based
+   explanation. If no repair is required, return the persisted set without
+   TMDB requests.
+
+`refresh()` is the implementation of `Give me three more`. It preserves the
+matching cycle ID and complete shown history, assembles candidates excluding
+that history, selects a new set, appends its IDs, persists once, and only then
+returns it for publication. If there is no matching usable cycle, it follows
+the same new-cycle generation path as `load()`.
+
+Repair receives a bounded cause: a Watchlist mutation or availability change
+for a movie ID. It must not reset cycle identity. Recommendations still proven
+eligible with supported evidence are mandatory retained members; repair never
+discards their movie IDs merely because a fresh generation would rank another
+candidate above them.
+
+The repair path is split into a pure deterministic repair composer and the
+async coordinator. The coordinator rehydrates and revalidates current members,
+then assembles normal six-page recall for the open slots. To let a current
+movie whose Watchlist explanation changed compete again without allowing an
+older repeat, it uses:
+
+```text
+selection exclusion = complete shown history - current IDs requiring reevaluation
+```
+
+Current watched state and current availability still exclude those movies
+normally. The pure repair composer receives scored eligible candidates plus
+the mandatory retained members, fills only the number of open slots, and uses
+the accepted P1 credibility, diversity, and tie-breaking rules. Replacement
+selection accounts for genre overlap with mandatory retained members and each
+replacement already chosen. Once membership is fixed, it deterministically
+reassigns the prefix roles Safe, Stretch, and Discovery over that final member
+set so a smaller repaired set cannot contain a role gap. It recomputes
+structured evidence from current inputs; persisted reasons are never edited as
+strings.
+
+If no qualifying replacement exists, the result is the honest smaller set of
+retained members with recomputed roles and evidence. Newly selected IDs are
+unioned into the original shown history; removed or replaced IDs remain in
+history and cannot return later in the cycle. This pure repair logic is tested
+separately from cancellation, repositories, and persistence.
+
+The coordinator maps every selected movie back to the corresponding enriched
+candidate by TMDB ID. It builds persisted provider evidence only from an
+`eligible` `AvailabilityOutcome`, using its verified timestamp, matching
+allowlisted providers, TMDB logos, and regional TMDB URL. A missing match or a
+non-eligible outcome is an invariant failure and cannot be persisted.
+
+TMDB Discover does not provide runtime. After pure selection, PR6 requests
+Movie Detail only for the zero-to-three winners. A successful identity-matching
+detail response supplies runtime without changing selection-critical seed
+title, artwork, year, or genres. Candidate-specific detail failure falls back
+to the accepted seed display metadata with `runtime = nil`; it does not discard
+an otherwise selected and availability-verified movie.
+
+Rehydrating a retained member for repair is different: its current rating,
+vote evidence, and genres are required to recompute roles and explanations. If
+that scoring metadata cannot be obtained, the coordinator must fail the repair
+and retain only content already established as safe; it must not manufacture
+score inputs from the display-only persisted snapshot.
+
+One coordinator actor owns the operation generation token and publication
+ordering. A newer load, refresh, or repair supersedes older work. Before
+persistence, an operation re-reads the completed profile and throwing
+Watchlist snapshot, recomputes identity, and rejects a result when its trusted
+inputs changed. It also checks its generation token immediately before and
+after persistence. Because profile, Watchlist, and recommendation stores are
+separate local owners rather than one transaction, a change occurring after
+the final pre-persist check may leave a self-identifying stale envelope on
+disk; it must never be published, and the next `load()` rejects it by signature
+or repairs it from current mutable evidence. Tests must not claim impossible
+cross-repository transactional atomicity.
+
+Repair failure never displays a recommendation already proven watched,
+unavailable, or backed by a now-false Watchlist explanation. Previously
+persisted recommendations individually confirmed still valid may remain as
+retained content with a retry affordance; newly calculated replacements are
+never exposed before successful persistence. If safe retained content cannot
+be established, the result is a retryable failure without content.
+
 ### Decision Set envelope
 
 The storage DTO uses one versioned envelope and contains at least:
@@ -364,7 +482,9 @@ publication ordering.
 - A newer explicit request cancels or supersedes older work.
 - Cancellation is checked between pages, enrichment, availability, selection,
   and persistence.
-- Cancelled or stale work never replaces the persisted or visible set.
+- Cancelled or coordinator-superseded work never replaces the persisted or
+  visible set. Identity or Watchlist changes detected by the final trusted-input
+  validation likewise prevent persistence and publication.
 - The coordinator captures one cycle identity per operation and discards a
   result if identity-defining input changed before persistence.
 - It reevaluates current Watchlist eligibility before persistence without
@@ -394,6 +514,28 @@ Home behavior:
 - expose `Give me three more` in loaded and empty states;
 - expose Retry for initial generation, persistence, and recovery failures;
 - preserve existing Search, Discover, Watchlist, Settings, and hidden Ask code.
+
+PR7 owns the integration triggers; it does not add a global notification bus.
+`MainTabView` uses explicit tab selection and asks Home to `load()` whenever
+Home becomes active, including after visiting Watchlist or Settings. Returning
+from a Home-launched Movie Detail also reconciles the set. Successful
+Watchlist changes and a playback-options revalidation that changes a current
+movie's availability invoke the bounded repair path. Repeated activation with
+unchanged profile, Watchlist, and matching persisted identity returns retained
+content without an automatic TMDB refresh.
+
+`HomeDecisionViewModel` maps Domain results into Presentation state and ignores
+`CancellationError`. It owns at most one caller task; the coordinator remains
+the authority that prevents stale persistence/publication. A refresh error may
+decorate only a snapshot that the Domain result identifies as usable. An
+initial, identity-change, Watchlist-read, or recovery failure with no safe
+snapshot maps to the blocking Retry state.
+
+Cards display saved state from the transient current-Watchlist snapshot, not
+from persisted recommendation evidence. Opening Movie Detail reuses the
+existing detail, Watchlist, availability, playback-options, and image
+capabilities. Home does not duplicate those repositories or mutate Watchlist
+directly in Milestone 6.
 
 Milestone 7 feedback controls and quick viewing-context controls are not added.
 
@@ -519,7 +661,9 @@ Milestone 7 feedback controls and quick viewing-context controls are not added.
 - corrupt and unsupported quarantine, successful regeneration, failed
   regeneration, and failed persistence;
 - no recovery mutation of Viewer Profile, Watchlist, or Search History;
-- stale operation cannot persist or publish.
+- detected stale work cannot persist or publish; a cross-store change racing
+  after the final pre-persist validation cannot publish and leaves an envelope
+  that the next load must reject or repair.
 
 ### Presentation and UI tests
 
@@ -540,6 +684,23 @@ before handoff.
 Each PR branches from current `develop` after its required dependencies are
 merged. Stacking is allowed only when the child cannot compile or be verified
 independently. PRs must remain buildable and green.
+
+Current integration record:
+
+| Slice | Pull request | State |
+|---|---:|---|
+| D0 | #23 | Merged |
+| PR1 | #24 | Merged |
+| PR2 | #26 | Merged |
+| PR3 | #27 | Merged |
+| PR4 | #28 | Merged |
+| PR5 | #29 | Merged |
+| PR6 | — | Next implementation slice |
+| PR7 | — | Blocked on PR6 |
+
+This audit closes the remaining executable-specification gaps for PR6 and PR7.
+It does not change the accepted product behavior, P1 constants, persistence
+schema, or physical-module decision.
 
 ### D0 — Canonical specification and Engineering Ready state
 
@@ -635,11 +796,23 @@ Dependencies: PR2, PR3, PR4, and PR5.
 
 Deliver:
 
-- one actor-owned orchestration path for load, initial generation, refresh,
-  Watchlist repair, availability repair, persistence, cancellation, and retry;
+- the typed `ThreeForTonightResult`, usable snapshot, bounded failure reasons,
+  and Watchlist/availability repair-cause contracts described above;
+- one actor-owned orchestration path for load, initial generation, explicit
+  refresh, Watchlist repair, availability repair, persistence, cancellation,
+  stale-input rejection, and retry;
+- matching-envelope relaunch, identity-change new-cycle, and quarantined
+  recovery branches;
+- a separately tested pure repair composer that preserves every valid current
+  movie, fills only open slots, recomputes prefix roles and evidence, and
+  exempts only current IDs requiring reevaluation from shown-history exclusion;
+- selected-candidate mapping to persisted display and verified provider
+  snapshots, with winner-only detail hydration and runtime fallback;
 - bounded availability concurrency and cache reuse;
 - AppContainer composition without changing main navigation;
-- full orchestration tests, including stale work and recovery.
+- full orchestration tests covering every lifecycle branch, smaller and empty
+  success, retained versus blocking failure, refresh history, repair, mapping
+  invariants, cancellation, supersession, stale inputs, and recovery.
 
 Exclude Home presentation.
 
@@ -652,6 +825,9 @@ Deliver:
 - Home view model and screen;
 - final tab order and hidden Ask tab;
 - cards, roles, reasons, providers, states, explicit refresh, and Detail route;
+- current saved-state presentation from the transient Domain snapshot;
+- explicit Home-tab and return-from-Detail reconciliation triggers, including
+  Watchlist and changed-availability repair without automatic launch refresh;
 - Presentation and UI smoke tests;
 - final roadmap, backlog, milestone completion record, CI, and requested
   physical-device validation evidence.
