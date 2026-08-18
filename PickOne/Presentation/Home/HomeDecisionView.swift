@@ -10,7 +10,7 @@ struct HomeDecisionView: View {
     let preparePlaybackOptions: PreparePlaybackOptionsUseCase
     let imagePipeline: ImagePipeline
 
-    @State private var navigationPath: [Int] = []
+    @State private var navigationPath: [HomeDecisionRoute] = []
 
     var body: some View {
         NavigationStack(path: $navigationPath) {
@@ -21,10 +21,10 @@ struct HomeDecisionView: View {
                 retry: model.load
             )
             .navigationTitle("Home")
-            .navigationDestination(for: Int.self) { movieID in
+            .navigationDestination(for: HomeDecisionRoute.self) { route in
                 MovieDetailView(
                     model: MovieDetailViewModel(
-                        movieId: movieID,
+                        movieId: route.movieID,
                         getMovieDetail: getMovieDetail,
                         setMembership: setMembership,
                         setWatched: setWatched,
@@ -105,7 +105,7 @@ private struct HomeDecisionLoadedView: View {
                 }
 
                 ForEach(set.items) { item in
-                    NavigationLink(value: item.id) {
+                    NavigationLink(value: HomeDecisionRoute(movieID: item.id)) {
                         HomeDecisionCard(item: item, imagePipeline: imagePipeline)
                     }
                     .buttonStyle(.plain)
@@ -165,6 +165,7 @@ private struct HomeDecisionRefreshControls: View {
                     if isRefreshing {
                         ProgressView()
                             .controlSize(.small)
+                            .accessibilityHidden(true)
                     }
                     Text(isRefreshing ? "Finding more..." : "Give me three more")
                 }
@@ -179,52 +180,26 @@ private struct HomeDecisionRefreshControls: View {
 
 @MainActor
 private struct HomeDecisionCard: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @ScaledMetric(relativeTo: .body) private var scaledPosterWidth = 112.0
+
     let item: HomeDecisionMovieItem
     let imagePipeline: ImagePipeline
 
     var body: some View {
-        HStack(alignment: .top, spacing: 14) {
+        cardLayout {
             RemoteImageView(
                 url: item.posterURL,
                 loader: imagePipeline,
                 contentMode: .fill,
                 accessibilityLabel: item.title
             )
-            .frame(width: 112, height: 168)
+            .frame(width: posterWidth, height: posterWidth * 1.5)
             .clipped()
             .clipShape(.rect(cornerRadius: 10))
+            .accessibilityHidden(true)
 
-            VStack(alignment: .leading, spacing: 8) {
-                Text(item.role)
-                    .font(.caption.bold())
-                    .foregroundStyle(.tint)
-
-                Text(item.title)
-                    .font(.headline)
-                    .foregroundStyle(.primary)
-
-                if !item.details.isEmpty {
-                    Text(item.details)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-
-                Text(item.reason)
-                    .font(.subheadline)
-                    .foregroundStyle(.primary)
-
-                HomeDecisionProviderRow(
-                    providers: item.providers,
-                    imagePipeline: imagePipeline
-                )
-
-                if item.isSaved {
-                    Label("Saved", systemImage: "bookmark.fill")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
+            content
         }
         .padding(14)
         .background(Color(.secondarySystemBackground))
@@ -232,15 +207,63 @@ private struct HomeDecisionCard: View {
         .accessibilityElement(children: .combine)
         .accessibilityHint("Open movie details")
     }
+
+    private var cardLayout: AnyLayout {
+        if dynamicTypeSize.isAccessibilitySize {
+            AnyLayout(VStackLayout(alignment: .leading, spacing: 14))
+        } else {
+            AnyLayout(HStackLayout(alignment: .top, spacing: 14))
+        }
+    }
+
+    private var posterWidth: CGFloat {
+        min(scaledPosterWidth, 180)
+    }
+
+    private var content: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(item.role)
+                .font(.caption.bold())
+                .foregroundStyle(.tint)
+
+            Text(item.title)
+                .font(.headline)
+                .foregroundStyle(.primary)
+
+            if !item.details.isEmpty {
+                Text(item.details)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            Text(item.reason)
+                .font(.subheadline)
+                .foregroundStyle(.primary)
+
+            HomeDecisionProviderRow(
+                providers: item.providers,
+                imagePipeline: imagePipeline
+            )
+
+            if item.isSaved {
+                Label("Saved", systemImage: "bookmark.fill")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
 }
 
 @MainActor
 private struct HomeDecisionProviderRow: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
     let providers: [HomeDecisionProviderItem]
     let imagePipeline: ImagePipeline
 
     var body: some View {
-        HStack(spacing: 8) {
+        providerLayout {
             ForEach(providers) { provider in
                 HomeDecisionProviderLogo(
                     provider: provider,
@@ -248,13 +271,23 @@ private struct HomeDecisionProviderRow: View {
                 )
             }
         }
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel("Included with \(providers.map(\.name).joined(separator: ", "))")
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Included with \(providers.map(\.name).formatted())")
+    }
+
+    private var providerLayout: AnyLayout {
+        if dynamicTypeSize.isAccessibilitySize {
+            AnyLayout(VStackLayout(alignment: .leading, spacing: 8))
+        } else {
+            AnyLayout(HStackLayout(spacing: 8))
+        }
     }
 }
 
 @MainActor
 private struct HomeDecisionProviderLogo: View {
+    @ScaledMetric(relativeTo: .caption) private var logoSize = 32.0
+
     let provider: HomeDecisionProviderItem
     let imagePipeline: ImagePipeline
 
@@ -266,7 +299,7 @@ private struct HomeDecisionProviderLogo: View {
                 contentMode: .fit,
                 accessibilityLabel: provider.name
             )
-            .frame(width: 32, height: 32)
+            .frame(width: min(logoSize, 48), height: min(logoSize, 48))
             .clipShape(.rect(cornerRadius: 6))
         } else {
             Text(provider.name)
@@ -274,4 +307,8 @@ private struct HomeDecisionProviderLogo: View {
                 .lineLimit(1)
         }
     }
+}
+
+private struct HomeDecisionRoute: Hashable {
+    let movieID: Int
 }

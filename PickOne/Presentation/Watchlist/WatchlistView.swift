@@ -49,6 +49,9 @@ struct WatchlistView: View {
                 }
             }
             .navigationTitle("Watchlist")
+            .navigationDestination(for: WatchlistRoute.self) { route in
+                movieDetail(movieID: route.movieID)
+            }
             .onAppear {
                 model.load()
             }
@@ -100,25 +103,7 @@ struct WatchlistView: View {
     private func watchlistContent(data: WatchlistPresentationModel) -> some View {
         List {
             ForEach(data.items) { item in
-                NavigationLink {
-                    MovieDetailView(
-                        model: MovieDetailViewModel(
-                            movieId: item.id,
-                            getMovieDetail: getMovieDetail,
-                            setMembership: setMembership,
-                            setWatched: setWatched,
-                            checkAvailability: checkAvailability,
-                            preparePlaybackOptions: preparePlaybackOptions,
-                            eligibilityDidChange: eligibilityDidChange
-                        ),
-                        imagePipeline: imagePipeline,
-                        getMovieDetail: getMovieDetail,
-                        setMembership: setMembership,
-                        setWatched: setWatched,
-                        checkAvailability: checkAvailability,
-                        preparePlaybackOptions: preparePlaybackOptions
-                    )
-                } label: {
+                NavigationLink(value: WatchlistRoute(movieID: item.id)) {
                     WatchlistRow(item: item, imagePipeline: imagePipeline)
                 }
                 .swipeActions(edge: .trailing, allowsFullSwipe: true) {
@@ -144,35 +129,57 @@ struct WatchlistView: View {
         }
         .listStyle(.plain)
     }
+
+    private func movieDetail(movieID: Int) -> some View {
+        MovieDetailView(
+            model: MovieDetailViewModel(
+                movieId: movieID,
+                getMovieDetail: getMovieDetail,
+                setMembership: setMembership,
+                setWatched: setWatched,
+                checkAvailability: checkAvailability,
+                preparePlaybackOptions: preparePlaybackOptions,
+                eligibilityDidChange: eligibilityDidChange
+            ),
+            imagePipeline: imagePipeline,
+            getMovieDetail: getMovieDetail,
+            setMembership: setMembership,
+            setWatched: setWatched,
+            checkAvailability: checkAvailability,
+            preparePlaybackOptions: preparePlaybackOptions
+        )
+    }
 }
 
 // MARK: - Row
 
 @MainActor
 private struct WatchlistRow: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @ScaledMetric(relativeTo: .body) private var scaledPosterWidth = 60.0
+
     let item: WatchlistItemPresentation
     let imagePipeline: ImagePipeline
 
     var body: some View {
-        HStack(spacing: 12) {
-            // Poster
+        rowLayout {
             RemoteImageView(
                 url: item.posterURL,
                 loader: imagePipeline,
                 contentMode: .fill,
                 accessibilityLabel: item.title
             )
-            .frame(width: 60, height: 90)
+            .frame(width: posterWidth, height: posterWidth * 1.5)
             .clipped()
-            .cornerRadius(6)
+            .clipShape(.rect(cornerRadius: 6))
+            .accessibilityHidden(true)
 
-            // Info
             VStack(alignment: .leading, spacing: 4) {
                 Text(item.title)
                     .font(.headline)
                     .lineLimit(2)
 
-                HStack(spacing: 8) {
+                metadataLayout {
                     if let year = item.releaseYear {
                         Text(year)
                             .font(.subheadline)
@@ -183,6 +190,7 @@ private struct WatchlistRow: View {
                         Image(systemName: "star.fill")
                             .foregroundStyle(.yellow)
                             .font(.caption)
+                            .accessibilityHidden(true)
                         Text(item.rating)
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
@@ -193,6 +201,7 @@ private struct WatchlistRow: View {
                     Image(systemName: item.isWatched ? "eye.fill" : "bookmark.fill")
                         .font(.caption)
                         .foregroundStyle(item.isWatched ? .green : .blue)
+                        .accessibilityHidden(true)
 
                     Text(item.isWatched ? "Watched" : "To Watch")
                         .font(.caption)
@@ -206,10 +215,33 @@ private struct WatchlistRow: View {
                         .foregroundStyle(.tertiary)
                 }
             }
-
-            Spacer()
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
         .padding(.vertical, 4)
         .accessibilityElement(children: .combine)
     }
+
+    private var rowLayout: AnyLayout {
+        if dynamicTypeSize.isAccessibilitySize {
+            AnyLayout(VStackLayout(alignment: .leading, spacing: 12))
+        } else {
+            AnyLayout(HStackLayout(spacing: 12))
+        }
+    }
+
+    private var metadataLayout: AnyLayout {
+        if dynamicTypeSize.isAccessibilitySize {
+            AnyLayout(VStackLayout(alignment: .leading, spacing: 4))
+        } else {
+            AnyLayout(HStackLayout(spacing: 8))
+        }
+    }
+
+    private var posterWidth: CGFloat {
+        min(scaledPosterWidth, 90)
+    }
+}
+
+private struct WatchlistRoute: Hashable {
+    let movieID: Int
 }

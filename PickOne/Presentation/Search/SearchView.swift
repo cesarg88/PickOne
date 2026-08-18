@@ -50,6 +50,9 @@ struct SearchView: View {
                 }
             }
             .navigationTitle("Search")
+            .navigationDestination(for: SearchRoute.self) { route in
+                movieDetail(movieID: route.movieID)
+            }
             .searchable(
                 text: Binding(
                     get: { model.query },
@@ -84,6 +87,7 @@ struct SearchView: View {
                             HStack {
                                 Image(systemName: "clock.arrow.circlepath")
                                     .foregroundStyle(.secondary)
+                                    .accessibilityHidden(true)
                                 Text(query)
                                     .foregroundStyle(.primary)
                                 Spacer()
@@ -109,25 +113,7 @@ struct SearchView: View {
     private func resultsView(data: SearchPresentationModel) -> some View {
         List {
             ForEach(data.items) { item in
-                NavigationLink {
-                    MovieDetailView(
-                        model: MovieDetailViewModel(
-                            movieId: item.id,
-                            getMovieDetail: getMovieDetail,
-                            setMembership: setMembership,
-                            setWatched: setWatched,
-                            checkAvailability: checkAvailability,
-                            preparePlaybackOptions: preparePlaybackOptions,
-                            eligibilityDidChange: eligibilityDidChange
-                        ),
-                        imagePipeline: imagePipeline,
-                        getMovieDetail: getMovieDetail,
-                        setMembership: setMembership,
-                        setWatched: setWatched,
-                        checkAvailability: checkAvailability,
-                        preparePlaybackOptions: preparePlaybackOptions
-                    )
-                } label: {
+                NavigationLink(value: SearchRoute(movieID: item.id)) {
                     SearchResultRow(item: item, imagePipeline: imagePipeline)
                         .task {
                             // Load next page when reaching last item
@@ -149,35 +135,57 @@ struct SearchView: View {
         }
         .listStyle(.plain)
     }
+
+    private func movieDetail(movieID: Int) -> some View {
+        MovieDetailView(
+            model: MovieDetailViewModel(
+                movieId: movieID,
+                getMovieDetail: getMovieDetail,
+                setMembership: setMembership,
+                setWatched: setWatched,
+                checkAvailability: checkAvailability,
+                preparePlaybackOptions: preparePlaybackOptions,
+                eligibilityDidChange: eligibilityDidChange
+            ),
+            imagePipeline: imagePipeline,
+            getMovieDetail: getMovieDetail,
+            setMembership: setMembership,
+            setWatched: setWatched,
+            checkAvailability: checkAvailability,
+            preparePlaybackOptions: preparePlaybackOptions
+        )
+    }
 }
 
 // MARK: - Row
 
 @MainActor
 private struct SearchResultRow: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @ScaledMetric(relativeTo: .body) private var scaledPosterWidth = 60.0
+
     let item: SearchMovieItem
     let imagePipeline: ImagePipeline
 
     var body: some View {
-        HStack(spacing: 12) {
-            // Poster
+        rowLayout {
             RemoteImageView(
                 url: item.posterURL,
                 loader: imagePipeline,
                 contentMode: .fill,
                 accessibilityLabel: item.title
             )
-            .frame(width: 60, height: 90)
+            .frame(width: posterWidth, height: posterWidth * 1.5)
             .clipped()
-            .cornerRadius(6)
+            .clipShape(.rect(cornerRadius: 6))
+            .accessibilityHidden(true)
 
-            // Info
             VStack(alignment: .leading, spacing: 4) {
                 Text(item.title)
                     .font(.headline)
                     .lineLimit(2)
 
-                HStack(spacing: 8) {
+                metadataLayout {
                     if let year = item.releaseYear {
                         Text(year)
                             .font(.subheadline)
@@ -188,16 +196,40 @@ private struct SearchResultRow: View {
                         Image(systemName: "star.fill")
                             .foregroundStyle(.yellow)
                             .font(.caption)
+                            .accessibilityHidden(true)
                         Text(item.rating)
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
                     }
                 }
             }
-
-            Spacer()
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
         .padding(.vertical, 4)
         .accessibilityElement(children: .combine)
     }
+
+    private var rowLayout: AnyLayout {
+        if dynamicTypeSize.isAccessibilitySize {
+            AnyLayout(VStackLayout(alignment: .leading, spacing: 12))
+        } else {
+            AnyLayout(HStackLayout(spacing: 12))
+        }
+    }
+
+    private var metadataLayout: AnyLayout {
+        if dynamicTypeSize.isAccessibilitySize {
+            AnyLayout(VStackLayout(alignment: .leading, spacing: 4))
+        } else {
+            AnyLayout(HStackLayout(spacing: 8))
+        }
+    }
+
+    private var posterWidth: CGFloat {
+        min(scaledPosterWidth, 90)
+    }
+}
+
+private struct SearchRoute: Hashable {
+    let movieID: Int
 }
