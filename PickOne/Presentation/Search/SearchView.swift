@@ -16,6 +16,7 @@ struct SearchView: View {
     let checkAvailability: CheckMovieAvailabilityUseCase
     let preparePlaybackOptions: PreparePlaybackOptionsUseCase
     let imagePipeline: ImagePipeline
+    var eligibilityDidChange: @MainActor (DecisionEligibilityChange) -> Void = { _ in }
 
     var body: some View {
         NavigationStack {
@@ -116,7 +117,8 @@ struct SearchView: View {
                             setMembership: setMembership,
                             setWatched: setWatched,
                             checkAvailability: checkAvailability,
-                            preparePlaybackOptions: preparePlaybackOptions
+                            preparePlaybackOptions: preparePlaybackOptions,
+                            eligibilityDidChange: eligibilityDidChange
                         ),
                         imagePipeline: imagePipeline,
                         getMovieDetail: getMovieDetail,

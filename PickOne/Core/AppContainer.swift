@@ -39,6 +39,7 @@ final class AppContainer {
     let watchlistViewModel: WatchlistViewModel
     let searchViewModel: SearchViewModel
     let recommendationViewModel: RecommendationViewModel
+    let homeDecisionViewModel: HomeDecisionViewModel
     let viewerProfileViewModel: ViewerProfileViewModel
 
     init() {
@@ -61,10 +62,17 @@ final class AppContainer {
         discoveryViewModel = DiscoveryViewModel(
             getDiscoveryFeed: useCases.getDiscoveryFeed
         )
+        let homeDecisionViewModel = HomeDecisionViewModel(
+            threeForTonight: useCases.threeForTonight
+        )
+        self.homeDecisionViewModel = homeDecisionViewModel
         watchlistViewModel = WatchlistViewModel(
             getWatchlist: useCases.getWatchlist,
             setMembership: useCases.setWatchlistMembership,
-            setWatched: useCases.setWatched
+            setWatched: useCases.setWatched,
+            eligibilityDidChange: { [weak homeDecisionViewModel] change in
+                homeDecisionViewModel?.repair(after: change)
+            }
         )
         searchViewModel = SearchViewModel(
             searchMovies: useCases.searchMovies,

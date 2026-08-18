@@ -2,12 +2,14 @@
 
 ## Status
 
-`Accepted — Engineering Ready for implementation`
+`Accepted — Implementation in progress (PR7 active)`
 
 - Product acceptance: `2026-08-11`
 - Engineering acceptance: `2026-08-11`
-- Implementation authorization becomes effective when the D0 documentation PR
-  containing this specification is merged into `develop`.
+- D0 and implementation slices PR1 through PR6 are merged into `develop`.
+- PR7 is the active final implementation slice; milestone closure still
+  requires its final SHA to pass local verification, CI, and physical-device
+  validation.
 
 ## Identifiers and authority
 
@@ -695,12 +697,13 @@ Current integration record:
 | PR3 | #27 | Merged |
 | PR4 | #28 | Merged |
 | PR5 | #29 | Merged |
-| PR6 | — | Next implementation slice |
-| PR7 | — | Blocked on PR6 |
+| PR6 | #30 | Merged |
+| PR7 | — | Active implementation slice |
 
-This audit closes the remaining executable-specification gaps for PR6 and PR7.
-It does not change the accepted product behavior, P1 constants, persistence
-schema, or physical-module decision.
+PR6 completed the asynchronous orchestration dependency for PR7. PR7 is now
+authorized from `develop` and remains the only open Milestone 6 implementation
+slice. This record does not change the accepted product behavior, P1 constants,
+persistence schema, or physical-module decision.
 
 ### D0 — Canonical specification and Engineering Ready state
 
@@ -935,7 +938,8 @@ There are no unresolved product or technical decisions that materially change
 Milestone 6 contracts, persistence, migration, concurrency, failure behavior,
 test strategy, or PR sequencing.
 
-After D0 merges, an autonomous implementation agent may start PR1 from
-`develop`. It must read this specification, ADR-011, `PRODUCT.md`,
-`ENGINEERING.md`, and the repository delivery and verification policies before
-changing production code.
+D0 and PR1 through PR6 are merged. PR7 may proceed from `develop` under this
+specification and must retain the same product, architecture, delivery, and
+verification authorities. Milestone completion remains pending until PR7's
+final SHA passes local verification, CI, and the required physical-device
+checks.

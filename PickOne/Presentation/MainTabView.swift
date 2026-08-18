@@ -11,65 +11,72 @@ import SwiftUI
 struct MainTabView: View {
     let container: AppContainer
     @Bindable var profileModel: ViewerProfileViewModel
+    @State private var selectedTab = MainTab.home
 
     var body: some View {
-        TabView {
-            DiscoveryView(
-                model: container.discoveryViewModel,
-                getMovieDetail: container.getMovieDetail,
-                setMembership: container.setWatchlistMembership,
-                setWatched: container.setWatched,
-                checkAvailability: container.checkMovieAvailability,
-                preparePlaybackOptions: container.preparePlaybackOptions,
-                imagePipeline: container.imagePipeline
-            )
-            .tabItem {
-                Label("Discover", systemImage: "film")
+        TabView(selection: $selectedTab) {
+            Tab("Home", systemImage: "house", value: MainTab.home) {
+                HomeDecisionView(
+                    model: container.homeDecisionViewModel,
+                    getMovieDetail: container.getMovieDetail,
+                    setMembership: container.setWatchlistMembership,
+                    setWatched: container.setWatched,
+                    checkAvailability: container.checkMovieAvailability,
+                    preparePlaybackOptions: container.preparePlaybackOptions,
+                    imagePipeline: container.imagePipeline
+                )
             }
 
-            SearchView(
-                model: container.searchViewModel,
-                getMovieDetail: container.getMovieDetail,
-                setMembership: container.setWatchlistMembership,
-                setWatched: container.setWatched,
-                checkAvailability: container.checkMovieAvailability,
-                preparePlaybackOptions: container.preparePlaybackOptions,
-                imagePipeline: container.imagePipeline
-            )
-            .tabItem {
-                Label("Search", systemImage: "magnifyingglass")
+            Tab("Search", systemImage: "magnifyingglass", value: MainTab.search) {
+                SearchView(
+                    model: container.searchViewModel,
+                    getMovieDetail: container.getMovieDetail,
+                    setMembership: container.setWatchlistMembership,
+                    setWatched: container.setWatched,
+                    checkAvailability: container.checkMovieAvailability,
+                    preparePlaybackOptions: container.preparePlaybackOptions,
+                    imagePipeline: container.imagePipeline,
+                    eligibilityDidChange: repairHome
+                )
             }
 
-            RecommendationView(
-                model: container.recommendationViewModel,
-                getMovieDetail: container.getMovieDetail,
-                setMembership: container.setWatchlistMembership,
-                setWatched: container.setWatched,
-                checkAvailability: container.checkMovieAvailability,
-                preparePlaybackOptions: container.preparePlaybackOptions,
-                imagePipeline: container.imagePipeline
-            )
-            .tabItem {
-                Label("Ask", systemImage: "sparkles")
+            Tab("Discover", systemImage: "film", value: MainTab.discover) {
+                DiscoveryView(
+                    model: container.discoveryViewModel,
+                    getMovieDetail: container.getMovieDetail,
+                    setMembership: container.setWatchlistMembership,
+                    setWatched: container.setWatched,
+                    checkAvailability: container.checkMovieAvailability,
+                    preparePlaybackOptions: container.preparePlaybackOptions,
+                    imagePipeline: container.imagePipeline,
+                    eligibilityDidChange: repairHome
+                )
             }
 
-            WatchlistView(
-                model: container.watchlistViewModel,
-                getMovieDetail: container.getMovieDetail,
-                setMembership: container.setWatchlistMembership,
-                setWatched: container.setWatched,
-                checkAvailability: container.checkMovieAvailability,
-                preparePlaybackOptions: container.preparePlaybackOptions,
-                imagePipeline: container.imagePipeline
-            )
-            .tabItem {
-                Label("Watchlist", systemImage: "bookmark")
+            Tab("Watchlist", systemImage: "bookmark", value: MainTab.watchlist) {
+                WatchlistView(
+                    model: container.watchlistViewModel,
+                    getMovieDetail: container.getMovieDetail,
+                    setMembership: container.setWatchlistMembership,
+                    setWatched: container.setWatched,
+                    checkAvailability: container.checkMovieAvailability,
+                    preparePlaybackOptions: container.preparePlaybackOptions,
+                    imagePipeline: container.imagePipeline,
+                    eligibilityDidChange: repairHome
+                )
             }
 
-            SettingsView(model: profileModel)
-                .tabItem {
-                    Label("Settings", systemImage: "gearshape")
-                }
+            Tab("Settings", systemImage: "gearshape", value: MainTab.settings) {
+                SettingsView(model: profileModel)
+            }
+        }
+        .task {
+            guard !AppConfiguration.isUITesting else { return }
+            container.homeDecisionViewModel.load()
+        }
+        .onChange(of: selectedTab) {
+            guard selectedTab == .home, !AppConfiguration.isUITesting else { return }
+            container.homeDecisionViewModel.load()
         }
         .fullScreenCover(
             isPresented: Binding(
@@ -86,4 +93,16 @@ struct MainTabView: View {
             }
         }
     }
+
+    private func repairHome(_ change: DecisionEligibilityChange) {
+        container.homeDecisionViewModel.repair(after: change)
+    }
+}
+
+private enum MainTab: Hashable {
+    case home
+    case search
+    case discover
+    case watchlist
+    case settings
 }

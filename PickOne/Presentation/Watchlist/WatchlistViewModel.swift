@@ -24,6 +24,7 @@ final class WatchlistViewModel {
     private let getWatchlist: GetWatchlistUseCase
     private let setMembership: SetWatchlistMembershipUseCase
     private let setWatched: SetWatchedUseCase
+    @ObservationIgnored private let eligibilityDidChange: @MainActor (DecisionEligibilityChange) -> Void
 
     var state: WatchlistViewState = .idle
     var currentFilter: WatchlistFilter = .all
@@ -32,11 +33,13 @@ final class WatchlistViewModel {
     init(
         getWatchlist: GetWatchlistUseCase,
         setMembership: SetWatchlistMembershipUseCase,
-        setWatched: SetWatchedUseCase
+        setWatched: SetWatchedUseCase,
+        eligibilityDidChange: @escaping @MainActor (DecisionEligibilityChange) -> Void = { _ in }
     ) {
         self.getWatchlist = getWatchlist
         self.setMembership = setMembership
         self.setWatched = setWatched
+        self.eligibilityDidChange = eligibilityDidChange
     }
 
     // MARK: - Actions
@@ -57,6 +60,7 @@ final class WatchlistViewModel {
         do {
             try setWatched.execute(movieId: movieId, isWatched: !item.isWatched)
             load()
+            notifyEligibilityChange(movieID: movieId)
         } catch {
             actionErrorMessage = error.localizedDescription
         }
@@ -68,6 +72,7 @@ final class WatchlistViewModel {
         do {
             try setMembership.execute(movie: item.movieSummary, isInWatchlist: false)
             load()
+            notifyEligibilityChange(movieID: movieId)
         } catch {
             actionErrorMessage = error.localizedDescription
         }
@@ -88,5 +93,12 @@ final class WatchlistViewModel {
     private func findItem(movieId: Int) -> WatchlistItemPresentation? {
         guard case let .loaded(model) = state else { return nil }
         return model.items.first { $0.id == movieId }
+    }
+
+    private func notifyEligibilityChange(movieID: Int) {
+        guard let change = DecisionEligibilityChange(movieID: movieID, cause: .watchlist) else {
+            return
+        }
+        eligibilityDidChange(change)
     }
 }

@@ -9,6 +9,7 @@ struct DiscoveryView: View {
     let checkAvailability: CheckMovieAvailabilityUseCase
     let preparePlaybackOptions: PreparePlaybackOptionsUseCase
     let imagePipeline: ImagePipeline
+    var eligibilityDidChange: @MainActor (DecisionEligibilityChange) -> Void = { _ in }
 
     private let columns = Array(repeating: GridItem(.flexible(), spacing: 12), count: 3)
 
@@ -45,7 +46,8 @@ struct DiscoveryView: View {
                                                 setMembership: setMembership,
                                                 setWatched: setWatched,
                                                 checkAvailability: checkAvailability,
-                                                preparePlaybackOptions: preparePlaybackOptions
+                                                preparePlaybackOptions: preparePlaybackOptions,
+                                                eligibilityDidChange: eligibilityDidChange
                                             ),
                                             imagePipeline: imagePipeline,
                                             getMovieDetail: getMovieDetail,
