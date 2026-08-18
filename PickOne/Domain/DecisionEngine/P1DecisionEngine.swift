@@ -1,5 +1,12 @@
 struct P1DecisionEngine: DecisionSelecting, Sendable {
     func select(from input: DecisionEngineInput) -> DecisionSelection {
+        select(from: rankedCandidates(from: input))
+    }
+
+    func rankedCandidates(
+        from input: DecisionEngineInput,
+        allowingShownMovieIDs: Set<Int> = []
+    ) -> [RankedDecisionCandidate] {
         let calibrationWatchedMovieIDs = Set(
             input.profile.evidence
                 .filter(\.reaction.meansWatchedInCalibration)
@@ -8,13 +15,20 @@ struct P1DecisionEngine: DecisionSelecting, Sendable {
         let watchedMovieIDs = calibrationWatchedMovieIDs.union(
             input.watchlistWatchedMovieIDs
         )
-        var remaining = input.candidates.compactMap { candidate in
+        return input.candidates.compactMap { candidate in
             scoreEligibleCandidate(
                 candidate,
                 input: input,
-                watchedMovieIDs: watchedMovieIDs
+                watchedMovieIDs: watchedMovieIDs,
+                allowingShownMovieIDs: allowingShownMovieIDs
             )
         }
+    }
+
+    func select(
+        from rankedCandidates: [RankedDecisionCandidate]
+    ) -> DecisionSelection {
+        var remaining = rankedCandidates
         var selected: [RankedDecisionCandidate] = []
         var recommendations: [DecisionRecommendation] = []
 
@@ -49,11 +63,13 @@ struct P1DecisionEngine: DecisionSelecting, Sendable {
     private func scoreEligibleCandidate(
         _ candidate: DecisionCandidate,
         input: DecisionEngineInput,
-        watchedMovieIDs: Set<Int>
+        watchedMovieIDs: Set<Int>,
+        allowingShownMovieIDs: Set<Int>
     ) -> RankedDecisionCandidate? {
         guard
             !watchedMovieIDs.contains(candidate.movieID),
-            !input.currentCycleShownMovieIDs.contains(candidate.movieID),
+            allowingShownMovieIDs.contains(candidate.movieID)
+            || !input.currentCycleShownMovieIDs.contains(candidate.movieID),
             candidate.availability == .eligible
         else {
             return nil
@@ -226,7 +242,7 @@ struct P1DecisionEngine: DecisionSelecting, Sendable {
         }
     }
 
-    private func isPreferred(
+    func isPreferred(
         _ first: RankedDecisionCandidate,
         over second: RankedDecisionCandidate,
         selected: [RankedDecisionCandidate]
@@ -285,7 +301,7 @@ struct P1DecisionEngine: DecisionSelecting, Sendable {
     }
 }
 
-private struct RankedDecisionCandidate {
+struct RankedDecisionCandidate {
     let candidate: DecisionCandidate
     let score: P1Score
     let primaryEvidence: RecommendationPrimaryEvidence
