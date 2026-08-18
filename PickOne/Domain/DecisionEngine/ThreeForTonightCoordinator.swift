@@ -317,29 +317,31 @@ private extension ThreeForTonightCoordinator {
 
         do {
             var currentCandidates: [DecisionInputCandidate] = []
+            var pendingReevaluatedMovieIDs = reevaluatedMovieIDs
+            var rehydratedUnsafeMovieIDs: Set<Int> = []
             for recommendation in envelope.recommendations {
                 try ensureCurrent(operationID)
-                try await currentCandidates.append(memberRehydrator.rehydrate(
+                let candidate = try await memberRehydrator.rehydrate(
                     recommendation,
                     profile: trustedBefore.profile,
                     forceAvailabilityReload: recommendation.display.movieID
                         == forceAvailabilityReloadMovieID
-                ))
-            }
-
-            let rehydratedUnsafeMovieIDs: Set<Int> = Set(currentCandidates.compactMap { candidate -> Int? in
+                )
+                currentCandidates.append(candidate)
+                pendingReevaluatedMovieIDs.remove(candidate.seed.movieID)
                 switch candidate.decisionCandidate.availability {
                     case .eligible:
-                        nil
+                        break
                     case .ineligible, .unknown:
-                        candidate.seed.movieID
+                        rehydratedUnsafeMovieIDs.insert(candidate.seed.movieID)
                 }
-            })
-            retained = ThreeForTonightSnapshotFactory.safeRetainedSnapshot(
-                envelope,
-                watchlistItems: trustedBefore.watchlistItems,
-                additionallyUnsafeMovieIDs: rehydratedUnsafeMovieIDs
-            )
+                retained = ThreeForTonightSnapshotFactory.safeRetainedSnapshot(
+                    envelope,
+                    watchlistItems: trustedBefore.watchlistItems,
+                    additionallyUnsafeMovieIDs: pendingReevaluatedMovieIDs
+                        .union(rehydratedUnsafeMovieIDs)
+                )
+            }
 
             let currentMovieIDs = Set(envelope.recommendations.map(\.display.movieID))
             let currentReevaluatedMovieIDs = reevaluatedMovieIDs.intersection(currentMovieIDs)

@@ -151,6 +151,31 @@ struct ThreeForTonightCoordinatorRepairTests {
         #expect(retained?.decisionSet.recommendations.map(\.role) == [.safeChoice, .stretchChoice])
         #expect(await decisionSets.replacements.isEmpty)
     }
+
+    @Test("rehydration failure excludes an earlier member already proven unsafe")
+    func rehydrationFailureExcludesEarlierUnsafeMember() async throws {
+        let envelope = try CoordinatorTestFixtures.envelope(currentMovieIDs: [10, 11])
+        let decisionSets = CoordinatorDecisionSetRepository(loadResult: .available(envelope))
+        let sut = CoordinatorTestFixtures.makeCoordinator(
+            candidateRepository: CoordinatorCandidateRepository(),
+            availabilityRepository: CoordinatorAvailabilityRepository(),
+            decisionSetRepository: decisionSets,
+            movieRepository: CoordinatorMovieRepository(movies: [
+                10: CoordinatorTestFixtures.movie(10),
+            ])
+        )
+        let change = try #require(DecisionEligibilityChange(movieID: 11, cause: .availability))
+
+        let result = try await sut.repairAfterEligibilityChange(change)
+        guard case let .retryableFailure(reason, retained) = result else {
+            Issue.record("Expected a retryable rehydration failure")
+            return
+        }
+
+        #expect(reason == .repairFailed)
+        #expect(retained?.decisionSet.recommendations.isEmpty == true)
+        #expect(await decisionSets.replacements.isEmpty)
+    }
 }
 
 private extension ThreeForTonightResult {
