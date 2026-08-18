@@ -152,7 +152,11 @@ actor CoordinatorCandidateRepository: DecisionCandidateRepository {
 
 actor CoordinatorAvailabilityRepository: AvailabilityRepository {
     private let evidenceByMovieID: [Int: VerifiedAvailabilityEvidence]
-    private(set) var requestedMovieIDs: [Int] = []
+    private(set) var requests: [CoordinatorAvailabilityRequest] = []
+
+    var requestedMovieIDs: [Int] {
+        requests.map(\.movieID)
+    }
 
     init(evidenceByMovieID: [Int: VerifiedAvailabilityEvidence] = [:]) {
         self.evidenceByMovieID = evidenceByMovieID
@@ -161,11 +165,19 @@ actor CoordinatorAvailabilityRepository: AvailabilityRepository {
     func getVerifiedEvidence(
         movieID: Int,
         region _: ViewingRegion,
-        policy _: AvailabilityFetchPolicy
+        policy: AvailabilityFetchPolicy
     ) -> VerifiedAvailabilityEvidence? {
-        requestedMovieIDs.append(movieID)
+        requests.append(CoordinatorAvailabilityRequest(
+            movieID: movieID,
+            policy: policy
+        ))
         return evidenceByMovieID[movieID]
     }
+}
+
+struct CoordinatorAvailabilityRequest: Equatable, Sendable {
+    let movieID: Int
+    let policy: AvailabilityFetchPolicy
 }
 
 actor CoordinatorDecisionSetRepository: DecisionSetRepository {

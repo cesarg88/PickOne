@@ -77,7 +77,13 @@ actor ThreeForTonightCoordinator: ThreeForTonightUseCase {
                 activeOperationID = nil
             }
         }
-        return try await task.value
+        return try await withTaskCancellationHandler {
+            let result = try await task.value
+            try Task.checkCancellation()
+            return result
+        } onCancel: {
+            task.cancel()
+        }
     }
 
     private func perform(
@@ -303,7 +309,7 @@ private extension ThreeForTonightCoordinator {
         } catch let error as CoordinatorError {
             return .retryableFailure(reason: error.failureReason(recovery: false), retained: nil)
         }
-        let retained = ThreeForTonightSnapshotFactory.safeRetainedSnapshot(
+        var retained = ThreeForTonightSnapshotFactory.safeRetainedSnapshot(
             envelope,
             watchlistItems: trustedBefore.watchlistItems,
             additionallyUnsafeMovieIDs: reevaluatedMovieIDs
@@ -321,8 +327,24 @@ private extension ThreeForTonightCoordinator {
                 ))
             }
 
+            let rehydratedUnsafeMovieIDs: Set<Int> = Set(currentCandidates.compactMap { candidate -> Int? in
+                switch candidate.decisionCandidate.availability {
+                    case .eligible:
+                        nil
+                    case .ineligible, .unknown:
+                        candidate.seed.movieID
+                }
+            })
+            retained = ThreeForTonightSnapshotFactory.safeRetainedSnapshot(
+                envelope,
+                watchlistItems: trustedBefore.watchlistItems,
+                additionallyUnsafeMovieIDs: rehydratedUnsafeMovieIDs
+            )
+
+            let currentMovieIDs = Set(envelope.recommendations.map(\.display.movieID))
+            let currentReevaluatedMovieIDs = reevaluatedMovieIDs.intersection(currentMovieIDs)
             let selectionExclusions = envelope.cycle.shownMovieIDs
-                .subtracting(reevaluatedMovieIDs)
+                .subtracting(currentReevaluatedMovieIDs)
             let assembled = try await inputAssembler.execute(
                 currentCycleShownMovieIDs: selectionExclusions
             )
