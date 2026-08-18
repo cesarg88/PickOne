@@ -698,7 +698,7 @@ Current integration record:
 | PR4 | #28 | Merged |
 | PR5 | #29 | Merged |
 | PR6 | #30 | Merged |
-| PR7 | — | Active implementation slice |
+| PR7 | #31 | Active implementation slice |
 
 PR6 completed the asynchronous orchestration dependency for PR7. PR7 is now
 authorized from `develop` and remains the only open Milestone 6 implementation
