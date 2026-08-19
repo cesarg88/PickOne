@@ -250,21 +250,18 @@ private struct RecommendationCard: View {
                 .foregroundStyle(.secondary)
 
             NavigationLink {
-                MovieDetailView(
-                    model: MovieDetailViewModel(
-                        movieId: item.id,
-                        getMovieDetail: getMovieDetail,
-                        setMembership: setMembership,
-                        setWatched: setWatched,
-                        checkAvailability: checkAvailability,
-                        preparePlaybackOptions: preparePlaybackOptions
-                    ),
-                    imagePipeline: imagePipeline,
+                let dependencies = MovieDetailNavigationDependencies(
                     getMovieDetail: getMovieDetail,
                     setMembership: setMembership,
                     setWatched: setWatched,
                     checkAvailability: checkAvailability,
-                    preparePlaybackOptions: preparePlaybackOptions
+                    preparePlaybackOptions: preparePlaybackOptions,
+                    eligibilityDidChange: { _ in }
+                )
+                MovieDetailView(
+                    model: dependencies.makeViewModel(movieID: item.id),
+                    imagePipeline: imagePipeline,
+                    navigationDependencies: dependencies
                 )
             } label: {
                 HStack(spacing: 12) {

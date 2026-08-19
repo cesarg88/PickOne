@@ -131,22 +131,18 @@ struct WatchlistView: View {
     }
 
     private func movieDetail(movieID: Int) -> some View {
-        MovieDetailView(
-            model: MovieDetailViewModel(
-                movieId: movieID,
-                getMovieDetail: getMovieDetail,
-                setMembership: setMembership,
-                setWatched: setWatched,
-                checkAvailability: checkAvailability,
-                preparePlaybackOptions: preparePlaybackOptions,
-                eligibilityDidChange: eligibilityDidChange
-            ),
-            imagePipeline: imagePipeline,
+        let dependencies = MovieDetailNavigationDependencies(
             getMovieDetail: getMovieDetail,
             setMembership: setMembership,
             setWatched: setWatched,
             checkAvailability: checkAvailability,
-            preparePlaybackOptions: preparePlaybackOptions
+            preparePlaybackOptions: preparePlaybackOptions,
+            eligibilityDidChange: eligibilityDidChange
+        )
+        return MovieDetailView(
+            model: dependencies.makeViewModel(movieID: movieID),
+            imagePipeline: imagePipeline,
+            navigationDependencies: dependencies
         )
     }
 }

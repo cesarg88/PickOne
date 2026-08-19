@@ -31,6 +31,16 @@ final class PickOneSmokeTests: XCTestCase {
 
         XCTAssertFalse(app.tabBars.buttons["Ask"].exists, "Ask should not be exposed as a tab")
 
+        app.tabBars.buttons["Home"].tap()
+        let recommendation = app.buttons["home-recommendation-101"]
+        XCTAssertTrue(
+            recommendation.waitForExistence(timeout: 15),
+            "Home recommendation did not load"
+        )
+        recommendation.tap()
+        XCTAssertTrue(app.navigationBars["Details"].waitForExistence(timeout: 15))
+        XCTAssertTrue(app.staticTexts["Tonight's Movie"].waitForExistence(timeout: 15))
+
         app.tabBars.buttons["Settings"].tap()
         app.buttons["About"].tap()
         XCTAssertTrue(app.navigationBars["About"].waitForExistence(timeout: 15))

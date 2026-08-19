@@ -180,6 +180,30 @@ struct MovieDetailAvailabilityViewModelTests {
         #expect(changes == [expectedChange])
     }
 
+    @Test("nested detail dependencies preserve the eligibility callback")
+    func nestedDetailDependenciesPreserveCallback() async throws {
+        var changes: [DecisionEligibilityChange] = []
+        let dependencies = MovieDetailNavigationDependencies(
+            getMovieDetail: ImmediateMovieDetailUseCase(),
+            setMembership: NoOpSetWatchlistMembership(),
+            setWatched: NoOpSetWatched(),
+            checkAvailability: SequenceAvailabilityUseCase(
+                steps: [.outcome(eligibleOutcome())]
+            ),
+            preparePlaybackOptions: StubPreparePlaybackOptions(result: .unavailable),
+            eligibilityDidChange: { changes.append($0) }
+        )
+        let sut = dependencies.makeViewModel(movieID: 42)
+
+        await sut.load()
+        sut.toggleWatchlist()
+
+        let expectedChange = try #require(
+            DecisionEligibilityChange(movieID: 42, cause: .watchlist)
+        )
+        #expect(changes == [expectedChange])
+    }
+
     private func makeSUT(
         detail: GetMovieDetailUseCase,
         availability: CheckMovieAvailabilityUseCase,

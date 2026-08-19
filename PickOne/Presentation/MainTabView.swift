@@ -71,11 +71,10 @@ struct MainTabView: View {
             }
         }
         .task {
-            guard !AppConfiguration.isUITesting else { return }
             container.homeDecisionViewModel.load()
         }
         .onChange(of: selectedTab) {
-            guard selectedTab == .home, !AppConfiguration.isUITesting else { return }
+            guard selectedTab == .home else { return }
             container.homeDecisionViewModel.load()
         }
         .fullScreenCover(

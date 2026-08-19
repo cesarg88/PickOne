@@ -22,29 +22,29 @@ struct HomeDecisionView: View {
             )
             .navigationTitle("Home")
             .navigationDestination(for: HomeDecisionRoute.self) { route in
-                MovieDetailView(
-                    model: MovieDetailViewModel(
-                        movieId: route.movieID,
-                        getMovieDetail: getMovieDetail,
-                        setMembership: setMembership,
-                        setWatched: setWatched,
-                        checkAvailability: checkAvailability,
-                        preparePlaybackOptions: preparePlaybackOptions,
-                        eligibilityDidChange: model.repair
-                    ),
-                    imagePipeline: imagePipeline,
-                    getMovieDetail: getMovieDetail,
-                    setMembership: setMembership,
-                    setWatched: setWatched,
-                    checkAvailability: checkAvailability,
-                    preparePlaybackOptions: preparePlaybackOptions
-                )
+                movieDetail(movieID: route.movieID)
             }
         }
         .onChange(of: navigationPath) { oldPath, newPath in
             guard !oldPath.isEmpty, newPath.isEmpty else { return }
             model.load()
         }
+    }
+
+    private func movieDetail(movieID: Int) -> some View {
+        let dependencies = MovieDetailNavigationDependencies(
+            getMovieDetail: getMovieDetail,
+            setMembership: setMembership,
+            setWatched: setWatched,
+            checkAvailability: checkAvailability,
+            preparePlaybackOptions: preparePlaybackOptions,
+            eligibilityDidChange: model.repair
+        )
+        return MovieDetailView(
+            model: dependencies.makeViewModel(movieID: movieID),
+            imagePipeline: imagePipeline,
+            navigationDependencies: dependencies
+        )
     }
 }
 
@@ -109,6 +109,7 @@ private struct HomeDecisionLoadedView: View {
                         HomeDecisionCard(item: item, imagePipeline: imagePipeline)
                     }
                     .buttonStyle(.plain)
+                    .accessibilityIdentifier("home-recommendation-\(item.id)")
                 }
 
                 HomeDecisionRefreshControls(

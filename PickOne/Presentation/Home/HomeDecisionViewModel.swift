@@ -19,6 +19,8 @@ final class HomeDecisionViewModel {
     private let threeForTonight: any ThreeForTonightUseCase
     @ObservationIgnored private var activeTask: Task<Void, Never>?
     @ObservationIgnored private var activeOperationID = UUID()
+    @ObservationIgnored private var activeOperation: Operation?
+    @ObservationIgnored private var pendingRepairs: [DecisionEligibilityChange] = []
 
     var state: HomeDecisionViewState = .idle
 
@@ -27,14 +29,22 @@ final class HomeDecisionViewModel {
     }
 
     func load() {
+        guard activeOperation == nil, pendingRepairs.isEmpty else { return }
         start(.load)
     }
 
     func refresh() {
+        guard activeOperation?.isRepair != true, pendingRepairs.isEmpty else { return }
         start(.refresh)
     }
 
     func repair(after change: DecisionEligibilityChange) {
+        if activeOperation?.isRepair == true {
+            if !pendingRepairs.contains(change) {
+                pendingRepairs.append(change)
+            }
+            return
+        }
         start(.repair(change))
     }
 
@@ -42,6 +52,7 @@ final class HomeDecisionViewModel {
         activeTask?.cancel()
         let operationID = UUID()
         activeOperationID = operationID
+        activeOperation = operation
         prepareState(for: operation)
         activeTask = Task { [weak self] in
             guard let self else { return }
@@ -50,13 +61,26 @@ final class HomeDecisionViewModel {
                 try Task.checkCancellation()
                 guard activeOperationID == operationID else { return }
                 apply(result)
+                finish(operationID: operationID)
             } catch is CancellationError {
+                guard activeOperationID == operationID else { return }
+                finish(operationID: operationID)
                 return
             } catch {
                 guard activeOperationID == operationID else { return }
                 state = .failure("Tonight's picks couldn't be loaded. Please try again.")
+                finish(operationID: operationID)
             }
         }
+    }
+
+    private func finish(operationID: UUID) {
+        guard activeOperationID == operationID else { return }
+        activeTask = nil
+        activeOperation = nil
+        guard !pendingRepairs.isEmpty else { return }
+        let nextRepair = pendingRepairs.removeFirst()
+        start(.repair(nextRepair))
     }
 
     private func prepareState(for operation: Operation) {
@@ -137,6 +161,13 @@ private extension HomeDecisionViewModel {
         case load
         case refresh
         case repair(DecisionEligibilityChange)
+
+        var isRepair: Bool {
+            if case .repair = self {
+                return true
+            }
+            return false
+        }
 
         func execute(
             with useCase: any ThreeForTonightUseCase
