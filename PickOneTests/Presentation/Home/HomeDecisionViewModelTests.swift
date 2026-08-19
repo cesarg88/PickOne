@@ -113,15 +113,19 @@ struct HomeDecisionViewModelTests {
 
     @Test("repair survives Home activation and return reconciliation")
     func repairSurvivesPassiveLoad() async throws {
-        let original = try HomeDecisionTestFixtures.snapshot()
+        let reconciled = try HomeDecisionTestFixtures.snapshot(
+            recommendations: [
+                HomeDecisionTestFixtures.recommendation(movieID: 303),
+            ]
+        )
         let repaired = try HomeDecisionTestFixtures.snapshot(
             recommendations: [
                 HomeDecisionTestFixtures.recommendation(movieID: 202),
             ]
         )
         let gate = HomeDecisionOperationGate()
-        let useCase = GatedRepairHomeDecisionUseCase(
-            loadResult: .usable(original),
+        let useCase = GatedHomeDecisionUseCase(
+            loadResult: .usable(reconciled),
             repairResult: .usable(repaired),
             gate: gate
         )
@@ -133,17 +137,57 @@ struct HomeDecisionViewModelTests {
         sut.repair(after: change)
         await useCase.waitForRepairStart()
         sut.load()
-        let passiveLoadStarted = await useCase.waitForLoadStart()
+        let loadStartedBeforeRepairFinished = await useCase.waitForLoadStart()
         await gate.open()
-        await waitUntilSettled(sut)
+        let loadStartedAfterRepairFinished = await useCase.waitForLoadStart()
 
-        #expect(!passiveLoadStarted)
+        #expect(!loadStartedBeforeRepairFinished)
+        #expect(loadStartedAfterRepairFinished)
         #expect(await useCase.recordedRepairs() == [change])
+        await waitForItems([303], in: sut)
         guard case let .loaded(set, _, _) = sut.state else {
-            Issue.record("Expected repaired content")
+            Issue.record("Expected reconciled content")
             return
         }
-        #expect(set.items.map(\.id) == [202])
+        #expect(set.items.map(\.id) == [303])
+    }
+
+    @Test("load requested during refresh reconciles its older trusted-input snapshot")
+    func loadRequestedDuringRefreshIsPreserved() async throws {
+        let refreshed = try HomeDecisionTestFixtures.snapshot(
+            recommendations: [
+                HomeDecisionTestFixtures.recommendation(movieID: 202),
+            ]
+        )
+        let reconciled = try HomeDecisionTestFixtures.snapshot(
+            recommendations: [
+                HomeDecisionTestFixtures.recommendation(movieID: 303),
+            ]
+        )
+        let gate = HomeDecisionOperationGate()
+        let useCase = GatedHomeDecisionUseCase(
+            loadResult: .usable(reconciled),
+            refreshResult: .usable(refreshed),
+            repairResult: .usable(refreshed),
+            gate: gate
+        )
+        let sut = HomeDecisionViewModel(threeForTonight: useCase)
+
+        sut.refresh()
+        await useCase.waitForRefreshStart()
+        sut.load()
+        let loadStartedBeforeRefreshFinished = await useCase.waitForLoadStart()
+        await gate.open()
+        let loadStartedAfterRefreshFinished = await useCase.waitForLoadStart()
+        await waitForItems([303], in: sut)
+
+        #expect(!loadStartedBeforeRefreshFinished)
+        #expect(loadStartedAfterRefreshFinished)
+        guard case let .loaded(set, _, _) = sut.state else {
+            Issue.record("Expected reconciled content")
+            return
+        }
+        #expect(set.items.map(\.id) == [303])
     }
 
     private func waitUntilSettled(_ sut: HomeDecisionViewModel) async {
@@ -158,6 +202,20 @@ struct HomeDecisionViewModelTests {
                 default:
                     return
             }
+        }
+    }
+
+    private func waitForItems(
+        _ expectedIDs: [Int],
+        in sut: HomeDecisionViewModel
+    ) async {
+        for _ in 0 ..< 100 {
+            if case let .loaded(set, _, _) = sut.state,
+               set.items.map(\.id) == expectedIDs
+            {
+                return
+            }
+            await Task.yield()
         }
     }
 }
@@ -185,20 +243,24 @@ private actor HomeDecisionOperationGate {
     }
 }
 
-private actor GatedRepairHomeDecisionUseCase: ThreeForTonightUseCase {
+private actor GatedHomeDecisionUseCase: ThreeForTonightUseCase {
     private let loadResult: ThreeForTonightResult
+    private let refreshResult: ThreeForTonightResult?
     private let repairResult: ThreeForTonightResult
     private let gate: HomeDecisionOperationGate
     private var loadCallCount = 0
+    private var refreshStarted = false
     private var repairStarted = false
     private var repairs: [DecisionEligibilityChange] = []
 
     init(
         loadResult: ThreeForTonightResult,
+        refreshResult: ThreeForTonightResult? = nil,
         repairResult: ThreeForTonightResult,
         gate: HomeDecisionOperationGate
     ) {
         self.loadResult = loadResult
+        self.refreshResult = refreshResult
         self.repairResult = repairResult
         self.gate = gate
     }
@@ -209,7 +271,11 @@ private actor GatedRepairHomeDecisionUseCase: ThreeForTonightUseCase {
     }
 
     func refresh() async throws -> ThreeForTonightResult {
-        loadResult
+        guard let refreshResult else { return loadResult }
+        refreshStarted = true
+        await gate.wait()
+        try Task.checkCancellation()
+        return refreshResult
     }
 
     func repairAfterEligibilityChange(
@@ -224,6 +290,12 @@ private actor GatedRepairHomeDecisionUseCase: ThreeForTonightUseCase {
 
     func waitForRepairStart() async {
         while !repairStarted {
+            await Task.yield()
+        }
+    }
+
+    func waitForRefreshStart() async {
+        while !refreshStarted {
             await Task.yield()
         }
     }

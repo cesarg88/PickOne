@@ -21,6 +21,7 @@ final class HomeDecisionViewModel {
     @ObservationIgnored private var activeOperationID = UUID()
     @ObservationIgnored private var activeOperation: Operation?
     @ObservationIgnored private var pendingRepairs: [DecisionEligibilityChange] = []
+    @ObservationIgnored private var isReconciliationPending = false
 
     var state: HomeDecisionViewState = .idle
 
@@ -29,7 +30,10 @@ final class HomeDecisionViewModel {
     }
 
     func load() {
-        guard activeOperation == nil, pendingRepairs.isEmpty else { return }
+        guard activeOperation == nil, pendingRepairs.isEmpty else {
+            isReconciliationPending = true
+            return
+        }
         start(.load)
     }
 
@@ -78,9 +82,13 @@ final class HomeDecisionViewModel {
         guard activeOperationID == operationID else { return }
         activeTask = nil
         activeOperation = nil
-        guard !pendingRepairs.isEmpty else { return }
-        let nextRepair = pendingRepairs.removeFirst()
-        start(.repair(nextRepair))
+        if !pendingRepairs.isEmpty {
+            let nextRepair = pendingRepairs.removeFirst()
+            start(.repair(nextRepair))
+        } else if isReconciliationPending {
+            isReconciliationPending = false
+            start(.load)
+        }
     }
 
     private func prepareState(for operation: Operation) {
