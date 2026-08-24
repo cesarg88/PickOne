@@ -210,6 +210,7 @@ struct PositiveAnchorEvidenceV1DTO: Codable, Equatable, Sendable {
     let movieID: Int
     let movieTitle: String
     let reaction: String
+    let anchorGenres: [DecisionGenreV1DTO]?
     let sharedGenres: [DecisionGenreV1DTO]
     let eraMatch: RecommendationEraMatchV1DTO?
 }

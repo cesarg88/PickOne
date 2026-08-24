@@ -149,7 +149,8 @@ actor ThreeForTonightCoordinator: ThreeForTonightUseCase {
                 }
                 let repairIDs = ThreeForTonightSnapshotFactory.localRepairMovieIDs(
                     envelope: envelope,
-                    watchlistItems: trusted.watchlistItems
+                    watchlistItems: trusted.watchlistItems,
+                    profile: trusted.profile
                 )
                 guard repairIDs.isEmpty else {
                     return try await repair(
@@ -183,7 +184,8 @@ actor ThreeForTonightCoordinator: ThreeForTonightUseCase {
             where envelope.cycle.identitySignature == signature:
                 let retained = ThreeForTonightSnapshotFactory.safeRetainedSnapshot(
                     envelope,
-                    watchlistItems: trusted.watchlistItems
+                    watchlistItems: trusted.watchlistItems,
+                    profile: trusted.profile
                 )
                 return try await generate(
                     cycle: envelope.cycle,
@@ -309,9 +311,9 @@ private extension ThreeForTonightCoordinator {
         } catch let error as CoordinatorError {
             return .retryableFailure(reason: error.failureReason(recovery: false), retained: nil)
         }
-        var retained = ThreeForTonightSnapshotFactory.safeRetainedSnapshot(
+        var retained = safeRetainedSnapshot(
             envelope,
-            watchlistItems: trustedBefore.watchlistItems,
+            trusted: trustedBefore,
             additionallyUnsafeMovieIDs: reevaluatedMovieIDs
         )
 
@@ -335,9 +337,9 @@ private extension ThreeForTonightCoordinator {
                     case .ineligible, .unknown:
                         rehydratedUnsafeMovieIDs.insert(candidate.seed.movieID)
                 }
-                retained = ThreeForTonightSnapshotFactory.safeRetainedSnapshot(
+                retained = safeRetainedSnapshot(
                     envelope,
-                    watchlistItems: trustedBefore.watchlistItems,
+                    trusted: trustedBefore,
                     additionallyUnsafeMovieIDs: pendingReevaluatedMovieIDs
                         .union(rehydratedUnsafeMovieIDs)
                 )
@@ -452,6 +454,19 @@ private extension ThreeForTonightCoordinator {
             throw CoordinatorError.watchlistUnavailable
         }
         return TrustedLocalState(profile: profile, watchlistItems: watchlistItems)
+    }
+
+    private func safeRetainedSnapshot(
+        _ envelope: PersistedDecisionSet,
+        trusted: TrustedLocalState,
+        additionallyUnsafeMovieIDs: Set<Int>
+    ) -> ThreeForTonightSnapshot? {
+        ThreeForTonightSnapshotFactory.safeRetainedSnapshot(
+            envelope,
+            watchlistItems: trusted.watchlistItems,
+            profile: trusted.profile,
+            additionallyUnsafeMovieIDs: additionallyUnsafeMovieIDs
+        )
     }
 
     private func trustedInputsMatch(

@@ -344,6 +344,23 @@ private extension PositiveAnchorEvidence {
             throw DecisionSetValidationError.invalidEvidence
         }
 
+        if let anchorGenres {
+            let anchorGenreIDs = Set(anchorGenres.map(\.id))
+            let actualSharedGenreIDs = displayGenreIDs.intersection(anchorGenreIDs)
+            let unionGenreIDs = displayGenreIDs.union(anchorGenreIDs)
+            guard
+                !anchorGenres.isEmpty,
+                anchorGenres.allSatisfy({ $0.id > 0 }),
+                anchorGenreIDs.count == anchorGenres.count,
+                !actualSharedGenreIDs.isEmpty,
+                actualSharedGenreIDs == evidenceGenreIDs,
+                Double(actualSharedGenreIDs.count) / Double(unionGenreIDs.count)
+                >= 1.0 / 3.0
+            else {
+                throw DecisionSetValidationError.invalidEvidence
+            }
+        }
+
         switch eraMatch {
             case let .sameDecade(decade):
                 try decade.validateForPersistence()

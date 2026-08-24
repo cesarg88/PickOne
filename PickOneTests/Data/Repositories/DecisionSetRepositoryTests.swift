@@ -130,6 +130,7 @@ struct DecisionSetRepositoryTests {
                             movieID: 155,
                             movieTitle: "Anchor",
                             reaction: .loved,
+                            anchorGenres: [],
                             sharedGenres: [],
                             eraMatch: nil
                         )
@@ -158,6 +159,7 @@ struct DecisionSetRepositoryTests {
                             movieID: 155,
                             movieTitle: "Anchor",
                             reaction: .liked,
+                            anchorGenres: [drama],
                             sharedGenres: [drama],
                             eraMatch: .adjacentDecade(
                                 candidate: DecisionDecade(year: 2020),
@@ -176,6 +178,7 @@ struct DecisionSetRepositoryTests {
                             movieID: 155,
                             movieTitle: "Anchor",
                             reaction: .liked,
+                            anchorGenres: [],
                             sharedGenres: [],
                             eraMatch: .sameDecade(DecisionDecade(year: -1))
                         )
@@ -388,6 +391,7 @@ struct DecisionSetRepositoryTests {
                                 movieID: 155,
                                 movieTitle: "El caballero oscuro",
                                 reaction: .loved,
+                                anchorGenres: [genre],
                                 sharedGenres: [genre],
                                 eraMatch: .adjacentDecade(
                                     candidate: DecisionDecade(year: 2020),

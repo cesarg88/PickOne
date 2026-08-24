@@ -6,8 +6,11 @@ import Testing
 struct DecisionSetCompositeValidationTests {
     @Test("recommendation evidence must agree with its display snapshot")
     func recommendationEvidenceConsistency() {
+        let action = DecisionGenre(id: 28, name: "Action")
+        let adventure = DecisionGenre(id: 12, name: "Adventure")
         let drama = DecisionGenre(id: 18, name: "Drama")
         let comedy = DecisionGenre(id: 35, name: "Comedy")
+        let thriller = DecisionGenre(id: 53, name: "Thriller")
         let invalidEvidence = [
             RecommendationEvidence(
                 primary: .positiveAnchor(
@@ -15,6 +18,7 @@ struct DecisionSetCompositeValidationTests {
                         movieID: 155,
                         movieTitle: "Anchor",
                         reaction: .loved,
+                        anchorGenres: [comedy],
                         sharedGenres: [comedy],
                         eraMatch: nil
                     )
@@ -33,6 +37,7 @@ struct DecisionSetCompositeValidationTests {
                         movieID: 155,
                         movieTitle: "Anchor",
                         reaction: .liked,
+                        anchorGenres: [drama],
                         sharedGenres: [drama],
                         eraMatch: .sameDecade(DecisionDecade(year: 2010))
                     )
@@ -45,6 +50,20 @@ struct DecisionSetCompositeValidationTests {
                         movieID: 10,
                         movieTitle: "Same movie",
                         reaction: .liked,
+                        anchorGenres: [drama],
+                        sharedGenres: [drama],
+                        eraMatch: nil
+                    )
+                ),
+                diversity: nil
+            ),
+            RecommendationEvidence(
+                primary: .positiveAnchor(
+                    PositiveAnchorEvidence(
+                        movieID: 155,
+                        movieTitle: "Weak anchor",
+                        reaction: .loved,
+                        anchorGenres: [action, adventure, comedy, drama, thriller],
                         sharedGenres: [drama],
                         eraMatch: nil
                     )

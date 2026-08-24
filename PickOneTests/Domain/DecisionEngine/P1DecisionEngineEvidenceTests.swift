@@ -68,6 +68,74 @@ struct P1DecisionEngineEvidenceTests {
         #expect(affinity.genres.map(\.id) == [18])
     }
 
+    @Test("Fixture M keeps Deadpool similarity without naming it for Parasite")
+    func weakDeadpoolParasiteAnchorIsNotVisible() throws {
+        let profile = P1TasteProfile(evidence: [
+            evidence(
+                293_660,
+                title: "Deadpool",
+                .loveIt,
+                [.action, .adventure, .comedy],
+                2016
+            ),
+        ])
+        let parasite = try candidate(
+            496_243,
+            [.comedy, .thriller, .drama],
+            year: 2019
+        )
+        let score = P1Scoring.score(
+            P1CandidateScoreInput(
+                movieID: parasite.movieID,
+                genres: parasite.genres,
+                releaseYear: parasite.releaseYear,
+                voteAverage: parasite.voteAverage,
+                voteCount: parasite.voteCount,
+                isSavedAndUnwatched: false
+            ),
+            profile: profile
+        )
+        let selection = engine.select(from: input(
+            profile: profile,
+            candidates: [parasite]
+        ))
+        let primary = try #require(selection.recommendations.first?.evidence.primary)
+
+        #expect(abs(score.similarityComponent - 0.36) < 1e-12)
+        guard case let .positiveGenreAffinity(affinity) = primary else {
+            Issue.record("Expected the supported Comedy affinity instead of a weak anchor")
+            return
+        }
+        #expect(affinity.genres.map(\.id) == [35])
+    }
+
+    @Test("a named positive anchor qualifies at the exact one-third genre boundary")
+    func exactAnchorGenreBoundaryIsVisible() throws {
+        let profile = P1TasteProfile(evidence: [
+            evidence(
+                100,
+                title: "Boundary Anchor",
+                .likeIt,
+                [.action, .comedy],
+                2016
+            ),
+        ])
+        let selection = try engine.select(from: input(
+            profile: profile,
+            candidates: [candidate(1, [.comedy, .drama], year: 2019)]
+        ))
+        let primary = try #require(selection.recommendations.first?.evidence.primary)
+
+        guard case let .positiveAnchor(anchor) = primary else {
+            Issue.record("Expected the exact one-third Jaccard boundary to qualify")
+            return
+        }
+        #expect(anchor.movieID == 100)
+        #expect(anchor.anchorGenres?.map(\.id) == [28, 35])
+        #expect(anchor.sharedGenres.map(\.id) == [35])
+        #expect(anchor.eraMatch != nil)
+    }
+
     @Test("general quality is an honest fallback only while the profile is sparse")
     func sparseQualityFallback() throws {
         let selection = try engine.select(from: input(
@@ -212,6 +280,7 @@ struct P1DecisionEngineEvidenceTests {
 }
 
 private extension DecisionGenre {
+    static let action = DecisionGenre(id: 28, name: "Action")
     static let adventure = DecisionGenre(id: 12, name: "Adventure")
     static let comedy = DecisionGenre(id: 35, name: "Comedy")
     static let drama = DecisionGenre(id: 18, name: "Drama")

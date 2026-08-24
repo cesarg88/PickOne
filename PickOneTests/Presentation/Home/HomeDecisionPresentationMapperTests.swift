@@ -59,6 +59,7 @@ enum HomeDecisionTestFixtures {
             movieID: 201,
             movieTitle: "Arrival",
             reaction: .loved,
+            anchorGenres: [drama, scienceFiction],
             sharedGenres: [drama, scienceFiction],
             eraMatch: nil
         )

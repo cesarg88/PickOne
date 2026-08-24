@@ -157,19 +157,25 @@ struct P1DecisionEngine: DecisionSelecting, Sendable {
                     releaseYear: candidate.releaseYear,
                     anchor: anchor
                 )
-                guard similarity > 0 else {
+                let genreJaccard = P1Scoring.genreJaccard(
+                    candidate.genres,
+                    anchor.genres
+                )
+                guard genreJaccard >= 1.0 / 3.0 else {
                     return nil
                 }
 
                 let sharedGenres = candidate.genres
                     .filter { anchor.genres.contains($0) }
                     .sorted { $0.id < $1.id }
+                let anchorGenres = anchor.genres.sorted { $0.id < $1.id }
                 return RankedAnchor(
                     similarity: similarity,
                     evidence: PositiveAnchorEvidence(
                         movieID: anchor.movieID,
                         movieTitle: title,
                         reaction: reaction,
+                        anchorGenres: anchorGenres,
                         sharedGenres: sharedGenres,
                         eraMatch: eraMatch(
                             candidateYear: candidate.releaseYear,
