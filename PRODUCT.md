@@ -3,7 +3,7 @@
 ## Document Status
 
 - Status: `Canonical`
-- Last product review: `2026-08-11`
+- Last product review: `2026-08-24`
 - Product name: `PickOne` is a codename until the decision experience is
   validated.
 
@@ -359,6 +359,15 @@ The short reason uses the strongest supported semantic evidence in this order:
 The Safe, Stretch, or Discovery role communicates how the set was composed.
 Diversity alone never replaces the reason that the movie fits.
 
+A visible positive-anchor explanation is stricter than the underlying P1
+similarity score. Its anchor must have the viewer's current `Love it` or `Like
+it` reaction, share at least one genre with the candidate, and reach genre
+Jaccard similarity of at least `1/3`. Release era may reinforce that real genre
+connection but cannot justify an anchor by itself. Direct and Watchlist-wrapped
+copy names only the shared genres and supported era evidence carried by the
+structured anchor. Persisted anchor evidence must still match the current
+reaction and metadata threshold when the set is restored or published.
+
 ### 3. Recommendation-set persistence and refresh
 
 The current set persists when the app is closed and reopened. A user must not
@@ -600,11 +609,14 @@ The current application already provides:
 - regional subscription-availability evidence in Movie Detail
 - resumable onboarding with streaming-service selection and taste calibration
 - a persistent editable local viewer profile and Settings surface
+- the deterministic Decision Engine and persistent “Three for Tonight” Home
+  implementation in PR #31, including structured explanations, refresh,
+  repair, and Movie Detail routing
 
-It does not yet deliver the target first product version described here.
-Specifically, the deterministic Decision Engine, persistent “Three for
-Tonight,” explicit decision feedback, and trailer presentation remain product
-work.
+Milestone 6 implementation and documentation are closure-ready. Final approval
+still requires green CI and the Product Owner's targeted device confirmation on
+the final PR #31 SHA. Explicit decision feedback and trailer presentation
+remain product work and are not part of this closure.
 
 Technical migration or architecture work may continue without changing current
 behavior, but new product implementation must be specified against this target.
@@ -727,6 +739,11 @@ As of the last review:
   then a positive movie anchor, then positive genre affinity, then quality for
   sparse profiles. Product roles communicate composition; diversity is not a
   substitute for fit evidence.
+- A visible positive anchor is limited to the current `Love it` or `Like it`
+  reaction, at least one shared genre, and genre Jaccard similarity of at least
+  `1/3`. Era may strengthen but never establish the anchor, and direct or
+  Watchlist-wrapped copy enumerates only the shared genre and supported era
+  signals. This explanation rule does not change P1 scoring.
 
 ## Open Product Questions
 
@@ -741,8 +758,8 @@ They must be resolved in product steering or explicitly bounded by a milestone.
 ## Related Documents
 
 - [`docs/milestones/milestone-6-three-for-tonight.md`](docs/milestones/milestone-6-three-for-tonight.md)
-  is the accepted, Engineering Ready implementation specification for the
-  deterministic Decision Engine and persistent Home set.
+  is the accepted implementation and closure record for the deterministic
+  Decision Engine and persistent Home set.
 - [`docs/decisions/adr-011-deterministic-decision-engine-v1.md`](docs/decisions/adr-011-deterministic-decision-engine-v1.md)
   defines the accepted P1 model, eligibility, composition, explanation, and
   persistence architecture.

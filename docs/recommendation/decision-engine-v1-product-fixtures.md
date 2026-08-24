@@ -4,6 +4,9 @@
 **Purpose:** Preserve the observable product constraints used to select the
 canonical Milestone 6 model. ADR-011 owns the final P1 constants and rules.
 
+Fixture M was accepted during Milestone 6 closure. It constrains visible
+positive-anchor evidence only and does not revise P1 scoring.
+
 ---
 
 # 1. Why fixtures come before weights
@@ -618,7 +621,47 @@ Eligibility or watch-history rules are relaxed silently to avoid an empty screen
 
 ---
 
-# 16. Historical boundary of the fixture phase
+# 16. Fixture M — Weak positive similarity is not a visible anchor
+
+Viewer rates:
+
+```text
+Deadpool (TMDB 293660) → Love it
+```
+
+Candidate:
+
+```text
+Parasite (TMDB 496243)
+```
+
+Relevant frozen genres and era:
+
+```text
+Deadpool → Action, Adventure, Comedy · 2010s
+Parasite → Comedy, Thriller, Drama · 2010s
+```
+
+The movies share one of five union genres, so genre Jaccard is `1/5`. They also
+share a release decade. With a `Love it` anchor, the unchanged P1 metadata
+similarity is therefore `(1/5 × 0.80) + (1.0 × 0.20) = 0.36`.
+
+## Expected behaviour
+
+- P1 scoring keeps its existing metadata-similarity calculation unchanged.
+- Deadpool does not qualify as a visible positive anchor for Parasite because
+  `1/5 < 1/3`.
+- the shared decade cannot rescue the anchor;
+- another supported explanation source is selected when available.
+
+## Invalid outcome
+
+The explanation says Parasite fits because the Viewer loved Deadpool, or names
+unobserved shared tone, theme, creators, or narrative characteristics.
+
+---
+
+# 17. Historical boundary of the fixture phase
 
 Before P1 was selected, these fixtures deliberately did not fix:
 
@@ -640,7 +683,7 @@ implementation decision.
 
 ---
 
-# 17. Completed validation sequence
+# 18. Completed validation sequence
 
 The fixture pack was followed by the accepted **Real Movie Sanity Check v1**
 and P1 scoring prototype.

@@ -2,11 +2,16 @@
 
 ## Status
 
-Accepted
+Accepted — Milestone 6 implementation complete; final approval pending
 
 The Product Owner accepted this product and architecture decision on
 2026-08-11. The Lead Engineer should treat the formula, eligibility rules,
 pipeline and test obligations below as the canonical Milestone 6 contract.
+
+On 2026-08-19, the Product Owner accepted a closure correction for visible
+positive-anchor explanations. It narrows which computed similarity may be
+named to the Viewer but does not change any P1 score, weight, threshold, role,
+or ordering rule.
 
 ## Context
 
@@ -319,6 +324,19 @@ If there are no positive anchors, `similarityComponent = 0`.
 Similarity is intentionally limited to accepted metadata. It must not imply
 shared themes, creators, tone or narrative structure.
 
+The maximum similarity calculation above remains unchanged. A positive anchor
+may be named in a visible explanation only when all of these stricter evidence
+conditions hold:
+
+- the anchor has the Viewer's current `Love it` or `Like it` reaction;
+- candidate and anchor share at least one genre;
+- genre Jaccard similarity is at least `1/3`.
+
+Release era may reinforce an already-qualified genre anchor but cannot qualify
+one by itself. Failing these conditions removes anchor evidence from the
+explanation selection; it does not remove the similarity contribution from P1
+scoring.
+
 ### General quality confidence
 
 ```text
@@ -487,7 +505,8 @@ small deterministic template set.
 
 Allowed evidence:
 
-- a named `Love it` or `Like it` anchor and the actual shared genres/era;
+- a qualified named `Love it` or `Like it` anchor and only the genres or era
+  signals actually shared;
 - candidate genres with positive learned affinity;
 - a supported era affinity;
 - verified general-quality evidence, especially for a sparse profile;
@@ -529,6 +548,12 @@ quality connection exists; it never becomes the sole fit reason.
 Templates may be localized or tightened for UI space without adding semantic
 claims. Do not display numeric scores or confidence percentages.
 
+Persisted and restored anchor evidence is semantically valid only while the
+named movie still has the captured current `Love it` or `Like it` reaction and
+the stored candidate/anchor metadata still satisfies the genre threshold.
+Invalid evidence cannot be rendered or silently downgraded into a generic
+anchor claim; the set must be repaired or regenerated from trusted inputs.
+
 Forbidden claims include unobserved preferences, themes, tone, pacing,
 creators, “perfect for you,” or certainty that the viewer will enjoy a movie.
 Provider copy must remain based on verified availability rather than the
@@ -563,6 +588,8 @@ explain the current product state:
 - assigned movie IDs and roles;
 - display metadata required to render the retained set after relaunch;
 - structured recommendation evidence;
+- the reaction value and anchor identity required to validate named anchor
+  evidence against the current trusted reaction snapshot;
 - provider verification time and verified matching providers;
 - recommendation-cycle identifier and shown movie IDs.
 
@@ -697,11 +724,13 @@ verified:
 
 ### Pure domain tests
 
-- every accepted synthetic fixture A–L;
+- every accepted synthetic fixture A–M;
 - P1 reaction values and sparse-evidence shrinkage;
 - adaptive weights summing to `1` within numerical tolerance;
 - P1 positive genre coverage;
 - positive-anchor similarity;
+- visible-anchor qualification at genre Jaccard `1/3`, including the
+  Deadpool–Parasite negative explanation fixture;
 - quality-confidence floor for low vote counts;
 - Watchlist `+2` bonus without Taste Profile mutation;
 - score `>= 50` admission and sparse `qualityComponent >= 0.60` exception;
@@ -730,6 +759,8 @@ verified:
 ### Product verification
 
 - explanations use only structured supported evidence;
+- persisted anchor evidence is checked against the current reaction before
+  restoration or publication;
 - runtime remains display-only;
 - the frozen original and augmented real-profile snapshots reproduce the
   accepted P1 ordering behavior;

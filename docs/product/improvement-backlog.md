@@ -12,7 +12,8 @@ It contains only work that remains pending after Milestone 3.3. Completed work
 should remain in this file with its status changed to `Completed` and a link to
 the implementing PR or milestone.
 
-Last reviewed: 2026-08-11, at the Engineering Ready definition of Milestone 6.
+Last reviewed: 2026-08-24, during Milestone 6 implementation and documentation
+closure in PR #31.
 
 ## Product Direction
 
@@ -98,7 +99,7 @@ Priorities:
   - accepted structured explanation evidence and semantic precedence
   - defined persistent Decision Sets, cycle identity, mutable eligibility,
     recovery, and deliberate refresh
-  - translated synthetic fixtures A–L and frozen real-profile snapshots into
+  - translated synthetic fixtures A–M and frozen real-profile snapshots into
     mandatory automated regression coverage
   - kept Apple Foundation Models, runtime intent, feedback, backend, and
     physical module extraction outside Milestone 6
@@ -160,7 +161,7 @@ Priorities:
 
 ### IMP-020 — Validate household utility after Three for Tonight
 
-- Status: `Planned`
+- Status: `In Progress — targeted final-SHA confirmation pending`
 - Priority: `P0`
 - Roadmap relationship: Utility Checkpoint after Milestone 6
 - Depends on: Milestones 4, 5, and 6
@@ -179,14 +180,22 @@ Priorities:
   - the Product Owner has accepted the flow as useful enough to continue, or
     the next refinement has been identified
   - Milestone 7 is confirmed, revised, or deferred from observed household use
+- Evidence to date:
+  - the complete Milestone 6 flow passed functional validation on the Product
+    Owner's pilot iPhone
+  - that validation identified the positive-anchor explanation correction now
+    implemented and documented in PR #31
+  - completion requires the Product Owner's targeted confirmation on the final
+    reviewed SHA after local verification and CI are green
 
 ### IMP-003 — Make recommendations the primary Home experience
 
-- Status: `Planned`
+- Status: `Pilot Validation — final approval pending`
 - Priority: `P0`
 - Depends on: IMP-002, IMP-009, and IMP-019
 - Implementation specification:
   [`Milestone 6 — Three for Tonight`](../milestones/milestone-6-three-for-tonight.md)
+- Implementation: [PR #31](https://github.com/cesarg88/PickOne/pull/31)
 - Why: opening on a generic Top Rated grid communicates that PickOne is a
   catalog, while opening on Ask requires effort before the product demonstrates
   value.
@@ -203,6 +212,18 @@ Priorities:
   - a fresh launch exposes the core decision proposition immediately
   - a returning user receives three eligible recommendations without composing
     a request
+- Implemented result:
+  - Home is the first tab and presents a persistent zero-to-three Decision Set
+    with roles, supported reasons, verified providers, explicit refresh, repair,
+    Retry, and Movie Detail navigation
+  - direct and Watchlist-wrapped positive anchors enumerate only their actual
+    shared genre and supported era signals
+  - P1 scoring remains unchanged and Fixture M protects the visible-evidence
+    boundary
+- Completion evidence:
+  - implementation and documentation closure are included in PR #31
+  - final approval requires green local verification, green CI, and the Product
+    Owner's targeted device confirmation on the final SHA
 
 ### IMP-004 — Add explicit decision and feedback actions
 
@@ -498,17 +519,15 @@ the added complexity.
 
 ## Suggested Sequence
 
-1. Implement Milestone 6 through its accepted dependency-ordered PR slices.
-2. Merge the Home experience and documentary closure only after all earlier
-   engine, Data, persistence, and orchestration slices are green.
-3. Run the required household utility checkpoint and use its findings to
-   confirm or revise the next milestone.
-4. Add explicit decision feedback and resolve Recommendation/Watchlist state
-   only after the checkpoint supports that direction.
-5. Add trailers and the minimum pilot measurement contract.
-6. Introduce a backend or AI provider only if product validation demonstrates
+1. Approve and merge Milestone 6 only after PR #31 is green and the Product
+   Owner confirms the targeted final-SHA device behavior.
+2. Begin Milestone 7 only after Milestone 6 is finally approved.
+3. Add explicit decision feedback and resolve Recommendation/Watchlist state
+   only after that gate supports the direction.
+4. Add trailers and the minimum pilot measurement contract.
+5. Introduce a backend or AI provider only if product validation demonstrates
    a need that deterministic recommendation cannot meet.
-7. Complete distribution, accessibility, and persistence hardening as the
+6. Complete distribution, accessibility, and persistence hardening as the
    audience expands.
 
 ## Update Rules

@@ -13,10 +13,54 @@ struct HomeDecisionPresentationMapperTests {
         let item = try #require(model.items.first)
         #expect(item.id == 101)
         #expect(item.role == "Safe Choice")
-        #expect(item.reason == "Saved for later, and similar to a movie you loved: Arrival.")
+        #expect(
+            item.reason == "Saved for later, and similar to Arrival, which you loved — "
+                + "shares Drama and Science Fiction."
+        )
         #expect(item.providers.map(\.name) == ["Netflix"])
         #expect(item.details == "2024 · 2h 3m · Drama, Science Fiction")
         #expect(item.isSaved)
+    }
+
+    @Test("direct anchor reason enumerates only shared genres")
+    func directAnchorReasonEnumeratesGenres() throws {
+        let recommendation = try HomeDecisionTestFixtures.recommendation(
+            watchlistWrapped: false,
+            sharedGenreIDs: [18]
+        )
+        let snapshot = try HomeDecisionTestFixtures.snapshot(
+            recommendations: [recommendation]
+        )
+
+        let item = try #require(HomeDecisionPresentationMapper.map(
+            snapshot: snapshot
+        ).items.first)
+
+        #expect(item.reason == "Similar to Arrival, which you loved — shares Drama.")
+        #expect(!item.reason.contains("2020s"))
+        #expect(!item.reason.contains("Science Fiction"))
+    }
+
+    @Test("direct anchor reason adds supported era reinforcement")
+    func directAnchorReasonIncludesEraMatch() throws {
+        let recommendation = try HomeDecisionTestFixtures.recommendation(
+            watchlistWrapped: false,
+            reaction: .liked,
+            sharedGenreIDs: [18],
+            eraMatch: .sameDecade(DecisionDecade(year: 2024))
+        )
+        let snapshot = try HomeDecisionTestFixtures.snapshot(
+            recommendations: [recommendation]
+        )
+
+        let item = try #require(HomeDecisionPresentationMapper.map(
+            snapshot: snapshot
+        ).items.first)
+
+        #expect(
+            item.reason == "Similar to Arrival, which you liked — shares Drama; "
+                + "both are from the 2020s."
+        )
     }
 }
 
@@ -51,22 +95,35 @@ enum HomeDecisionTestFixtures {
 
     static func recommendation(
         movieID: Int = 101,
-        role: DecisionRole = .safeChoice
+        role: DecisionRole = .safeChoice,
+        watchlistWrapped: Bool = true,
+        reaction: PositiveAnchorReaction = .loved,
+        sharedGenreIDs: Set<Int> = [18, 878],
+        eraMatch: RecommendationEraMatch? = nil
     ) throws -> PersistedDecisionRecommendation {
         let drama = DecisionGenre(id: 18, name: "Drama")
         let scienceFiction = DecisionGenre(id: 878, name: "Science Fiction")
+        let comedy = DecisionGenre(id: 35, name: "Comedy")
+        let genres = [drama, scienceFiction]
+        let sharedGenres = genres.filter { sharedGenreIDs.contains($0.id) }
+        let anchorGenres = sharedGenres.count == genres.count
+            ? genres
+            : sharedGenres + [comedy]
         let anchor = PositiveAnchorEvidence(
             movieID: 201,
             movieTitle: "Arrival",
-            reaction: .loved,
-            anchorGenres: [drama, scienceFiction],
-            sharedGenres: [drama, scienceFiction],
-            eraMatch: nil
+            reaction: reaction,
+            anchorGenres: anchorGenres,
+            sharedGenres: sharedGenres,
+            eraMatch: eraMatch
         )
+        let primary: RecommendationPrimaryEvidence = watchlistWrapped
+            ? .watchlistIntent(match: .positiveAnchor(anchor))
+            : .positiveAnchor(anchor)
         return try PersistedDecisionRecommendation(
             role: role,
             evidence: RecommendationEvidence(
-                primary: .watchlistIntent(match: .positiveAnchor(anchor)),
+                primary: primary,
                 diversity: nil
             ),
             display: DecisionDisplaySnapshot(
@@ -76,7 +133,7 @@ enum HomeDecisionTestFixtures {
                 backdropPath: nil,
                 runtimeMinutes: 123,
                 releaseYear: 2024,
-                genres: [drama, scienceFiction]
+                genres: genres
             ),
             availability: DecisionAvailabilitySnapshot(
                 matchingProviders: [

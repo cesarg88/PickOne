@@ -72,7 +72,7 @@ enum HomeDecisionPresentationMapper {
             case let .watchlistIntent(match):
                 "Saved for later, and \(tasteMatch(match))"
             case let .positiveAnchor(anchor):
-                "Similar to a movie you \(reactionVerb(anchor.reaction)): \(anchor.movieTitle)."
+                positiveAnchorReason(anchor, sentenceStart: true)
             case let .positiveGenreAffinity(affinity):
                 affinityReason(affinity, sentenceStart: true)
             case .sparseQuality:
@@ -83,7 +83,7 @@ enum HomeDecisionPresentationMapper {
     private static func tasteMatch(_ evidence: RecommendationTasteEvidence) -> String {
         switch evidence {
             case let .positiveAnchor(anchor):
-                "similar to a movie you \(reactionVerb(anchor.reaction)): \(anchor.movieTitle)."
+                positiveAnchorReason(anchor, sentenceStart: false)
             case let .positiveAffinity(affinity):
                 affinityReason(affinity, sentenceStart: false)
         }
@@ -94,6 +94,34 @@ enum HomeDecisionPresentationMapper {
             case .loved: "loved"
             case .liked: "liked"
         }
+    }
+
+    private static func positiveAnchorReason(
+        _ anchor: PositiveAnchorEvidence,
+        sentenceStart: Bool
+    ) -> String {
+        let prefix = sentenceStart ? "Similar" : "similar"
+        var sharedSignals = sharedGenreDescription(anchor.sharedGenres)
+        switch anchor.eraMatch {
+            case let .sameDecade(decade):
+                sharedSignals += "; both are from the \(decade.startingYear)s"
+            case let .adjacentDecade(candidate, anchor):
+                sharedSignals += "; their release eras are adjacent "
+                    + "(\(candidate.startingYear)s and \(anchor.startingYear)s)"
+            case nil:
+                break
+        }
+        return "\(prefix) to \(anchor.movieTitle), which you "
+            + "\(reactionVerb(anchor.reaction)) — \(sharedSignals)."
+    }
+
+    private static func sharedGenreDescription(
+        _ genres: [DecisionGenre]
+    ) -> String {
+        let genreLabels = genres.map { genre in
+            genre.name ?? "genre \(genre.id)"
+        }
+        return "shares \(naturalList(genreLabels))"
     }
 
     private static func affinityReason(
