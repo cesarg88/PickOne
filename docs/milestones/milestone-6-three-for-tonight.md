@@ -2,15 +2,15 @@
 
 ## Status
 
-`Implementation complete — final approval pending`
+`Complete — merged in PR #31`
 
 - Product acceptance: `2026-08-11`
 - Engineering acceptance: `2026-08-11`
-- D0 and implementation slices PR1 through PR6 are merged into `develop`.
-- PR7 contains the final implementation and documentation closure, including
-  the accepted positive-anchor correction and Fixture M.
-- Final approval and merge still require green CI and the Product Owner's
-  targeted physical-device confirmation on the final PR7 SHA.
+- D0 and implementation slices PR1 through PR7 are merged into `develop`.
+- PR7 passed local verification, CI, technical review, and functional
+  physical-device validation.
+- The positive-anchor explanation correction, Fixture M, and documentary
+  closure merged in PR #31.
 
 ## Identifiers and authority
 
@@ -30,7 +30,7 @@ model and Decision Engine architecture.
 
 ## Completion record
 
-- Delivery: D0 and PR1 through PR6 merged as PRs #23–#30; PR7 is PR #31.
+- Delivery: D0 and PR1 through PR7 merged as PRs #23–#31.
 - Product result: deterministic P1 selection, persistent Home recommendations,
   explicit refresh, repair, supported explanations, and Movie Detail routing
   are implemented without changing P1 scoring.
@@ -39,11 +39,10 @@ model and Decision Engine architecture.
   Fixture M protects the Deadpool–Parasite boundary.
 - Automated evidence: `make verify` passed locally on 2026-08-24 with all
   repository checks, 326 tests in 59 unit suites, the UI smoke test, static
-  analysis, Release build, and application-bundle inspection green. CI must
-  also be green on the final SHA.
-- Device evidence: the functional Milestone 6 flow passed earlier pilot-device
-  validation. The Product Owner's targeted positive-anchor confirmation on the
-  final SHA remains the last external approval gate.
+  analysis, Release build, and application-bundle inspection green. CI also
+  passed on the merged final PR #31 SHA.
+- Device evidence: the functional Milestone 6 flow and the targeted final-SHA
+  positive-anchor behavior passed Product Owner validation on the pilot iPhone.
 
 ## Goal
 
@@ -731,13 +730,12 @@ Current integration record:
 | PR4 | #28 | Merged |
 | PR5 | #29 | Merged |
 | PR6 | #30 | Merged |
-| PR7 | #31 | Final implementation and closure; approval pending |
+| PR7 | #31 | Merged; Milestone 6 complete |
 
-PR6 completed the asynchronous orchestration dependency for PR7. PR7 now
-contains the final Milestone 6 implementation and documentary closure. Its
-remaining gates are green CI and targeted Product Owner device confirmation on
-the final SHA. This record does not change P1 constants or the physical-module
-decision.
+PR6 completed the asynchronous orchestration dependency for PR7. PR7 then
+delivered Home, the positive-anchor correction, and documentary closure in
+#31. No Milestone 6 slice remains open. This record does not change the accepted
+P1 constants or physical-module decision.
 
 ### D0 — Canonical specification and Engineering Ready state
 
@@ -869,8 +867,8 @@ Deliver:
 - final roadmap, backlog, milestone completion record, CI, and requested
   physical-device validation evidence.
 
-This PR closes Milestone 6 only after its final SHA passes `make verify`, CI,
-and the required device checks.
+PR #31 closed Milestone 6 after its final SHA passed `make verify`, CI, and the
+required device checks.
 
 ## Dependency graph
 
@@ -913,8 +911,8 @@ into a Milestone 6 implementation slice.
 - Release uses the existing TMDB attribution and credential boundaries.
 - Each merged PR is independently buildable; rollback is the normal revert of
   the latest coherent slice.
-- PR7 does not merge until the full feature is safe as the first tab. No remote
-  feature flag is required for the household pilot.
+- PR7 merged only after the full feature was safe as the first tab. No remote
+  feature flag was required for the household pilot.
 
 ## Required physical-device validation
 
@@ -937,9 +935,10 @@ On the Product Owner's pilot iPhone:
 - confirm Watchlist-wrapped anchor copy preserves those same supported signals
   and shows era reinforcement only when the evidence supplies it.
 
-The functional device flow has already passed. Final approval starts only from
-the reviewed, green final SHA and requires the Product Owner's targeted checks
-above. Milestone 7 remains blocked until that confirmation closes Milestone 6.
+The Product Owner reported that the functional device flow passed. That
+checkpoint confirmed Milestone 7 as the next direction and identified the
+positive-anchor explanation correction required before M6 closes. Household
+utility is evaluated again after Milestone 7.
 
 ## Explicit non-goals
 
@@ -973,9 +972,9 @@ title-specific rules.
 ## Final approval record
 
 There are no unresolved Milestone 6 product or technical decisions. D0 and PR1
-through PR6 are merged, and PR7 contains the final implementation, positive-
-anchor correction, Fixture M, and documentary closure.
+through PR7 are merged. The PR7 flow passed local verification, CI, technical
+review, and functional physical-device validation; the accepted visible-anchor
+correction and Fixture M are part of the merged final implementation.
 
-Milestone completion remains pending until PR7's final SHA passes local
-verification and CI and the Product Owner confirms the targeted physical-device
-behavior. Only then may PR #31 merge and Milestone 7 begin.
+Milestone 6 is complete. Later feedback and unified viewer-state work belongs to
+Milestone 7 and must not reopen this implementation record.

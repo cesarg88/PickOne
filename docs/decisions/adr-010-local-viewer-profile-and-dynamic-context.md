@@ -12,6 +12,16 @@ On 2026-08-03, physical-device validation led to an accepted automatic-
 completion flow. This amendment changes Presentation orchestration but does not
 change the repository boundary, envelope model, or atomicity definition.
 
+Milestone 7 accepts two scoped successors without rewriting this historical
+Milestone 5 decision. ADR-012 supersedes the physical
+profile/Watchlist persistence envelope and the temporary separation of
+calibration knowledge from watched state; ADR-013 supersedes the bundled-only
+catalog source. `ViewerProfileRepository`, dynamic availability context, draft
+lifecycle, and automatic completion semantics remain authoritative.
+
+Cross-cutting terms use the canonical
+[Product Language Glossary](../product/product-language-glossary.md).
+
 ## Context
 
 Milestone 4 introduced a dedicated availability boundary with evidence cached
@@ -294,6 +304,16 @@ the same rule.
 No generalized remote configuration or catalog-management abstraction is
 introduced.
 
+#### Accepted Milestone 7 supersession
+
+ADR-013 replaces only the catalog source and snapshot lifecycle. The ordered
+catalog may resolve from a complete validated remote
+document, last valid cache, or bundled fallback after at most two visible
+seconds. The exact resolved snapshot is persisted with the draft so membership,
+order, and fallback metadata cannot change during an active flow. Domain still
+receives one immutable catalog value and remains independent of networking and
+hosting.
+
 ### Current viewing context
 
 Introduce a Domain boundary equivalent to `GetCurrentViewingContext`. It reads
@@ -450,6 +470,25 @@ existing Watchlist watched state to exclude previously seen movies from Three
 for Tonight. A unified viewing-history model and synchronization between these
 surfaces remain outside Milestone 5.
 
+#### Accepted Milestone 7 supersession
+
+ADR-012 replaces this temporary separation. Informative
+calibration responses become Movie reactions and watched facts in unified
+Viewer Movie State. Recalibration upserts only informative responses;
+`Haven't seen it`, `Don't know it`, and movies omitted from the frozen catalog
+do not erase historical feedback. Watchlist remains independent future intent
+for an unwatched movie rather than a watched-state container.
+
+The v2 completed Viewer Profile retains region, selected services, lifecycle,
+and the last completed catalog reference but drops the legacy reaction map.
+Current Movie reactions then have exactly one persisted owner.
+
+ADR-012 also moves the completed profile, drafts, and per-movie state into one
+versioned Application Support envelope with active, previous-valid, quarantine,
+and legacy recovery. That successor preserves ADR-010's single-owner,
+whole-envelope publication guarantee while adding recovery that the
+UserDefaults v1 API could not provide.
+
 ## Consequences
 
 ### Positive
@@ -518,6 +557,10 @@ The architecture and its documentary prerequisites are accepted:
 ## Related Documents
 
 - [`PRODUCT.md`](../../PRODUCT.md)
+- [Product Language Glossary](../product/product-language-glossary.md)
+- [Milestone 7 — Continuous Taste Learning](../milestones/milestone-7-continuous-taste-learning.md)
+- [ADR-012 — Unified Local Viewer Movie State](adr-012-unified-local-viewer-movie-state.md)
+- [ADR-013 — Remote Calibration Catalog](adr-013-remote-calibration-catalog.md)
 - [Milestone 5 — Viewer Profile & Onboarding](../milestones/milestone-5-viewer-profile-onboarding.md)
 - [ADR-009 — Availability Boundary and Verification](adr-009-availability-boundary-verification.md)
 - [Architecture Skeleton](../architecture/architecture-skeleton.md)

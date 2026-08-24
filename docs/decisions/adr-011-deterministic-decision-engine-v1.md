@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted — Milestone 6 implementation complete; final approval pending
+Accepted — Milestone 6 complete; amended by accepted Milestone 7 D0
 
 The Product Owner accepted this product and architecture decision on
 2026-08-11. The Lead Engineer should treat the formula, eligibility rules,
@@ -12,6 +12,10 @@ On 2026-08-19, the Product Owner accepted a closure correction for visible
 positive-anchor explanations. It narrows which computed similarity may be
 named to the Viewer but does not change any P1 score, weight, threshold, role,
 or ordering rule.
+
+On 2026-08-24, accepted Milestone 7 D0 amended input ownership, successor-cycle
+history inheritance, non-reusable Viewer State snapshot identity, and the
+Decision Set v1-to-v2 migration path. P1 scoring remains unchanged.
 
 ## Context
 
@@ -87,6 +91,10 @@ It does not define:
 
 ## Terms
 
+Cross-cutting terms use the canonical
+[Product Language Glossary](../product/product-language-glossary.md). The local
+definitions below preserve the exact Milestone 6 contract.
+
 ### Candidate
 
 A TMDB movie admitted to the recall pool. Candidate status does not imply final
@@ -125,7 +133,7 @@ current set, but it does not clear the IDs already shown in the cycle.
 
 Decision Engine v1 may consume only evidence owned or verified by PickOne:
 
-- Viewer Profile and its revision or equivalent snapshot identity;
+- Viewer Profile inputs and the current Viewer State snapshot identity;
 - calibration reactions;
 - Watchlist save and watched state;
 - current-cycle movie IDs;
@@ -618,6 +626,65 @@ changes reevaluate the Watchlist bonus and explanation evidence and may repair
 or replace the current set. In every case the existing shown-ID history is
 preserved.
 
+### Accepted Milestone 7 input and cycle evolution
+
+ADR-012 changes the owner and lifecycle of inputs without changing P1:
+
+- current Movie reactions come from Viewer Movie State rather than the legacy
+  Viewer Profile reaction map;
+- watched and `Not interested` are title eligibility exclusions;
+- `Not interested` never contributes affinity or similarity;
+- Watchlist intent remains the accepted saved-unwatched `+2` bonus;
+- a Movie-reaction change creates a new cycle identity but inherits every ID
+  shown by the preceding cycle;
+- Watchlist, watched, and `Not interested` changes repair mutable eligibility
+  under the current cycle without clearing shown history;
+- when one atomic action changes reaction plus watched or Watchlist, the reaction
+  change has precedence and produces one successor cycle rather than an
+  eligibility repair followed by regeneration;
+- every Decision Set records its source Viewer State snapshot identity, and the
+  coordinator rejects a result that is stale before publication.
+
+This scoped evolution supersedes the M6 implication that every reaction-
+signature change begins with empty shown history. Formula, thresholds,
+credibility, diversity, roles, and deterministic tie-breaking remain unchanged.
+
+### Milestone 7 Decision Set envelope migration
+
+Milestone 7 introduces `DecisionSetEnvelopeV2`. It retains all validated v1
+fields and adds the opaque `sourceViewerStateSnapshotID` defined by ADR-012.
+The source identity is compared for equality before persistence, restoration,
+and publication; it is not part of the recommendation-cycle signature.
+
+A `DecisionSetEnvelopeV1` from the final Milestone 6 build is a supported legacy
+source, but it can never be published as current because it has no trustworthy
+source Viewer State identity. Migration follows this order:
+
+1. decode and semantically validate the complete v1 envelope through the
+   existing untrusted-data boundary;
+2. preserve its exact bytes as a read-only migration source until a replacement
+   v2 envelope has persisted successfully;
+3. carry its complete `shownMovieIDs` into reconciliation;
+4. recompute the cycle signature from current trusted M7 inputs;
+5. retain the v1 cycle identifier when the signature still matches; otherwise
+   create a successor cycle while inheriting every v1 shown ID;
+6. regenerate recommendations and persist a v2 envelope bearing the current
+   Viewer State snapshot identity before Presentation may publish anything.
+
+Migration never fabricates a source identity for the old recommendations and
+never treats a valid v1 envelope as corrupt merely because it needs
+regeneration. If regeneration or v2 persistence fails, Home shows Retry, the v1
+bytes remain available, and no v1 recommendation is presented as current. If
+the v1 bytes are corrupt or unsupported, preserve them in diagnostic quarantine
+and do not partially extract shown history. Existing recommendation recovery may
+then regenerate from trusted inputs, but it must not claim that unverifiable
+history was preserved.
+
+Recovery of an older Viewer State snapshot always publishes that state under a
+fresh snapshot identity. Therefore every existing v2 Decision Set becomes stale
+and must reconcile; an earlier numeric value can never make an old set appear
+current.
+
 Feedback replaces or invalidates recommendations deliberately according to its
 semantics. `Not tonight` is temporary context, not stable dislike. `Already
 watched` excludes the title. Passive UI behavior never changes the profile.
@@ -751,6 +818,13 @@ verified:
 - current-cycle exclusion across repeated refresh and app relaunch;
 - input-change invalidation and cycle reset;
 - Watchlist save/watched repair preserving cycle identity and shown history;
+- valid v1-to-v2 migration preserves exact legacy bytes and every shown ID,
+  never publishes a v1 recommendation as current, and persists the current
+  Viewer State snapshot identity only after regeneration;
+- matching and changed cycle-signature migration paths, failed regeneration,
+  failed v2 persistence, and corrupt-v1 no-partial-history behavior;
+- stale source snapshot identities before persistence, restoration, and
+  publication;
 - availability revalidation and single-title replacement;
 - atomic persistence and failure preservation;
 - corrupt and unsupported envelopes quarantined before regeneration, with
@@ -799,8 +873,6 @@ or unsupported metadata inference.
 
 ## Deferred decisions
 
-- catalog-wide movie reactions and real-time Taste Profile updates;
-- explicit hard preference and exclusion controls;
 - runtime as session context;
 - a `New` or newly-available badge;
 - shared household scoring;
@@ -813,6 +885,9 @@ or unsupported metadata inference.
 
 - [`PRODUCT.md`](../../PRODUCT.md)
 - [`ENGINEERING.md`](../../ENGINEERING.md)
+- [Product Language Glossary](../product/product-language-glossary.md)
+- [Milestone 7 — Continuous Taste Learning](../milestones/milestone-7-continuous-taste-learning.md)
+- [ADR-012 — Unified Local Viewer Movie State](adr-012-unified-local-viewer-movie-state.md)
 - [Decision Engine v1 — Product Fixtures](../recommendation/decision-engine-v1-product-fixtures.md)
 - [Decision Engine v1 — Real Movie Sanity Check](../recommendation/decision-engine-v1-real-movie-sanity-check.md)
 - [Decision Engine v1 — Scoring Prototype](../recommendation/decision-engine-v1-scoring-prototype.md)
