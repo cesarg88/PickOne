@@ -18,10 +18,10 @@
 
 ## Validation
 
-<!-- List the exact commands executed and their results. Include the CI result when available. -->
+<!-- List the exact commands executed and their results. Include the CI result when available. Open ready for review and hand off without waiting when CI is pending. -->
 
 - [ ] `make verify`
-- [ ] CI is green
+- [ ] CI is green (required before merge; it may be pending during review)
 
 ## Device validation
 

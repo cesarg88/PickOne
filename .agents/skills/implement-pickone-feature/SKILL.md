@@ -51,3 +51,7 @@ description: Implement accepted PickOne iOS features and behavior changes with t
    heading, and record the specification, changes, trade-offs, exact validation,
    stack dependency and merge order, device checks, exclusions, and milestone
    closure state.
+7. Open the PR as ready for review, never as a draft.
+8. Hand off immediately after pushing and opening the PR. Do not wait for CI;
+   report it as pending when no result exists yet. CI must still be green before
+   merge.

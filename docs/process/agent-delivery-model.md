@@ -43,7 +43,9 @@ The repository, not a long-running chat, is the durable source of truth.
 - works in a separate task and branch
 - implements only the accepted scope
 - runs the required automated checks
-- opens a reviewable PR with evidence and unresolved questions
+- opens the PR ready for review, never as a draft, with evidence and unresolved
+  questions
+- hands off without waiting for CI; a pending result does not delay review
 - does not invent product behavior or broaden architecture independently
 - uses only the `Cesar-IA-Agent` identity for GitHub writes
 - stops instead of falling back to a personal or work GitHub account
@@ -114,10 +116,12 @@ If one of these is intentionally irrelevant, the specification should say so.
 5. A new implementation task and branch are created for one bounded outcome.
 6. The implementation agent works from repository documents, not from the full
    steering-chat history.
-7. The agent opens a PR using `.github/PULL_REQUEST_TEMPLATE.md`, automated
-   validation, and a concise handoff.
+7. The agent opens a ready-for-review PR using
+   `.github/PULL_REQUEST_TEMPLATE.md`, local automated validation, and a concise
+   handoff. The agent does not wait for CI before handing it to the reviewer.
 8. The Technical Lead reviews correctness, architecture, scope, tests,
-   failure behavior, and documentation.
+   failure behavior, and documentation independently of whether CI is pending,
+   successful, or failed.
 9. The Product Owner performs the specified physical-device validation.
 10. Required changes are returned to the implementation task.
 11. Before merge, the implementation PR records final validation and closes the
@@ -135,10 +139,15 @@ content must state:
 - base branch, dependent PRs, and merge order when stacked
 - important architecture decisions
 - tests and commands executed
-- CI result
+- CI status or result when available; `pending` is valid at handoff and review
 - known limitations
 - device checks requested from the Product Owner
 - follow-up work intentionally excluded
+
+Implementation PRs are always opened ready for review and never as drafts. CI
+does not block handing off or reviewing a PR. Green CI on the final SHA remains
+a pre-merge gate, so a failing check must be resolved even when the technical
+review is otherwise complete.
 
 ## Commit Requirements
 
@@ -173,4 +182,6 @@ identity required by the GitHub App authentication policy.
 - new dependencies require justification and approval
 - automated green checks do not replace product/device validation
 - device validation does not replace automated regression coverage
+- pending or failed CI does not defer technical review; it remains a separate
+  merge-readiness signal
 - a reviewer should reject accidental scope expansion even when the code works

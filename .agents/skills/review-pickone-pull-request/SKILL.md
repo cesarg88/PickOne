@@ -17,6 +17,8 @@ description: Review PickOne pull requests for correctness, specification complia
    last commit separately when it claims to fix review or CI findings.
 5. Do not publish an approval, review, comment, or PR mutation unless the user
    explicitly asks for that write.
+6. Begin review as soon as the PR is ready for review. Do not wait for CI, and
+   do not use pending or failed CI as a reason to defer inspection of the diff.
 
 ## Review tests before implementation
 
@@ -62,10 +64,15 @@ risks rather than inventing comments.
 
 ## Decide merge readiness
 
-Require the final SHA to have green CI, the required physical-device evidence,
-an accurate PR description, and documentation closure in the same implementation
-PR. For stacked work, approve and merge in dependency order, then revalidate the
-new final SHA of the parent PR.
+Separate the technical review decision from merge readiness. A reviewer may
+complete the review and give technical approval while CI is pending. If CI has
+failed, inspect the failure alongside the diff and report the underlying issue,
+but continue the rest of the review rather than deferring it.
+
+Before merge, require the final SHA to have green CI, the required
+physical-device evidence, an accurate PR description, and documentation closure
+in the same implementation PR. For stacked work, approve and merge in dependency
+order, then revalidate the new final SHA of the parent PR.
 
 Require the PR description to retain every heading from
 `.github/PULL_REQUEST_TEMPLATE.md`; evaluate the content, not merely the presence

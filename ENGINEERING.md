@@ -3,7 +3,7 @@
 ## Document Status
 
 - Status: `Canonical`
-- Last engineering review: `2026-08-09`
+- Last engineering review: `2026-08-24`
 
 This document is the single current source of truth for PickOne's technical
 invariants and engineering quality bar. Accepted ADRs preserve the reasoning for
@@ -102,6 +102,11 @@ The executable verification contract lives in
 ## Reviewability and Delivery
 
 - One PR delivers one coherent outcome and remains buildable and green.
+- Open implementation PRs as ready for review, never as drafts, after the local
+  handoff checks pass. Do not wait for CI before handing the PR to the reviewer.
+- Begin technical review independently of CI status. Pending or failed CI does
+  not postpone review of the diff; green CI on the final SHA remains a merge
+  gate, and any failure must still be resolved before merge.
 - Split large milestones into dependency-ordered slices. Use stacked PRs only
   when a child cannot be reviewed or validated independently against `develop`.
 - Keep refactors separate from behavior unless the refactor is necessary for the
