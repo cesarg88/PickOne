@@ -139,12 +139,13 @@ does not mean the movie is watchable, credible, or selected.
 ### Eligibility
 
 The complete set of non-negotiable gates a Candidate must pass before it may
-enter a Decision Set. In the pilot this includes Watch state, `Not interested`,
-Recommendation-cycle history, credibility, and verified selected-provider
+continue toward a Decision Set. In the pilot this includes Watch state, `Not
+interested`, Recommendation-cycle history, and verified selected-provider
 availability.
 
 Eligibility is separate from score. A high score cannot override a failed or
-unknown eligibility gate.
+unknown eligibility gate. Credibility is a separate post-scoring admission
+rule, not part of Eligibility.
 
 ### Availability evidence
 
@@ -195,9 +196,10 @@ rating, eligibility decision, or user-visible confidence percentage.
 
 ### Credibility
 
-The admission rule that decides whether an otherwise eligible Candidate has
-enough accepted support to participate in role selection. Diversity cannot make
-a below-threshold Candidate credible.
+The post-scoring admission rule that decides whether an otherwise eligible
+Candidate has enough accepted support to participate in role selection. It is
+evaluated separately from Eligibility and after P1 scoring. Diversity cannot
+make a below-threshold Candidate credible.
 
 ## Recommendation output and lifecycle
 

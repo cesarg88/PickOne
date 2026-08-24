@@ -149,6 +149,14 @@ An unwatched movie with no preference or Watchlist intent is represented by an
 absent record rather than an empty tombstone. Watched without a rating remains
 a meaningful persisted state.
 
+Repeated valid actions are idempotent. Assigning the same rating, marking an
+already watched movie as watched, saving an already saved movie, removing an
+absent Watchlist intent, or undoing state that is already absent leaves
+semantic state unchanged.
+Such an action preserves `stateChangedAt`, Watchlist `addedAt`, and
+`ViewerStateSnapshotID`, produces no Home update, and never creates an empty
+tombstone. Invalid actions remain typed rejections rather than no-ops.
+
 `It was okay` is informative watched evidence with value `0`. It is not
 positive, negative, or a positive anchor.
 
@@ -231,6 +239,10 @@ One transition receives exactly one highest-priority recommendation impact:
 saved unwatched movie therefore produces one `tasteChanged` result even though
 it also marks watched and removes Watchlist. Domain returns the complete new
 state so every lower-priority field effect is still persisted atomically.
+For `none`, the repository returns the current state or continued absence and
+the current snapshot identity without replacing the envelope. A metadata-only
+refresh may persist separately while preserving state time, snapshot identity,
+and Home state.
 
 ### Repository capabilities
 
@@ -379,6 +391,10 @@ Draft-only progress and metadata hydration preserve the identity. A successful
 service edit, calibration completion, rating, watched, Watchlist, `Not
 interested`, or reset transition receives a fresh identity whenever current
 recommendation inputs change.
+
+An already-satisfied repeated action is not an input-changing commit. It keeps
+the current identity and causes no repair, regeneration, or transient Home
+feedback.
 
 The Decision Set envelope stores the source Viewer State snapshot identity. If
 state changes between the pre-persistence check and the write, the post-write
@@ -597,6 +613,9 @@ change requires repair or taste regeneration.
 - No state supports explicit rewatch intent.
 - A transition that changes reaction plus watched or Watchlist is classified
   once as `tasteChanged`; lower-priority effects never trigger a separate repair.
+- Repeating the same rating, watched, Watchlist save/remove, or already-absent
+  undo produces `none`, preserves state and snapshot identity, and does not
+  update Home; invalid transitions remain rejected.
 
 ### Migration and recovery
 
@@ -670,6 +689,9 @@ change requires repair or taste regeneration.
 - deterministic `My movies` ordering and projections;
 - change-impact classification, including taste precedence for a rating action
   that also marks watched and removes Watchlist.
+- idempotent same-rating, already-watched, repeated Watchlist save/remove, and
+  absent-undo results, including preserved `stateChangedAt`, Watchlist
+  `addedAt`, and absent-record canonicalization.
 
 ### Persistence and migration
 
@@ -691,6 +713,7 @@ change requires repair or taste regeneration.
 - concurrent serialized transitions and unique snapshot identities;
 - snapshot identity persistence across relaunch, service edits, and draft-only no-op
   behavior;
+- semantic no-ops preserve snapshot identity and active/previous envelope bytes;
 - previous-copy recovery republishes with a new identity and can never collide
   semantically with an earlier Decision Set source identity;
 - normal preference reset and destructive last-resort reset scopes;
@@ -706,6 +729,8 @@ change requires repair or taste regeneration.
 - reaction-driven signature transition inherits shown history;
 - Watchlist/watched/`Not interested` repairs preserve cycle identity;
 - multi-field reaction transitions take the new-cycle path exactly once;
+- semantic no-op transitions never invoke repair, regeneration, persistence, or
+  `Recommendations updated.` feedback;
 - stale Viewer State snapshot identity before persistence and after persistence cannot
   publish;
 - valid Decision Set v1 migration preserves all shown IDs, handles matching and
@@ -771,6 +796,8 @@ On the Product Owner's iPhone:
   fallback when practical;
 - terminate and relaunch during calibration and confirm exact-snapshot resume;
 - install a later build and confirm envelope compatibility;
+- repeat an already-satisfied rating, watched, and Watchlist action and confirm
+  `My movies` order, Home content, and Home feedback remain unchanged.
 - repeat the household utility checkpoint with the enriched Taste Profile.
 
 ## Delivery slices
@@ -797,8 +824,9 @@ branch merges.
 Dependencies: D0.
 
 Deliver values, invariants, pure transition reducer, projections, change-impact
-classification, and exhaustive Domain tests. Exclude persistence, existing
-Watchlist migration, Decision Engine, remote catalog, and UI.
+classification, idempotent no-op semantics, and exhaustive Domain tests.
+Exclude persistence, existing Watchlist migration, Decision Engine, remote
+catalog, and UI.
 
 ### PR2 — Local envelope, recovery, and migration
 

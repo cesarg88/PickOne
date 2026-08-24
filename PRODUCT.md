@@ -697,8 +697,10 @@ As of the last review:
 - Onboarding shows Spain inside service selection rather than as a separate
   non-interactive screen, requires at least one service, and preselects none.
 - Onboarding progress is resumable. Successful completion atomically commits
-  profile lifecycle and informative Movie reactions without erasing Watchlist
-  intent or Search History.
+  profile lifecycle and informative Movie reactions while preserving Search
+  History and every unrelated Watchlist intent. When completion upserts a
+  reaction for a movie currently saved, that same atomic transition removes
+  only that movie's conflicting Watchlist intent as required by ADR-012.
 - Onboarding completes automatically after the last valid action. There is no
   intermediate `Ready to save your preferences?` state, completion confirmation
   screen, or `Save preferences` button.
@@ -757,9 +759,10 @@ As of the last review:
   diversity, role, tie-breaking, and evidence rules in ADR-011.
 - Main navigation for Milestone 6 is `Home`, `Search`, `Discover`, `Watchlist`,
   and `Settings`; Ask remains implemented but hidden until its later milestone.
-- Recommendation-cycle identity includes engine version, profile reactions,
-  region, selected services, and viewing context. Watchlist changes repair or
-  invalidate current eligibility without clearing already-shown cycle history.
+- Recommendation-cycle identity includes engine version, current Movie
+  reactions, region, selected services, and viewing context. Watchlist changes
+  repair or invalidate current eligibility without clearing already-shown
+  cycle history.
 - Recommendation-envelope corruption or incompatibility preserves the unread
   bytes, attempts regeneration, and exposes Retry if recovery fails without
   modifying profile, Watchlist, or Search History.

@@ -90,8 +90,9 @@ saved rows merely to remain visible.
 - `Not interested`, watched, and Movie reaction cannot coexist with Watchlist
   intent;
 - metadata is sufficient to show a history row without an immediate request;
-- `stateChangedAt` changes only after a successful explicit state transition;
-  metadata refresh never reorders activity;
+- `stateChangedAt` changes only after a successful explicit transition that
+  changes semantic state; repeated semantic no-ops and metadata refresh never
+  reorder activity;
 - a mutation replaces one fully validated record or does not publish a change.
 
 An unwatched movie with no preference and no Watchlist intent has no persisted
@@ -117,6 +118,31 @@ meaningful and remains persisted.
 invalid transition if another caller attempts it. A newer valid action replaces
 the conflicting older intent as defined by the table; implicit restoration is
 never performed.
+
+### Idempotent repeated actions
+
+Domain evaluates an otherwise valid transition against the complete current
+state before assigning timestamps or asking Data to persist. When the requested
+end state already exists, the action is a semantic no-op:
+
+- assigning the current rating again preserves that rating and watched fact;
+- marking an already watched movie as watched preserves its reaction, if any;
+- saving an already saved movie preserves its original Watchlist `addedAt`;
+- removing an absent Watchlist intent changes no other field;
+- removing an absent rating, undoing an absent `Not interested`, or marking an
+  already unwatched movie as unwatched leaves the current record unchanged;
+- an absent record remains absent when an undo or removal has nothing to undo.
+
+A semantic no-op returns the current state, or continued absence, with
+recommendation impact `none`. It preserves `stateChangedAt` and the active
+`ViewerStateSnapshotID`, does not rotate or replace the envelope, and does not
+trigger Home repair, regeneration, or update feedback.
+
+Idempotence does not turn an invalid transition into success. For example,
+saving a watched movie or setting `Not interested` on a watched movie remains a
+typed Domain rejection. Metadata hydration requested alongside a semantic
+no-op is a separate metadata-only update: it may refresh display metadata, but
+it preserves `stateChangedAt`, `ViewerStateSnapshotID`, and Home state.
 
 ### Recommendation-impact precedence
 
@@ -214,6 +240,9 @@ hydration preserve it because they do not change current recommendation inputs.
 Service edits, calibration completion, ratings, watched, Watchlist, `Not
 interested`, and preference reset receive a fresh identity when their persisted
 result changes recommendation inputs.
+
+Semantic no-ops do not create a new committed state. They preserve the active
+snapshot identity and do not replace or rotate the active/previous envelopes.
 
 The identity is compared only for equality. It is never an incrementing counter,
 timestamp, or ordering signal. Callers cannot choose it. A newly committed
@@ -421,6 +450,12 @@ observed scale or query need.
 - normal first migration versus disclosed older-snapshot recovery;
 - encoding and replacement failures preserve the prior active state;
 - snapshot identities are never reused, including after previous-copy recovery;
+- repeated valid actions with an already-satisfied end state preserve
+  `stateChangedAt`, Watchlist `addedAt`, snapshot identity, and envelope bytes,
+  when metadata is also unchanged, return impact `none`, and never request a
+  Home update;
+- invalid transitions remain rejected even when a caller describes them as a
+  repeated action; metadata-only refresh remains identity-preserving;
 - concurrent mutations serialize and stale identities cannot publish;
 - multi-field transitions use taste, eligibility, then Watchlist impact
   precedence exactly once;
