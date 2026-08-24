@@ -39,32 +39,56 @@ final class AppContainer {
     let watchlistViewModel: WatchlistViewModel
     let searchViewModel: SearchViewModel
     let recommendationViewModel: RecommendationViewModel
+    let homeDecisionViewModel: HomeDecisionViewModel
     let viewerProfileViewModel: ViewerProfileViewModel
 
     init() {
         let repositories = Self.makeRepositories()
         let useCases = Self.makeUseCases(repositories: repositories)
+        let movieDetailUseCase: any GetMovieDetailUseCase
+        let availabilityUseCase: any CheckMovieAvailabilityUseCase
+        let playbackOptionsUseCase: any PreparePlaybackOptionsUseCase
+        let homeUseCase: any ThreeForTonightUseCase
+
+        if AppConfiguration.isUITesting {
+            movieDetailUseCase = UITestingMovieDetailUseCase()
+            availabilityUseCase = UITestingAvailabilityUseCase()
+            playbackOptionsUseCase = UITestingPreparePlaybackOptionsUseCase()
+            homeUseCase = UITestingThreeForTonightUseCase()
+        } else {
+            movieDetailUseCase = useCases.getMovieDetail
+            availabilityUseCase = useCases.checkMovieAvailability
+            playbackOptionsUseCase = useCases.preparePlaybackOptions
+            homeUseCase = useCases.threeForTonight
+        }
 
         getDiscoveryFeed = useCases.getDiscoveryFeed
-        getMovieDetail = useCases.getMovieDetail
-        checkMovieAvailability = useCases.checkMovieAvailability
-        preparePlaybackOptions = useCases.preparePlaybackOptions
+        getMovieDetail = movieDetailUseCase
+        checkMovieAvailability = availabilityUseCase
+        preparePlaybackOptions = playbackOptionsUseCase
         getWatchlist = useCases.getWatchlist
         setWatchlistMembership = useCases.setWatchlistMembership
         setWatched = useCases.setWatched
         searchMovies = useCases.searchMovies
         searchHistory = useCases.searchHistory
         getChatRecommendations = useCases.getChatRecommendations
-        threeForTonight = useCases.threeForTonight
+        threeForTonight = homeUseCase
         manageViewerProfile = useCases.manageViewerProfile
         imagePipeline = ImagePipeline()
         discoveryViewModel = DiscoveryViewModel(
             getDiscoveryFeed: useCases.getDiscoveryFeed
         )
+        let homeDecisionViewModel = HomeDecisionViewModel(
+            threeForTonight: homeUseCase
+        )
+        self.homeDecisionViewModel = homeDecisionViewModel
         watchlistViewModel = WatchlistViewModel(
             getWatchlist: useCases.getWatchlist,
             setMembership: useCases.setWatchlistMembership,
-            setWatched: useCases.setWatched
+            setWatched: useCases.setWatched,
+            eligibilityDidChange: { [weak homeDecisionViewModel] change in
+                homeDecisionViewModel?.repair(after: change)
+            }
         )
         searchViewModel = SearchViewModel(
             searchMovies: useCases.searchMovies,

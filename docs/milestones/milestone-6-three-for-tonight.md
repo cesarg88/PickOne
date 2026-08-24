@@ -2,12 +2,15 @@
 
 ## Status
 
-`Accepted — Engineering Ready for implementation`
+`Implementation complete — final approval pending`
 
 - Product acceptance: `2026-08-11`
 - Engineering acceptance: `2026-08-11`
-- Implementation authorization becomes effective when the D0 documentation PR
-  containing this specification is merged into `develop`.
+- D0 and implementation slices PR1 through PR6 are merged into `develop`.
+- PR7 contains the final implementation and documentation closure, including
+  the accepted positive-anchor correction and Fixture M.
+- Final approval and merge still require green CI and the Product Owner's
+  targeted physical-device confirmation on the final PR7 SHA.
 
 ## Identifiers and authority
 
@@ -24,6 +27,23 @@ If this specification conflicts with `PRODUCT.md` about product behavior,
 `PRODUCT.md` wins. If it conflicts with `ENGINEERING.md` about a current
 technical invariant, `ENGINEERING.md` wins. ADR-011 is canonical for the P1
 model and Decision Engine architecture.
+
+## Completion record
+
+- Delivery: D0 and PR1 through PR6 merged as PRs #23–#30; PR7 is PR #31.
+- Product result: deterministic P1 selection, persistent Home recommendations,
+  explicit refresh, repair, supported explanations, and Movie Detail routing
+  are implemented without changing P1 scoring.
+- Closure correction: visible direct and Watchlist-wrapped positive anchors
+  enumerate only their structured shared genres and supported era evidence;
+  Fixture M protects the Deadpool–Parasite boundary.
+- Automated evidence: `make verify` passed locally on 2026-08-24 with all
+  repository checks, 326 tests in 59 unit suites, the UI smoke test, static
+  analysis, Release build, and application-bundle inspection green. CI must
+  also be green on the final SHA.
+- Device evidence: the functional Milestone 6 flow passed earlier pilot-device
+  validation. The Product Owner's targeted positive-anchor confirmation on the
+  final SHA remains the last external approval gate.
 
 ## Goal
 
@@ -134,6 +154,14 @@ this precedence:
 2. a named positive `Love it` or `Like it` anchor;
 3. learned positive genre affinity;
 4. general quality evidence for a sparse profile.
+
+A named positive anchor additionally requires the current `Love it` or `Like
+it` reaction, at least one shared genre, and genre Jaccard similarity of at
+least `1/3`. Era may reinforce an already-qualified anchor but cannot establish
+one. Direct and Watchlist-wrapped copy enumerates only signals actually shared,
+and persisted evidence is validated against the current reaction before
+restoration or publication. These explanation restrictions do not modify P1
+scoring.
 
 Diversity can provide secondary role context only when a supported fit reason
 exists. Presentation must not display scores, confidence percentages, inferred
@@ -614,7 +642,7 @@ Milestone 7 feedback controls and quick viewing-context controls are not added.
 
 ## Required automated tests
 
-### Synthetic fixtures A–L
+### Synthetic fixtures A–M
 
 - A: exact raw order `C1 > C2 > C5 > C3 > C4`.
 - B: `C1` leads while unrelated high-quality alternatives remain credible and
@@ -631,6 +659,9 @@ Milestone 7 feedback controls and quick viewing-context controls are not added.
 - J: personalized `C1` and `C3` outrank unrelated popular `C2`.
 - K: `It was okay` is watched evidence and produces zero directional affinity.
 - L: exhausted credible eligibility returns successful empty selection.
+- M: Deadpool may still contribute unchanged P1 similarity to Parasite, but
+  cannot become its visible positive anchor because genre Jaccard is `1/5`,
+  below the accepted `1/3` explanation threshold; shared era cannot rescue it.
 
 ### Additional pure tests
 
@@ -671,6 +702,10 @@ Milestone 7 feedback controls and quick viewing-context controls are not added.
 - initial loading to loaded, smaller, empty, and Retry states;
 - retained set during refresh and non-destructive refresh failure;
 - role and explanation mapping;
+- direct and Watchlist-wrapped positive-anchor copy enumerates its actual shared
+  genre signals;
+- era reinforcement appears only when `PositiveAnchorEvidence.eraMatch`
+  supports it;
 - provider-logo mapping;
 - explicit refresh intent;
 - Home card to Movie Detail navigation;
@@ -695,12 +730,14 @@ Current integration record:
 | PR3 | #27 | Merged |
 | PR4 | #28 | Merged |
 | PR5 | #29 | Merged |
-| PR6 | — | Next implementation slice |
-| PR7 | — | Blocked on PR6 |
+| PR6 | #30 | Merged |
+| PR7 | #31 | Final implementation and closure; approval pending |
 
-This audit closes the remaining executable-specification gaps for PR6 and PR7.
-It does not change the accepted product behavior, P1 constants, persistence
-schema, or physical-module decision.
+PR6 completed the asynchronous orchestration dependency for PR7. PR7 now
+contains the final Milestone 6 implementation and documentary closure. Its
+remaining gates are green CI and targeted Product Owner device confirmation on
+the final SHA. This record does not change P1 constants or the physical-module
+decision.
 
 ### D0 — Canonical specification and Engineering Ready state
 
@@ -896,9 +933,13 @@ On the Product Owner's pilot iPhone:
 - exercise Retry using the implementation's controlled failure path when
   practical;
 - install a later build and confirm the persisted set remains compatible.
+- confirm a direct positive-anchor reason names only its actual shared genres;
+- confirm Watchlist-wrapped anchor copy preserves those same supported signals
+  and shows era reinforcement only when the evidence supplies it.
 
-After Milestone 6 closes, perform the separate required household utility
-checkpoint before authorizing Milestone 7.
+The functional device flow has already passed. Final approval starts only from
+the reviewed, green final SHA and requires the Product Owner's targeted checks
+above. Milestone 7 remains blocked until that confirmation closes Milestone 6.
 
 ## Explicit non-goals
 
@@ -929,13 +970,12 @@ checkpoint before authorizing Milestone 7.
 None of these limitations blocks implementation or authorizes hidden
 title-specific rules.
 
-## Engineering Ready record
+## Final approval record
 
-There are no unresolved product or technical decisions that materially change
-Milestone 6 contracts, persistence, migration, concurrency, failure behavior,
-test strategy, or PR sequencing.
+There are no unresolved Milestone 6 product or technical decisions. D0 and PR1
+through PR6 are merged, and PR7 contains the final implementation, positive-
+anchor correction, Fixture M, and documentary closure.
 
-After D0 merges, an autonomous implementation agent may start PR1 from
-`develop`. It must read this specification, ADR-011, `PRODUCT.md`,
-`ENGINEERING.md`, and the repository delivery and verification policies before
-changing production code.
+Milestone completion remains pending until PR7's final SHA passes local
+verification and CI and the Product Owner confirms the targeted physical-device
+behavior. Only then may PR #31 merge and Milestone 7 begin.

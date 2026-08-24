@@ -1,17 +1,35 @@
 import SwiftUI
 
 @MainActor
+struct MovieDetailNavigationDependencies {
+    let getMovieDetail: GetMovieDetailUseCase
+    let setMembership: SetWatchlistMembershipUseCase
+    let setWatched: SetWatchedUseCase
+    let checkAvailability: CheckMovieAvailabilityUseCase
+    let preparePlaybackOptions: PreparePlaybackOptionsUseCase
+    let eligibilityDidChange: @MainActor (DecisionEligibilityChange) -> Void
+
+    func makeViewModel(movieID: Int) -> MovieDetailViewModel {
+        MovieDetailViewModel(
+            movieId: movieID,
+            getMovieDetail: getMovieDetail,
+            setMembership: setMembership,
+            setWatched: setWatched,
+            checkAvailability: checkAvailability,
+            preparePlaybackOptions: preparePlaybackOptions,
+            eligibilityDidChange: eligibilityDidChange
+        )
+    }
+}
+
+@MainActor
 struct MovieDetailView: View {
     @Environment(\.openURL) private var openURL
     @State private var handoffTask: Task<Void, Never>?
 
     let model: MovieDetailViewModel
     let imagePipeline: ImagePipeline
-    let getMovieDetail: GetMovieDetailUseCase
-    let setMembership: SetWatchlistMembershipUseCase
-    let setWatched: SetWatchedUseCase
-    let checkAvailability: CheckMovieAvailabilityUseCase
-    let preparePlaybackOptions: PreparePlaybackOptionsUseCase
+    let navigationDependencies: MovieDetailNavigationDependencies
 
     var body: some View {
         ScrollView {
@@ -106,11 +124,7 @@ struct MovieDetailView: View {
                                 movies: data.similar,
                                 pipeline: imagePipeline,
                                 isUnavailable: data.isSimilarUnavailable,
-                                getMovieDetail: getMovieDetail,
-                                setMembership: setMembership,
-                                setWatched: setWatched,
-                                checkAvailability: checkAvailability,
-                                preparePlaybackOptions: preparePlaybackOptions
+                                navigationDependencies: navigationDependencies
                             )
                         }
                     }
@@ -369,11 +383,7 @@ private struct SimilarMoviesSection: View {
     let movies: [SimilarMovieItem]
     let pipeline: ImagePipeline
     let isUnavailable: Bool
-    let getMovieDetail: GetMovieDetailUseCase
-    let setMembership: SetWatchlistMembershipUseCase
-    let setWatched: SetWatchedUseCase
-    let checkAvailability: CheckMovieAvailabilityUseCase
-    let preparePlaybackOptions: PreparePlaybackOptionsUseCase
+    let navigationDependencies: MovieDetailNavigationDependencies
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -391,20 +401,9 @@ private struct SimilarMoviesSection: View {
                     ForEach(movies) { movie in
                         NavigationLink {
                             MovieDetailView(
-                                model: MovieDetailViewModel(
-                                    movieId: movie.id,
-                                    getMovieDetail: getMovieDetail,
-                                    setMembership: setMembership,
-                                    setWatched: setWatched,
-                                    checkAvailability: checkAvailability,
-                                    preparePlaybackOptions: preparePlaybackOptions
-                                ),
+                                model: navigationDependencies.makeViewModel(movieID: movie.id),
                                 imagePipeline: pipeline,
-                                getMovieDetail: getMovieDetail,
-                                setMembership: setMembership,
-                                setWatched: setWatched,
-                                checkAvailability: checkAvailability,
-                                preparePlaybackOptions: preparePlaybackOptions
+                                navigationDependencies: navigationDependencies
                             )
                         } label: {
                             VStack(alignment: .leading, spacing: 4) {

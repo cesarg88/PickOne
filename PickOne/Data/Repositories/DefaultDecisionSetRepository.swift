@@ -179,6 +179,7 @@ actor DefaultDecisionSetRepository: DecisionSetRepository {
             movieID: anchor.movieID,
             movieTitle: anchor.movieTitle,
             reaction: reaction,
+            anchorGenres: anchor.anchorGenres?.map(map),
             sharedGenres: anchor.sharedGenres.map(map),
             eraMatch: eraMatch
         )
@@ -352,6 +353,7 @@ actor DefaultDecisionSetRepository: DecisionSetRepository {
             movieID: dto.movieID,
             movieTitle: title,
             reaction: reaction,
+            anchorGenres: dto.anchorGenres?.map(map),
             sharedGenres: genres,
             eraMatch: eraMatch
         )

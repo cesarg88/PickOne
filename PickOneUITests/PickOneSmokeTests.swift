@@ -20,7 +20,7 @@ final class PickOneSmokeTests: XCTestCase {
             tapButton("Love it", in: app)
         }
 
-        let tabs = ["Discover", "Search", "Ask", "Watchlist", "Settings"]
+        let tabs = ["Home", "Search", "Discover", "Watchlist", "Settings"]
 
         for tab in tabs {
             let button = app.tabBars.buttons[tab]
@@ -28,6 +28,18 @@ final class PickOneSmokeTests: XCTestCase {
             button.tap()
             XCTAssertTrue(button.isSelected, "\(tab) tab did not become selected")
         }
+
+        XCTAssertFalse(app.tabBars.buttons["Ask"].exists, "Ask should not be exposed as a tab")
+
+        app.tabBars.buttons["Home"].tap()
+        let recommendation = app.buttons["home-recommendation-101"]
+        XCTAssertTrue(
+            recommendation.waitForExistence(timeout: 15),
+            "Home recommendation did not load"
+        )
+        recommendation.tap()
+        XCTAssertTrue(app.navigationBars["Details"].waitForExistence(timeout: 15))
+        XCTAssertTrue(app.staticTexts["Tonight's Movie"].waitForExistence(timeout: 15))
 
         app.tabBars.buttons["Settings"].tap()
         app.buttons["About"].tap()

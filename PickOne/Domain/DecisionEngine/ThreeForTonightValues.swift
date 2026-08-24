@@ -89,11 +89,13 @@ enum ThreeForTonightSnapshotFactory {
     static func safeRetainedSnapshot(
         _ envelope: PersistedDecisionSet,
         watchlistItems: [WatchlistItem],
+        profile: ViewerProfile,
         additionallyUnsafeMovieIDs: Set<Int> = []
     ) -> ThreeForTonightSnapshot? {
         let unsafeMovieIDs = localRepairMovieIDs(
             envelope: envelope,
-            watchlistItems: watchlistItems
+            watchlistItems: watchlistItems,
+            profile: profile
         ).union(additionallyUnsafeMovieIDs)
         guard !unsafeMovieIDs.isEmpty else {
             return snapshot(envelope, watchlistItems: watchlistItems)
@@ -135,13 +137,17 @@ enum ThreeForTonightSnapshotFactory {
 
     static func localRepairMovieIDs(
         envelope: PersistedDecisionSet,
-        watchlistItems: [WatchlistItem]
+        watchlistItems: [WatchlistItem],
+        profile: ViewerProfile
     ) -> Set<Int> {
         let watchedIDs = Set(watchlistItems.lazy.filter(\.isWatched).map(\.id))
         let savedIDs = Set(watchlistItems.lazy.filter { !$0.isWatched }.map(\.id))
         return Set(envelope.recommendations.compactMap { recommendation in
             let movieID = recommendation.display.movieID
             if watchedIDs.contains(movieID) {
+                return movieID
+            }
+            if recommendation.evidence.requiresAnchorRepair(profile: profile) {
                 return movieID
             }
             if case .watchlistIntent = recommendation.evidence.primary,
@@ -151,6 +157,31 @@ enum ThreeForTonightSnapshotFactory {
             }
             return nil
         })
+    }
+}
+
+private extension RecommendationEvidence {
+    func requiresAnchorRepair(profile: ViewerProfile) -> Bool {
+        let anchor: PositiveAnchorEvidence? = switch primary {
+            case let .watchlistIntent(match):
+                if case let .positiveAnchor(anchor) = match {
+                    anchor
+                } else {
+                    nil
+                }
+            case let .positiveAnchor(anchor):
+                anchor
+            case .positiveGenreAffinity, .sparseQuality:
+                nil
+        }
+        guard let anchor else { return false }
+        guard anchor.anchorGenres != nil else { return true }
+
+        let currentReaction = profile.reactions[anchor.movieID]
+        return switch anchor.reaction {
+            case .loved: currentReaction != .loveIt
+            case .liked: currentReaction != .likeIt
+        }
     }
 }
 

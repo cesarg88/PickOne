@@ -149,8 +149,8 @@ and enters the application automatically; only the low-signal choice between
 [Three for Tonight](../milestones/milestone-6-three-for-tonight.md)
 
 Status:
-Engineering Ready — implementation may begin after the D0 documentation PR is
-merged
+Implementation complete in PR #31; final approval pending green CI and the
+Product Owner's targeted device confirmation on the final SHA
 
 Purpose:
 
@@ -167,10 +167,17 @@ Decision Set persistence, asynchronous orchestration, and the Home experience.
 The application remains one physical target while the Decision Engine is kept
 as an explicit internal boundary.
 
+The closure correction narrows visible positive anchors to current `Love it`
+or `Like it` reactions with at least one shared genre and genre Jaccard of at
+least `1/3`. Era may reinforce but never establish the explanation, and visible
+copy enumerates only the actual structured shared signals. P1 scoring is
+unchanged.
+
 ### Utility Checkpoint after Milestone 6
 
 Status:
-Required before continuing to Milestone 7
+Functional flow passed; targeted confirmation on the final Milestone 6 SHA is
+still required before continuing to Milestone 7
 
 Purpose:
 
@@ -183,13 +190,17 @@ decisions. The checkpoint evaluates whether:
 - the experience helps reach a confident choice quickly
 
 This is a lightweight household validation, not external user research or an
-analytics implementation. Its findings determine whether Milestone 7 remains
-the right next investment or whether recommendation, onboarding, or
-availability behavior needs refinement first.
+analytics implementation. Earlier functional device use identified the
+positive-anchor correction now implemented in PR #31. The Product Owner must
+confirm that corrected presentation on the reviewed, green final SHA before
+Milestone 6 is finally approved.
 
 ### Milestone 7
 
 Decision Feedback
+
+Status:
+Not started — blocked on Milestone 6 final approval
 
 Purpose:
 

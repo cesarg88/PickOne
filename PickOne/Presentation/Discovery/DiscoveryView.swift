@@ -2,6 +2,8 @@ import SwiftUI
 
 @MainActor
 struct DiscoveryView: View {
+    @ScaledMetric(relativeTo: .body) private var minimumCardWidth = 104.0
+
     let model: DiscoveryViewModel
     let getMovieDetail: GetMovieDetailUseCase
     let setMembership: SetWatchlistMembershipUseCase
@@ -9,8 +11,7 @@ struct DiscoveryView: View {
     let checkAvailability: CheckMovieAvailabilityUseCase
     let preparePlaybackOptions: PreparePlaybackOptionsUseCase
     let imagePipeline: ImagePipeline
-
-    private let columns = Array(repeating: GridItem(.flexible(), spacing: 12), count: 3)
+    var eligibilityDidChange: @MainActor (DecisionEligibilityChange) -> Void = { _ in }
 
     var body: some View {
         NavigationStack {
@@ -37,24 +38,7 @@ struct DiscoveryView: View {
                         ScrollView {
                             LazyVGrid(columns: columns, spacing: 12) {
                                 ForEach(data.movies) { movie in
-                                    NavigationLink {
-                                        MovieDetailView(
-                                            model: MovieDetailViewModel(
-                                                movieId: movie.id,
-                                                getMovieDetail: getMovieDetail,
-                                                setMembership: setMembership,
-                                                setWatched: setWatched,
-                                                checkAvailability: checkAvailability,
-                                                preparePlaybackOptions: preparePlaybackOptions
-                                            ),
-                                            imagePipeline: imagePipeline,
-                                            getMovieDetail: getMovieDetail,
-                                            setMembership: setMembership,
-                                            setWatched: setWatched,
-                                            checkAvailability: checkAvailability,
-                                            preparePlaybackOptions: preparePlaybackOptions
-                                        )
-                                    } label: {
+                                    NavigationLink(value: DiscoveryRoute(movieID: movie.id)) {
                                         PosterCardView(movie: movie, pipeline: imagePipeline)
                                             .task {
                                                 await model.loadNextPageIfNeeded(current: movie)
@@ -74,11 +58,39 @@ struct DiscoveryView: View {
                 }
             }
             .navigationTitle("PickOne")
+            .navigationDestination(for: DiscoveryRoute.self) { route in
+                movieDetail(movieID: route.movieID)
+            }
             .task {
                 guard !AppConfiguration.isUITesting else { return }
                 await model.loadInitial()
             }
         }
+    }
+
+    private var columns: [GridItem] {
+        [
+            GridItem(
+                .adaptive(minimum: min(minimumCardWidth, 180), maximum: 180),
+                spacing: 12
+            ),
+        ]
+    }
+
+    private func movieDetail(movieID: Int) -> some View {
+        let dependencies = MovieDetailNavigationDependencies(
+            getMovieDetail: getMovieDetail,
+            setMembership: setMembership,
+            setWatched: setWatched,
+            checkAvailability: checkAvailability,
+            preparePlaybackOptions: preparePlaybackOptions,
+            eligibilityDidChange: eligibilityDidChange
+        )
+        return MovieDetailView(
+            model: dependencies.makeViewModel(movieID: movieID),
+            imagePipeline: imagePipeline,
+            navigationDependencies: dependencies
+        )
     }
 }
 
@@ -95,9 +107,10 @@ private struct PosterCardView: View {
                 contentMode: .fill,
                 accessibilityLabel: movie.title
             )
-            .frame(height: 170)
+            .aspectRatio(2 / 3, contentMode: .fit)
             .clipped()
-            .cornerRadius(8)
+            .clipShape(.rect(cornerRadius: 8))
+            .accessibilityHidden(true)
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(movie.title)
@@ -115,4 +128,8 @@ private struct PosterCardView: View {
         .accessibilityElement(children: .combine)
         .accessibilityHint("Open movie details")
     }
+}
+
+private struct DiscoveryRoute: Hashable {
+    let movieID: Int
 }

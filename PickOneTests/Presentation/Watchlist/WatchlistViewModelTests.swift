@@ -111,6 +111,26 @@ struct WatchlistViewModelTests {
         #expect(repository.getAllItemsCallCount > initialCallCount)
     }
 
+    @Test("successful mutation reports a bounded Home repair change")
+    func successfulMutationReportsRepairChange() throws {
+        let repository = MockWatchlistRepository()
+        repository.getAllItemsResult = [WatchlistTestFixtures.unwatchedItem]
+        repository.statusResult = .toWatch
+        var changes: [DecisionEligibilityChange] = []
+        let (sut, _) = makeSUT(
+            repository: repository,
+            eligibilityDidChange: { changes.append($0) }
+        )
+
+        sut.load()
+        sut.toggleWatched(movieId: 1)
+
+        let expectedChange = try #require(
+            DecisionEligibilityChange(movieID: 1, cause: .watchlist)
+        )
+        #expect(changes == [expectedChange])
+    }
+
     // MARK: - Toggle Watched
 
     @Test("toggleWatched calls repository setWatched via use case")
@@ -146,7 +166,8 @@ struct WatchlistViewModelTests {
     // MARK: - Helpers
 
     private func makeSUT(
-        repository: MockWatchlistRepository = MockWatchlistRepository()
+        repository: MockWatchlistRepository = MockWatchlistRepository(),
+        eligibilityDidChange: @escaping @MainActor (DecisionEligibilityChange) -> Void = { _ in }
     ) -> (sut: WatchlistViewModel, repository: MockWatchlistRepository) {
         let getWatchlist = GetWatchlist(repository: repository)
         let setMembership = SetWatchlistMembership(repository: repository)
@@ -155,7 +176,8 @@ struct WatchlistViewModelTests {
         let sut = WatchlistViewModel(
             getWatchlist: getWatchlist,
             setMembership: setMembership,
-            setWatched: setWatched
+            setWatched: setWatched,
+            eligibilityDidChange: eligibilityDidChange
         )
 
         return (sut, repository)

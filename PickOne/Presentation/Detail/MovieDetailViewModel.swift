@@ -17,6 +17,7 @@ final class MovieDetailViewModel {
     private let setWatched: SetWatchedUseCase
     private let checkAvailability: CheckMovieAvailabilityUseCase
     private let preparePlaybackOptionsUseCase: PreparePlaybackOptionsUseCase
+    private let eligibilityDidChange: @MainActor (DecisionEligibilityChange) -> Void
     private var activeLoadID = UUID()
     private var availabilityOutcome: AvailabilityOutcome?
 
@@ -30,7 +31,8 @@ final class MovieDetailViewModel {
         setMembership: SetWatchlistMembershipUseCase,
         setWatched: SetWatchedUseCase,
         checkAvailability: CheckMovieAvailabilityUseCase,
-        preparePlaybackOptions: PreparePlaybackOptionsUseCase
+        preparePlaybackOptions: PreparePlaybackOptionsUseCase,
+        eligibilityDidChange: @escaping @MainActor (DecisionEligibilityChange) -> Void = { _ in }
     ) {
         self.movieId = movieId
         self.getMovieDetail = getMovieDetail
@@ -38,6 +40,7 @@ final class MovieDetailViewModel {
         self.setWatched = setWatched
         self.checkAvailability = checkAvailability
         preparePlaybackOptionsUseCase = preparePlaybackOptions
+        self.eligibilityDidChange = eligibilityDidChange
     }
 
     // MARK: - Load
@@ -116,10 +119,14 @@ final class MovieDetailViewModel {
                 case let .open(url):
                     return url
                 case let .updatedOutcome(outcome):
+                    let didChange = outcome != availabilityOutcome
                     self.availabilityOutcome = outcome
                     availabilityState = AvailabilityPresentationMapper.map(
                         outcome: outcome
                     )
+                    if didChange {
+                        notifyEligibilityChange(cause: .availability)
+                    }
                     return nil
                 case .unavailable:
                     return nil
@@ -151,6 +158,7 @@ final class MovieDetailViewModel {
                 model.isWatched = false // Remove from watchlist clears watched status
             }
             state = .loaded(model)
+            notifyEligibilityChange(cause: .watchlist)
         } catch {
             actionErrorMessage = error.localizedDescription
         }
@@ -164,6 +172,7 @@ final class MovieDetailViewModel {
             try setWatched.execute(movieId: model.id, isWatched: !model.isWatched)
             model.isWatched.toggle()
             state = .loaded(model)
+            notifyEligibilityChange(cause: .watchlist)
         } catch {
             actionErrorMessage = error.localizedDescription
         }
@@ -191,5 +200,12 @@ final class MovieDetailViewModel {
         // Rating format: "7.5 (1,234)"
         let components = ratingText.components(separatedBy: " ")
         return Double(components.first ?? "0") ?? 0
+    }
+
+    private func notifyEligibilityChange(cause: DecisionEligibilityRepairCause) {
+        guard let change = DecisionEligibilityChange(movieID: movieId, cause: cause) else {
+            return
+        }
+        eligibilityDidChange(change)
     }
 }

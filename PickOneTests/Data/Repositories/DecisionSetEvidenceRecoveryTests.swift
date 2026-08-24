@@ -69,6 +69,21 @@ struct DecisionSetEvidenceRecoveryTests {
                 affinity: affinity,
                 diversityKind: nil
             ),
+            RecommendationEvidenceV1DTO(
+                primaryKind: "positiveAnchor",
+                tasteKind: nil,
+                anchor: replacing(
+                    anchor,
+                    anchorGenres: [
+                        genre,
+                        DecisionGenreV1DTO(id: 12, name: "Adventure"),
+                        DecisionGenreV1DTO(id: 28, name: "Action"),
+                        DecisionGenreV1DTO(id: 35, name: "Comedy"),
+                    ]
+                ),
+                affinity: nil,
+                diversityKind: nil
+            ),
         ]
 
         for invalid in invalidEvidence {
@@ -210,6 +225,7 @@ struct DecisionSetEvidenceRecoveryTests {
                         movieID: 155,
                         movieTitle: "Anchor",
                         reaction: .loved,
+                        anchorGenres: [genre],
                         sharedGenres: [genre],
                         eraMatch: nil
                     )
@@ -310,6 +326,7 @@ struct DecisionSetEvidenceRecoveryTests {
     private func replacing(
         _ anchor: PositiveAnchorEvidenceV1DTO,
         movieID: Int? = nil,
+        anchorGenres: [DecisionGenreV1DTO]? = nil,
         sharedGenres: [DecisionGenreV1DTO]? = nil,
         eraMatch: RecommendationEraMatchV1DTO? = nil
     ) -> PositiveAnchorEvidenceV1DTO {
@@ -317,6 +334,7 @@ struct DecisionSetEvidenceRecoveryTests {
             movieID: movieID ?? anchor.movieID,
             movieTitle: anchor.movieTitle,
             reaction: anchor.reaction,
+            anchorGenres: anchorGenres ?? anchor.anchorGenres,
             sharedGenres: sharedGenres ?? anchor.sharedGenres,
             eraMatch: eraMatch
         )
@@ -391,5 +409,40 @@ struct DecisionSetEvidenceRecoveryTests {
             verifiedAt: availability.verifiedAt,
             regionalWatchURL: availability.regionalWatchURL
         )
+    }
+}
+
+extension DecisionSetEvidenceRecoveryTests {
+    @Test("legacy anchor metadata remains readable for trusted-input repair")
+    func legacyAnchorMetadataRemainsReadable() async throws {
+        let coder = JSONDecisionSetEnvelopeCoder()
+        let envelope = try await validEnvelope()
+        let evidence = try #require(envelope.recommendations.first?.evidence)
+        let anchor = try #require(evidence.anchor)
+        let legacyAnchor = PositiveAnchorEvidenceV1DTO(
+            movieID: anchor.movieID,
+            movieTitle: anchor.movieTitle,
+            reaction: anchor.reaction,
+            anchorGenres: nil,
+            sharedGenres: anchor.sharedGenres,
+            eraMatch: anchor.eraMatch
+        )
+        let bytes = try coder.encodeEnvelope(replacingEvidence(
+            in: envelope,
+            with: replacingAnchor(in: evidence, anchor: legacyAnchor)
+        ))
+        let store = InMemoryDecisionSetDataStore(activeData: bytes)
+
+        let result = await DefaultDecisionSetRepository(store: store).load()
+        guard case let .available(decisionSet) = result,
+              case let .positiveAnchor(restored) = decisionSet
+              .recommendations.first?.evidence.primary
+        else {
+            Issue.record("Expected legacy anchor evidence to remain repairable")
+            return
+        }
+
+        #expect(restored.anchorGenres == nil)
+        #expect(store.quarantineData == nil)
     }
 }

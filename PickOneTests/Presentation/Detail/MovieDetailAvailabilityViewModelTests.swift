@@ -153,7 +153,8 @@ struct MovieDetailAvailabilityViewModelTests {
     }
 
     @Test("handoff revalidation can publish a replacement state")
-    func handoffPublishesReplacementState() async {
+    func handoffPublishesReplacementState() async throws {
+        var changes: [DecisionEligibilityChange] = []
         let updated = AvailabilityOutcome.ineligible(
             evidence: AvailabilityTestFixtures.verifiedEvidence()
         )
@@ -164,7 +165,8 @@ struct MovieDetailAvailabilityViewModelTests {
             ),
             prepare: StubPreparePlaybackOptions(
                 result: .updatedOutcome(updated)
-            )
+            ),
+            eligibilityDidChange: { changes.append($0) }
         )
         await sut.load()
 
@@ -172,6 +174,34 @@ struct MovieDetailAvailabilityViewModelTests {
 
         #expect(url == nil)
         #expect(sut.availabilityState == .ineligible)
+        let expectedChange = try #require(
+            DecisionEligibilityChange(movieID: 42, cause: .availability)
+        )
+        #expect(changes == [expectedChange])
+    }
+
+    @Test("nested detail dependencies preserve the eligibility callback")
+    func nestedDetailDependenciesPreserveCallback() async throws {
+        var changes: [DecisionEligibilityChange] = []
+        let dependencies = MovieDetailNavigationDependencies(
+            getMovieDetail: ImmediateMovieDetailUseCase(),
+            setMembership: NoOpSetWatchlistMembership(),
+            setWatched: NoOpSetWatched(),
+            checkAvailability: SequenceAvailabilityUseCase(
+                steps: [.outcome(eligibleOutcome())]
+            ),
+            preparePlaybackOptions: StubPreparePlaybackOptions(result: .unavailable),
+            eligibilityDidChange: { changes.append($0) }
+        )
+        let sut = dependencies.makeViewModel(movieID: 42)
+
+        await sut.load()
+        sut.toggleWatchlist()
+
+        let expectedChange = try #require(
+            DecisionEligibilityChange(movieID: 42, cause: .watchlist)
+        )
+        #expect(changes == [expectedChange])
     }
 
     private func makeSUT(
@@ -179,7 +209,8 @@ struct MovieDetailAvailabilityViewModelTests {
         availability: CheckMovieAvailabilityUseCase,
         prepare: PreparePlaybackOptionsUseCase = StubPreparePlaybackOptions(
             result: .unavailable
-        )
+        ),
+        eligibilityDidChange: @escaping @MainActor (DecisionEligibilityChange) -> Void = { _ in }
     ) -> MovieDetailViewModel {
         MovieDetailViewModel(
             movieId: 42,
@@ -187,7 +218,8 @@ struct MovieDetailAvailabilityViewModelTests {
             setMembership: NoOpSetWatchlistMembership(),
             setWatched: NoOpSetWatched(),
             checkAvailability: availability,
-            preparePlaybackOptions: prepare
+            preparePlaybackOptions: prepare,
+            eligibilityDidChange: eligibilityDidChange
         )
     }
 

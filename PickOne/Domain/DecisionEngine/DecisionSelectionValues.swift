@@ -61,6 +61,7 @@ struct PositiveAnchorEvidence: Equatable, Sendable {
     let movieID: Int
     let movieTitle: String
     let reaction: PositiveAnchorReaction
+    let anchorGenres: [DecisionGenre]?
     let sharedGenres: [DecisionGenre]
     let eraMatch: RecommendationEraMatch?
 }
