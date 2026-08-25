@@ -12,8 +12,7 @@ It contains only work that remains pending after Milestone 3.3. Completed work
 should remain in this file with its status changed to `Completed` and a link to
 the implementing PR or milestone.
 
-Last reviewed: 2026-08-24, during Milestone 6 implementation and documentation
-closure in PR #31.
+Last reviewed: 2026-08-24, during final acceptance of Milestone 7 D0.
 
 ## Product Direction
 
@@ -33,6 +32,8 @@ Statuses:
 
 - `Proposed`: identified but not yet accepted into the roadmap
 - `Planned`: accepted and ready to be shaped into a milestone
+- `Accepted — Engineering Ready`: executable milestone and architecture are
+  approved; implementation may start after its documentation gate merges
 - `In Progress`: implementation has started
 - `Pilot Validation`: implemented but awaiting real-user validation
 - `Completed`: merged and validated
@@ -161,7 +162,7 @@ Priorities:
 
 ### IMP-020 — Validate household utility after Three for Tonight
 
-- Status: `In Progress — targeted final-SHA confirmation pending`
+- Status: `Completed`
 - Priority: `P0`
 - Roadmap relationship: Utility Checkpoint after Milestone 6
 - Depends on: Milestones 4, 5, and 6
@@ -182,15 +183,15 @@ Priorities:
   - Milestone 7 is confirmed, revised, or deferred from observed household use
 - Evidence to date:
   - the complete Milestone 6 flow passed functional validation on the Product
-    Owner's pilot iPhone
-  - that validation identified the positive-anchor explanation correction now
-    implemented and documented in PR #31
-  - completion requires the Product Owner's targeted confirmation on the final
-    reviewed SHA after local verification and CI are green
+    Owner's iPhone
+  - validation identified the positive-anchor explanation correction, which
+    merged with M6 in PR #31
+  - the checkpoint confirmed Milestone 7 as the next investment and repeats
+    after M7 with the enriched Taste Profile
 
 ### IMP-003 — Make recommendations the primary Home experience
 
-- Status: `Pilot Validation — final approval pending`
+- Status: `Completed`
 - Priority: `P0`
 - Depends on: IMP-002, IMP-009, and IMP-019
 - Implementation specification:
@@ -221,26 +222,68 @@ Priorities:
   - P1 scoring remains unchanged and Fixture M protects the visible-evidence
     boundary
 - Completion evidence:
-  - implementation and documentation closure are included in PR #31
-  - final approval requires green local verification, green CI, and the Product
-    Owner's targeted device confirmation on the final SHA
+  - local verification, CI, technical review, and functional iPhone validation
+    passed
+  - final M6 positive-anchor correction, Fixture M, and documentary closure
+    merged in PR #31
 
-### IMP-004 — Add explicit decision and feedback actions
+### IMP-004 — Add continuous taste learning and unified movie state
 
-- Status: `Proposed`
+- Status: `Accepted — Engineering Ready`
 - Priority: `P0`
-- Why: showing recommendations does not prove that PickOne helped the user
-  decide.
+- Roadmap relationship: Milestone 7
+- Accepted specification:
+  [`Milestone 7 — Continuous Taste Learning`](../milestones/milestone-7-continuous-taste-learning.md)
+- Accepted architecture:
+  [`ADR-012 — Unified Local Viewer Movie State`](../decisions/adr-012-unified-local-viewer-movie-state.md)
+- Why:
+  static calibration cannot learn from deliberate later feedback, while the
+  current independent calibration and Watchlist representations allow watched
+  and preference meanings to diverge.
 - Implementation:
-  - identify one result as `Best pick` or equivalent product copy
-  - add explicit `Watch this`, `Save for later`, `Not tonight`,
-    `Not interested`, and `Already watched` actions
-  - define which actions affect temporary context and which affect stable taste
-  - confirm viewing later without treating intention as verified consumption
-  - preserve a small result set instead of expanding into an infinite feed
+  - introduce one Viewer Movie State for watched, reaction, `Not interested`,
+    and Watchlist intent with the accepted transition table
+  - derive Taste Profile from current reactions instead of persisting it
+  - add rating, watched, Watchlist, and `Not interested` controls to Detail
+  - expose ratings, watched-only movies, and `Not interested` through the
+    accepted `My movies` Settings history
+  - regenerate Home after reaction changes, inherit shown IDs, repair mutable
+    eligibility, and reject stale snapshot identities
+  - migrate and recover profile and Watchlist state without fabricating empty
+    data or losing Search History
+  - migrate valid Decision Set v1 data to v2 without publishing legacy
+    recommendations, preserving exact bytes and all trusted shown IDs
 - Done when:
-  - the product can distinguish recommendation impressions from decisions
-  - negative feedback can refine or replace a recommendation
+  - Detail, Watchlist, calibration, Settings history, and Home agree for every
+    movie state
+  - deliberate reactions change future taste while `Not interested` remains a
+    title-only exclusion
+  - installed pilot state survives migration and all-source failure requires
+    explicit destructive recovery
+
+### IMP-022 — Deliver a remotely updateable calibration catalog
+
+- Status: `Accepted — Engineering Ready`
+- Priority: `P0`
+- Roadmap relationship: Milestone 7
+- Accepted architecture:
+  [`ADR-013 — Remote Calibration Catalog`](../decisions/adr-013-remote-calibration-catalog.md)
+- Why:
+  improving recognition and diversity should not require an application
+  release, but a network dependency must never make onboarding unreliable or
+  change a flow already in progress.
+- Implementation:
+  - prefetch before calibration and bound visible unresolved waiting to two
+    seconds
+  - validate a complete versioned snapshot before use
+  - resolve remote, last valid cache, then bundled fallback
+  - freeze and persist the exact snapshot used by a draft
+  - keep transport, hosting, credentials, and cache details outside Domain and
+    Presentation
+- Done when:
+  - a valid remote catalog can update a later flow without an app release
+  - cached and bundled flows work offline
+  - relaunch and late responses cannot change an active flow
 
 ### IMP-005 — Define the product measurement contract
 
@@ -291,14 +334,15 @@ Priorities:
 
 - Status: `Proposed`
 - Priority: `P1`
+- Proposed roadmap relationship: Milestone 7
 - Verified gap:
   `RecommendationCard` still keeps `didAddToWatchlist` as local UI state.
 - Why:
   - an already-saved movie can still show `Add to Watchlist`
   - state can become stale after changes from Detail or Watchlist
 - Implementation:
-  - provide membership and watched status through the recommendation snapshot
-    or a dedicated use case
+  - derive Watchlist membership and watched status from unified Viewer Movie
+    State rather than presentation-local state
   - support add and remove rather than a one-way local flag
   - refresh state after navigation or centralize the source of truth
   - use watched state in recommendation filtering
@@ -310,6 +354,7 @@ Priorities:
 
 - Status: `Proposed`
 - Priority: `P1`
+- Proposed roadmap relationship: Milestone 7
 - Verified gap:
   `MovieDetailViewModel` reconstructs `MovieSummary` from formatted year,
   rating, and poster URL strings.
@@ -322,6 +367,26 @@ Priorities:
   - add mapping and localized-format regression tests
 - Done when:
   - Watchlist mutations never reconstruct Domain from UI-formatted values
+
+### IMP-023 — Define explicit decision-outcome actions
+
+- Status: `Deferred`
+- Priority: `P1`
+- Why:
+  Milestone 7 learns from explicit ratings, watched facts, Watchlist intent,
+  and `Not interested`, but those signals do not prove that PickOne helped the
+  Viewer choose and start a movie in the current session.
+- Future definition:
+  - distinguish `Watch this` intent from verified viewing
+  - define temporary `Not tonight` behavior without learning a stable dislike
+  - decide whether and when to ask for lightweight viewing confirmation
+  - preserve recommendation-cycle history and avoid passive-event inference
+- Constraint:
+  do not add these actions to Milestone 7 or infer outcomes from Detail opens,
+  trailer plays, or impressions.
+- Done when:
+  accepted product copy, state transitions, measurement semantics, and failure
+  behavior distinguish intent from outcome.
 
 ### IMP-008 — Integrate one real recommendation provider behind a backend
 
@@ -404,13 +469,17 @@ Priorities:
 - Current baseline: corrupt Watchlist bytes are preserved and mutation errors
   are surfaced, but reads can still collapse into an empty list.
 - Implementation:
-  - define a versioned persistence envelope and migration policy
-  - distinguish missing, corrupt, and unsupported data
-  - define safe recovery UX instead of silently presenting an empty list
+  - deliver the Milestone 7 versioned viewer-state envelope, previous-valid
+    recovery, exact-byte quarantine, and legacy profile/Watchlist migration
+  - distinguish missing, corrupt, unsupported, recovered, and all-source failure
+  - define explicit destructive recovery only when no trusted source remains
   - make Search history writes observable where failure matters
   - add migration and recovery tests
 - Done when:
   - upgrades cannot silently discard or replace recoverable user state
+- Scope note:
+  Milestone 7 resolves viewer profile, Movie reaction, watched, and Watchlist
+  recovery. Search History remains independent follow-up work.
 
 ### IMP-013 — Complete external-distribution readiness
 
@@ -519,12 +588,15 @@ the added complexity.
 
 ## Suggested Sequence
 
-1. Approve and merge Milestone 6 only after PR #31 is green and the Product
-   Owner confirms the targeted final-SHA device behavior.
-2. Begin Milestone 7 only after Milestone 6 is finally approved.
-3. Add explicit decision feedback and resolve Recommendation/Watchlist state
-   only after that gate supports the direction.
-4. Add trailers and the minimum pilot measurement contract.
+1. Merge the accepted Milestone 7 D0 specification, glossary, ADR-012, and
+   ADR-013.
+2. Implement Milestone 7 through its ten small, sequential PR slices for pure
+   state, storage/migration, production cutover, Decision Set v2 migration,
+   Home, Detail, `My movies`, remote catalog, calibration integration, and
+   closure.
+3. Repeat the household utility checkpoint with continuous taste learning.
+4. Define explicit decision outcomes, trailers, and the minimum pilot
+   measurement contract from observed use.
 5. Introduce a backend or AI provider only if product validation demonstrates
    a need that deterministic recommendation cannot meet.
 6. Complete distribution, accessibility, and persistence hardening as the

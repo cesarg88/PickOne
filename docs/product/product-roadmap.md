@@ -149,8 +149,7 @@ and enters the application automatically; only the low-signal choice between
 [Three for Tonight](../milestones/milestone-6-three-for-tonight.md)
 
 Status:
-Implementation complete in PR #31; final approval pending green CI and the
-Product Owner's targeted device confirmation on the final SHA
+Complete — implementation and documentary closure merged in PR #31
 
 Purpose:
 
@@ -176,8 +175,7 @@ unchanged.
 ### Utility Checkpoint after Milestone 6
 
 Status:
-Functional flow passed; targeted confirmation on the final Milestone 6 SHA is
-still required before continuing to Milestone 7
+Complete — functional checkpoint passed and Milestone 7 direction accepted
 
 Purpose:
 
@@ -190,22 +188,31 @@ decisions. The checkpoint evaluates whether:
 - the experience helps reach a confident choice quickly
 
 This is a lightweight household validation, not external user research or an
-analytics implementation. Earlier functional device use identified the
-positive-anchor correction now implemented in PR #31. The Product Owner must
-confirm that corrected presentation on the reviewed, green final SHA before
-Milestone 6 is finally approved.
+analytics implementation. The Product Owner's device validation confirmed the
+flow and identified the explanation-strength correction plus continuous taste
+learning as the correct next investment. The household utility checkpoint is
+repeated after Milestone 7 with the enriched Taste Profile.
 
 ### Milestone 7
 
-Decision Feedback
+[Continuous Taste Learning](../milestones/milestone-7-continuous-taste-learning.md)
 
 Status:
-Not started — blocked on Milestone 6 final approval
+Accepted — Ready for implementation; PR1 begins after D0 merges
 
 Purpose:
 
-Add `Watch this`, `Save for later`, `Not tonight`, `Not interested`, and
-`Already watched` with their accepted learning semantics.
+Unify watched facts, Movie reactions, `Not interested`, and future Watchlist
+intent in one recoverable local state. Allow feedback from Movie Detail and the
+accepted `My movies` history, recalculate Taste Profile and Home safely after
+changes, preserve recommendation-cycle history, and load versioned remote
+calibration catalogs with cached and bundled fallback plus exact-flow snapshot
+freezing.
+
+Milestone 7 does not add `Watch this`, `Not tonight`, rewatch intent, AI,
+accounts, analytics, or a physical module. Delivery is split into D0 plus ten
+small dependency-ordered implementation and closure PRs, including a dedicated
+Decision Set v1-to-v2 migration slice.
 
 ### Milestone 8
 

@@ -15,6 +15,11 @@ behavior, this document wins. Milestones define bounded delivery, ADRs define
 technical decisions, and the backlog tracks work; none of them independently
 redefine the product.
 
+Cross-cutting product terms have one canonical meaning in the
+[Product Language Glossary](docs/product/product-language-glossary.md). In
+particular, the Viewer Profile is persisted configuration and workflow state;
+the Taste Profile is a derived interpretation of current Movie reactions.
+
 ## Current Product Development Mode
 
 PickOne is being developed first for the Product Owner's household, with the
@@ -250,8 +255,7 @@ represent that distinction reliably.
 
 #### Taste calibration
 
-Use a fixed, versioned catalog of recognizable movie examples with fast
-responses:
+Use a versioned catalog of recognizable movie examples with fast responses:
 
 - `Love it`
 - `Like it`
@@ -294,6 +298,13 @@ catalog should be optimized for recognition in the household pilot while
 remaining deliberately diverse in genre, tone, pace, era, popularity, and
 language without claiming scientific precision.
 
+PickOne may update the catalog remotely without an application release. Before
+calibration it prefetches a complete validated catalog, waits visibly for no
+more than two seconds, and then resolves the flow from remote, last valid
+cached, or bundled content in that order. Once a flow starts, its exact catalog
+snapshot is frozen through completion and relaunch; a late or newer catalog can
+affect only a later onboarding or recalibration flow.
+
 Calibration cards use the title known in Spain as the primary title and an
 original or English title with the release year as secondary recognition
 context. The bundled catalog preserves both title forms and year as fallback
@@ -304,11 +315,11 @@ differences, the card shows the title only once with the year. Distinct title
 forms remain on two lines. This comparison does not perform linguistic,
 punctuation, or diacritic normalization.
 
-Calibration reactions preserve local knowledge that an informative title was
-seen, but they do not mutate Watchlist or Movie Detail watched state in this
-milestone. Milestone 6 combines calibration reactions with existing Watchlist
-state when excluding watched titles. Milestone 5 does not create a unified
-viewing-history model.
+Milestone 5 initially preserved calibration reactions separately from
+Watchlist watched state. Milestone 7 supersedes that temporary boundary with a
+single Viewer Movie State: informative calibration responses become current
+Movie reactions and watched facts, while Watchlist remains future intent for
+an unwatched movie.
 
 Progress visualization, animations, transitions, and completion feedback are
 deferred to a dedicated onboarding UX-polish milestone. This completion-flow
@@ -360,7 +371,7 @@ The Safe, Stretch, or Discovery role communicates how the set was composed.
 Diversity alone never replaces the reason that the movie fits.
 
 A visible positive-anchor explanation is stricter than the underlying P1
-similarity score. Its anchor must have the viewer's current `Love it` or `Like
+similarity score. Its anchor must have the Viewer's current `Love it` or `Like
 it` reaction, share at least one genre with the candidate, and reach genre
 Jaccard similarity of at least `1/3`. Release era may reinforce that real genre
 connection but cannot justify an anchor by itself. Direct and Watchlist-wrapped
@@ -387,11 +398,14 @@ as a secondary shortcut, but it must not be the only way to request a new set.
 Avoid immediate repeats from the active set, dismissed movies, and already
 watched movies unless the user explicitly asks for them.
 
-The recommendation cycle is identified by the engine version, profile and
-reactions, region, selected services, and explicit viewing context. Watchlist
-save or watched changes do not create a new cycle. They invalidate or repair
-the current set while preserving every movie already shown in that cycle, so a
-state correction cannot make an earlier recommendation repeat.
+The recommendation cycle is identified by the engine version, current Movie
+reactions, region, selected services, and explicit viewing context. A Movie-
+reaction change creates a new cycle identity because it changes the derived
+Taste Profile, but the new cycle inherits every movie ID already shown by the
+preceding cycle. Watchlist, watched, and `Not interested` changes update mutable
+eligibility and repair the set without clearing its history. Therefore neither
+a taste update nor an eligibility correction can make an earlier
+recommendation repeat.
 
 If the stored recommendation envelope is corrupt or incompatible, PickOne
 preserves the unread bytes for diagnosis and attempts to generate and persist a
@@ -414,22 +428,32 @@ set does not fit the moment, offer quick contextual choices such as:
 These choices refine the current session. They do not permanently redefine the
 user's taste.
 
-### 5. Decision and feedback actions
+### 5. Movie state and feedback
 
-Recommendations need explicit outcome actions:
+Watch state, Watchlist intent, and preference are distinct meanings:
 
-- `Watch this` — the user intends to watch the movie now
-- `Save for later` — relevant, but not the current decision
-- `Not tonight` — temporary mismatch; do not learn a stable dislike
-- `Not interested` — negative preference signal
-- `Already watched` — exclude by default and improve future context
+- Watchlist means an unwatched movie saved for the future;
+- watched is an independent fact that may be assigned from any Movie Detail;
+- a Movie reaction implies watched and replaces any earlier reaction;
+- removing a reaction preserves watched;
+- `Not interested` means an unwatched title is excluded stably, but it is not a
+  genre or era dislike and contributes no P1 affinity;
+- explicit rewatch intent is not supported in this version.
 
-Actions should update the set deliberately. PickOne must not interpret a detail
-open, trailer play, or passive impression as a completed decision.
+Rating, watched, `Not interested`, and Watchlist actions apply the transition
+rules accepted in Milestone 7. Conflicting prior intent is removed rather than
+silently restored later. PickOne must not interpret a detail open, trailer
+play, or passive impression as watched or as feedback.
 
-After a `Watch this` decision, a later lightweight check may ask whether the
-user actually watched it. This closes the gap between intent and outcome without
-requiring ratings or reviews.
+Changing a Movie reaction recalculates the Taste Profile and regenerates Home
+from the latest state snapshot identity while inheriting prior cycle history. Home
+communicates a successful update discreetly. A stale generation can never
+replace a result built from newer Viewer Movie State.
+
+Explicit decision-outcome actions such as `Watch this`, `Not tonight`, and a
+later viewing confirmation remain future work. They are not prerequisites for
+learning from deliberate ratings, watched facts, Watchlist intent, or `Not
+interested`.
 
 ### 6. Movie detail
 
@@ -441,8 +465,9 @@ prioritize:
 - runtime, year, genres, and key credits
 - where it is included in the active region
 - trailer when an appropriate official video is available
-- save and watched state
-- the explicit `Watch this` or provider handoff action
+- Watchlist and watched state
+- rating and `Not interested` feedback
+- the optional provider handoff action
 
 A trailer is supporting evidence, not an autoplay surface. If no suitable
 trailer exists, omit the section gracefully.
@@ -512,6 +537,8 @@ decision product:
 - **Search** helps when the user already knows a title.
 - **Discovery** allows deliberate catalog exploration without becoming Home.
 - **Watchlist** preserves future intent and informs recommendations.
+- **My movies** is the accepted Settings history for ratings, watched movies
+  without a rating, and `Not interested`; it excludes Watchlist-only titles.
 - **Detail** supplies evidence for a decision.
 - **Ask** later supports precise requests that quick context cannot express.
 
@@ -566,7 +593,7 @@ watch within five minutes.
 - percentage of sessions ending in `Watch this`
 - confirmation that the chosen movie was actually watched
 - number of new sets requested before a decision
-- `Not tonight`, `Not interested`, and `Already watched` rates
+- `Not tonight`, `Not interested`, and watched-state rates
 - detail and trailer opens that lead to a decision
 - recommendation eligibility loss caused by availability constraints
 - repeated or already-watched recommendation rate
@@ -610,13 +637,12 @@ The current application already provides:
 - resumable onboarding with streaming-service selection and taste calibration
 - a persistent editable local viewer profile and Settings surface
 - the deterministic Decision Engine and persistent “Three for Tonight” Home
-  implementation in PR #31, including structured explanations, refresh,
-  repair, and Movie Detail routing
+  implementation from PR #31, including structured explanations, refresh,
+  repair, Movie Detail routing, and the accepted positive-anchor boundary
 
-Milestone 6 implementation and documentation are closure-ready. Final approval
-still requires green CI and the Product Owner's targeted device confirmation on
-the final PR #31 SHA. Explicit decision feedback and trailer presentation
-remain product work and are not part of this closure.
+Milestone 6 is complete. Unified Viewer Movie State, continuous taste learning,
+remote calibration catalogs, explicit decision outcomes, and trailer
+presentation remain product work.
 
 Technical migration or architecture work may continue without changing current
 behavior, but new product implementation must be specified against this target.
@@ -670,8 +696,11 @@ As of the last review:
   materially and reliably changes availability.
 - Onboarding shows Spain inside service selection rather than as a separate
   non-interactive screen, requires at least one service, and preselects none.
-- Onboarding progress is resumable, and completion replaces one fully encoded
-  local profile envelope without changing Watchlist or Search History.
+- Onboarding progress is resumable. Successful completion atomically commits
+  profile lifecycle and informative Movie reactions while preserving Search
+  History and every unrelated Watchlist intent. When completion upserts a
+  reaction for a movie currently saved, that same atomic transition removes
+  only that movie's conflicting Watchlist intent as required by ADR-012.
 - Onboarding completes automatically after the last valid action. There is no
   intermediate `Ready to save your preferences?` state, completion confirmation
   screen, or `Save preferences` button.
@@ -690,7 +719,8 @@ As of the last review:
 - The exact Milestone 5 calibration catalog and order are accepted for the
   household pilot.
 - Preferences can edit services, restart full calibration, or reset the profile
-  with confirmation. Individual reaction editing is outside v1.
+  with confirmation. Milestone 7 adds individual reaction editing through Movie
+  Detail while `My movies` remains a read projection that routes there.
 - Preferences and About use `Settings` as the accepted fifth main tab.
 - Recalibration owns only calibration progress. Completing it preserves the
   region and current service selection from the active profile, including
@@ -729,9 +759,10 @@ As of the last review:
   diversity, role, tie-breaking, and evidence rules in ADR-011.
 - Main navigation for Milestone 6 is `Home`, `Search`, `Discover`, `Watchlist`,
   and `Settings`; Ask remains implemented but hidden until its later milestone.
-- Recommendation-cycle identity includes engine version, profile reactions,
-  region, selected services, and viewing context. Watchlist changes repair or
-  invalidate current eligibility without clearing already-shown cycle history.
+- Recommendation-cycle identity includes engine version, current Movie
+  reactions, region, selected services, and viewing context. Watchlist changes
+  repair or invalidate current eligibility without clearing already-shown
+  cycle history.
 - Recommendation-envelope corruption or incompatibility preserves the unread
   bytes, attempts regeneration, and exposes Retry if recovery fails without
   modifying profile, Watchlist, or Search History.
@@ -744,22 +775,70 @@ As of the last review:
   `1/3`. Era may strengthen but never establish the anchor, and direct or
   Watchlist-wrapped copy enumerates only the shared genre and supported era
   signals. This explanation rule does not change P1 scoring.
+- Viewer Profile is persisted viewing configuration and calibration lifecycle;
+  Taste Profile is derived from current Movie reactions and the Decision Engine
+  version rather than persisted as another source of truth.
+- After Milestone 7 migration, Viewer Profile no longer persists a reaction
+  map; Viewer Movie State is the single persisted owner of current reactions.
+- Watchlist means future intent for an unwatched movie. Watched is an
+  independent fact available from any Movie Detail; a reaction implies watched,
+  and explicit rewatch intent remains unsupported.
+- Watchlist's final Milestone 7 surface contains future intent only; its former
+  watched section moves to the accepted `My movies` history.
+- `My movies` is the final Settings label for current ratings, watched-only
+  movies, and `Not interested`; Watchlist-only titles do not appear there.
+- `Not interested` is a stable unwatched title exclusion. It does not become a
+  negative genre or era affinity and is not available for a watched movie.
+- Viewer Movie State transitions clear conflicting intent according to
+  Milestone 7 without restoring it later: rating or watched removes Watchlist,
+  unwatching removes a rating, and saving to Watchlist clears `Not interested`.
+- A reaction change regenerates Home from a recalculated Taste Profile under a
+  new non-reusable state-snapshot identity and inherits every ID previously
+  shown by the cycle.
+  Watchlist, watched, and `Not interested` changes repair mutable eligibility
+  without clearing cycle history; obsolete work cannot publish.
+- Normal preference reset removes reactions and `Not interested` while
+  preserving watched and Watchlist. Recalibration upserts only informative
+  reactions; `Haven't seen it`, `Don't know it`, and omitted movies never erase
+  existing movie feedback.
+- Calibration catalog resolution prefers a validated remote snapshot, then a
+  last valid cache, then bundled content after at most two visible seconds. A
+  flow freezes its exact snapshot through completion and relaunch.
+- The initial remote catalog mirrors the accepted bundled household catalog.
+  Later content or order changes still require Product Owner approval even
+  though publication does not require an app release.
+- Local viewer-state recovery tries the active envelope, a previous valid copy,
+  and legacy migration while preserving unread bytes. Only total recovery
+  failure may offer an explicit destructive reset; no failure fabricates empty
+  viewer state.
+- Recovery that must roll back to an earlier saved snapshot says so and asks the
+  Viewer to review Settings; a normal first migration does not show a false
+  warning.
 
 ## Open Product Questions
 
 These require explicit product decisions before their related implementation:
 
-1. What confirmation language best distinguishes intent to watch from verified
-   viewing?
+1. What confirmation language best distinguishes a future `Watch this` intent
+   from verified viewing?
 
 Open questions are not permission for implementation agents to invent behavior.
 They must be resolved in product steering or explicitly bounded by a milestone.
 
 ## Related Documents
 
+- [`docs/product/product-language-glossary.md`](docs/product/product-language-glossary.md)
+  defines canonical cross-cutting product and engineering language.
+- [`docs/milestones/milestone-7-continuous-taste-learning.md`](docs/milestones/milestone-7-continuous-taste-learning.md)
+  is the accepted executable specification for continuous taste learning,
+  unified movie state, and the remote calibration catalog.
+- [`docs/decisions/adr-012-unified-local-viewer-movie-state.md`](docs/decisions/adr-012-unified-local-viewer-movie-state.md)
+  defines the unified local state, persistence, migration, and recovery model.
+- [`docs/decisions/adr-013-remote-calibration-catalog.md`](docs/decisions/adr-013-remote-calibration-catalog.md)
+  defines remote catalog resolution with exact-flow snapshot freezing.
 - [`docs/milestones/milestone-6-three-for-tonight.md`](docs/milestones/milestone-6-three-for-tonight.md)
-  is the accepted implementation and closure record for the deterministic
-  Decision Engine and persistent Home set.
+  is the completed implementation specification for the deterministic Decision
+  Engine and persistent Home set.
 - [`docs/decisions/adr-011-deterministic-decision-engine-v1.md`](docs/decisions/adr-011-deterministic-decision-engine-v1.md)
   defines the accepted P1 model, eligibility, composition, explanation, and
   persistence architecture.
