@@ -15,33 +15,6 @@ enum MovieReaction: String, CaseIterable, Equatable, Sendable {
     case likeIt
     case itWasOkay
     case didNotLikeIt
-
-    var p1Value: Double {
-        switch self {
-            case .loveIt: 1.00
-            case .likeIt: 0.50
-            case .itWasOkay: 0.00
-            case .didNotLikeIt: -0.75
-        }
-    }
-
-    var isDirectionalEvidence: Bool {
-        switch self {
-            case .loveIt, .likeIt, .didNotLikeIt: true
-            case .itWasOkay: false
-        }
-    }
-
-    var isPositiveAnchor: Bool {
-        switch self {
-            case .loveIt, .likeIt: true
-            case .itWasOkay, .didNotLikeIt: false
-        }
-    }
-
-    var impliesWatched: Bool {
-        true
-    }
 }
 
 enum MoviePreference: Equatable, Sendable {

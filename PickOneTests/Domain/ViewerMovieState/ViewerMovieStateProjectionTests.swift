@@ -4,14 +4,16 @@ import Testing
 
 @Suite("Viewer Movie State projection tests")
 struct ViewerMovieStateProjectionTests {
-    @Test("reactions preserve P1 values and neutral watched meaning")
-    func reactionSemantics() {
-        #expect(MovieReaction.loveIt.p1Value == 1.00)
-        #expect(MovieReaction.likeIt.p1Value == 0.50)
-        #expect(MovieReaction.itWasOkay.p1Value == 0.00)
-        #expect(MovieReaction.didNotLikeIt.p1Value == -0.75)
-        #expect(!MovieReaction.itWasOkay.isDirectionalEvidence)
-        #expect(MovieReaction.itWasOkay.impliesWatched)
+    @Test("each accepted reaction is stored as watched state")
+    func reactionCasesAndWatchedMeaning() throws {
+        #expect(MovieReaction.allCases == [.loveIt, .likeIt, .itWasOkay, .didNotLikeIt])
+
+        for reaction in MovieReaction.allCases {
+            let result = try ViewerMovieStateTestFixtures.reduce(.assignReaction(reaction))
+
+            #expect(result.state?.watchState == .watched)
+            #expect(result.state?.preference == .reaction(reaction))
+        }
     }
 
     @Test("not interested is eligibility-only and never Taste evidence")
@@ -130,18 +132,6 @@ struct ViewerMovieStateProjectionTests {
             #expect(result.impact == .none)
             #expect(!result.metadataChanged)
         }
-    }
-
-    @Test("an existing reaction is not a current-flow response until explicitly answered")
-    func existingReactionDoesNotCountAutomatically() throws {
-        let existing = try ViewerMovieStateTestFixtures.state(
-            watchState: .watched,
-            preference: .reaction(.loveIt)
-        )
-        let currentFlowResponses: [Int: CalibrationReaction] = [:]
-
-        #expect(existing.reaction == .loveIt)
-        #expect(currentFlowResponses.values.count(where: \.isInformativeSignal) == 0)
     }
 
     private func makeSnapshot(states: [ViewerMovieState]) throws -> ViewerMovieStateSnapshot {
