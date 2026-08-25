@@ -163,6 +163,8 @@ enum ViewerMovieStateRecoveryReason: Equatable, Sendable {
     case corruptData
     case unsupportedSchema
     case migrationFailure
+    case quarantineFailure
+    case replacementFailure
     case loadFailure
 }
 
