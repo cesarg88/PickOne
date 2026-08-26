@@ -13,6 +13,7 @@ final class InMemoryLocalViewerStateFileStore: LocalViewerStateFileStore {
         var rejectPreviousRead = false
         var rejectActiveReplacement = false
         var rejectPreviousReplacement = false
+        var rejectPreviousRemoval = false
         var rejectQuarantine = false
     }
 
@@ -62,6 +63,11 @@ final class InMemoryLocalViewerStateFileStore: LocalViewerStateFileStore {
         set { state.withLock { $0.rejectPreviousReplacement = newValue } }
     }
 
+    var rejectPreviousRemoval: Bool {
+        get { state.withLock { $0.rejectPreviousRemoval } }
+        set { state.withLock { $0.rejectPreviousRemoval = newValue } }
+    }
+
     var rejectQuarantine: Bool {
         get { state.withLock { $0.rejectQuarantine } }
         set { state.withLock { $0.rejectQuarantine = newValue } }
@@ -94,6 +100,13 @@ final class InMemoryLocalViewerStateFileStore: LocalViewerStateFileStore {
             if $0.rejectPreviousReplacement { throw LocalViewerStateTestError.rejected }
             $0.previousData = data
             $0.previousReplacementCount += 1
+        }
+    }
+
+    func removePrevious() throws {
+        try state.withLock {
+            if $0.rejectPreviousRemoval { throw LocalViewerStateTestError.rejected }
+            $0.previousData = nil
         }
     }
 

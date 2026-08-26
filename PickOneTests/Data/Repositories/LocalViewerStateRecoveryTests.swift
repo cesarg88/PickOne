@@ -78,8 +78,8 @@ struct LocalViewerStateRecoveryTests {
         #expect(snapshot.id.rawValue != oldID)
     }
 
-    @Test("invalid active and previous sources are quarantined as unique exact items")
-    func uniqueQuarantineItems() async throws {
+    @Test("legacy recovery clears invalid previous bytes and remains valid after relaunch")
+    func legacyRecoveryClearsInvalidPrevious() async throws {
         let recoveredID = try LocalViewerStateTestFixtures.uuid(LocalViewerStateTestFixtures.firstID)
         let invalid = Data("same-invalid-bytes".utf8)
         let watchlistData = try JSONEncoder().encode([watchlistItem(movieID: 42)])
@@ -97,10 +97,55 @@ struct LocalViewerStateRecoveryTests {
             LocalViewerStateQuarantineItem(source: .active, data: invalid),
             LocalViewerStateQuarantineItem(source: .previous, data: invalid),
         ])
+        #expect(files.previousData == nil)
         let envelope = try JSONLocalViewerStateEnvelopeCoder().decode(
             #require(files.activeData)
         )
         #expect(envelope.migrationRecord.source == .legacyRecovery)
+
+        legacy.rejectReads = true
+        let relaunchedSnapshot = try await makeRepository(
+            files: files,
+            legacy: legacy,
+            ids: []
+        ).snapshot()
+
+        #expect(relaunchedSnapshot == snapshot)
+        #expect(files.previousData == nil)
+        #expect(files.quarantinedItems == [
+            LocalViewerStateQuarantineItem(source: .active, data: invalid),
+            LocalViewerStateQuarantineItem(source: .previous, data: invalid),
+        ])
+    }
+
+    @Test("previous cleanup failure blocks legacy publication and preserves invalid sources")
+    func previousCleanupFailure() async throws {
+        let recoveredID = try LocalViewerStateTestFixtures.uuid(
+            LocalViewerStateTestFixtures.firstID
+        )
+        let invalid = Data("same-invalid-bytes".utf8)
+        let watchlistData = try JSONEncoder().encode([watchlistItem(movieID: 42)])
+        let files = InMemoryLocalViewerStateFileStore(
+            activeData: invalid,
+            previousData: invalid
+        )
+        files.rejectPreviousRemoval = true
+        let legacy = InMemoryLegacyViewerStateSource(watchlistData: watchlistData)
+
+        #expect(
+            await makeRepository(
+                files: files,
+                legacy: legacy,
+                ids: [recoveredID]
+            ).loadState() == .recovery(.replacementFailure)
+        )
+        #expect(files.activeData == invalid)
+        #expect(files.previousData == invalid)
+        #expect(files.activeReplacementCount == 0)
+        #expect(files.quarantinedItems == [
+            LocalViewerStateQuarantineItem(source: .active, data: invalid),
+            LocalViewerStateQuarantineItem(source: .previous, data: invalid),
+        ])
     }
 
     @Test("unsupported active schema remains distinct when no recovery source exists")
@@ -149,6 +194,92 @@ struct LocalViewerStateRecoveryTests {
                 == .recovery(.unsupportedSchema)
         )
         #expect(files.quarantinedItems.first?.data == incompatible)
+    }
+
+    @Test("completed profile catalog schemas remain distinct from corrupt references")
+    func completedProfileCatalogSchemaClassification() async throws {
+        let unsupportedID = try LocalViewerStateTestFixtures.uuid(
+            LocalViewerStateTestFixtures.firstID
+        )
+        let corruptID = try LocalViewerStateTestFixtures.uuid(
+            LocalViewerStateTestFixtures.secondID
+        )
+        let unsupported = try LocalViewerStateTestFixtures.encoded(
+            LocalViewerStateTestFixtures.envelope(
+                id: unsupportedID,
+                completedProfile: LocalViewerStateTestFixtures.completedProfile(
+                    catalogReference: LocalViewerStateTestFixtures.catalogReference(
+                        schemaVersion: 99
+                    )
+                )
+            )
+        )
+        let corrupt = try LocalViewerStateTestFixtures.encoded(
+            LocalViewerStateTestFixtures.envelope(
+                id: corruptID,
+                completedProfile: LocalViewerStateTestFixtures.completedProfile(
+                    catalogReference: LocalViewerStateTestFixtures.catalogReference(
+                        catalogID: ""
+                    )
+                )
+            )
+        )
+        let unsupportedFiles = InMemoryLocalViewerStateFileStore(activeData: unsupported)
+        let corruptFiles = InMemoryLocalViewerStateFileStore(activeData: corrupt)
+
+        #expect(
+            await makeRepository(files: unsupportedFiles, ids: []).loadState()
+                == .recovery(.unsupportedSchema)
+        )
+        #expect(
+            await makeRepository(files: corruptFiles, ids: []).loadState()
+                == .recovery(.corruptData)
+        )
+        #expect(unsupportedFiles.quarantinedItems.first?.data == unsupported)
+        #expect(corruptFiles.quarantinedItems.first?.data == corrupt)
+    }
+
+    @Test("frozen draft catalog schemas remain distinct from corrupt references")
+    func frozenDraftCatalogSchemaClassification() async throws {
+        let unsupportedID = try LocalViewerStateTestFixtures.uuid(
+            LocalViewerStateTestFixtures.firstID
+        )
+        let corruptID = try LocalViewerStateTestFixtures.uuid(
+            LocalViewerStateTestFixtures.secondID
+        )
+        let unsupported = try LocalViewerStateTestFixtures.encoded(
+            LocalViewerStateTestFixtures.envelope(
+                id: unsupportedID,
+                profileDraft: LocalViewerStateTestFixtures.profileDraft(
+                    catalogReference: LocalViewerStateTestFixtures.catalogReference(
+                        schemaVersion: 99
+                    )
+                )
+            )
+        )
+        let corrupt = try LocalViewerStateTestFixtures.encoded(
+            LocalViewerStateTestFixtures.envelope(
+                id: corruptID,
+                profileDraft: LocalViewerStateTestFixtures.profileDraft(
+                    catalogReference: LocalViewerStateTestFixtures.catalogReference(
+                        catalogID: ""
+                    )
+                )
+            )
+        )
+        let unsupportedFiles = InMemoryLocalViewerStateFileStore(activeData: unsupported)
+        let corruptFiles = InMemoryLocalViewerStateFileStore(activeData: corrupt)
+
+        #expect(
+            await makeRepository(files: unsupportedFiles, ids: []).loadState()
+                == .recovery(.unsupportedSchema)
+        )
+        #expect(
+            await makeRepository(files: corruptFiles, ids: []).loadState()
+                == .recovery(.corruptData)
+        )
+        #expect(unsupportedFiles.quarantinedItems.first?.data == unsupported)
+        #expect(corruptFiles.quarantinedItems.first?.data == corrupt)
     }
 
     @Test("quarantine failure blocks replacement and preserves the original active bytes")

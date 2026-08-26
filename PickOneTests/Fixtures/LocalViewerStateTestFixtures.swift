@@ -27,6 +27,77 @@ enum LocalViewerStateTestFixtures {
         )
     }
 
+    static func envelope(
+        id: UUID,
+        completedProfile: CompletedViewerProfileV2DTO? = nil,
+        profileDraft: ViewerProfileDraftV2DTO? = nil
+    ) -> LocalViewerStateEnvelopeV2DTO {
+        let base = emptyEnvelope(id: id)
+        return LocalViewerStateEnvelopeV2DTO(
+            envelopeSchemaVersion: base.envelopeSchemaVersion,
+            committedStateSnapshotID: base.committedStateSnapshotID,
+            viewerProfileState: LocalViewerProfileStateV2DTO(
+                completedProfile: completedProfile,
+                profileDraft: profileDraft
+            ),
+            viewerMovieStates: base.viewerMovieStates,
+            migrationRecord: base.migrationRecord
+        )
+    }
+
+    static func completedProfile(
+        catalogReference: CalibrationCatalogReferenceV2DTO
+    ) -> CompletedViewerProfileV2DTO {
+        CompletedViewerProfileV2DTO(
+            profileSchemaVersion: CompletedViewerProfileV2DTO.schemaVersion,
+            lastCompletedCatalogReference: catalogReference,
+            regionCode: "ES",
+            selectedProviderIDs: [8]
+        )
+    }
+
+    static func profileDraft(
+        catalogReference: CalibrationCatalogReferenceV2DTO
+    ) -> ViewerProfileDraftV2DTO {
+        let catalog = CalibrationCatalog.spainHouseholdV1
+        return ViewerProfileDraftV2DTO(
+            kind: .firstOnboarding,
+            frozenCatalog: FrozenCalibrationCatalogV2DTO(
+                reference: catalogReference,
+                updatedAt: date,
+                movies: catalog.movies.enumerated().map { order, movie in
+                    FrozenCalibrationMovieV2DTO(
+                        order: order,
+                        movieID: movie.id,
+                        titleKnownInSpain: movie.titleKnownInSpain,
+                        originalOrEnglishTitle: movie.originalOrEnglishTitle,
+                        year: movie.year,
+                        originalLanguage: movie.originalLanguage,
+                        block: movie.block.rawValue
+                    )
+                }
+            ),
+            currentStep: FirstOnboardingStep.services.rawValue,
+            selectedProviderIDs: [8],
+            reactionsByMovieID: [:],
+            currentCatalogPosition: 0,
+            optionalExtensionAccepted: false
+        )
+    }
+
+    static func catalogReference(
+        schemaVersion: Int = 1,
+        catalogID: String = "es-household-calibration"
+    ) -> CalibrationCatalogReferenceV2DTO {
+        CalibrationCatalogReferenceV2DTO(
+            schemaVersion: schemaVersion,
+            catalogID: catalogID,
+            version: 1,
+            regionCode: "ES",
+            localeIdentifier: "es-ES"
+        )
+    }
+
     static func encoded(_ envelope: LocalViewerStateEnvelopeV2DTO) throws -> Data {
         try JSONLocalViewerStateEnvelopeCoder().encode(envelope)
     }

@@ -97,6 +97,8 @@ struct LocalViewerStatePersistenceTests {
 
         #expect(try store.readActive() == Data("active-replacement".utf8))
         #expect(try store.readPrevious() == previous)
+        try store.removePrevious()
+        #expect(try store.readPrevious() == nil)
         let quarantine = root.appending(path: "Quarantine", directoryHint: .isDirectory)
         let files = try FileManager.default.contentsOfDirectory(
             at: quarantine,

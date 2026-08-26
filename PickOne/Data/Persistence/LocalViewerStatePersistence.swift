@@ -149,6 +149,7 @@ protocol LocalViewerStateFileStore: Sendable {
     func readPrevious() throws -> Data?
     func replaceActive(with data: Data) throws
     func replacePrevious(with data: Data) throws
+    func removePrevious() throws
     func quarantine(_ data: Data, source: LocalViewerStateQuarantineSource) throws
 }
 
@@ -187,6 +188,14 @@ struct ApplicationSupportViewerStateStore: LocalViewerStateFileStore {
 
     func replacePrevious(with data: Data) throws {
         try replace(data, at: previousURL)
+    }
+
+    func removePrevious() throws {
+        let fileManager = FileManager.default
+        guard fileManager.fileExists(atPath: previousURL.path()) else {
+            return
+        }
+        try fileManager.removeItem(at: previousURL)
     }
 
     func quarantine(_ data: Data, source: LocalViewerStateQuarantineSource) throws {

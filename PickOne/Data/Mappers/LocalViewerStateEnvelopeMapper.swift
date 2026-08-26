@@ -209,8 +209,10 @@ struct LocalViewerStateEnvelopeMapper: Sendable {
     }
 
     private func validate(_ reference: CalibrationCatalogReferenceV2DTO) throws {
-        guard reference.schemaVersion == 1,
-              !reference.catalogID.isEmpty,
+        guard reference.schemaVersion == 1 else {
+            throw LocalViewerStateEnvelopeMappingError.unsupportedCatalog
+        }
+        guard !reference.catalogID.isEmpty,
               reference.version > 0,
               reference.regionCode.uppercased() == ViewingRegion.spain.code,
               reference.localeIdentifier == "es-ES"

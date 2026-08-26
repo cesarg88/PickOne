@@ -178,14 +178,16 @@ actor LocalViewerStateRepository: ViewerMovieStateRepository {
                 return try migrateOrCreate(
                     currentFailure: reason ?? repositoryError(for: codingError),
                     recoveryReason: recoveryReason ?? self.recoveryReason(for: codingError),
-                    recoveringCurrentState: true
+                    recoveringCurrentState: true,
+                    invalidPreviousWasQuarantined: true
                 )
             } catch let mappingError as LocalViewerStateEnvelopeMappingError {
                 try quarantine(previousData, source: .previous)
                 return try migrateOrCreate(
                     currentFailure: reason ?? repositoryError(for: mappingError),
                     recoveryReason: recoveryReason ?? self.recoveryReason(for: mappingError),
-                    recoveringCurrentState: true
+                    recoveringCurrentState: true,
+                    invalidPreviousWasQuarantined: true
                 )
             } catch let failure as ResolutionFailure {
                 throw failure
@@ -194,7 +196,8 @@ actor LocalViewerStateRepository: ViewerMovieStateRepository {
                 return try migrateOrCreate(
                     currentFailure: reason ?? .corruptData,
                     recoveryReason: recoveryReason ?? .corruptData,
-                    recoveringCurrentState: true
+                    recoveringCurrentState: true,
+                    invalidPreviousWasQuarantined: true
                 )
             }
         }
@@ -202,14 +205,16 @@ actor LocalViewerStateRepository: ViewerMovieStateRepository {
         return try migrateOrCreate(
             currentFailure: reason,
             recoveryReason: recoveryReason,
-            recoveringCurrentState: reason != nil
+            recoveringCurrentState: reason != nil,
+            invalidPreviousWasQuarantined: false
         )
     }
 
     private func migrateOrCreate(
         currentFailure: ViewerMovieStateRepositoryError?,
         recoveryReason: ViewerMovieStateRecoveryReason?,
-        recoveringCurrentState: Bool
+        recoveringCurrentState: Bool,
+        invalidPreviousWasQuarantined: Bool
     ) throws -> ResolvedState {
         let profileData: Data?
         let watchlistData: Data?
@@ -245,7 +250,10 @@ actor LocalViewerStateRepository: ViewerMovieStateRepository {
         } catch {
             throw failure(.migrationFailure, .migrationFailure)
         }
-        let persisted = try publishInitial(envelope)
+        let persisted = try publishInitial(
+            envelope,
+            clearPrevious: invalidPreviousWasQuarantined
+        )
         resolvedState = persisted
         return persisted
     }
@@ -275,12 +283,22 @@ actor LocalViewerStateRepository: ViewerMovieStateRepository {
         return try publishInitial(replacement)
     }
 
-    private func publishInitial(_ envelope: LocalViewerStateEnvelopeV2DTO) throws -> ResolvedState {
+    private func publishInitial(
+        _ envelope: LocalViewerStateEnvelopeV2DTO,
+        clearPrevious: Bool = false
+    ) throws -> ResolvedState {
         let data: Data
         do {
             data = try encodeValidated(envelope)
         } catch let error as ViewerMovieStateRepositoryError {
             throw failure(error, .replacementFailure)
+        }
+        if clearPrevious {
+            do {
+                try fileStore.removePrevious()
+            } catch {
+                throw failure(.previousCopyFailure, .replacementFailure)
+            }
         }
         do {
             try fileStore.replaceActive(with: data)
