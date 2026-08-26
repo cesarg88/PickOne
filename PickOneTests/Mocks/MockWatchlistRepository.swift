@@ -60,6 +60,10 @@ final class MockWatchlistRepository: WatchlistRepository {
         set { state.withLock { $0.getAllItemsCallCount = newValue } }
     }
 
+    var loadAllItemsCallCount: Int {
+        getAllItemsCallCount
+    }
+
     private(set) var addCallCount: Int {
         get { state.withLock { $0.addCallCount } }
         set { state.withLock { $0.addCallCount = newValue } }
@@ -107,18 +111,14 @@ final class MockWatchlistRepository: WatchlistRepository {
 
     // MARK: - WatchlistRepository
 
-    func loadAllItems() throws -> [WatchlistItem] {
-        getAllItems()
-    }
-
-    func getAllItems() -> [WatchlistItem] {
+    func loadAllItems() async throws -> [WatchlistItem] {
         state.withLock {
             $0.getAllItemsCallCount += 1
             return $0.getAllItemsResult
         }
     }
 
-    func add(movie: MovieSummary) throws {
+    func add(movie: MovieSummary) async throws {
         try state.withLock {
             $0.addCallCount += 1
             $0.lastAddedMovie = movie
@@ -128,7 +128,7 @@ final class MockWatchlistRepository: WatchlistRepository {
         }
     }
 
-    func remove(movieId: Int) throws {
+    func remove(movieId: Int) async throws {
         try state.withLock {
             $0.removeCallCount += 1
             $0.lastRemovedMovieId = movieId
@@ -138,7 +138,7 @@ final class MockWatchlistRepository: WatchlistRepository {
         }
     }
 
-    func setWatched(movieId: Int, isWatched: Bool) throws {
+    func setWatched(movieId: Int, isWatched: Bool) async throws {
         try state.withLock {
             $0.setWatchedCallCount += 1
             $0.lastSetWatchedMovieId = movieId
@@ -149,7 +149,7 @@ final class MockWatchlistRepository: WatchlistRepository {
         }
     }
 
-    func getStatus(movieId: Int) -> WatchlistStatus {
+    func getStatus(movieId: Int) async throws -> WatchlistStatus {
         state.withLock {
             $0.getStatusCallCount += 1
             $0.lastGetStatusMovieId = movieId

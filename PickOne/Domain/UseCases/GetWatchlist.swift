@@ -10,7 +10,7 @@ import Foundation
 protocol GetWatchlistUseCase: Sendable {
     /// Retrieves the complete watchlist organized by status
     /// - Returns: A snapshot containing toWatch and watched items
-    func execute() -> WatchlistSnapshot
+    func execute() async throws -> WatchlistSnapshot
 }
 
 final class GetWatchlist: GetWatchlistUseCase, Sendable {
@@ -20,8 +20,8 @@ final class GetWatchlist: GetWatchlistUseCase, Sendable {
         self.repository = repository
     }
 
-    func execute() -> WatchlistSnapshot {
-        let allItems = repository.getAllItems()
+    func execute() async throws -> WatchlistSnapshot {
+        let allItems = try await repository.loadAllItems()
 
         let toWatch = allItems.filter { !$0.isWatched }
         let watched = allItems.filter { $0.isWatched }

@@ -1,39 +1,46 @@
 import Foundation
 
 actor LocalViewerStateRepository: ViewerMovieStateRepository {
-    private struct ResolvedState: Sendable {
+    struct ResolvedState: Sendable {
         let envelope: LocalViewerStateEnvelopeV2DTO
         let snapshot: ViewerMovieStateSnapshot
         let activeBytes: Data
     }
 
-    private struct ResolutionFailure: Error, Sendable {
+    struct ResolutionFailure: Error, Sendable {
         let repositoryError: ViewerMovieStateRepositoryError
         let recoveryReason: ViewerMovieStateRecoveryReason
     }
 
-    private let fileStore: any LocalViewerStateFileStore
+    let fileStore: any LocalViewerStateFileStore
     private let legacySource: any LegacyViewerStateSource
+    let legacyResetter: (any LegacyViewerStateResetter)?
     private let coder: any LocalViewerStateEnvelopeCoding
-    private let mapper: LocalViewerStateEnvelopeMapper
-    private let migrator: LegacyViewerStateMigrator
-    private let makeSnapshotID: @Sendable () -> UUID
-    private let now: @Sendable () -> Date
-    private var resolvedState: ResolvedState?
+    let mapper: LocalViewerStateEnvelopeMapper
+    let profileMapper: LocalViewerProfileMapper
+    let migrator: LegacyViewerStateMigrator
+    let makeSnapshotID: @Sendable () -> UUID
+    let now: @Sendable () -> Date
+    var resolvedState: ResolvedState?
+    var destructiveResetAuthorized = false
 
     init(
         fileStore: any LocalViewerStateFileStore,
         legacySource: any LegacyViewerStateSource,
+        legacyResetter: (any LegacyViewerStateResetter)? = nil,
         coder: any LocalViewerStateEnvelopeCoding = JSONLocalViewerStateEnvelopeCoder(),
         mapper: LocalViewerStateEnvelopeMapper = LocalViewerStateEnvelopeMapper(),
+        profileMapper: LocalViewerProfileMapper = LocalViewerProfileMapper(),
         migrator: LegacyViewerStateMigrator = LegacyViewerStateMigrator(),
         snapshotID: @escaping @Sendable () -> UUID = UUID.init,
         now: @escaping @Sendable () -> Date = Date.init
     ) {
         self.fileStore = fileStore
         self.legacySource = legacySource
+        self.legacyResetter = legacyResetter
         self.coder = coder
         self.mapper = mapper
+        self.profileMapper = profileMapper
         self.migrator = migrator
         makeSnapshotID = snapshotID
         self.now = now
@@ -41,8 +48,11 @@ actor LocalViewerStateRepository: ViewerMovieStateRepository {
 
     func loadState() -> ViewerMovieStateLoadState {
         do {
-            return try .loaded(resolve().snapshot)
+            let snapshot = try resolve().snapshot
+            destructiveResetAuthorized = false
+            return .loaded(snapshot)
         } catch let failure as ResolutionFailure {
+            destructiveResetAuthorized = true
             return .recovery(failure.recoveryReason)
         } catch {
             return .recovery(.loadFailure)
@@ -51,7 +61,9 @@ actor LocalViewerStateRepository: ViewerMovieStateRepository {
 
     func snapshot() throws -> ViewerMovieStateSnapshot {
         do {
-            return try resolve().snapshot
+            let snapshot = try resolve().snapshot
+            destructiveResetAuthorized = false
+            return snapshot
         } catch let failure as ResolutionFailure {
             throw failure.repositoryError
         } catch {
@@ -114,7 +126,7 @@ actor LocalViewerStateRepository: ViewerMovieStateRepository {
         )
     }
 
-    private func resolve() throws -> ResolvedState {
+    func resolve() throws -> ResolvedState {
         if let resolvedState {
             return resolvedState
         }
@@ -283,7 +295,7 @@ actor LocalViewerStateRepository: ViewerMovieStateRepository {
         return try publishInitial(replacement)
     }
 
-    private func publishInitial(
+    func publishInitial(
         _ envelope: LocalViewerStateEnvelopeV2DTO,
         clearPrevious: Bool = false
     ) throws -> ResolvedState {
@@ -308,7 +320,7 @@ actor LocalViewerStateRepository: ViewerMovieStateRepository {
         return try decode(data)
     }
 
-    private func persistMutation(
+    func persistMutation(
         _ envelope: LocalViewerStateEnvelopeV2DTO,
         replacing current: ResolvedState
     ) throws -> ResolvedState {
@@ -404,7 +416,7 @@ actor LocalViewerStateRepository: ViewerMovieStateRepository {
         )
     }
 
-    private func freshSnapshotID(excluding previousID: UUID) -> UUID {
+    func freshSnapshotID(excluding previousID: UUID) -> UUID {
         var candidate = makeSnapshotID()
         while candidate == previousID {
             candidate = makeSnapshotID()

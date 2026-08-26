@@ -19,6 +19,10 @@ struct ViewerProfileCopyTests {
             .resetBody ==
             "This removes your streaming services and movie calibration. Your Watchlist and Search History will stay.")
         #expect(ViewerProfileCopy.unsupportedTitle == "Preferences need to be reset")
+        #expect(ViewerProfileCopy.unsupportedBody ==
+            "This saved movie data version isn't supported by this build. You can try again or reset all movie data.")
         #expect(ViewerProfileCopy.corruptTitle == "Preferences couldn't be read")
+        #expect(ViewerProfileCopy.corruptBody ==
+            "Your saved movie data is damaged and couldn't be recovered. You can try again or reset all movie data.")
     }
 }

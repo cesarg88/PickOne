@@ -13,7 +13,7 @@ protocol SetWatchedUseCase: Sendable {
     ///   - movieId: The ID of the movie
     ///   - isWatched: True if watched, false if to-watch
     /// - Throws: WatchlistError if movie is not in watchlist
-    func execute(movieId: Int, isWatched: Bool) throws
+    func execute(movieId: Int, isWatched: Bool) async throws
 }
 
 final class SetWatched: SetWatchedUseCase, Sendable {
@@ -23,8 +23,8 @@ final class SetWatched: SetWatchedUseCase, Sendable {
         self.repository = repository
     }
 
-    func execute(movieId: Int, isWatched: Bool) throws {
-        let currentStatus = repository.getStatus(movieId: movieId)
+    func execute(movieId: Int, isWatched: Bool) async throws {
+        let currentStatus = try await repository.getStatus(movieId: movieId)
 
         guard currentStatus != .notInWatchlist else {
             throw WatchlistError.movieNotInWatchlist
@@ -37,6 +37,6 @@ final class SetWatched: SetWatchedUseCase, Sendable {
             return
         }
 
-        try repository.setWatched(movieId: movieId, isWatched: isWatched)
+        try await repository.setWatched(movieId: movieId, isWatched: isWatched)
     }
 }

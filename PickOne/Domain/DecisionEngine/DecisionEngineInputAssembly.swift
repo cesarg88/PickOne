@@ -56,7 +56,7 @@ struct AssembleDecisionEngineInput: Sendable {
         currentCycleShownMovieIDs: Set<Int>
     ) async throws -> DecisionEngineInputSnapshot {
         let profile = try await loadCompletedProfile()
-        let watchlistItems = try loadWatchlist()
+        let watchlistItems = try await loadWatchlist()
         let context = try candidateContext(for: profile)
         let tasteProfile = try await hydrateTasteProfile(profile)
         try Task.checkCancellation()
@@ -116,9 +116,9 @@ struct AssembleDecisionEngineInput: Sendable {
         return profile
     }
 
-    private func loadWatchlist() throws -> [WatchlistItem] {
+    private func loadWatchlist() async throws -> [WatchlistItem] {
         do {
-            return try watchlistRepository.loadAllItems()
+            return try await watchlistRepository.loadAllItems()
         } catch {
             throw DecisionEngineInputAssemblyError.watchlistUnavailable
         }

@@ -4,6 +4,7 @@ import SwiftUI
 struct AppRootView: View {
     let container: AppContainer
     @Bindable var profileModel: ViewerProfileViewModel
+    @State private var showsDestructiveResetConfirmation = false
 
     var body: some View {
         Group {
@@ -25,8 +26,15 @@ struct AppRootView: View {
                     ViewerProfileRecoveryView(
                         reason: reason,
                         tryAgain: { Task { await profileModel.load() } },
-                        reset: { Task { await profileModel.resetProfile() } }
+                        reset: { showsDestructiveResetConfirmation = true }
                     )
+            }
+        }
+        .safeAreaInset(edge: .top) {
+            if showsRecoveryNotice {
+                ViewerStateRecoveryNoticeView(
+                    dismiss: profileModel.dismissRecoveryNotice
+                )
             }
         }
         .task {
@@ -47,6 +55,50 @@ struct AppRootView: View {
         } message: {
             Text(profileModel.saveErrorMessage ?? "Please try again.")
         }
+        .confirmationDialog(
+            "Reset all movie data?",
+            isPresented: $showsDestructiveResetConfirmation,
+            titleVisibility: .visible
+        ) {
+            Button("Reset all movie data", role: .destructive) {
+                Task { await profileModel.destructivelyResetUnrecoverableViewerState() }
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text(
+                "This will delete your preferences, watched history, Watchlist, " +
+                    "and movie feedback. Search History will not be deleted."
+            )
+        }
+    }
+
+    private var showsRecoveryNotice: Bool {
+        guard profileModel.recoveryNotice == .olderSnapshot else { return false }
+        return switch profileModel.rootState {
+            case .onboarding, .main: true
+            case .loading, .recovery: false
+        }
+    }
+}
+
+@MainActor
+private struct ViewerStateRecoveryNoticeView: View {
+    let dismiss: () -> Void
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 12) {
+            Image(systemName: "arrow.counterclockwise.circle.fill")
+                .foregroundStyle(.orange)
+                .accessibilityHidden(true)
+            Text("We recovered an earlier saved version of your movie data. Please review it in Settings.")
+                .font(.footnote)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            Button("Dismiss", systemImage: "xmark", action: dismiss)
+                .labelStyle(.iconOnly)
+        }
+        .padding()
+        .background(.regularMaterial)
+        .accessibilityElement(children: .combine)
     }
 }
 
@@ -71,7 +123,7 @@ private struct ViewerProfileRecoveryView: View {
             case .corruptData:
                 ViewerProfileCopy.corruptBody
             case .loadFailed:
-                "Your saved preferences couldn't be loaded. Your data was preserved."
+                "Your saved movie data couldn't be loaded. Your data was preserved."
         }
     }
 
@@ -82,9 +134,7 @@ private struct ViewerProfileRecoveryView: View {
             Text(message)
         } actions: {
             Button("Try again", action: tryAgain)
-            if reason != .loadFailed {
-                Button("Reset preferences", role: .destructive, action: reset)
-            }
+            Button("Reset all movie data", role: .destructive, action: reset)
         }
     }
 }

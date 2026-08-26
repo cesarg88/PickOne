@@ -106,6 +106,47 @@ struct LocalViewerStatePersistenceTests {
         )
         #expect(files.count == 2)
         #expect(try files.map { try Data(contentsOf: $0) } == [invalid, invalid])
+
+        try store.removeAllViewerState()
+        #expect(try store.readActive() == nil)
+        #expect(try store.readPrevious() == nil)
+        #expect(
+            try FileManager.default.contentsOfDirectory(
+                at: root,
+                includingPropertiesForKeys: nil
+            ).isEmpty
+        )
+    }
+
+    @Test("Application Support volume replaces an active file after copying it to previous")
+    func applicationSupportVolumeReplacement() throws {
+        let support = try FileManager.default.url(
+            for: .applicationSupportDirectory,
+            in: .userDomainMask,
+            appropriateFor: nil,
+            create: true
+        )
+        let root = support.appending(
+            path: "PickOne-LocalViewerState-Test-\(UUID().uuidString)",
+            directoryHint: .isDirectory
+        )
+        defer { try? FileManager.default.removeItem(at: root) }
+        let store = try ApplicationSupportViewerStateStore(directoryURL: root)
+        let original = Data("original".utf8)
+        let replacement = Data("replacement".utf8)
+
+        try store.replaceActive(with: original)
+        let active = try #require(try store.readActive())
+        try store.replacePrevious(with: active)
+        try store.replaceActive(with: replacement)
+
+        #expect(try store.readActive() == replacement)
+        #expect(try store.readPrevious() == original)
+        let remainingNames = try FileManager.default.contentsOfDirectory(
+            at: root,
+            includingPropertiesForKeys: nil
+        ).map(\.lastPathComponent).sorted()
+        #expect(remainingNames == ["viewer-state-v2.json", "viewer-state-v2.previous.json"])
     }
 
     @Test("a v2 fixture remains readable after repository recreation")

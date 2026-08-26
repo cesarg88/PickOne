@@ -24,7 +24,7 @@ struct WatchlistView: View {
                 // Filter picker
                 Picker("Filter", selection: Binding(
                     get: { model.currentFilter },
-                    set: { model.applyFilter($0) }
+                    set: { filter in Task { await model.applyFilter(filter) } }
                 )) {
                     ForEach(WatchlistFilter.allCases) { filter in
                         Text(filter.rawValue).tag(filter)
@@ -52,8 +52,8 @@ struct WatchlistView: View {
             .navigationDestination(for: WatchlistRoute.self) { route in
                 movieDetail(movieID: route.movieID)
             }
-            .onAppear {
-                model.load()
+            .task {
+                await model.load()
             }
             .alert(
                 "Watchlist update failed",
@@ -108,14 +108,14 @@ struct WatchlistView: View {
                 }
                 .swipeActions(edge: .trailing, allowsFullSwipe: true) {
                     Button(role: .destructive) {
-                        model.remove(movieId: item.id)
+                        Task { await model.remove(movieId: item.id) }
                     } label: {
                         Label("Remove", systemImage: "trash")
                     }
                 }
                 .swipeActions(edge: .leading, allowsFullSwipe: true) {
                     Button {
-                        model.toggleWatched(movieId: item.id)
+                        Task { await model.toggleWatched(movieId: item.id) }
                     } label: {
                         if item.isWatched {
                             Label("To Watch", systemImage: "eye.slash")
@@ -182,14 +182,16 @@ private struct WatchlistRow: View {
                             .foregroundStyle(.secondary)
                     }
 
-                    HStack(spacing: 2) {
-                        Image(systemName: "star.fill")
-                            .foregroundStyle(.yellow)
-                            .font(.caption)
-                            .accessibilityHidden(true)
-                        Text(item.rating)
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
+                    if let rating = item.rating {
+                        HStack(spacing: 2) {
+                            Image(systemName: "star.fill")
+                                .foregroundStyle(.yellow)
+                                .font(.caption)
+                                .accessibilityHidden(true)
+                            Text(rating)
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                        }
                     }
                 }
 

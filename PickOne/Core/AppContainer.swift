@@ -18,6 +18,7 @@ final class AppContainer {
     let getWatchlist: GetWatchlistUseCase
     let setWatchlistMembership: SetWatchlistMembershipUseCase
     let setWatched: SetWatchedUseCase
+    let getMyMovies: GetMyMoviesUseCase
 
     // MARK: - Use Cases - Search
 
@@ -32,6 +33,8 @@ final class AppContainer {
     // MARK: - Use Cases - Viewer Profile
 
     let manageViewerProfile: ManageViewerProfileUseCase
+    let getViewerStateRecoveryNotice: GetViewerStateRecoveryNoticeUseCase
+    let resetUnrecoverableViewerState: ResetUnrecoverableViewerStateUseCase
 
     // MARK: - ViewModels
 
@@ -69,11 +72,14 @@ final class AppContainer {
         getWatchlist = useCases.getWatchlist
         setWatchlistMembership = useCases.setWatchlistMembership
         setWatched = useCases.setWatched
+        getMyMovies = useCases.getMyMovies
         searchMovies = useCases.searchMovies
         searchHistory = useCases.searchHistory
         getChatRecommendations = useCases.getChatRecommendations
         threeForTonight = homeUseCase
         manageViewerProfile = useCases.manageViewerProfile
+        getViewerStateRecoveryNotice = useCases.getViewerStateRecoveryNotice
+        resetUnrecoverableViewerState = useCases.resetUnrecoverableViewerState
         imagePipeline = ImagePipeline()
         discoveryViewModel = DiscoveryViewModel(
             getDiscoveryFeed: useCases.getDiscoveryFeed
@@ -100,6 +106,8 @@ final class AppContainer {
         viewerProfileViewModel = ViewerProfileViewModel(
             manageProfile: useCases.manageViewerProfile,
             getMovieMetadata: useCases.getCalibrationMovieMetadata,
+            getRecoveryNotice: useCases.getViewerStateRecoveryNotice,
+            resetUnrecoverableViewerState: useCases.resetUnrecoverableViewerState,
             resetsProfileForUITests: AppConfiguration.resetsViewerProfileForUITests
         )
     }
@@ -110,8 +118,9 @@ private extension AppContainer {
         let movie: DefaultMovieRepository
         let calibrationMovieMetadata: DefaultCalibrationMetadataRepository
         let availability: DefaultAvailabilityRepository
-        let viewerProfile: DefaultViewerProfileRepository
-        let watchlist: DefaultWatchlistRepository
+        let viewerState: LocalViewerStateRepository
+        let viewerProfile: LocalViewerProfileRepositoryAdapter
+        let watchlist: LocalViewerStateWatchlistAdapter
         let searchHistory: DefaultSearchHistoryRepository
         let recommendation: StubRecommendationRepository
         let decisionCandidate: DefaultDecisionCandidateRepository
@@ -127,12 +136,15 @@ private extension AppContainer {
         let getWatchlist: GetWatchlist
         let setWatchlistMembership: SetWatchlistMembership
         let setWatched: SetWatched
+        let getMyMovies: GetMyMovies
         let searchMovies: SearchMovies
         let searchHistory: SearchHistory
         let getChatRecommendations: GetChatRecommendations
         let threeForTonight: ThreeForTonightCoordinator
         let manageViewerProfile: ManageViewerProfile
         let getCalibrationMovieMetadata: GetCalibrationMovieMetadata
+        let getViewerStateRecoveryNotice: GetViewerStateRecoveryNotice
+        let resetUnrecoverableViewerState: ResetUnrecoverableViewerState
     }
 
     static func makeRepositories() -> Repositories {
@@ -146,6 +158,15 @@ private extension AppContainer {
         )
         let availabilityClock = SystemAvailabilityClock()
         let localStore = UserDefaultsLocalStore()
+        let viewerStateFileStore: any LocalViewerStateFileStore =
+            (try? ApplicationSupportViewerStateStore()) ??
+            UnavailableLocalViewerStateFileStore()
+        let legacyViewerState = UserDefaultsLegacyViewerStateSource()
+        let viewerState = LocalViewerStateRepository(
+            fileStore: viewerStateFileStore,
+            legacySource: legacyViewerState,
+            legacyResetter: legacyViewerState
+        )
         return Repositories(
             movie: DefaultMovieRepository(
                 client: movieClient,
@@ -170,10 +191,13 @@ private extension AppContainer {
                 ),
                 clock: availabilityClock
             ),
-            viewerProfile: DefaultViewerProfileRepository(
-                store: UserDefaultsViewerProfileDataStore()
+            viewerState: viewerState,
+            viewerProfile: LocalViewerProfileRepositoryAdapter(
+                repository: viewerState
             ),
-            watchlist: DefaultWatchlistRepository(localStore: localStore),
+            watchlist: LocalViewerStateWatchlistAdapter(
+                repository: viewerState
+            ),
             searchHistory: DefaultSearchHistoryRepository(localStore: localStore),
             recommendation: StubRecommendationRepository(),
             decisionCandidate: DefaultDecisionCandidateRepository(
@@ -217,6 +241,7 @@ private extension AppContainer {
             getWatchlist: GetWatchlist(repository: repositories.watchlist),
             setWatchlistMembership: SetWatchlistMembership(repository: repositories.watchlist),
             setWatched: SetWatched(repository: repositories.watchlist),
+            getMyMovies: GetMyMovies(repository: repositories.viewerState),
             searchMovies: SearchMovies(
                 movieRepository: repositories.movie,
                 searchHistoryRepository: repositories.searchHistory
@@ -243,6 +268,16 @@ private extension AppContainer {
             ),
             getCalibrationMovieMetadata: GetCalibrationMovieMetadata(
                 repository: repositories.calibrationMovieMetadata
+            ),
+            getViewerStateRecoveryNotice: GetViewerStateRecoveryNotice(
+                repository: ViewerStateRecoveryNoticeAdapter(
+                    repository: repositories.viewerState
+                )
+            ),
+            resetUnrecoverableViewerState: ResetUnrecoverableViewerState(
+                repository: ViewerStateDestructiveRecoveryAdapter(
+                    repository: repositories.viewerState
+                )
             )
         )
     }

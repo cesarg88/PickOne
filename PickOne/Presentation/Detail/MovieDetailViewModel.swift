@@ -140,7 +140,7 @@ final class MovieDetailViewModel {
 
     // MARK: - Watchlist Actions
 
-    func toggleWatchlist() {
+    func toggleWatchlist() async {
         guard case var .loaded(model) = state else { return }
 
         let movie = MovieSummary(
@@ -152,7 +152,7 @@ final class MovieDetailViewModel {
         )
 
         do {
-            try setMembership.execute(movie: movie, isInWatchlist: !model.isInWatchlist)
+            try await setMembership.execute(movie: movie, isInWatchlist: !model.isInWatchlist)
             model.isInWatchlist.toggle()
             if !model.isInWatchlist {
                 model.isWatched = false // Remove from watchlist clears watched status
@@ -164,12 +164,12 @@ final class MovieDetailViewModel {
         }
     }
 
-    func toggleWatched() {
+    func toggleWatched() async {
         guard case var .loaded(model) = state,
               model.isInWatchlist else { return }
 
         do {
-            try setWatched.execute(movieId: model.id, isWatched: !model.isWatched)
+            try await setWatched.execute(movieId: model.id, isWatched: !model.isWatched)
             model.isWatched.toggle()
             state = .loaded(model)
             notifyEligibilityChange(cause: .watchlist)

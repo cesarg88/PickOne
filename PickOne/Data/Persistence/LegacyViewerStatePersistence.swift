@@ -5,11 +5,15 @@ protocol LegacyViewerStateSource: Sendable {
     func readWatchlist() throws -> Data?
 }
 
+protocol LegacyViewerStateResetter: Sendable {
+    func removeLegacyViewerState() throws
+}
+
 enum LegacyViewerStateSourceError: Error, Equatable, Sendable {
     case invalidSuiteName
 }
 
-struct UserDefaultsLegacyViewerStateSource: LegacyViewerStateSource {
+struct UserDefaultsLegacyViewerStateSource: LegacyViewerStateSource, LegacyViewerStateResetter {
     private let suiteName: String?
 
     init(suiteName: String? = nil) {
@@ -22,6 +26,12 @@ struct UserDefaultsLegacyViewerStateSource: LegacyViewerStateSource {
 
     func readWatchlist() throws -> Data? {
         try makeUserDefaults().data(forKey: "watchlist_items_v2")
+    }
+
+    func removeLegacyViewerState() throws {
+        let defaults = try makeUserDefaults()
+        defaults.removeObject(forKey: UserDefaultsViewerProfileDataStore.storageKey)
+        defaults.removeObject(forKey: "watchlist_items_v2")
     }
 
     private func makeUserDefaults() throws -> UserDefaults {

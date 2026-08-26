@@ -14,17 +14,17 @@ struct WatchlistRepositoryTests {
     // MARK: - getAllItems
 
     @Test("getAllItems returns empty when no items")
-    func getAllItemsReturnsEmptyWhenNoItems() {
+    func getAllItemsReturnsEmptyWhenNoItems() async throws {
         let localStore = MockLocalStore()
         let sut = DefaultWatchlistRepository(localStore: localStore)
 
-        let items = sut.getAllItems()
+        let items = try await sut.loadAllItems()
 
         #expect(items.isEmpty)
     }
 
     @Test("getAllItems maps persisted items to domain")
-    func getAllItemsMapsPersistedToDomain() {
+    func getAllItemsMapsPersistedToDomain() async throws {
         let localStore = MockLocalStore()
         let addedAt = Date()
         localStore.seedWatchlistItems([
@@ -49,7 +49,7 @@ struct WatchlistRepositoryTests {
         ])
 
         let sut = DefaultWatchlistRepository(localStore: localStore)
-        let items = sut.getAllItems()
+        let items = try await sut.loadAllItems()
 
         #expect(items.count == 2)
         #expect(items[0].id == 1)
@@ -61,25 +61,25 @@ struct WatchlistRepositoryTests {
     }
 
     @Test("loadAllItems propagates a corrupted Watchlist read")
-    func loadAllItemsPropagatesCorruption() {
+    func loadAllItemsPropagatesCorruption() async {
         let localStore = MockLocalStore()
         localStore.loadWatchlistItemsError = .corruptedWatchlist
         let sut = DefaultWatchlistRepository(localStore: localStore)
 
-        #expect(throws: LocalStoreError.corruptedWatchlist) {
-            _ = try sut.loadAllItems()
+        await #expect(throws: LocalStoreError.corruptedWatchlist) {
+            _ = try await sut.loadAllItems()
         }
     }
 
     // MARK: - add
 
     @Test("add saves item to local store")
-    func addSavesItemToLocalStore() throws {
+    func addSavesItemToLocalStore() async throws {
         let localStore = MockLocalStore()
         let sut = DefaultWatchlistRepository(localStore: localStore)
         let movie = MovieSummary(id: 1, title: "Test", posterPath: "/path.jpg", releaseYear: 2024, rating: 8.0)
 
-        try sut.add(movie: movie)
+        try await sut.add(movie: movie)
 
         #expect(localStore.saveWatchlistItemCallCount == 1)
         #expect(localStore.lastSavedItem?.movieId == 1)
@@ -88,7 +88,7 @@ struct WatchlistRepositoryTests {
     }
 
     @Test("add throws when movie already in watchlist")
-    func addThrowsWhenAlreadyInWatchlist() {
+    func addThrowsWhenAlreadyInWatchlist() async {
         let localStore = MockLocalStore()
         localStore.seedWatchlistItems([
             PersistedWatchlistItem(
@@ -104,15 +104,15 @@ struct WatchlistRepositoryTests {
         let sut = DefaultWatchlistRepository(localStore: localStore)
         let movie = MovieSummary(id: 1, title: "Test", posterPath: nil, releaseYear: nil, rating: 8.0)
 
-        #expect(throws: WatchlistError.movieAlreadyInWatchlist) {
-            try sut.add(movie: movie)
+        await #expect(throws: WatchlistError.movieAlreadyInWatchlist) {
+            try await sut.add(movie: movie)
         }
     }
 
     // MARK: - remove
 
     @Test("remove deletes item from local store")
-    func removeDeletesFromLocalStore() throws {
+    func removeDeletesFromLocalStore() async throws {
         let localStore = MockLocalStore()
         localStore.seedWatchlistItems([
             PersistedWatchlistItem(
@@ -127,26 +127,26 @@ struct WatchlistRepositoryTests {
         ])
         let sut = DefaultWatchlistRepository(localStore: localStore)
 
-        try sut.remove(movieId: 1)
+        try await sut.remove(movieId: 1)
 
         #expect(localStore.removeWatchlistItemCallCount == 1)
         #expect(localStore.lastRemovedMovieId == 1)
     }
 
     @Test("remove throws when movie not in watchlist")
-    func removeThrowsWhenNotInWatchlist() {
+    func removeThrowsWhenNotInWatchlist() async {
         let localStore = MockLocalStore()
         let sut = DefaultWatchlistRepository(localStore: localStore)
 
-        #expect(throws: WatchlistError.movieNotInWatchlist) {
-            try sut.remove(movieId: 999)
+        await #expect(throws: WatchlistError.movieNotInWatchlist) {
+            try await sut.remove(movieId: 999)
         }
     }
 
     // MARK: - setWatched
 
     @Test("setWatched updates watched status")
-    func setWatchedUpdatesStatus() throws {
+    func setWatchedUpdatesStatus() async throws {
         let localStore = MockLocalStore()
         localStore.seedWatchlistItems([
             PersistedWatchlistItem(
@@ -161,7 +161,7 @@ struct WatchlistRepositoryTests {
         ])
         let sut = DefaultWatchlistRepository(localStore: localStore)
 
-        try sut.setWatched(movieId: 1, isWatched: true)
+        try await sut.setWatched(movieId: 1, isWatched: true)
 
         #expect(localStore.updateWatchedStatusCallCount == 1)
         #expect(localStore.lastUpdatedMovieId == 1)
@@ -169,29 +169,29 @@ struct WatchlistRepositoryTests {
     }
 
     @Test("setWatched throws when movie not in watchlist")
-    func setWatchedThrowsWhenNotInWatchlist() {
+    func setWatchedThrowsWhenNotInWatchlist() async {
         let localStore = MockLocalStore()
         let sut = DefaultWatchlistRepository(localStore: localStore)
 
-        #expect(throws: WatchlistError.movieNotInWatchlist) {
-            try sut.setWatched(movieId: 999, isWatched: true)
+        await #expect(throws: WatchlistError.movieNotInWatchlist) {
+            try await sut.setWatched(movieId: 999, isWatched: true)
         }
     }
 
     // MARK: - getStatus
 
     @Test("getStatus returns notInWatchlist when not present")
-    func getStatusReturnsNotInWatchlistWhenNotPresent() {
+    func getStatusReturnsNotInWatchlistWhenNotPresent() async throws {
         let localStore = MockLocalStore()
         let sut = DefaultWatchlistRepository(localStore: localStore)
 
-        let status = sut.getStatus(movieId: 999)
+        let status = try await sut.getStatus(movieId: 999)
 
         #expect(status == .notInWatchlist)
     }
 
     @Test("getStatus returns toWatch when in watchlist and not watched")
-    func getStatusReturnsToWatchWhenNotWatched() {
+    func getStatusReturnsToWatchWhenNotWatched() async throws {
         let localStore = MockLocalStore()
         localStore.seedWatchlistItems([
             PersistedWatchlistItem(
@@ -206,13 +206,13 @@ struct WatchlistRepositoryTests {
         ])
         let sut = DefaultWatchlistRepository(localStore: localStore)
 
-        let status = sut.getStatus(movieId: 1)
+        let status = try await sut.getStatus(movieId: 1)
 
         #expect(status == .toWatch)
     }
 
     @Test("getStatus returns watched when in watchlist and watched")
-    func getStatusReturnsWatchedWhenWatched() {
+    func getStatusReturnsWatchedWhenWatched() async throws {
         let localStore = MockLocalStore()
         localStore.seedWatchlistItems([
             PersistedWatchlistItem(
@@ -227,7 +227,7 @@ struct WatchlistRepositoryTests {
         ])
         let sut = DefaultWatchlistRepository(localStore: localStore)
 
-        let status = sut.getStatus(movieId: 1)
+        let status = try await sut.getStatus(movieId: 1)
 
         #expect(status == .watched)
     }

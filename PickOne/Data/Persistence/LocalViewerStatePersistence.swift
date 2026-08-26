@@ -151,6 +151,41 @@ protocol LocalViewerStateFileStore: Sendable {
     func replacePrevious(with data: Data) throws
     func removePrevious() throws
     func quarantine(_ data: Data, source: LocalViewerStateQuarantineSource) throws
+    func removeAllViewerState() throws
+}
+
+enum LocalViewerStateFileStoreError: Error, Sendable {
+    case unavailable
+}
+
+struct UnavailableLocalViewerStateFileStore: LocalViewerStateFileStore {
+    func readActive() throws -> Data? {
+        throw LocalViewerStateFileStoreError.unavailable
+    }
+
+    func readPrevious() throws -> Data? {
+        throw LocalViewerStateFileStoreError.unavailable
+    }
+
+    func replaceActive(with _: Data) throws {
+        throw LocalViewerStateFileStoreError.unavailable
+    }
+
+    func replacePrevious(with _: Data) throws {
+        throw LocalViewerStateFileStoreError.unavailable
+    }
+
+    func removePrevious() throws {
+        throw LocalViewerStateFileStoreError.unavailable
+    }
+
+    func quarantine(_: Data, source _: LocalViewerStateQuarantineSource) throws {
+        throw LocalViewerStateFileStoreError.unavailable
+    }
+
+    func removeAllViewerState() throws {
+        throw LocalViewerStateFileStoreError.unavailable
+    }
 }
 
 struct ApplicationSupportViewerStateStore: LocalViewerStateFileStore {
@@ -168,7 +203,7 @@ struct ApplicationSupportViewerStateStore: LocalViewerStateFileStore {
                 for: .applicationSupportDirectory,
                 in: .userDomainMask,
                 appropriateFor: nil,
-                create: false
+                create: true
             ).appending(path: "PickOne/ViewerState", directoryHint: .isDirectory)
         }
         self.quarantineName = quarantineName
@@ -192,7 +227,7 @@ struct ApplicationSupportViewerStateStore: LocalViewerStateFileStore {
 
     func removePrevious() throws {
         let fileManager = FileManager.default
-        guard fileManager.fileExists(atPath: previousURL.path()) else {
+        guard fileManager.fileExists(atPath: previousURL.path(percentEncoded: false)) else {
             return
         }
         try fileManager.removeItem(at: previousURL)
@@ -210,6 +245,15 @@ struct ApplicationSupportViewerStateStore: LocalViewerStateFileStore {
         try data.write(to: destination, options: .withoutOverwriting)
     }
 
+    func removeAllViewerState() throws {
+        let fileManager = FileManager.default
+        for url in [activeURL, previousURL, quarantineURL]
+            where fileManager.fileExists(atPath: url.path(percentEncoded: false))
+        {
+            try fileManager.removeItem(at: url)
+        }
+    }
+
     private var activeURL: URL {
         directoryURL.appending(path: "viewer-state-v2.json")
     }
@@ -223,7 +267,7 @@ struct ApplicationSupportViewerStateStore: LocalViewerStateFileStore {
     }
 
     private func read(_ url: URL) throws -> Data? {
-        guard FileManager.default.fileExists(atPath: url.path()) else {
+        guard FileManager.default.fileExists(atPath: url.path(percentEncoded: false)) else {
             return nil
         }
         return try Data(contentsOf: url)
@@ -235,23 +279,35 @@ struct ApplicationSupportViewerStateStore: LocalViewerStateFileStore {
             at: directoryURL,
             withIntermediateDirectories: true
         )
-        let staged = directoryURL.appending(
-            path: ".\(UUID().uuidString)-staged.json"
+        let stagingDirectory = directoryURL.appending(
+            path: ".\(UUID().uuidString)-staging",
+            directoryHint: .isDirectory
         )
+        let staged = stagingDirectory.appending(path: destination.lastPathComponent)
+        let backupName = ".\(UUID().uuidString)-replacement-backup.json"
+        let backup = directoryURL.appending(path: backupName)
         do {
+            try fileManager.createDirectory(
+                at: stagingDirectory,
+                withIntermediateDirectories: false
+            )
             try data.write(to: staged, options: .withoutOverwriting)
-            if fileManager.fileExists(atPath: destination.path()) {
+            if fileManager.fileExists(atPath: destination.path(percentEncoded: false)) {
                 _ = try fileManager.replaceItemAt(
                     destination,
                     withItemAt: staged,
-                    backupItemName: nil,
-                    options: .usingNewMetadataOnly
+                    backupItemName: backupName,
+                    options: [.usingNewMetadataOnly, .withoutDeletingBackupItem]
                 )
+                if fileManager.fileExists(atPath: backup.path(percentEncoded: false)) {
+                    try fileManager.removeItem(at: backup)
+                }
             } else {
                 try fileManager.moveItem(at: staged, to: destination)
             }
+            try? fileManager.removeItem(at: stagingDirectory)
         } catch {
-            try? fileManager.removeItem(at: staged)
+            try? fileManager.removeItem(at: stagingDirectory)
             throw error
         }
     }

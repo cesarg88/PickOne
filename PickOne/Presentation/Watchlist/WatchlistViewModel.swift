@@ -44,34 +44,38 @@ final class WatchlistViewModel {
 
     // MARK: - Actions
 
-    func load() {
-        let snapshot = getWatchlist.execute()
-        applySnapshot(snapshot)
+    func load() async {
+        do {
+            let snapshot = try await getWatchlist.execute()
+            applySnapshot(snapshot)
+        } catch {
+            actionErrorMessage = error.localizedDescription
+        }
     }
 
-    func applyFilter(_ filter: WatchlistFilter) {
+    func applyFilter(_ filter: WatchlistFilter) async {
         currentFilter = filter
-        load()
+        await load()
     }
 
-    func toggleWatched(movieId: Int) {
+    func toggleWatched(movieId: Int) async {
         guard let item = findItem(movieId: movieId) else { return }
 
         do {
-            try setWatched.execute(movieId: movieId, isWatched: !item.isWatched)
-            load()
+            try await setWatched.execute(movieId: movieId, isWatched: !item.isWatched)
+            await load()
             notifyEligibilityChange(movieID: movieId)
         } catch {
             actionErrorMessage = error.localizedDescription
         }
     }
 
-    func remove(movieId: Int) {
+    func remove(movieId: Int) async {
         guard let item = findItem(movieId: movieId) else { return }
 
         do {
-            try setMembership.execute(movie: item.movieSummary, isInWatchlist: false)
-            load()
+            try await setMembership.execute(movie: item.movieSummary, isInWatchlist: false)
+            await load()
             notifyEligibilityChange(movieID: movieId)
         } catch {
             actionErrorMessage = error.localizedDescription

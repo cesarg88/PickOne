@@ -11,29 +11,26 @@ import Foundation
 /// Returns domain models only - no snapshots or UI models
 protocol WatchlistRepository: Sendable {
     /// Returns all items or throws when persisted Watchlist evidence is unreadable.
-    func loadAllItems() throws -> [WatchlistItem]
-
-    /// Returns all watchlist items ordered by date added (most recent first)
-    func getAllItems() -> [WatchlistItem]
+    func loadAllItems() async throws -> [WatchlistItem]
 
     /// Adds a movie to the watchlist with its summary for offline persistence
     /// - Parameter movie: The movie summary to add
-    func add(movie: MovieSummary) throws
+    func add(movie: MovieSummary) async throws
 
     /// Removes a movie from the watchlist
     /// - Parameter movieId: The ID of the movie to remove
-    func remove(movieId: Int) throws
+    func remove(movieId: Int) async throws
 
     /// Updates the watched status of a movie
     /// - Parameters:
     ///   - movieId: The ID of the movie
     ///   - isWatched: Whether the movie has been watched
-    func setWatched(movieId: Int, isWatched: Bool) throws
+    func setWatched(movieId: Int, isWatched: Bool) async throws
 
     /// Gets the current watchlist status of a movie
     /// - Parameter movieId: The ID of the movie
     /// - Returns: The watchlist status
-    func getStatus(movieId: Int) -> WatchlistStatus
+    func getStatus(movieId: Int) async throws -> WatchlistStatus
 }
 
 // MARK: - Errors

@@ -86,7 +86,7 @@ final class GetMovieDetail: GetMovieDetailUseCase, Sendable {
         }
 
         // Get watchlist status
-        let watchlistStatus = watchlistRepository.getStatus(movieId: id)
+        let watchlistStatus = try await watchlistRepository.getStatus(movieId: id)
         let isInWatchlist = watchlistStatus != .notInWatchlist
         let isWatched = watchlistStatus == .watched
 

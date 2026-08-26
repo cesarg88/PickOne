@@ -16,15 +16,11 @@ final class DefaultWatchlistRepository: WatchlistRepository {
 
     // MARK: - WatchlistRepository
 
-    func loadAllItems() throws -> [WatchlistItem] {
+    func loadAllItems() async throws -> [WatchlistItem] {
         try localStore.loadWatchlistItems().map(WatchlistItemMapper.toDomain)
     }
 
-    func getAllItems() -> [WatchlistItem] {
-        localStore.getWatchlistItems().map(WatchlistItemMapper.toDomain)
-    }
-
-    func add(movie: MovieSummary) throws {
+    func add(movie: MovieSummary) async throws {
         let status = localStore.getWatchlistStatus(movieId: movie.id)
         if status.isInWatchlist {
             throw WatchlistError.movieAlreadyInWatchlist
@@ -34,7 +30,7 @@ final class DefaultWatchlistRepository: WatchlistRepository {
         try localStore.saveWatchlistItem(persisted)
     }
 
-    func remove(movieId: Int) throws {
+    func remove(movieId: Int) async throws {
         let status = localStore.getWatchlistStatus(movieId: movieId)
         if !status.isInWatchlist {
             throw WatchlistError.movieNotInWatchlist
@@ -43,7 +39,7 @@ final class DefaultWatchlistRepository: WatchlistRepository {
         try localStore.removeWatchlistItem(movieId: movieId)
     }
 
-    func setWatched(movieId: Int, isWatched: Bool) throws {
+    func setWatched(movieId: Int, isWatched: Bool) async throws {
         let status = localStore.getWatchlistStatus(movieId: movieId)
         if !status.isInWatchlist {
             throw WatchlistError.movieNotInWatchlist
@@ -52,7 +48,7 @@ final class DefaultWatchlistRepository: WatchlistRepository {
         try localStore.updateWatchedStatus(movieId: movieId, isWatched: isWatched)
     }
 
-    func getStatus(movieId: Int) -> WatchlistStatus {
+    func getStatus(movieId: Int) async throws -> WatchlistStatus {
         let status = localStore.getWatchlistStatus(movieId: movieId)
 
         if !status.isInWatchlist {

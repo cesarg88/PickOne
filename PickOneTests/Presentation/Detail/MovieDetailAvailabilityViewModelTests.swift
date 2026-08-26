@@ -196,7 +196,7 @@ struct MovieDetailAvailabilityViewModelTests {
         let sut = dependencies.makeViewModel(movieID: 42)
 
         await sut.load()
-        sut.toggleWatchlist()
+        await sut.toggleWatchlist()
 
         let expectedChange = try #require(
             DecisionEligibilityChange(movieID: 42, cause: .watchlist)

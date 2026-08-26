@@ -262,16 +262,28 @@ struct LegacyViewerStateMigrationTests {
         defaults.set(searchHistory, forKey: "search_history")
         let files = InMemoryLocalViewerStateFileStore()
 
-        _ = try await LocalViewerStateRepository(
+        let legacySource = UserDefaultsLegacyViewerStateSource(suiteName: suiteName)
+        let repository = try LocalViewerStateRepository(
             fileStore: files,
-            legacySource: UserDefaultsLegacyViewerStateSource(suiteName: suiteName),
-            snapshotID: { id },
+            legacySource: legacySource,
+            legacyResetter: legacySource,
+            snapshotID: SequenceUUIDGenerator([
+                id,
+                LocalViewerStateTestFixtures.uuid(LocalViewerStateTestFixtures.secondID),
+            ]).next,
             now: { LocalViewerStateTestFixtures.date }
-        ).snapshot()
+        )
+
+        _ = try await repository.snapshot()
+        _ = try await repository.apply(
+            ViewerMovieStateTransition(movieID: 20, action: .saveToWatchlist),
+            metadata: LocalViewerStateTestFixtures.metadata()
+        )
 
         #expect(defaults.data(forKey: UserDefaultsViewerProfileDataStore.storageKey) == profileData)
         #expect(defaults.data(forKey: "watchlist_items_v2") == watchlistData)
         #expect(defaults.stringArray(forKey: "search_history") == searchHistory)
+        #expect(await repository.successfulRecoveryNotice() == nil)
     }
 
     private func repository(

@@ -1,0 +1,15 @@
+protocol ResetUnrecoverableViewerStateUseCase: Sendable {
+    func execute() async throws
+}
+
+struct ResetUnrecoverableViewerState: ResetUnrecoverableViewerStateUseCase {
+    private let repository: any ViewerStateDestructiveRecoveryRepository
+
+    init(repository: any ViewerStateDestructiveRecoveryRepository) {
+        self.repository = repository
+    }
+
+    func execute() async throws {
+        try await repository.resetUnrecoverableViewerState()
+    }
+}
