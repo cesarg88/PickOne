@@ -20,9 +20,16 @@ description: Implement accepted PickOne iOS features and behavior changes with t
 1. Identify the affected Presentation, Domain, Data, and composition boundaries.
 2. Write a short dependency-ordered plan with focused verification for each
    slice.
-3. Keep one branch and PR to one coherent outcome. Split large work into
+3. Build a concise traceability checklist for every applicable accepted
+   requirement and invariant: source clause -> responsible implementation
+   boundary -> focused automated test. An applicable requirement without a
+   mapped test or an explicit evidence-based justification is incomplete.
+4. Include composed postconditions in the checklist. Verify the final
+   observable and persisted state after multi-step flows, not only each
+   operation in isolation.
+5. Keep one branch and PR to one coherent outcome. Split large work into
    independently green PRs; stack only when a real dependency requires it.
-4. State explicit non-goals and avoid unrelated refactors.
+6. State explicit non-goals and avoid unrelated refactors.
 
 ## Implement with evidence
 
@@ -38,20 +45,26 @@ description: Implement accepted PickOne iOS features and behavior changes with t
    where the specification requires them.
 6. Do not add a dependency, target, module, unchecked concurrency escape hatch,
    or new architectural pattern without explicit technical approval.
+7. For persistence, migration, or recovery work, test terminal state after
+   repository or process recreation, failure at each mutating boundary, and
+   every accepted distinction such as absent, corrupt, incompatible, and
+   unavailable.
 
 ## Verify and hand off
 
 1. Run focused tests while iterating.
-2. Review the complete diff for scope, naming, forced operations, lint
+2. Reconcile the completed implementation and test suite against the
+   traceability checklist. Resolve every uncovered clause before handoff.
+3. Review the complete diff for scope, naming, forced operations, lint
    suppressions, dead code, accidental API exposure, and missing documentation.
-3. Run `make verify` from the repository root before handoff.
-4. Let the commit hook run; never use `--no-verify`.
-5. Use only the `Cesar-IA-Agent` identity for commits and GitHub writes.
-6. Start the PR body from `.github/PULL_REQUEST_TEMPLATE.md`, keep every required
+4. Run `make verify` from the repository root before handoff.
+5. Let the commit hook run; never use `--no-verify`.
+6. Use only the `Cesar-IA-Agent` identity for commits and GitHub writes.
+7. Start the PR body from `.github/PULL_REQUEST_TEMPLATE.md`, keep every required
    heading, and record the specification, changes, trade-offs, exact validation,
    stack dependency and merge order, device checks, exclusions, and milestone
    closure state.
-7. Open the PR as ready for review, never as a draft.
-8. Hand off immediately after pushing and opening the PR. Do not wait for CI;
+8. Open the PR as ready for review, never as a draft.
+9. Hand off immediately after pushing and opening the PR. Do not wait for CI;
    report it as pending when no result exists yet. CI must still be green before
    merge.
