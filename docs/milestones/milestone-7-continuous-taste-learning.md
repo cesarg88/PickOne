@@ -7,7 +7,9 @@
 - Product direction accepted: `2026-08-19`
 - `My movies` label accepted: `2026-08-24`
 - Final D0 product and engineering acceptance: `2026-08-24`
-- Implementation authorization: PR1 may begin after this D0 branch merges
+- PR1 through PR4 merged: `2026-08-27`
+- PR4 physical migration validation passed on the Product Owner's iPhone
+- Next authorized slice: PR4.5, followed by PR5 only after PR4.5 merges
 - Dependency satisfied: Milestone 6 and its explanation correction are merged
   into `develop`.
 
@@ -99,6 +101,8 @@ the merge of this documentation-only D0 branch.
 - Movie reactions and `Not interested` in Movie Detail;
 - `My movies` history in Settings with editing through Movie Detail;
 - P1 input from the union of current reactions;
+- human-readable recommendation evidence with no internal genre-ID copy;
+- deterministic, cancellable, all-or-nothing Taste Profile hydration;
 - stable title exclusion for `Not interested`;
 - immediate Home repair or regeneration after state changes;
 - shown-history inheritance across reaction-driven cycle changes;
@@ -377,6 +381,51 @@ source was onboarding, recalibration, Movie Detail, or `My movies`.
 
 No hidden weights or title exceptions are added.
 
+### Taste metadata hydration
+
+Every current Movie reaction participates in one complete P1 Taste Profile.
+Movie metadata hydration is not candidate-specific enrichment: silently
+dropping one failed reaction would change affinities, confidence, scoring, and
+explanations while retaining the same trusted state identity. PickOne therefore
+does not construct or publish a degraded Taste Profile in Milestone 7.
+
+Hydration follows these accepted rules:
+
+- sort reaction movie IDs ascending before scheduling work;
+- hydrate through the existing `MovieRepository` cache boundary;
+- use structured concurrency with at most four hydration operations in flight;
+- retain the original sorted index and assemble final evidence in that order,
+  independent of task completion order;
+- propagate caller cancellation to every child task without detached work;
+- collect non-cancellation failures by index and report the lowest-ID failure
+  deterministically after the bounded work completes;
+- invoke P1 only when every current reaction has valid matching movie metadata.
+
+If complete hydration fails, generation fails as a typed retryable input error.
+The coordinator may retain only a previously persisted Decision Set that Domain
+proves safe under the current Viewer State snapshot; otherwise Home shows
+Retry. It never invokes P1 with a subset, fabricates empty evidence, or presents
+the result as reduced-confidence personalization. Candidate-specific metadata
+or availability enrichment keeps ADR-011's independent per-candidate behavior.
+
+### Human-readable genre evidence
+
+TMDB genre IDs remain valid internal identity for equality, Jaccard, affinity,
+and persistence validation. They are not user-facing labels.
+
+For a positive anchor, shared genre evidence uses the human-readable name from
+the hydrated anchor/Taste Profile metadata for the same genre ID. Positive
+genre-affinity evidence resolves names from the same complete hydrated Taste
+Profile. Resolution is deterministic by genre ID and must not depend on task,
+set, or dictionary iteration order.
+
+New structured explanation evidence must carry readable names for every genre
+it proposes to render. Presentation has no numeric fallback. Persisted evidence
+that cannot provide a readable label for its claimed genre signal is not
+publishable as-is and must be repaired or regenerated while preserving cycle
+shown history. This correction changes neither P1 scoring nor the accepted
+positive-anchor threshold.
+
 ### Snapshot identity and stale work
 
 Every trusted input snapshot includes the persisted non-reusable
@@ -578,6 +627,8 @@ authorization.
 - feedback mutation failure never triggers Home reconciliation;
 - Home generation failure after a feedback change retains only proven-safe
   content and offers Retry;
+- incomplete current-reaction hydration is a retryable input failure and never
+  becomes a partial Taste Profile;
 - cancellation is not presented as an error;
 - Search History is not reset by recommendation, feedback, catalog, or normal
   preference recovery.
@@ -651,6 +702,11 @@ change requires repair or taste regeneration.
 - P1 constants and fixtures remain unchanged except explanation-strength
   correction already closed in M6.
 - all current reactions contribute with their accepted semantics.
+- Taste Profile evidence is complete, ordered deterministically, and built with
+  no more than four concurrent hydration operations.
+- cancellation stops structured hydration work and is never shown as failure.
+- recommendation copy contains human-readable genre names and never exposes raw
+  genre IDs.
 - `Not interested` is exclusion only and never affects affinities.
 - a result built from a stale snapshot identity cannot be accepted as current or
   published; a write raced by newer state is semantically unusable and triggers
@@ -724,6 +780,12 @@ change requires repair or taste regeneration.
 
 - input assembly uses Viewer Movie State rather than legacy reaction/Watchlist
   watched sources;
+- bounded parallel Taste Profile hydration preserves ascending movie-ID order
+  under out-of-order completion;
+- cancellation propagates through every hydration child task;
+- one or several reaction-metadata failures never invoke P1 with partial
+  evidence, select the deterministic lowest-ID diagnostic, and retain only a
+  proven-safe prior set;
 - all four reactions retain P1 values;
 - `Not interested` is absent from Taste evidence;
 - reaction-driven signature transition inherits shown history;
@@ -741,6 +803,10 @@ change requires repair or taste regeneration.
   evidence remains valid;
 - generation and repair failure retain only safe content;
 - M6 Fixtures A–M and real-profile snapshots remain green.
+- production-shaped candidates containing unnamed TMDB genre IDs resolve
+  anchor and affinity copy from named Taste Profile metadata;
+- restored or generated explanations never render `genre <id>` or another
+  internal numeric fallback.
 
 ### Presentation
 
@@ -789,6 +855,8 @@ On the Product Owner's iPhone:
   in `My movies`;
 - verify current Home recommendations repair or regenerate and do not repeat a
   previously shown title;
+- verify every recommendation reason uses readable genre names and never shows
+  a numeric genre identifier;
 - verify `Recommendations updated.` appears only after success;
 - navigate from `My movies` to Detail, edit state, and confirm the history
   projection agrees after returning;
@@ -859,15 +927,32 @@ and successor-cycle migration, regeneration-before-publication, and focused
 repository/coordinator tests. Cut production Decision Set persistence over to v2
 without adding feedback controls, Home update copy, or catalog networking.
 
-### PR5 — Decision Engine and Home reconciliation
+Delivered in PR #36 and validated on the Product Owner's iPhone.
+
+### PR4.5 — Human-readable recommendation evidence
 
 Dependencies: PR4.
+
+Correct the observed production-data path where TMDB Discover candidates carry
+genre IDs without names and Home renders copy such as `genre 28`. Resolve
+positive-anchor and positive-affinity genre labels deterministically from the
+complete hydrated Taste Profile, remove every numeric Presentation fallback,
+repair or regenerate unrenderable persisted evidence without clearing shown
+history, and add production-shaped Domain, persistence/orchestration, and
+Presentation regression tests. Do not change P1 scoring, thresholds, roles,
+Viewer Movie State input ownership, Home reconciliation, feedback controls, or
+catalog networking.
+
+### PR5 — Decision Engine and Home reconciliation
+
+Dependencies: PR4.5.
 
 Deliver Viewer Movie State input assembly, snapshot-identity checks,
 reaction-driven successor cycles with inherited history, eligibility repair,
 impact-precedence handling, coordinator collaborator extraction, transient Home
-update feedback, and orchestration tests. Exclude feedback controls and catalog
-networking.
+update feedback, bounded four-wide deterministic Taste Profile hydration,
+all-or-nothing hydration failure behavior, and orchestration tests. Exclude
+feedback controls and catalog networking.
 
 ### PR6 — Movie Detail feedback
 
@@ -924,7 +1009,9 @@ PR1 pure state
 PR2 persistence and migration
   ↓
 PR3 local-state cutover
-  ├──→ PR4 Decision Set v2 → PR5 Decision Engine → PR6 Detail → PR7 My movies
+  ├──→ PR4 Decision Set v2 → PR4.5 readable evidence → PR5 Decision Engine
+  │                                                    ↓
+  │                                             PR6 Detail → PR7 My movies
   └──→ PR8 remote catalog ────────────────────────────────────────┐
 PR7 + PR8 ───────────────────────────────────────────────────→ PR9 calibration
 PR9 ─────────────────────────────────────────────────────────→ PR10 closure
@@ -965,6 +1052,11 @@ separate ADR and PR.
 - **Decision Set migration repeats titles:** preserve every trusted v1 shown ID,
   regenerate before v2 publication, and never partially recover invalid bytes.
 - **Reaction change allows repeats:** inherit every shown ID into the new cycle.
+- **Async hydration changes deterministic output:** bound work to four child
+  tasks, retain sorted indices, and assemble only the complete ordered result.
+- **Missing genre labels expose TMDB internals:** resolve names from trusted
+  hydrated Taste Profile metadata and make Presentation reject numeric
+  fallbacks.
 - **Remote catalog breaks onboarding:** cap visible wait, validate all-or-
   nothing, then fall back to cached or bundled.
 - **External endpoint is unavailable:** PR1–PR8 may proceed against injected
@@ -980,7 +1072,9 @@ separate ADR and PR.
 
 The technical plan has no unresolved architecture, migration, concurrency, or
 test-strategy decisions. The Product Owner accepted `My movies` as the final
-history label.
+history label and accepted complete rather than degraded Taste Profile
+hydration. PR4.5 records the human-readable genre correction required before
+PR5; PR5 owns the accepted bounded hydration implementation.
 
 A read-only HTTPS pilot endpoint is an external delivery prerequisite for PR9
 validation and PR10 closure, not an implementation-architecture blocker for

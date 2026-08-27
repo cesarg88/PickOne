@@ -17,6 +17,12 @@ On 2026-08-24, accepted Milestone 7 D0 amended input ownership, successor-cycle
 history inheritance, non-reusable Viewer State snapshot identity, and the
 Decision Set v1-to-v2 migration path. P1 scoring remains unchanged.
 
+On 2026-08-27, the Product Owner accepted a Milestone 7 clarification for
+human-readable genre evidence and complete Taste Profile hydration. Internal
+genre IDs remain valid scoring identity but may never appear in copy. Reaction
+metadata hydration becomes bounded and parallel while remaining deterministic,
+cancellable, and all-or-nothing. P1 scoring remains unchanged.
+
 ## Context
 
 PickOne must produce the first implementation of **Three for Tonight** for
@@ -556,6 +562,19 @@ quality connection exists; it never becomes the sole fit reason.
 Templates may be localized or tightened for UI space without adding semantic
 claims. Do not display numeric scores or confidence percentages.
 
+Genre identity and genre presentation are separate. Numeric TMDB genre IDs may
+be used for equality, Jaccard, affinity, and persistence validation, but every
+genre named in an explanation requires a trusted human-readable label. Anchor
+shared-genre labels and positive-affinity labels resolve deterministically from
+the complete hydrated Taste Profile for the matching genre ID. Presentation
+must not fall back to `genre <id>` or any other internal identifier.
+
+Persisted evidence that claims a genre signal without a renderable label cannot
+be published as-is. It must be repaired or regenerated from trusted inputs
+while preserving recommendation-cycle shown history. This is an evidence and
+presentation correction only; it changes no score, threshold, credibility
+rule, diversity penalty, role, or tie-break.
+
 Persisted and restored anchor evidence is semantically valid only while the
 named movie still has the captured current `Love it` or `Like it` reaction and
 the stored candidate/anchor metadata still satisfies the genre threshold.
@@ -685,6 +704,30 @@ fresh snapshot identity. Therefore every existing v2 Decision Set becomes stale
 and must reconcile; an earlier numeric value can never make an old set appear
 current.
 
+### Milestone 7 Taste Profile hydration
+
+Every current Movie reaction is part of the P1 input contract. Omitting a
+reaction because its metadata request failed would silently change affinity,
+profile confidence, score, and explanation under the same Viewer State
+identity. Milestone 7 therefore requires complete reaction hydration before P1
+may run.
+
+Input assembly sorts reaction movie IDs ascending, schedules at most four
+structured child operations through the existing `MovieRepository`, stores
+results by their sorted index, and assembles evidence in that deterministic
+order. Task completion order never affects engine input. Caller cancellation
+propagates through the task group; no detached task or shared mutable result
+owner is introduced. Non-cancellation failures are collected by index so the
+lowest failed movie ID is the stable diagnostic outcome.
+
+One failed reaction hydration prevents P1 invocation for that generation. The
+coordinator retains only a prior persisted set independently proven safe under
+the current state; without one it presents Retry. PickOne does not fabricate
+empty evidence or produce an explicitly or implicitly degraded Taste Profile.
+This all-or-nothing reaction rule is distinct from candidate-specific
+enrichment, where one bad candidate may still be excluded when the remaining
+complete input is sufficient.
+
 Feedback replaces or invalidates recommendations deliberately according to its
 semantics. `Not tonight` is temporary context, not stable dislike. `Already
 watched` excludes the title. Passive UI behavior never changes the profile.
@@ -704,6 +747,9 @@ Failure and honest emptiness are different product states.
   recommendation-generation failure.
 - Candidate-specific enrichment failure excludes only that candidate when the
   remaining snapshot is sufficient.
+- Current-reaction metadata hydration is all-or-nothing. Any failed reaction
+  prevents P1 from running with partial taste evidence; retain only a
+  proven-safe persisted set or expose Retry.
 - Availability retrieval failure produces `unknown` for that candidate and
   fails closed.
 - Persistence failure must not present an unpersisted set as safely retained;
@@ -825,6 +871,12 @@ verified:
   failed v2 persistence, and corrupt-v1 no-partial-history behavior;
 - stale source snapshot identities before persistence, restoration, and
   publication;
+- bounded four-wide reaction hydration, deterministic ascending-ID output under
+  out-of-order completion, cancellation propagation, and no P1 invocation from
+  partial evidence;
+- deterministic lowest-ID diagnostics when multiple reaction hydrations fail;
+- unnamed Discover genre IDs resolving to readable anchor and affinity evidence
+  without numeric Presentation fallback;
 - availability revalidation and single-title replacement;
 - atomic persistence and failure preservation;
 - corrupt and unsupported envelopes quarantined before regeneration, with

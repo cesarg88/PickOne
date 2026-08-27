@@ -198,7 +198,7 @@ repeated after Milestone 7 with the enriched Taste Profile.
 [Continuous Taste Learning](../milestones/milestone-7-continuous-taste-learning.md)
 
 Status:
-Accepted — Ready for implementation; PR1 begins after D0 merges
+In Progress — PR1 through PR4 merged; PR4.5 is next
 
 Purpose:
 
@@ -210,9 +210,11 @@ calibration catalogs with cached and bundled fallback plus exact-flow snapshot
 freezing.
 
 Milestone 7 does not add `Watch this`, `Not tonight`, rewatch intent, AI,
-accounts, analytics, or a physical module. Delivery is split into D0 plus ten
-small dependency-ordered implementation and closure PRs, including a dedicated
-Decision Set v1-to-v2 migration slice.
+accounts, analytics, or a physical module. Delivery is split into D0 plus
+eleven small dependency-ordered implementation and closure PRs. PR1–PR4 are
+merged. PR4.5 corrects human-readable genre evidence before PR5 moves Decision
+Engine input to Viewer Movie State and adds bounded, deterministic,
+all-or-nothing Taste Profile hydration.
 
 ### Milestone 8
 

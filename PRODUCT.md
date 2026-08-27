@@ -3,7 +3,7 @@
 ## Document Status
 
 - Status: `Canonical`
-- Last product review: `2026-08-24`
+- Last product review: `2026-08-27`
 - Product name: `PickOne` is a codename until the decision experience is
   validated.
 
@@ -379,6 +379,12 @@ copy names only the shared genres and supported era evidence carried by the
 structured anchor. Persisted anchor evidence must still match the current
 reaction and metadata threshold when the set is restored or published.
 
+Every genre named to the Viewer must use a human-readable label. TMDB genre IDs
+may support internal identity, comparison, and scoring, but they must never
+appear in recommendation copy. If a supported genre signal has no readable
+label, PickOne must resolve it from trusted hydrated metadata or treat that
+signal as unrenderable; it must not fall back to copy such as `genre 28`.
+
 ### 3. Recommendation-set persistence and refresh
 
 The current set persists when the app is closed and reopened. A user must not
@@ -412,6 +418,14 @@ preserves the unread bytes for diagnosis and attempts to generate and persist a
 replacement set from current trusted inputs. If recovery cannot complete, Home
 shows a retryable failure. Recommendation recovery never resets or modifies the
 Viewer Profile, Watchlist, or Search History.
+
+PickOne derives one complete Taste Profile from every current Movie reaction.
+It does not silently omit reactions whose movie metadata cannot be hydrated and
+does not describe such a partial interpretation as personalized. When complete
+Taste Profile hydration fails, Home retains only a previously persisted set
+that remains provably safe under the current state; otherwise it shows Retry.
+Candidate-specific enrichment failure remains separate and may exclude only
+the affected candidate when the remaining complete input is sufficient.
 
 ### 4. Lightweight viewing context
 
@@ -770,6 +784,10 @@ As of the last review:
   then a positive movie anchor, then positive genre affinity, then quality for
   sparse profiles. Product roles communicate composition; diversity is not a
   substitute for fit evidence.
+- Recommendation copy never exposes numeric genre IDs. A genre may be named
+  only from trusted human-readable metadata; unlabelled genre evidence must be
+  resolved, omitted, or cause explanation repair rather than produce an
+  internal fallback such as `genre 28`.
 - A visible positive anchor is limited to the current `Love it` or `Like it`
   reaction, at least one shared genre, and genre Jaccard similarity of at least
   `1/3`. Era may strengthen but never establish the anchor, and direct or
@@ -778,6 +796,10 @@ As of the last review:
 - Viewer Profile is persisted viewing configuration and calibration lifecycle;
   Taste Profile is derived from current Movie reactions and the Decision Engine
   version rather than persisted as another source of truth.
+- Taste Profile generation is all-or-nothing across current Movie reactions.
+  PickOne never generates or publishes a recommendation set from a silently
+  incomplete Taste Profile; failure retains only independently proven-safe
+  content and otherwise exposes Retry.
 - After Milestone 7 migration, Viewer Profile no longer persists a reaction
   map; Viewer Movie State is the single persisted owner of current reactions.
 - Watchlist means future intent for an unwatched movie. Watched is an

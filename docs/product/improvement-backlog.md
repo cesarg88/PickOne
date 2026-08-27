@@ -12,7 +12,8 @@ It contains only work that remains pending after Milestone 3.3. Completed work
 should remain in this file with its status changed to `Completed` and a link to
 the implementing PR or milestone.
 
-Last reviewed: 2026-08-24, during final acceptance of Milestone 7 D0.
+Last reviewed: 2026-08-27, after Milestone 7 PR4 validation and PR4.5/PR5
+engineering clarification.
 
 ## Product Direction
 
@@ -229,7 +230,7 @@ Priorities:
 
 ### IMP-004 — Add continuous taste learning and unified movie state
 
-- Status: `Accepted — Engineering Ready`
+- Status: `In Progress`
 - Priority: `P0`
 - Roadmap relationship: Milestone 7
 - Accepted specification:
@@ -253,11 +254,23 @@ Priorities:
     data or losing Search History
   - migrate valid Decision Set v1 data to v2 without publishing legacy
     recommendations, preserving exact bytes and all trusted shown IDs
+  - prevent internal numeric genre IDs from appearing in recommendation copy
+    by resolving readable explanation evidence before PR5
+  - hydrate all current reaction metadata with bounded structured concurrency,
+    deterministic ordering, cancellation, and no partial Taste Profile
+- Progress:
+  - PR1–PR4 merged as PR #33–#36
+  - PR4 migration passed physical validation on the Product Owner's iPhone
+  - PR4.5 human-readable recommendation evidence is the next slice; PR5 depends
+    on it
 - Done when:
   - Detail, Watchlist, calibration, Settings history, and Home agree for every
     movie state
   - deliberate reactions change future taste while `Not interested` remains a
     title-only exclusion
+  - recommendation explanations never expose internal genre IDs
+  - a failed current-reaction hydration never produces a silently incomplete
+    personalized set
   - installed pilot state survives migration and all-source failure requires
     explicit destructive recovery
 
@@ -590,10 +603,10 @@ the added complexity.
 
 1. Merge the accepted Milestone 7 D0 specification, glossary, ADR-012, and
    ADR-013.
-2. Implement Milestone 7 through its ten small, sequential PR slices for pure
-   state, storage/migration, production cutover, Decision Set v2 migration,
-   Home, Detail, `My movies`, remote catalog, calibration integration, and
-   closure.
+2. Implement Milestone 7 through its eleven small, sequential PR slices for
+   pure state, storage/migration, production cutover, Decision Set v2 migration,
+   human-readable recommendation evidence, Home, Detail, `My movies`, remote
+   catalog, calibration integration, and closure.
 3. Repeat the household utility checkpoint with continuous taste learning.
 4. Define explicit decision outcomes, trailers, and the minimum pilot
    measurement contract from observed use.
