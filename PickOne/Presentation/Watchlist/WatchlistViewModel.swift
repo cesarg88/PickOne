@@ -62,12 +62,12 @@ final class WatchlistViewModel {
         guard let item = findItem(movieId: movieId) else { return }
 
         do {
-            let didChange = try await setWatched.execute(
+            let outcome = try await setWatched.execute(
                 movieId: movieId,
                 isWatched: !item.isWatched
             )
             await load()
-            if didChange {
+            if outcome.didChange {
                 notifyEligibilityChange(movieID: movieId)
             }
         } catch {
@@ -79,12 +79,12 @@ final class WatchlistViewModel {
         guard let item = findItem(movieId: movieId) else { return }
 
         do {
-            let didChange = try await setMembership.execute(
+            let outcome = try await setMembership.execute(
                 movie: item.movieSummary,
                 isInWatchlist: false
             )
             await load()
-            if didChange {
+            if outcome.didChange {
                 notifyEligibilityChange(movieID: movieId)
             }
         } catch {

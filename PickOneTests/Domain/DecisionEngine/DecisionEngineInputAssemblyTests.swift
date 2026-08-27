@@ -345,41 +345,7 @@ struct DecisionEngineInputAssemblyTests {
     }
 }
 
-private enum InputAssemblyTestError: Error {
-    case failed
-}
-
-private final class InputAssemblyWatchlistRepository: WatchlistRepository {
-    enum ReadError: Error {
-        case unreadable
-    }
-
-    private let items: [WatchlistItem]
-    private let error: ReadError?
-
-    init(items: [WatchlistItem] = [], error: ReadError? = nil) {
-        self.items = items
-        self.error = error
-    }
-
-    func loadAllItems() throws -> [WatchlistItem] {
-        if let error {
-            throw error
-        }
-        return items
-    }
-
-    func getAllItems() -> [WatchlistItem] {
-        items
-    }
-
-    func add(movie: MovieSummary) throws {}
-    func remove(movieId: Int) throws {}
-    func setWatched(movieId: Int, isWatched: Bool) throws {}
-    func getStatus(movieId: Int) -> WatchlistStatus {
-        .notInWatchlist
-    }
-}
+private enum InputAssemblyTestError: Error { case failed }
 
 private actor InputAssemblyCandidateRepository: DecisionCandidateRepository {
     private let candidates: [DecisionCandidateSeed]

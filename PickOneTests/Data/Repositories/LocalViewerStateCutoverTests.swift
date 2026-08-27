@@ -237,14 +237,20 @@ struct LocalViewerStateCutoverTests {
             rating: 8
         )
 
-        try await repository.add(movie: movie)
+        let saved = try await repository.setMembership(
+            movie: movie,
+            isInWatchlist: true
+        )
+        #expect(saved == WatchlistMutationOutcome(status: .toWatch, didChange: true))
         #expect(try await repository.getStatus(movieId: movie.id) == .toWatch)
 
-        try await repository.setWatched(movieId: movie.id, isWatched: true)
+        let watched = try await repository.setWatched(movieId: movie.id, isWatched: true)
+        #expect(watched == WatchlistMutationOutcome(status: .watched, didChange: true))
         #expect(try await repository.getStatus(movieId: movie.id) == .watched)
         #expect(try await stateRepository.state(movieID: movie.id)?.watchlistIntent == nil)
 
-        try await repository.setWatched(movieId: movie.id, isWatched: false)
+        let unwatched = try await repository.setWatched(movieId: movie.id, isWatched: false)
+        #expect(unwatched == WatchlistMutationOutcome(status: .notInWatchlist, didChange: true))
         #expect(try await repository.getStatus(movieId: movie.id) == .notInWatchlist)
         #expect(try await stateRepository.state(movieID: movie.id) == nil)
     }

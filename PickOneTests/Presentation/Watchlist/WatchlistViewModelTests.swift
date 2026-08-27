@@ -120,8 +120,9 @@ struct WatchlistViewModelTests {
         await sut.load()
         await sut.remove(movieId: 1)
 
-        #expect(repository.removeCallCount == 1)
-        #expect(repository.lastRemovedMovieId == 1)
+        #expect(repository.membershipCallCount == 1)
+        #expect(repository.lastMembershipMovie?.id == 1)
+        #expect(repository.lastMembershipValue == false)
     }
 
     @Test("remove reloads list after success")

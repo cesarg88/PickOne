@@ -30,9 +30,20 @@ struct ViewerStateWatchlistConsistencyTests {
             legacySource: InMemoryLegacyViewerStateSource()
         )
         let watchlist = LocalViewerStateWatchlistAdapter(repository: stateRepository)
+        let movie = MovieSummary(
+            id: watched.movieID,
+            title: watched.displayMetadata.title,
+            posterPath: watched.displayMetadata.posterPath,
+            releaseYear: watched.displayMetadata.releaseYear,
+            rating: 0
+        )
 
-        try await watchlist.remove(movieId: watched.movieID)
+        let outcome = try await watchlist.setMembership(
+            movie: movie,
+            isInWatchlist: false
+        )
 
+        #expect(outcome == WatchlistMutationOutcome(status: .watched, didChange: false))
         #expect(try await stateRepository.state(movieID: watched.movieID) == watched)
         #expect(try await stateRepository.snapshot().id.rawValue == snapshotID)
         #expect(files.activeData == original)

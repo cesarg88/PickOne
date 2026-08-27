@@ -71,7 +71,7 @@ struct WatchlistRepositoryTests {
         }
     }
 
-    // MARK: - add
+    // MARK: - Membership
 
     @Test("add saves item to local store")
     func addSavesItemToLocalStore() async throws {
@@ -79,16 +79,17 @@ struct WatchlistRepositoryTests {
         let sut = DefaultWatchlistRepository(localStore: localStore)
         let movie = MovieSummary(id: 1, title: "Test", posterPath: "/path.jpg", releaseYear: 2024, rating: 8.0)
 
-        try await sut.add(movie: movie)
+        let outcome = try await sut.setMembership(movie: movie, isInWatchlist: true)
 
+        #expect(outcome == WatchlistMutationOutcome(status: .toWatch, didChange: true))
         #expect(localStore.saveWatchlistItemCallCount == 1)
         #expect(localStore.lastSavedItem?.movieId == 1)
         #expect(localStore.lastSavedItem?.title == "Test")
         #expect(localStore.lastSavedItem?.isWatched == false)
     }
 
-    @Test("add throws when movie already in watchlist")
-    func addThrowsWhenAlreadyInWatchlist() async {
+    @Test("adding an existing movie returns a no-op outcome")
+    func addingExistingMovieIsNoOp() async throws {
         let localStore = MockLocalStore()
         localStore.seedWatchlistItems([
             PersistedWatchlistItem(
@@ -104,12 +105,11 @@ struct WatchlistRepositoryTests {
         let sut = DefaultWatchlistRepository(localStore: localStore)
         let movie = MovieSummary(id: 1, title: "Test", posterPath: nil, releaseYear: nil, rating: 8.0)
 
-        await #expect(throws: WatchlistError.movieAlreadyInWatchlist) {
-            try await sut.add(movie: movie)
-        }
-    }
+        let outcome = try await sut.setMembership(movie: movie, isInWatchlist: true)
 
-    // MARK: - remove
+        #expect(outcome == WatchlistMutationOutcome(status: .toWatch, didChange: false))
+        #expect(localStore.saveWatchlistItemCallCount == 0)
+    }
 
     @Test("remove deletes item from local store")
     func removeDeletesFromLocalStore() async throws {
@@ -127,20 +127,40 @@ struct WatchlistRepositoryTests {
         ])
         let sut = DefaultWatchlistRepository(localStore: localStore)
 
-        try await sut.remove(movieId: 1)
+        let outcome = try await sut.setMembership(
+            movie: MovieSummary(
+                id: 1,
+                title: "To Remove",
+                posterPath: nil,
+                releaseYear: nil,
+                rating: 7
+            ),
+            isInWatchlist: false
+        )
 
+        #expect(outcome == WatchlistMutationOutcome(status: .notInWatchlist, didChange: true))
         #expect(localStore.removeWatchlistItemCallCount == 1)
         #expect(localStore.lastRemovedMovieId == 1)
     }
 
-    @Test("remove throws when movie not in watchlist")
-    func removeThrowsWhenNotInWatchlist() async {
+    @Test("removing an absent movie returns a no-op outcome")
+    func removingAbsentMovieIsNoOp() async throws {
         let localStore = MockLocalStore()
         let sut = DefaultWatchlistRepository(localStore: localStore)
 
-        await #expect(throws: WatchlistError.movieNotInWatchlist) {
-            try await sut.remove(movieId: 999)
-        }
+        let outcome = try await sut.setMembership(
+            movie: MovieSummary(
+                id: 999,
+                title: "Absent",
+                posterPath: nil,
+                releaseYear: nil,
+                rating: 0
+            ),
+            isInWatchlist: false
+        )
+
+        #expect(outcome == WatchlistMutationOutcome(status: .notInWatchlist, didChange: false))
+        #expect(localStore.removeWatchlistItemCallCount == 0)
     }
 
     // MARK: - setWatched
@@ -161,8 +181,9 @@ struct WatchlistRepositoryTests {
         ])
         let sut = DefaultWatchlistRepository(localStore: localStore)
 
-        try await sut.setWatched(movieId: 1, isWatched: true)
+        let outcome = try await sut.setWatched(movieId: 1, isWatched: true)
 
+        #expect(outcome == WatchlistMutationOutcome(status: .watched, didChange: true))
         #expect(localStore.updateWatchedStatusCallCount == 1)
         #expect(localStore.lastUpdatedMovieId == 1)
         #expect(localStore.lastUpdatedWatchedStatus == true)

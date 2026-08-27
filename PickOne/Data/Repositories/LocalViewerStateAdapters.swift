@@ -69,15 +69,20 @@ struct LocalViewerStateWatchlistAdapter: WatchlistRepository {
         try await repository.loadWatchlistProjection()
     }
 
-    func add(movie: MovieSummary) async throws {
-        try await repository.addToWatchlist(movie: movie)
+    func setMembership(
+        movie: MovieSummary,
+        isInWatchlist: Bool
+    ) async throws -> WatchlistMutationOutcome {
+        try await repository.setWatchlistMembership(
+            movie: movie,
+            isInWatchlist: isInWatchlist
+        )
     }
 
-    func remove(movieId: Int) async throws {
-        try await repository.removeFromWatchlist(movieID: movieId)
-    }
-
-    func setWatched(movieId: Int, isWatched: Bool) async throws {
+    func setWatched(
+        movieId: Int,
+        isWatched: Bool
+    ) async throws -> WatchlistMutationOutcome {
         try await repository.setWatchlistWatched(
             movieID: movieId,
             isWatched: isWatched

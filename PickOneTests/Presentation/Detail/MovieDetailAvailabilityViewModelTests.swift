@@ -253,14 +253,26 @@ struct MovieDetailAvailabilityViewModelTests {
 }
 
 private struct NoOpSetWatchlistMembership: SetWatchlistMembershipUseCase {
-    func execute(movie: MovieSummary, isInWatchlist: Bool) throws -> Bool {
-        true
+    func execute(
+        movie: MovieSummary,
+        isInWatchlist: Bool
+    ) throws -> WatchlistMutationOutcome {
+        WatchlistMutationOutcome(
+            status: isInWatchlist ? .toWatch : .notInWatchlist,
+            didChange: true
+        )
     }
 }
 
 private struct NoOpSetWatched: SetWatchedUseCase {
-    func execute(movieId: Int, isWatched: Bool) throws -> Bool {
-        true
+    func execute(
+        movieId: Int,
+        isWatched: Bool
+    ) throws -> WatchlistMutationOutcome {
+        WatchlistMutationOutcome(
+            status: isWatched ? .watched : .notInWatchlist,
+            didChange: true
+        )
     }
 }
 

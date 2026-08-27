@@ -111,12 +111,7 @@ struct LocalViewerStatePersistenceTests {
         try store.removeAllViewerState()
         #expect(try store.readActive() == nil)
         #expect(try store.readPrevious() == nil)
-        #expect(
-            try FileManager.default.contentsOfDirectory(
-                at: root,
-                includingPropertiesForKeys: nil
-            ).isEmpty
-        )
+        #expect(!FileManager.default.fileExists(atPath: root.path(percentEncoded: false)))
     }
 
     @Test("Application Support volume replaces an active file after copying it to previous")
@@ -179,6 +174,54 @@ struct LocalViewerStatePersistenceTests {
 
         #expect(try store.readActive() == replacement)
         #expect(cleanupAttempts.withLock { $0 } == 1)
+    }
+
+    @Test("destructive cleanup removes abandoned viewer-state artifacts only")
+    func destructiveCleanupRemovesEveryStoreArtifact() throws {
+        let parent = FileManager.default.temporaryDirectory.appending(
+            path: "PickOne-Destructive-Cleanup-\(UUID().uuidString)",
+            directoryHint: .isDirectory
+        )
+        let root = parent.appending(path: "ViewerState", directoryHint: .isDirectory)
+        let outside = parent.appending(path: "outside-viewer-data.json")
+        defer { try? FileManager.default.removeItem(at: parent) }
+        try FileManager.default.createDirectory(
+            at: parent,
+            withIntermediateDirectories: false
+        )
+        let outsideBytes = Data("outside".utf8)
+        try outsideBytes.write(to: outside, options: .withoutOverwriting)
+        let store = try ApplicationSupportViewerStateStore(
+            directoryURL: root,
+            removeReplacementBackup: { _ in
+                throw LocalViewerStateTestError.rejected
+            }
+        )
+        try store.replaceActive(with: Data("recoverable-original".utf8))
+        try store.replaceActive(with: Data("committed-replacement".utf8))
+        let staging = root.appending(
+            path: ".abandoned-staging",
+            directoryHint: .isDirectory
+        )
+        try FileManager.default.createDirectory(
+            at: staging,
+            withIntermediateDirectories: false
+        )
+        try Data("staged-viewer-data".utf8).write(
+            to: staging.appending(path: "viewer-state-v2.json"),
+            options: .withoutOverwriting
+        )
+        let artifactNames = try FileManager.default.contentsOfDirectory(
+            at: root,
+            includingPropertiesForKeys: nil
+        ).map(\.lastPathComponent)
+        #expect(artifactNames.contains { $0.hasSuffix("-replacement-backup.json") })
+        #expect(artifactNames.contains(".abandoned-staging"))
+
+        try store.removeAllViewerState()
+
+        #expect(!FileManager.default.fileExists(atPath: root.path(percentEncoded: false)))
+        #expect(try Data(contentsOf: outside) == outsideBytes)
     }
 
     @Test("a v2 fixture remains readable after repository recreation")

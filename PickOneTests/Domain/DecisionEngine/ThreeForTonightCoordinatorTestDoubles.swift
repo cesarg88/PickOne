@@ -68,19 +68,17 @@ struct CoordinatorWatchlistRepository: WatchlistRepository {
         return items
     }
 
-    func getAllItems() -> [WatchlistItem] {
-        items
-    }
-
-    func add(movie _: MovieSummary) throws {
-        throw WatchlistError.movieAlreadyInWatchlist
-    }
-
-    func remove(movieId _: Int) throws {
+    func setMembership(
+        movie _: MovieSummary,
+        isInWatchlist _: Bool
+    ) throws -> WatchlistMutationOutcome {
         throw WatchlistError.movieNotInWatchlist
     }
 
-    func setWatched(movieId _: Int, isWatched _: Bool) throws {
+    func setWatched(
+        movieId _: Int,
+        isWatched _: Bool
+    ) throws -> WatchlistMutationOutcome {
         throw WatchlistError.movieNotInWatchlist
     }
 
@@ -100,19 +98,17 @@ final class MutableCoordinatorWatchlistRepository: WatchlistRepository, Sendable
         items.withLock { $0 }
     }
 
-    func getAllItems() -> [WatchlistItem] {
-        items.withLock { $0 }
-    }
-
-    func add(movie _: MovieSummary) throws {
-        throw WatchlistError.movieAlreadyInWatchlist
-    }
-
-    func remove(movieId _: Int) throws {
+    func setMembership(
+        movie _: MovieSummary,
+        isInWatchlist _: Bool
+    ) throws -> WatchlistMutationOutcome {
         throw WatchlistError.movieNotInWatchlist
     }
 
-    func setWatched(movieId _: Int, isWatched _: Bool) throws {
+    func setWatched(
+        movieId _: Int,
+        isWatched _: Bool
+    ) throws -> WatchlistMutationOutcome {
         throw WatchlistError.movieNotInWatchlist
     }
 

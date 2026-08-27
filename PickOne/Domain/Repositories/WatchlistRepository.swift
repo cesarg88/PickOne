@@ -13,19 +13,20 @@ protocol WatchlistRepository: Sendable {
     /// Returns all items or throws when persisted Watchlist evidence is unreadable.
     func loadAllItems() async throws -> [WatchlistItem]
 
-    /// Adds a movie to the watchlist with its summary for offline persistence
-    /// - Parameter movie: The movie summary to add
-    func add(movie: MovieSummary) async throws
-
-    /// Removes a movie from the watchlist
-    /// - Parameter movieId: The ID of the movie to remove
-    func remove(movieId: Int) async throws
+    /// Atomically sets Watchlist intent and returns the persisted outcome.
+    func setMembership(
+        movie: MovieSummary,
+        isInWatchlist: Bool
+    ) async throws -> WatchlistMutationOutcome
 
     /// Updates the watched status of a movie
     /// - Parameters:
     ///   - movieId: The ID of the movie
     ///   - isWatched: Whether the movie has been watched
-    func setWatched(movieId: Int, isWatched: Bool) async throws
+    func setWatched(
+        movieId: Int,
+        isWatched: Bool
+    ) async throws -> WatchlistMutationOutcome
 
     /// Gets the current watchlist status of a movie
     /// - Parameter movieId: The ID of the movie

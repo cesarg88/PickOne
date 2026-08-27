@@ -17,9 +17,9 @@ struct SetWatchedTests {
         repository.statusResult = .toWatch // Movie is in watchlist, not watched
         let sut = SetWatched(repository: repository)
 
-        let didChange = try await sut.execute(movieId: 1, isWatched: true)
+        let outcome = try await sut.execute(movieId: 1, isWatched: true)
 
-        #expect(didChange)
+        #expect(outcome == WatchlistMutationOutcome(status: .watched, didChange: true))
         #expect(repository.setWatchedCallCount == 1)
         #expect(repository.lastSetWatchedMovieId == 1)
         #expect(repository.lastSetWatchedValue == true)
@@ -31,9 +31,9 @@ struct SetWatchedTests {
         repository.statusResult = .watched // Movie is in watchlist, already watched
         let sut = SetWatched(repository: repository)
 
-        let didChange = try await sut.execute(movieId: 1, isWatched: false)
+        let outcome = try await sut.execute(movieId: 1, isWatched: false)
 
-        #expect(didChange)
+        #expect(outcome == WatchlistMutationOutcome(status: .toWatch, didChange: true))
         #expect(repository.setWatchedCallCount == 1)
         #expect(repository.lastSetWatchedValue == false)
     }
@@ -55,10 +55,11 @@ struct SetWatchedTests {
         repository.statusResult = .watched // Already watched
         let sut = SetWatched(repository: repository)
 
-        let didChange = try await sut.execute(movieId: 1, isWatched: true)
+        let outcome = try await sut.execute(movieId: 1, isWatched: true)
 
-        #expect(!didChange)
-        #expect(repository.setWatchedCallCount == 0) // No call needed, already in state
+        #expect(outcome == WatchlistMutationOutcome(status: .watched, didChange: false))
+        #expect(repository.setWatchedCallCount == 1)
+        #expect(repository.getStatusCallCount == 0)
     }
 
     @Test("execute propagates repository error on actual update")

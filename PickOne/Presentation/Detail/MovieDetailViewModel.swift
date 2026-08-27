@@ -152,14 +152,16 @@ final class MovieDetailViewModel {
         )
 
         do {
-            let didChange = try await setMembership.execute(
+            let outcome = try await setMembership.execute(
                 movie: movie,
                 isInWatchlist: !model.isInWatchlist
             )
-            guard didChange else { return }
-            model.isInWatchlist.toggle()
+            model.isInWatchlist = outcome.status != .notInWatchlist
+            model.isWatched = outcome.status == .watched
             state = .loaded(model)
-            notifyEligibilityChange(cause: .watchlist)
+            if outcome.didChange {
+                notifyEligibilityChange(cause: .watchlist)
+            }
         } catch {
             actionErrorMessage = error.localizedDescription
         }
@@ -170,17 +172,16 @@ final class MovieDetailViewModel {
               model.isInWatchlist else { return }
 
         do {
-            let didChange = try await setWatched.execute(
+            let outcome = try await setWatched.execute(
                 movieId: model.id,
                 isWatched: !model.isWatched
             )
-            guard didChange else { return }
-            model.isWatched.toggle()
-            if !model.isWatched {
-                model.isInWatchlist = false
-            }
+            model.isInWatchlist = outcome.status != .notInWatchlist
+            model.isWatched = outcome.status == .watched
             state = .loaded(model)
-            notifyEligibilityChange(cause: .watchlist)
+            if outcome.didChange {
+                notifyEligibilityChange(cause: .watchlist)
+            }
         } catch {
             actionErrorMessage = error.localizedDescription
         }

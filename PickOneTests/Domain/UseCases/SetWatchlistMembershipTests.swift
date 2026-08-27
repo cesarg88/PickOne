@@ -18,12 +18,13 @@ struct SetWatchlistMembershipTests {
         let sut = SetWatchlistMembership(repository: repository)
         let movie = WatchlistTestFixtures.movieSummary
 
-        let didChange = try await sut.execute(movie: movie, isInWatchlist: true)
+        let outcome = try await sut.execute(movie: movie, isInWatchlist: true)
 
-        #expect(didChange)
-        #expect(repository.addCallCount == 1)
-        #expect(repository.lastAddedMovie?.id == movie.id)
-        #expect(repository.removeCallCount == 0)
+        #expect(outcome == WatchlistMutationOutcome(status: .toWatch, didChange: true))
+        #expect(repository.membershipCallCount == 1)
+        #expect(repository.lastMembershipMovie?.id == movie.id)
+        #expect(repository.lastMembershipValue == true)
+        #expect(repository.getStatusCallCount == 0)
     }
 
     @Test("execute removes movie when isInWatchlist is false and in watchlist")
@@ -33,12 +34,13 @@ struct SetWatchlistMembershipTests {
         let sut = SetWatchlistMembership(repository: repository)
         let movie = WatchlistTestFixtures.movieSummary
 
-        let didChange = try await sut.execute(movie: movie, isInWatchlist: false)
+        let outcome = try await sut.execute(movie: movie, isInWatchlist: false)
 
-        #expect(didChange)
-        #expect(repository.removeCallCount == 1)
-        #expect(repository.lastRemovedMovieId == movie.id)
-        #expect(repository.addCallCount == 0)
+        #expect(outcome == WatchlistMutationOutcome(status: .notInWatchlist, didChange: true))
+        #expect(repository.membershipCallCount == 1)
+        #expect(repository.lastMembershipMovie?.id == movie.id)
+        #expect(repository.lastMembershipValue == false)
+        #expect(repository.getStatusCallCount == 0)
     }
 
     @Test("execute is idempotent - no-op when already in watchlist and adding")
@@ -47,13 +49,14 @@ struct SetWatchlistMembershipTests {
         repository.statusResult = .toWatch // Already in watchlist
         let sut = SetWatchlistMembership(repository: repository)
 
-        let didChange = try await sut.execute(
+        let outcome = try await sut.execute(
             movie: WatchlistTestFixtures.movieSummary,
             isInWatchlist: true
         )
 
-        #expect(!didChange)
-        #expect(repository.addCallCount == 0) // No call, already in watchlist
+        #expect(outcome == WatchlistMutationOutcome(status: .toWatch, didChange: false))
+        #expect(repository.membershipCallCount == 1)
+        #expect(repository.getStatusCallCount == 0)
     }
 
     @Test("execute is idempotent - no-op when not in watchlist and removing")
@@ -62,13 +65,14 @@ struct SetWatchlistMembershipTests {
         repository.statusResult = .notInWatchlist // Not in watchlist
         let sut = SetWatchlistMembership(repository: repository)
 
-        let didChange = try await sut.execute(
+        let outcome = try await sut.execute(
             movie: WatchlistTestFixtures.movieSummary,
             isInWatchlist: false
         )
 
-        #expect(!didChange)
-        #expect(repository.removeCallCount == 0) // No call, not in watchlist anyway
+        #expect(outcome == WatchlistMutationOutcome(status: .notInWatchlist, didChange: false))
+        #expect(repository.membershipCallCount == 1)
+        #expect(repository.getStatusCallCount == 0)
     }
 
     @Test("removing membership from watched-only compatibility state is a semantic no-op")
@@ -77,20 +81,21 @@ struct SetWatchlistMembershipTests {
         repository.statusResult = .watched
         let sut = SetWatchlistMembership(repository: repository)
 
-        let didChange = try await sut.execute(
+        let outcome = try await sut.execute(
             movie: WatchlistTestFixtures.movieSummary,
             isInWatchlist: false
         )
 
-        #expect(!didChange)
-        #expect(repository.removeCallCount == 0)
+        #expect(outcome == WatchlistMutationOutcome(status: .watched, didChange: false))
+        #expect(repository.membershipCallCount == 1)
+        #expect(repository.getStatusCallCount == 0)
     }
 
     @Test("execute propagates add error")
     func executePropagatesAddError() async {
         let repository = MockWatchlistRepository()
         repository.statusResult = .notInWatchlist
-        repository.addError = WatchlistError.movieAlreadyInWatchlist
+        repository.membershipError = WatchlistError.movieAlreadyInWatchlist
         let sut = SetWatchlistMembership(repository: repository)
 
         await #expect(throws: WatchlistError.movieAlreadyInWatchlist) {
@@ -102,7 +107,7 @@ struct SetWatchlistMembershipTests {
     func executePropagatesRemoveError() async {
         let repository = MockWatchlistRepository()
         repository.statusResult = .toWatch // In watchlist so remove will be called
-        repository.removeError = WatchlistError.movieNotInWatchlist
+        repository.membershipError = WatchlistError.movieNotInWatchlist
         let sut = SetWatchlistMembership(repository: repository)
 
         await #expect(throws: WatchlistError.movieNotInWatchlist) {

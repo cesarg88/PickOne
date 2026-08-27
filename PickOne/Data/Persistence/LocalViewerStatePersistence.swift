@@ -252,11 +252,10 @@ struct ApplicationSupportViewerStateStore: LocalViewerStateFileStore {
 
     func removeAllViewerState() throws {
         let fileManager = FileManager.default
-        for url in [activeURL, previousURL, quarantineURL]
-            where fileManager.fileExists(atPath: url.path(percentEncoded: false))
-        {
-            try fileManager.removeItem(at: url)
+        guard fileManager.fileExists(atPath: directoryURL.path(percentEncoded: false)) else {
+            return
         }
+        try fileManager.removeItem(at: directoryURL)
     }
 
     private var activeURL: URL {
