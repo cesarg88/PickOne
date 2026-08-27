@@ -64,6 +64,7 @@ struct UITestingThreeForTonightUseCase: ThreeForTonightUseCase {
             generatedAt: Date(timeIntervalSince1970: 1_700_000_000),
             engineModelVersion: .p1Model,
             cycle: cycle,
+            sourceViewerStateSnapshotID: ViewerStateSnapshotID(rawValue: decisionSetID),
             region: .spain,
             selectedProviderIDs: [PilotStreamingService.netflix.providerID],
             recommendations: [recommendation]

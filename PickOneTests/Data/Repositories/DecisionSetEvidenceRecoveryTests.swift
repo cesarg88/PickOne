@@ -125,13 +125,13 @@ struct DecisionSetEvidenceRecoveryTests {
     }
 
     private func compositeContradictions(
-        in envelope: DecisionSetEnvelopeV1DTO,
+        in envelope: DecisionSetEnvelopeV2DTO,
         safe: PersistedDecisionRecommendationV1DTO,
         stretch: PersistedDecisionRecommendationV1DTO,
         anchor: PositiveAnchorEvidenceV1DTO,
         safeGenre: DecisionGenreV1DTO,
         stretchGenre: DecisionGenreV1DTO
-    ) throws -> [DecisionSetEnvelopeV1DTO] {
+    ) throws -> [DecisionSetEnvelopeV2DTO] {
         let safeProvider = try #require(safe.availability.matchingProviders.first)
         return [
             replacingRecommendation(
@@ -211,97 +211,10 @@ struct DecisionSetEvidenceRecoveryTests {
         ]
     }
 
-    private func validEnvelope() async throws -> DecisionSetEnvelopeV1DTO {
-        let store = InMemoryDecisionSetDataStore()
-        let repository = DefaultDecisionSetRepository(store: store)
-        let signature = try #require(DecisionCycleSignature(rawValue: String(repeating: "a", count: 64)))
-        let cycle = try DecisionCycle(id: UUID(), identitySignature: signature, shownMovieIDs: [10])
-        let genre = DecisionGenre(id: 18, name: "Drama")
-        let safe = try PersistedDecisionRecommendation(
-            role: .safeChoice,
-            evidence: RecommendationEvidence(
-                primary: .positiveAnchor(
-                    PositiveAnchorEvidence(
-                        movieID: 155,
-                        movieTitle: "Anchor",
-                        reaction: .loved,
-                        anchorGenres: [genre],
-                        sharedGenres: [genre],
-                        eraMatch: nil
-                    )
-                ),
-                diversity: nil
-            ),
-            display: DecisionDisplaySnapshot(
-                movieID: 10,
-                localizedTitle: "Movie 10",
-                posterPath: nil,
-                backdropPath: nil,
-                runtimeMinutes: 120,
-                releaseYear: 2024,
-                genres: [genre]
-            ),
-            availability: DecisionAvailabilitySnapshot(
-                matchingProviders: [
-                    DecisionProviderSnapshot(
-                        providerID: 8,
-                        name: "Netflix",
-                        logoPath: nil,
-                        productOrder: 1
-                    ),
-                ],
-                verifiedAt: Date(timeIntervalSince1970: 1_700_000_000),
-                regionalWatchURL: nil
-            )
-        )
-        let comedy = DecisionGenre(id: 35, name: "Comedy")
-        let stretch = try PersistedDecisionRecommendation(
-            role: .stretchChoice,
-            evidence: RecommendationEvidence(
-                primary: .positiveGenreAffinity(
-                    PositiveAffinityEvidence(genres: [comedy], era: DecisionDecade(year: 2020))
-                ),
-                diversity: .diverseDirection
-            ),
-            display: DecisionDisplaySnapshot(
-                movieID: 20,
-                localizedTitle: "Movie 20",
-                posterPath: nil,
-                backdropPath: nil,
-                runtimeMinutes: 100,
-                releaseYear: 2022,
-                genres: [comedy]
-            ),
-            availability: DecisionAvailabilitySnapshot(
-                matchingProviders: [
-                    DecisionProviderSnapshot(
-                        providerID: 8,
-                        name: "Netflix",
-                        logoPath: nil,
-                        productOrder: 1
-                    ),
-                ],
-                verifiedAt: Date(timeIntervalSince1970: 1_700_000_000),
-                regionalWatchURL: nil
-            )
-        )
-        let decisionSet = try PersistedDecisionSet(
-            id: UUID(),
-            generatedAt: Date(timeIntervalSince1970: 1_700_000_001),
-            engineModelVersion: .p1Model,
-            cycle: cycle.presenting(movieIDs: [20]),
-            region: .spain,
-            selectedProviderIDs: [8],
-            recommendations: [safe, stretch]
-        )
-        try await repository.replace(decisionSet)
-        return try JSONDecisionSetEnvelopeCoder().decodeEnvelope(from: #require(store.activeData))
-    }
-
     private func replacingEvidence(
-        in envelope: DecisionSetEnvelopeV1DTO,
+        in envelope: DecisionSetEnvelopeV2DTO,
         with evidence: RecommendationEvidenceV1DTO
-    ) -> DecisionSetEnvelopeV1DTO {
+    ) -> DecisionSetEnvelopeV2DTO {
         let recommendations = envelope.recommendations.enumerated().map { index, recommendation in
             guard index == 0 else { return recommendation }
             return PersistedDecisionRecommendationV1DTO(
@@ -311,12 +224,13 @@ struct DecisionSetEvidenceRecoveryTests {
                 availability: recommendation.availability
             )
         }
-        return DecisionSetEnvelopeV1DTO(
+        return DecisionSetEnvelopeV2DTO(
             envelopeSchemaVersion: envelope.envelopeSchemaVersion,
             decisionSetID: envelope.decisionSetID,
             generatedAt: envelope.generatedAt,
             engineModelVersion: envelope.engineModelVersion,
             cycle: envelope.cycle,
+            sourceViewerStateSnapshotID: envelope.sourceViewerStateSnapshotID,
             regionCode: envelope.regionCode,
             selectedProviderIDs: envelope.selectedProviderIDs,
             recommendations: recommendations
@@ -366,19 +280,20 @@ struct DecisionSetEvidenceRecoveryTests {
     }
 
     private func replacingRecommendation(
-        in envelope: DecisionSetEnvelopeV1DTO,
+        in envelope: DecisionSetEnvelopeV2DTO,
         at index: Int,
         with replacement: PersistedDecisionRecommendationV1DTO
-    ) -> DecisionSetEnvelopeV1DTO {
+    ) -> DecisionSetEnvelopeV2DTO {
         let recommendations = envelope.recommendations.enumerated().map {
             $0.offset == index ? replacement : $0.element
         }
-        return DecisionSetEnvelopeV1DTO(
+        return DecisionSetEnvelopeV2DTO(
             envelopeSchemaVersion: envelope.envelopeSchemaVersion,
             decisionSetID: envelope.decisionSetID,
             generatedAt: envelope.generatedAt,
             engineModelVersion: envelope.engineModelVersion,
             cycle: envelope.cycle,
+            sourceViewerStateSnapshotID: envelope.sourceViewerStateSnapshotID,
             regionCode: envelope.regionCode,
             selectedProviderIDs: envelope.selectedProviderIDs,
             recommendations: recommendations
@@ -444,5 +359,102 @@ extension DecisionSetEvidenceRecoveryTests {
 
         #expect(restored.anchorGenres == nil)
         #expect(store.quarantineData == nil)
+    }
+}
+
+private extension DecisionSetEvidenceRecoveryTests {
+    func validEnvelope() async throws -> DecisionSetEnvelopeV2DTO {
+        let store = InMemoryDecisionSetDataStore()
+        let signature = try #require(
+            DecisionCycleSignature(rawValue: String(repeating: "a", count: 64))
+        )
+        let cycle = try DecisionCycle(
+            id: UUID(),
+            identitySignature: signature,
+            shownMovieIDs: [10]
+        )
+        let decisionSet = try PersistedDecisionSet(
+            id: UUID(),
+            generatedAt: Date(timeIntervalSince1970: 1_700_000_001),
+            engineModelVersion: .p1Model,
+            cycle: cycle.presenting(movieIDs: [20]),
+            sourceViewerStateSnapshotID: ViewerStateSnapshotID(rawValue: UUID()),
+            region: .spain,
+            selectedProviderIDs: [8],
+            recommendations: [safeRecommendation(), stretchRecommendation()]
+        )
+        try await DefaultDecisionSetRepository(store: store).replace(decisionSet)
+        let decoded = try JSONDecisionSetEnvelopeCoder().decodeEnvelope(
+            from: #require(store.activeData)
+        )
+        guard case let .currentV2(envelope) = decoded else {
+            throw DecisionSetCodingError.corruptData
+        }
+        return envelope
+    }
+
+    func safeRecommendation() throws -> PersistedDecisionRecommendation {
+        let genre = DecisionGenre(id: 18, name: "Drama")
+        return try PersistedDecisionRecommendation(
+            role: .safeChoice,
+            evidence: RecommendationEvidence(
+                primary: .positiveAnchor(PositiveAnchorEvidence(
+                    movieID: 155,
+                    movieTitle: "Anchor",
+                    reaction: .loved,
+                    anchorGenres: [genre],
+                    sharedGenres: [genre],
+                    eraMatch: nil
+                )),
+                diversity: nil
+            ),
+            display: DecisionDisplaySnapshot(
+                movieID: 10,
+                localizedTitle: "Movie 10",
+                posterPath: nil,
+                backdropPath: nil,
+                runtimeMinutes: 120,
+                releaseYear: 2024,
+                genres: [genre]
+            ),
+            availability: availability()
+        )
+    }
+
+    func stretchRecommendation() throws -> PersistedDecisionRecommendation {
+        let genre = DecisionGenre(id: 35, name: "Comedy")
+        return try PersistedDecisionRecommendation(
+            role: .stretchChoice,
+            evidence: RecommendationEvidence(
+                primary: .positiveGenreAffinity(PositiveAffinityEvidence(
+                    genres: [genre],
+                    era: DecisionDecade(year: 2020)
+                )),
+                diversity: .diverseDirection
+            ),
+            display: DecisionDisplaySnapshot(
+                movieID: 20,
+                localizedTitle: "Movie 20",
+                posterPath: nil,
+                backdropPath: nil,
+                runtimeMinutes: 100,
+                releaseYear: 2022,
+                genres: [genre]
+            ),
+            availability: availability()
+        )
+    }
+
+    func availability() throws -> DecisionAvailabilitySnapshot {
+        try DecisionAvailabilitySnapshot(
+            matchingProviders: [DecisionProviderSnapshot(
+                providerID: 8,
+                name: "Netflix",
+                logoPath: nil,
+                productOrder: 1
+            )],
+            verifiedAt: Date(timeIntervalSince1970: 1_700_000_000),
+            regionalWatchURL: nil
+        )
     }
 }

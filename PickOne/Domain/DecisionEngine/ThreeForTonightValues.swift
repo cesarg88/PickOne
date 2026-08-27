@@ -1,5 +1,23 @@
 import Foundation
 
+enum ThreeForTonightRequest: Sendable {
+    case load
+    case refresh
+    case repair(DecisionEligibilityChange)
+}
+
+struct TrustedLocalState: Sendable {
+    let profile: ViewerProfile
+    let watchlistItems: [WatchlistItem]
+    let snapshotID: ViewerStateSnapshotID
+}
+
+extension DecisionEligibilityChange {
+    var availabilityMovieID: Int? {
+        cause == .availability ? movieID : nil
+    }
+}
+
 struct ThreeForTonightSnapshot: Equatable, Sendable {
     let decisionSet: PersistedDecisionSet
     let savedMovieIDs: Set<Int>
@@ -125,6 +143,7 @@ enum ThreeForTonightSnapshotFactory {
                 generatedAt: envelope.generatedAt,
                 engineModelVersion: envelope.engineModelVersion,
                 cycle: envelope.cycle,
+                sourceViewerStateSnapshotID: envelope.sourceViewerStateSnapshotID,
                 region: envelope.region,
                 selectedProviderIDs: envelope.selectedProviderIDs,
                 recommendations: retained

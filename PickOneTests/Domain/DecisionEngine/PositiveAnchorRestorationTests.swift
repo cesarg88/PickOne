@@ -131,6 +131,7 @@ struct PositiveAnchorRestorationTests {
                 identitySignature: signature,
                 shownMovieIDs: [10]
             ),
+            sourceViewerStateSnapshotID: CoordinatorViewerMovieStateRepository.defaultSnapshotID,
             region: profile.region,
             selectedProviderIDs: profile.selectedServices.map(\.providerID),
             recommendations: [recommendation]

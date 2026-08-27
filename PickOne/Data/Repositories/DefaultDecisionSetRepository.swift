@@ -24,7 +24,16 @@ actor DefaultDecisionSetRepository: DecisionSetRepository {
         }
 
         do {
-            return try .available(map(coder.decodeEnvelope(from: data)))
+            let decoded = try coder.decodeEnvelope(from: data)
+            return switch decoded {
+                case let .legacyV1(envelope):
+                    try .migrationRequired(makeMigrationSource(
+                        envelope,
+                        recommendations: envelope.recommendations.map(map)
+                    ))
+                case let .currentV2(envelope):
+                    try .available(map(envelope))
+            }
         } catch DecisionSetCodingError.unsupportedVersion {
             return quarantine(data, reason: .unsupportedVersion)
         } catch {
@@ -58,9 +67,9 @@ actor DefaultDecisionSetRepository: DecisionSetRepository {
         }
     }
 
-    private func map(_ envelope: PersistedDecisionSet) -> DecisionSetEnvelopeV1DTO {
-        DecisionSetEnvelopeV1DTO(
-            envelopeSchemaVersion: DecisionSetEnvelopeV1DTO.schemaVersion,
+    private func map(_ envelope: PersistedDecisionSet) -> DecisionSetEnvelopeV2DTO {
+        DecisionSetEnvelopeV2DTO(
+            envelopeSchemaVersion: DecisionSetEnvelopeV2DTO.schemaVersion,
             decisionSetID: envelope.id,
             generatedAt: envelope.generatedAt,
             engineModelVersion: envelope.engineModelVersion.rawValue,
@@ -69,6 +78,7 @@ actor DefaultDecisionSetRepository: DecisionSetRepository {
                 identitySignature: envelope.cycle.identitySignature.rawValue,
                 shownMovieIDs: envelope.cycle.shownMovieIDs.sorted()
             ),
+            sourceViewerStateSnapshotID: envelope.sourceViewerStateSnapshotID.rawValue,
             regionCode: envelope.region.code,
             selectedProviderIDs: envelope.selectedProviderIDs.sorted(),
             recommendations: envelope.recommendations.map(map)
@@ -196,7 +206,7 @@ actor DefaultDecisionSetRepository: DecisionSetRepository {
         DecisionGenreV1DTO(id: genre.id, name: genre.name)
     }
 
-    private func map(_ dto: DecisionSetEnvelopeV1DTO) throws -> PersistedDecisionSet {
+    private func map(_ dto: DecisionSetEnvelopeV2DTO) throws -> PersistedDecisionSet {
         guard let engineVersion = DecisionEngineModelVersion(rawValue: dto.engineModelVersion) else {
             throw DecisionSetCodingError.unsupportedVersion
         }
@@ -213,6 +223,9 @@ actor DefaultDecisionSetRepository: DecisionSetRepository {
             generatedAt: dto.generatedAt,
             engineModelVersion: engineVersion,
             cycle: cycle,
+            sourceViewerStateSnapshotID: ViewerStateSnapshotID(
+                rawValue: dto.sourceViewerStateSnapshotID
+            ),
             region: ViewingRegion(code: dto.regionCode),
             selectedProviderIDs: dto.selectedProviderIDs,
             recommendations: dto.recommendations.map(map)
@@ -401,4 +414,26 @@ actor DefaultDecisionSetRepository: DecisionSetRepository {
             default: throw DecisionSetCodingError.corruptData
         }
     }
+}
+
+private func makeMigrationSource(
+    _ dto: DecisionSetEnvelopeV1DTO,
+    recommendations: [PersistedDecisionRecommendation]
+) throws -> DecisionSetMigrationSource {
+    guard DecisionEngineModelVersion(rawValue: dto.engineModelVersion) != nil else {
+        throw DecisionSetCodingError.unsupportedVersion
+    }
+    guard let signature = DecisionCycleSignature(rawValue: dto.cycle.identitySignature) else {
+        throw DecisionSetCodingError.corruptData
+    }
+    return try DecisionSetMigrationSource(
+        cycle: DecisionCycle(
+            id: dto.cycle.id,
+            identitySignature: signature,
+            shownMovieIDs: Set(dto.cycle.shownMovieIDs)
+        ),
+        region: ViewingRegion(code: dto.regionCode),
+        selectedProviderIDs: dto.selectedProviderIDs,
+        recommendations: recommendations
+    )
 }

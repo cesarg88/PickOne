@@ -169,6 +169,7 @@ struct DecisionSetCompositeValidationTests {
             generatedAt: Date(timeIntervalSince1970: 1_700_000_001),
             engineModelVersion: .p1Model,
             cycle: DecisionCycle(id: UUID(), identitySignature: signature, shownMovieIDs: movieIDs),
+            sourceViewerStateSnapshotID: ViewerStateSnapshotID(rawValue: UUID()),
             region: .spain,
             selectedProviderIDs: [PilotStreamingService.netflix.providerID],
             recommendations: recommendations

@@ -103,36 +103,43 @@ final class UserDefaultsDecisionSetDataStore: DecisionSetDataStore {
 }
 
 protocol DecisionSetEnvelopeCoding: Sendable {
-    func decodeEnvelope(from data: Data) throws -> DecisionSetEnvelopeV1DTO
-    func encodeEnvelope(_ envelope: DecisionSetEnvelopeV1DTO) throws -> Data
+    func decodeEnvelope(from data: Data) throws -> DecodedDecisionSetEnvelopeDTO
+    func encodeEnvelope(_ envelope: DecisionSetEnvelopeV2DTO) throws -> Data
 }
 
-enum DecisionSetCodingError: Error {
+enum DecisionSetCodingError: Error, Equatable, Sendable {
     case unsupportedVersion
     case corruptData
 }
 
 struct JSONDecisionSetEnvelopeCoder: DecisionSetEnvelopeCoding {
-    func decodeEnvelope(from data: Data) throws -> DecisionSetEnvelopeV1DTO {
+    func decodeEnvelope(from data: Data) throws -> DecodedDecisionSetEnvelopeDTO {
         let header: DecisionSetEnvelopeHeaderDTO
         do {
             header = try JSONDecoder().decode(DecisionSetEnvelopeHeaderDTO.self, from: data)
         } catch {
             throw DecisionSetCodingError.corruptData
         }
-        guard header.envelopeSchemaVersion == DecisionSetEnvelopeV1DTO.schemaVersion else {
-            throw DecisionSetCodingError.unsupportedVersion
-        }
+
         do {
             let decoder = JSONDecoder()
             decoder.dateDecodingStrategy = .millisecondsSince1970
-            return try decoder.decode(DecisionSetEnvelopeV1DTO.self, from: data)
+            return switch header.envelopeSchemaVersion {
+                case DecisionSetEnvelopeV1DTO.schemaVersion:
+                    try .legacyV1(decoder.decode(DecisionSetEnvelopeV1DTO.self, from: data))
+                case DecisionSetEnvelopeV2DTO.schemaVersion:
+                    try .currentV2(decoder.decode(DecisionSetEnvelopeV2DTO.self, from: data))
+                default:
+                    throw DecisionSetCodingError.unsupportedVersion
+            }
+        } catch let error as DecisionSetCodingError {
+            throw error
         } catch {
             throw DecisionSetCodingError.corruptData
         }
     }
 
-    func encodeEnvelope(_ envelope: DecisionSetEnvelopeV1DTO) throws -> Data {
+    func encodeEnvelope(_ envelope: DecisionSetEnvelopeV2DTO) throws -> Data {
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.sortedKeys]
         encoder.dateEncodingStrategy = .millisecondsSince1970
@@ -144,6 +151,11 @@ private struct DecisionSetEnvelopeHeaderDTO: Decodable {
     let envelopeSchemaVersion: Int
 }
 
+enum DecodedDecisionSetEnvelopeDTO: Equatable, Sendable {
+    case legacyV1(DecisionSetEnvelopeV1DTO)
+    case currentV2(DecisionSetEnvelopeV2DTO)
+}
+
 struct DecisionSetEnvelopeV1DTO: Codable, Equatable, Sendable {
     static let schemaVersion = 1
 
@@ -152,6 +164,20 @@ struct DecisionSetEnvelopeV1DTO: Codable, Equatable, Sendable {
     let generatedAt: Date
     let engineModelVersion: String
     let cycle: DecisionCycleV1DTO
+    let regionCode: String
+    let selectedProviderIDs: [Int]
+    let recommendations: [PersistedDecisionRecommendationV1DTO]
+}
+
+struct DecisionSetEnvelopeV2DTO: Codable, Equatable, Sendable {
+    static let schemaVersion = 2
+
+    let envelopeSchemaVersion: Int
+    let decisionSetID: UUID
+    let generatedAt: Date
+    let engineModelVersion: String
+    let cycle: DecisionCycleV1DTO
+    let sourceViewerStateSnapshotID: UUID
     let regionCode: String
     let selectedProviderIDs: [Int]
     let recommendations: [PersistedDecisionRecommendationV1DTO]

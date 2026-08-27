@@ -8,11 +8,15 @@ enum CoordinatorTestFixtures {
         availabilityRepository: CoordinatorAvailabilityRepository,
         decisionSetRepository: CoordinatorDecisionSetRepository,
         movieRepository: CoordinatorMovieRepository = CoordinatorMovieRepository(),
-        watchlistRepository: any WatchlistRepository = CoordinatorWatchlistRepository()
+        watchlistRepository: any WatchlistRepository = CoordinatorWatchlistRepository(),
+        snapshotID: ViewerStateSnapshotID = CoordinatorViewerMovieStateRepository.defaultSnapshotID
     ) -> ThreeForTonightCoordinator {
         let profileRepository = CoordinatorProfileRepository(profile: profile)
         return ThreeForTonightCoordinator(
             viewerProfileRepository: profileRepository,
+            viewerMovieStateRepository: CoordinatorViewerMovieStateRepository(
+                snapshotID: snapshotID
+            ),
             watchlistRepository: watchlistRepository,
             decisionSetRepository: decisionSetRepository,
             inputAssembler: AssembleDecisionEngineInput(
@@ -60,6 +64,7 @@ enum CoordinatorTestFixtures {
                 identitySignature: signature,
                 shownMovieIDs: shownMovieIDs ?? Set(currentMovieIDs)
             ),
+            sourceViewerStateSnapshotID: CoordinatorViewerMovieStateRepository.defaultSnapshotID,
             region: profile.region,
             selectedProviderIDs: profile.selectedServices.map(\.providerID),
             recommendations: recommendations

@@ -54,6 +54,35 @@ actor CoordinatorProfileRepository: ViewerProfileRepository {
     }
 }
 
+struct CoordinatorViewerMovieStateRepository: ViewerMovieStateRepository {
+    static let defaultSnapshotID = ViewerStateSnapshotID(rawValue: UUID())
+
+    let snapshotID: ViewerStateSnapshotID
+
+    init(snapshotID: ViewerStateSnapshotID = Self.defaultSnapshotID) {
+        self.snapshotID = snapshotID
+    }
+
+    func loadState() -> ViewerMovieStateLoadState {
+        .absent
+    }
+
+    func snapshot() throws -> ViewerMovieStateSnapshot {
+        try ViewerMovieStateSnapshot(id: snapshotID, states: [])
+    }
+
+    func state(movieID _: Int) throws -> ViewerMovieState? {
+        nil
+    }
+
+    func apply(
+        _: ViewerMovieStateTransition,
+        metadata _: MovieFeedbackMetadata
+    ) throws -> ViewerMovieStateChange {
+        throw ViewerMovieStateRepositoryError.invalidMovieID
+    }
+}
+
 struct CoordinatorWatchlistRepository: WatchlistRepository {
     let items: [WatchlistItem]
     let loadError: CoordinatorTestError?

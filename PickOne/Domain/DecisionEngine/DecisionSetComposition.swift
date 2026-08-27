@@ -19,7 +19,8 @@ struct DecisionSetEnvelopeComposer: Sendable {
         selection: DecisionSelection,
         candidates: [DecisionInputCandidate],
         profile: ViewerProfile,
-        cycle: DecisionCycle
+        cycle: DecisionCycle,
+        sourceViewerStateSnapshotID: ViewerStateSnapshotID
     ) async throws -> PersistedDecisionSet {
         let candidatesByID = Dictionary(
             uniqueKeysWithValues: candidates.map { ($0.seed.movieID, $0) }
@@ -43,6 +44,7 @@ struct DecisionSetEnvelopeComposer: Sendable {
             generatedAt: clock.now(),
             engineModelVersion: .p1Model,
             cycle: presentedCycle,
+            sourceViewerStateSnapshotID: sourceViewerStateSnapshotID,
             region: profile.region,
             selectedProviderIDs: profile.selectedServices.map(\.providerID),
             recommendations: recommendations

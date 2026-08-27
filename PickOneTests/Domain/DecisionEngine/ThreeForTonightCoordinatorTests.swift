@@ -386,6 +386,7 @@ private extension ThreeForTonightCoordinatorTests {
         let profileRepository = CoordinatorProfileRepository(profile: profile)
         return ThreeForTonightCoordinator(
             viewerProfileRepository: profileRepository,
+            viewerMovieStateRepository: CoordinatorViewerMovieStateRepository(),
             watchlistRepository: watchlistRepository,
             decisionSetRepository: decisionSetRepository,
             inputAssembler: AssembleDecisionEngineInput(
@@ -413,7 +414,8 @@ private extension ThreeForTonightCoordinatorTests {
 
     private func emptyEnvelope(
         profile: ViewerProfile,
-        shownMovieIDs: Set<Int> = []
+        shownMovieIDs: Set<Int> = [],
+        sourceSnapshotID: ViewerStateSnapshotID = CoordinatorViewerMovieStateRepository.defaultSnapshotID
     ) throws -> PersistedDecisionSet {
         let signature = try StableDecisionCycleSigner().signature(for: DecisionCycleIdentity(
             engineModelVersion: .p1Model,
@@ -428,6 +430,7 @@ private extension ThreeForTonightCoordinatorTests {
                 identitySignature: signature,
                 shownMovieIDs: shownMovieIDs
             ),
+            sourceViewerStateSnapshotID: sourceSnapshotID,
             region: profile.region,
             selectedProviderIDs: profile.selectedServices.map(\.providerID),
             recommendations: []
@@ -476,6 +479,7 @@ private extension ThreeForTonightCoordinatorTests {
                 identitySignature: signature,
                 shownMovieIDs: [movieID]
             ),
+            sourceViewerStateSnapshotID: CoordinatorViewerMovieStateRepository.defaultSnapshotID,
             region: profile.region,
             selectedProviderIDs: profile.selectedServices.map(\.providerID),
             recommendations: [recommendation]
