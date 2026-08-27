@@ -1,69 +1,54 @@
 import Foundation
 
 actor LocalViewerStateRepository: ViewerMovieStateRepository {
-    private struct ResolvedState: Sendable {
+    struct ResolvedState: Sendable {
         let envelope: LocalViewerStateEnvelopeV2DTO
         let snapshot: ViewerMovieStateSnapshot
         let activeBytes: Data
     }
 
-    private struct ResolutionFailure: Error, Sendable {
+    struct ResolutionFailure: Error, Sendable {
         let repositoryError: ViewerMovieStateRepositoryError
         let recoveryReason: ViewerMovieStateRecoveryReason
     }
 
-    private let fileStore: any LocalViewerStateFileStore
+    struct ExhaustedSourcesFailure: Error, Sendable {
+        let repositoryError: ViewerMovieStateRepositoryError
+        let recoveryReason: ViewerMovieStateRecoveryReason
+    }
+
+    let fileStore: any LocalViewerStateFileStore
     private let legacySource: any LegacyViewerStateSource
+    let legacyResetter: (any LegacyViewerStateResetter)?
     private let coder: any LocalViewerStateEnvelopeCoding
-    private let mapper: LocalViewerStateEnvelopeMapper
-    private let migrator: LegacyViewerStateMigrator
-    private let makeSnapshotID: @Sendable () -> UUID
-    private let now: @Sendable () -> Date
-    private var resolvedState: ResolvedState?
+    let mapper: LocalViewerStateEnvelopeMapper
+    let profileMapper: LocalViewerProfileMapper
+    let migrator: LegacyViewerStateMigrator
+    let makeSnapshotID: @Sendable () -> UUID
+    let now: @Sendable () -> Date
+    var resolvedState: ResolvedState?
+    var destructiveResetAvailability: DestructiveRecoveryAvailability = .unavailable
 
     init(
         fileStore: any LocalViewerStateFileStore,
         legacySource: any LegacyViewerStateSource,
+        legacyResetter: (any LegacyViewerStateResetter)? = nil,
         coder: any LocalViewerStateEnvelopeCoding = JSONLocalViewerStateEnvelopeCoder(),
         mapper: LocalViewerStateEnvelopeMapper = LocalViewerStateEnvelopeMapper(),
+        profileMapper: LocalViewerProfileMapper = LocalViewerProfileMapper(),
         migrator: LegacyViewerStateMigrator = LegacyViewerStateMigrator(),
         snapshotID: @escaping @Sendable () -> UUID = UUID.init,
         now: @escaping @Sendable () -> Date = Date.init
     ) {
         self.fileStore = fileStore
         self.legacySource = legacySource
+        self.legacyResetter = legacyResetter
         self.coder = coder
         self.mapper = mapper
+        self.profileMapper = profileMapper
         self.migrator = migrator
         makeSnapshotID = snapshotID
         self.now = now
-    }
-
-    func loadState() -> ViewerMovieStateLoadState {
-        do {
-            return try .loaded(resolve().snapshot)
-        } catch let failure as ResolutionFailure {
-            return .recovery(failure.recoveryReason)
-        } catch {
-            return .recovery(.loadFailure)
-        }
-    }
-
-    func snapshot() throws -> ViewerMovieStateSnapshot {
-        do {
-            return try resolve().snapshot
-        } catch let failure as ResolutionFailure {
-            throw failure.repositoryError
-        } catch {
-            throw ViewerMovieStateRepositoryError.loadFailure
-        }
-    }
-
-    func state(movieID: Int) throws -> ViewerMovieState? {
-        guard movieID > 0 else {
-            throw ViewerMovieStateRepositoryError.invalidMovieID
-        }
-        return try snapshot().state(for: movieID)
     }
 
     func apply(
@@ -114,7 +99,7 @@ actor LocalViewerStateRepository: ViewerMovieStateRepository {
         )
     }
 
-    private func resolve() throws -> ResolvedState {
+    func resolve() throws -> ResolvedState {
         if let resolvedState {
             return resolvedState
         }
@@ -227,7 +212,7 @@ actor LocalViewerStateRepository: ViewerMovieStateRepository {
 
         let hasLegacyData = profileData != nil || watchlistData != nil
         guard hasLegacyData || currentFailure == nil else {
-            throw failure(
+            throw exhaustedSourcesFailure(
                 currentFailure ?? .migrationFailure,
                 recoveryReason ?? .migrationFailure
             )
@@ -248,6 +233,9 @@ actor LocalViewerStateRepository: ViewerMovieStateRepository {
                 source: source
             )
         } catch {
+            if hasLegacyData {
+                throw exhaustedSourcesFailure(.migrationFailure, .migrationFailure)
+            }
             throw failure(.migrationFailure, .migrationFailure)
         }
         let persisted = try publishInitial(
@@ -283,7 +271,7 @@ actor LocalViewerStateRepository: ViewerMovieStateRepository {
         return try publishInitial(replacement)
     }
 
-    private func publishInitial(
+    func publishInitial(
         _ envelope: LocalViewerStateEnvelopeV2DTO,
         clearPrevious: Bool = false
     ) throws -> ResolvedState {
@@ -308,7 +296,7 @@ actor LocalViewerStateRepository: ViewerMovieStateRepository {
         return try decode(data)
     }
 
-    private func persistMutation(
+    func persistMutation(
         _ envelope: LocalViewerStateEnvelopeV2DTO,
         replacing current: ResolvedState
     ) throws -> ResolvedState {
@@ -404,7 +392,17 @@ actor LocalViewerStateRepository: ViewerMovieStateRepository {
         )
     }
 
-    private func freshSnapshotID(excluding previousID: UUID) -> UUID {
+    private func exhaustedSourcesFailure(
+        _ repositoryError: ViewerMovieStateRepositoryError,
+        _ recoveryReason: ViewerMovieStateRecoveryReason
+    ) -> ExhaustedSourcesFailure {
+        ExhaustedSourcesFailure(
+            repositoryError: repositoryError,
+            recoveryReason: recoveryReason
+        )
+    }
+
+    func freshSnapshotID(excluding previousID: UUID) -> UUID {
         var candidate = makeSnapshotID()
         while candidate == previousID {
             candidate = makeSnapshotID()

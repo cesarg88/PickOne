@@ -20,3 +20,27 @@ enum ViewerMovieStateRepositoryError: Error, Equatable, Sendable {
     case replacementFailure
     case loadFailure
 }
+
+enum ViewerStateRecoveryNotice: Equatable, Sendable {
+    case olderSnapshot
+}
+
+protocol ViewerStateRecoveryNoticeRepository: Sendable {
+    func recoveryNotice() async -> ViewerStateRecoveryNotice?
+}
+
+protocol ViewerStateDestructiveRecoveryRepository: Sendable {
+    func destructiveRecoveryAvailability() async -> DestructiveRecoveryAvailability
+    func resetUnrecoverableViewerState() async throws
+}
+
+enum DestructiveRecoveryAvailability: Equatable, Sendable {
+    case unavailable
+    case available
+}
+
+enum ViewerStateDestructiveRecoveryError: Error, Equatable, Sendable {
+    case stateIsRecoverable
+    case resetUnavailable
+    case resetFailed
+}

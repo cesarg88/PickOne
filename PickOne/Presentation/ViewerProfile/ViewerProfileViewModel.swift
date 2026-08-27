@@ -27,10 +27,13 @@ final class ViewerProfileViewModel {
         case updateServices([PilotStreamingService])
         case resetDraft
         case resetProfile
+        case destructiveRecovery
     }
 
     private let manageProfile: ManageViewerProfileUseCase
     private let getMovieMetadata: GetCalibrationMovieMetadataUseCase
+    private let getRecoveryNotice: (any GetViewerStateRecoveryNoticeUseCase)?
+    private let resetUnrecoverableViewerState: (any ResetUnrecoverableViewerStateUseCase)?
     private let resetsProfileForUITests: Bool
     private var retryAction: RetryAction?
     private var metadataLoadID = UUID()
@@ -46,6 +49,12 @@ final class ViewerProfileViewModel {
     var pendingReaction: CalibrationReaction?
     var saveErrorMessage: String?
     var isSaving = false
+    var recoveryNotice: ViewerStateRecoveryNotice?
+    var destructiveRecoveryAvailability: DestructiveRecoveryAvailability = .unavailable
+
+    var canDestructivelyResetViewerState: Bool {
+        destructiveRecoveryAvailability == .available
+    }
 
     var hasPendingCompletionRetry: Bool {
         switch retryAction {
@@ -63,16 +72,21 @@ final class ViewerProfileViewModel {
     init(
         manageProfile: ManageViewerProfileUseCase,
         getMovieMetadata: GetCalibrationMovieMetadataUseCase,
+        getRecoveryNotice: (any GetViewerStateRecoveryNoticeUseCase)? = nil,
+        resetUnrecoverableViewerState: (any ResetUnrecoverableViewerStateUseCase)? = nil,
         resetsProfileForUITests: Bool = false
     ) {
         self.manageProfile = manageProfile
         self.getMovieMetadata = getMovieMetadata
+        self.getRecoveryNotice = getRecoveryNotice
+        self.resetUnrecoverableViewerState = resetUnrecoverableViewerState
         self.resetsProfileForUITests = resetsProfileForUITests
     }
 
     func load() async {
         cancelMetadataHydration()
         rootState = .loading
+        destructiveRecoveryAvailability = .unavailable
         if resetsProfileForUITests, !didApplyUITestReset {
             didApplyUITestReset = true
             do {
@@ -83,6 +97,17 @@ final class ViewerProfileViewModel {
             }
         }
         await apply(loadState: manageProfile.loadState())
+        if case .recovery = rootState {
+            recoveryNotice = nil
+            destructiveRecoveryAvailability = await resetUnrecoverableViewerState?.availability()
+                ?? .unavailable
+        } else {
+            recoveryNotice = await getRecoveryNotice?.execute()
+        }
+    }
+
+    func dismissRecoveryNotice() {
+        recoveryNotice = nil
     }
 
     func toggleFirstOnboardingService(_ service: PilotStreamingService) async {
@@ -259,6 +284,25 @@ final class ViewerProfileViewModel {
         await load()
     }
 
+    func destructivelyResetUnrecoverableViewerState() async {
+        guard canDestructivelyResetViewerState,
+              let resetUnrecoverableViewerState
+        else { return }
+        let result = await perform(.destructiveRecovery) {
+            try await resetUnrecoverableViewerState.execute()
+        }
+        guard result == .success else { return }
+        recoveryNotice = nil
+        destructiveRecoveryAvailability = .unavailable
+        activeProfile = nil
+        recalibrationDraft = nil
+        presentedCalibration = nil
+        firstDraft = nil
+        clearCurrentMovie()
+        rootState = .loading
+        await load()
+    }
+
     func retryLastAction() async {
         saveErrorMessage = nil
         guard let retryAction else {
@@ -298,6 +342,8 @@ final class ViewerProfileViewModel {
                 await resetDraft()
             case .resetProfile:
                 await resetProfile()
+            case .destructiveRecovery:
+                await destructivelyResetUnrecoverableViewerState()
         }
     }
 
@@ -502,6 +548,7 @@ private extension ViewerProfileViewModel {
         retryAction = action
         saveErrorMessage = "Your preferences couldn't be saved. Please try again."
         if case .load = action {
+            destructiveRecoveryAvailability = .unavailable
             rootState = .recovery(.loadFailed)
         }
     }

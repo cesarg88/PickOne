@@ -37,7 +37,7 @@ struct WatchlistItemPresentation: Identifiable, Equatable {
     let title: String
     let posterURL: URL?
     let releaseYear: String?
-    let rating: String
+    let rating: String?
     let isWatched: Bool
     let addedDate: String
 
@@ -74,7 +74,7 @@ enum WatchlistPresentationMapper {
             title: item.movie.title,
             posterURL: posterURL(for: item.movie.posterPath),
             releaseYear: item.movie.releaseYear.map(String.init),
-            rating: String(format: "%.1f", item.movie.rating),
+            rating: item.movie.rating > 0 ? String(format: "%.1f", item.movie.rating) : nil,
             isWatched: item.isWatched,
             addedDate: formatDate(item.addedAt),
             movieSummary: item.movie

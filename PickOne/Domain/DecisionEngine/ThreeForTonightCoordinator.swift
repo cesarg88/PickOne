@@ -449,7 +449,7 @@ private extension ThreeForTonightCoordinator {
         }
         let watchlistItems: [WatchlistItem]
         do {
-            watchlistItems = try watchlistRepository.loadAllItems()
+            watchlistItems = try await watchlistRepository.loadAllItems()
         } catch {
             throw CoordinatorError.watchlistUnavailable
         }
@@ -475,7 +475,7 @@ private extension ThreeForTonightCoordinator {
     ) async -> Bool {
         guard case let .completed(currentProfile, _) = await viewerProfileRepository.loadState(),
               currentProfile == profile,
-              let currentWatchlist = try? watchlistRepository.loadAllItems()
+              let currentWatchlist = try? await watchlistRepository.loadAllItems()
         else {
             return false
         }

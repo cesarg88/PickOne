@@ -15,6 +15,7 @@ final class InMemoryLocalViewerStateFileStore: LocalViewerStateFileStore {
         var rejectPreviousReplacement = false
         var rejectPreviousRemoval = false
         var rejectQuarantine = false
+        var rejectRemoveAll = false
     }
 
     private let state: Mutex<State>
@@ -73,6 +74,11 @@ final class InMemoryLocalViewerStateFileStore: LocalViewerStateFileStore {
         set { state.withLock { $0.rejectQuarantine = newValue } }
     }
 
+    var rejectRemoveAll: Bool {
+        get { state.withLock { $0.rejectRemoveAll } }
+        set { state.withLock { $0.rejectRemoveAll = newValue } }
+    }
+
     func readActive() throws -> Data? {
         try state.withLock {
             if $0.rejectActiveRead { throw LocalViewerStateTestError.rejected }
@@ -118,13 +124,23 @@ final class InMemoryLocalViewerStateFileStore: LocalViewerStateFileStore {
             )
         }
     }
+
+    func removeAllViewerState() throws {
+        try state.withLock {
+            if $0.rejectRemoveAll { throw LocalViewerStateTestError.rejected }
+            $0.activeData = nil
+            $0.previousData = nil
+            $0.quarantinedItems = []
+        }
+    }
 }
 
-final class InMemoryLegacyViewerStateSource: LegacyViewerStateSource {
+final class InMemoryLegacyViewerStateSource: LegacyViewerStateSource, LegacyViewerStateResetter {
     private struct State: Sendable {
         var profileData: Data?
         var watchlistData: Data?
         var rejectReads = false
+        var rejectRemoval = false
     }
 
     private let state: Mutex<State>
@@ -138,6 +154,19 @@ final class InMemoryLegacyViewerStateSource: LegacyViewerStateSource {
         set { state.withLock { $0.rejectReads = newValue } }
     }
 
+    var rejectRemoval: Bool {
+        get { state.withLock { $0.rejectRemoval } }
+        set { state.withLock { $0.rejectRemoval = newValue } }
+    }
+
+    var profileData: Data? {
+        state.withLock { $0.profileData }
+    }
+
+    var watchlistData: Data? {
+        state.withLock { $0.watchlistData }
+    }
+
     func readProfile() throws -> Data? {
         try state.withLock {
             if $0.rejectReads { throw LocalViewerStateTestError.rejected }
@@ -149,6 +178,14 @@ final class InMemoryLegacyViewerStateSource: LegacyViewerStateSource {
         try state.withLock {
             if $0.rejectReads { throw LocalViewerStateTestError.rejected }
             return $0.watchlistData
+        }
+    }
+
+    func removeLegacyViewerState() throws {
+        try state.withLock {
+            if $0.rejectRemoval { throw LocalViewerStateTestError.rejected }
+            $0.profileData = nil
+            $0.watchlistData = nil
         }
     }
 }

@@ -52,6 +52,7 @@ struct ViewerProfileViewModelTests {
             let recovery = makeSUT(loadStates: [.recovery(reason)])
             await recovery.load()
             #expect(recovery.rootState == .recovery(reason))
+            #expect(!recovery.canDestructivelyResetViewerState)
         }
     }
 
@@ -66,6 +67,19 @@ struct ViewerProfileViewModelTests {
 
         #expect(sut.rootState == .onboarding)
         #expect(sut.firstDraft == .empty(catalog: ViewerProfileTestFixtures.catalog))
+    }
+
+    @Test("older-snapshot recovery notice remains visible when recovery resumes onboarding")
+    func recoveryNoticeSurvivesOnboardingRouting() async {
+        let sut = makeSUT(
+            manage: ViewerProfileManageSpy(loadStates: [.absent]),
+            getRecoveryNotice: ConstantViewerStateRecoveryNotice(.olderSnapshot)
+        )
+
+        await sut.load()
+
+        #expect(sut.rootState == .onboarding)
+        #expect(sut.recoveryNotice == .olderSnapshot)
     }
 
     @Test("failed reaction save preserves the visible movie and retries")
@@ -246,6 +260,24 @@ struct ViewerProfileViewModelTests {
         #expect(await manage.resetProfileCallCount == 1)
     }
 
+    @Test("confirmed destructive recovery creates a new onboarding route")
+    func destructiveRecoveryRoutesToOnboarding() async {
+        let reset = DestructiveViewerStateRecoverySpy(availability: .available)
+        let sut = makeSUT(
+            manage: ViewerProfileManageSpy(
+                loadStates: [.recovery(.corruptData), .absent]
+            ),
+            resetUnrecoverableViewerState: reset
+        )
+        await sut.load()
+
+        await sut.destructivelyResetUnrecoverableViewerState()
+
+        #expect(await reset.callCount == 1)
+        #expect(sut.rootState == .onboarding)
+        #expect(sut.firstDraft == .empty(catalog: ViewerProfileTestFixtures.catalog))
+    }
+
     private func makeSUT(
         loadStates: [ViewerProfileLoadState]
     ) -> ViewerProfileViewModel {
@@ -254,11 +286,15 @@ struct ViewerProfileViewModelTests {
 
     private func makeSUT(
         manage: ViewerProfileManageSpy,
-        metadata: GetCalibrationMovieMetadataUseCase = FailingCalibrationMetadata()
+        metadata: GetCalibrationMovieMetadataUseCase = FailingCalibrationMetadata(),
+        getRecoveryNotice: (any GetViewerStateRecoveryNoticeUseCase)? = nil,
+        resetUnrecoverableViewerState: (any ResetUnrecoverableViewerStateUseCase)? = nil
     ) -> ViewerProfileViewModel {
         ViewerProfileViewModel(
             manageProfile: manage,
-            getMovieMetadata: metadata
+            getMovieMetadata: metadata,
+            getRecoveryNotice: getRecoveryNotice,
+            resetUnrecoverableViewerState: resetUnrecoverableViewerState
         )
     }
 
@@ -272,16 +308,6 @@ struct ViewerProfileViewModelTests {
             await Task.yield()
         }
         #expect(await condition())
-    }
-}
-
-private enum ViewerProfileViewModelTestError: Error {
-    case failed
-}
-
-private struct FailingCalibrationMetadata: GetCalibrationMovieMetadataUseCase {
-    func execute(movieID: Int) async throws -> CalibrationMovieMetadata {
-        throw ViewerProfileViewModelTestError.failed
     }
 }
 
@@ -337,7 +363,7 @@ private actor ControlledCalibrationMetadata: GetCalibrationMovieMetadataUseCase 
     }
 }
 
-private actor AsyncViewerProfileGate {
+actor AsyncViewerProfileGate {
     private var isOpen = false
     private var waiters: [CheckedContinuation<Void, Never>] = []
 
@@ -358,7 +384,7 @@ private actor AsyncViewerProfileGate {
     }
 }
 
-private actor ViewerProfileManageSpy: ManageViewerProfileUseCase {
+actor ViewerProfileManageSpy: ManageViewerProfileUseCase {
     nonisolated let catalog = ViewerProfileTestFixtures.catalog
 
     private let loadStates: [ViewerProfileLoadState]
@@ -570,14 +596,5 @@ private func makeCompletedProfile() -> ViewerProfile {
         region: .spain,
         selectedServices: [.netflix],
         reactions: ViewerProfileTestFixtures.reactions(count: 8)
-    )
-}
-
-private func metadataValue(title: String) -> CalibrationMovieMetadata {
-    CalibrationMovieMetadata(
-        title: title,
-        originalTitle: "Original title",
-        releaseYear: 2026,
-        posterPath: nil
     )
 }

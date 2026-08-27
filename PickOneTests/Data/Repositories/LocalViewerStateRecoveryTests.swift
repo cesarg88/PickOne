@@ -58,6 +58,7 @@ struct LocalViewerStateRecoveryTests {
         let active = try #require(files.activeData)
         let envelope = try JSONLocalViewerStateEnvelopeCoder().decode(active)
         #expect(envelope.migrationRecord.source == .previousRecovery)
+        #expect(await repository.successfulRecoveryNotice() == .olderSnapshot)
     }
 
     @Test("previous recovery always publishes a fresh non-reused snapshot identity")
@@ -399,6 +400,7 @@ struct LocalViewerStateRecoveryTests {
         return LocalViewerStateRepository(
             fileStore: files,
             legacySource: legacy,
+            legacyResetter: legacy,
             snapshotID: { generator.next() },
             now: { LocalViewerStateTestFixtures.date }
         )

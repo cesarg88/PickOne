@@ -12,17 +12,15 @@ import Synchronization
 final class MockWatchlistRepository: WatchlistRepository {
     private struct State: Sendable {
         var getAllItemsResult: [WatchlistItem] = []
-        var addError: WatchlistError?
-        var removeError: WatchlistError?
+        var membershipError: WatchlistError?
         var setWatchedError: WatchlistError?
         var statusResult: WatchlistStatus = .notInWatchlist
         var getAllItemsCallCount = 0
-        var addCallCount = 0
-        var removeCallCount = 0
+        var membershipCallCount = 0
         var setWatchedCallCount = 0
         var getStatusCallCount = 0
-        var lastAddedMovie: MovieSummary?
-        var lastRemovedMovieId: Int?
+        var lastMembershipMovie: MovieSummary?
+        var lastMembershipValue: Bool?
         var lastSetWatchedMovieId: Int?
         var lastSetWatchedValue: Bool?
         var lastGetStatusMovieId: Int?
@@ -35,14 +33,9 @@ final class MockWatchlistRepository: WatchlistRepository {
         set { state.withLock { $0.getAllItemsResult = newValue } }
     }
 
-    var addError: WatchlistError? {
-        get { state.withLock { $0.addError } }
-        set { state.withLock { $0.addError = newValue } }
-    }
-
-    var removeError: WatchlistError? {
-        get { state.withLock { $0.removeError } }
-        set { state.withLock { $0.removeError = newValue } }
+    var membershipError: WatchlistError? {
+        get { state.withLock { $0.membershipError } }
+        set { state.withLock { $0.membershipError = newValue } }
     }
 
     var setWatchedError: WatchlistError? {
@@ -60,14 +53,13 @@ final class MockWatchlistRepository: WatchlistRepository {
         set { state.withLock { $0.getAllItemsCallCount = newValue } }
     }
 
-    private(set) var addCallCount: Int {
-        get { state.withLock { $0.addCallCount } }
-        set { state.withLock { $0.addCallCount = newValue } }
+    var loadAllItemsCallCount: Int {
+        getAllItemsCallCount
     }
 
-    private(set) var removeCallCount: Int {
-        get { state.withLock { $0.removeCallCount } }
-        set { state.withLock { $0.removeCallCount = newValue } }
+    private(set) var membershipCallCount: Int {
+        get { state.withLock { $0.membershipCallCount } }
+        set { state.withLock { $0.membershipCallCount = newValue } }
     }
 
     private(set) var setWatchedCallCount: Int {
@@ -80,14 +72,14 @@ final class MockWatchlistRepository: WatchlistRepository {
         set { state.withLock { $0.getStatusCallCount = newValue } }
     }
 
-    private(set) var lastAddedMovie: MovieSummary? {
-        get { state.withLock { $0.lastAddedMovie } }
-        set { state.withLock { $0.lastAddedMovie = newValue } }
+    private(set) var lastMembershipMovie: MovieSummary? {
+        get { state.withLock { $0.lastMembershipMovie } }
+        set { state.withLock { $0.lastMembershipMovie = newValue } }
     }
 
-    private(set) var lastRemovedMovieId: Int? {
-        get { state.withLock { $0.lastRemovedMovieId } }
-        set { state.withLock { $0.lastRemovedMovieId = newValue } }
+    private(set) var lastMembershipValue: Bool? {
+        get { state.withLock { $0.lastMembershipValue } }
+        set { state.withLock { $0.lastMembershipValue = newValue } }
     }
 
     private(set) var lastSetWatchedMovieId: Int? {
@@ -107,38 +99,37 @@ final class MockWatchlistRepository: WatchlistRepository {
 
     // MARK: - WatchlistRepository
 
-    func loadAllItems() throws -> [WatchlistItem] {
-        getAllItems()
-    }
-
-    func getAllItems() -> [WatchlistItem] {
+    func loadAllItems() async throws -> [WatchlistItem] {
         state.withLock {
             $0.getAllItemsCallCount += 1
             return $0.getAllItemsResult
         }
     }
 
-    func add(movie: MovieSummary) throws {
+    func setMembership(
+        movie: MovieSummary,
+        isInWatchlist: Bool
+    ) async throws -> WatchlistMutationOutcome {
         try state.withLock {
-            $0.addCallCount += 1
-            $0.lastAddedMovie = movie
-            if let error = $0.addError {
+            $0.membershipCallCount += 1
+            $0.lastMembershipMovie = movie
+            $0.lastMembershipValue = isInWatchlist
+            if let error = $0.membershipError {
                 throw error
             }
+            let outcome = membershipOutcome(
+                status: $0.statusResult,
+                isInWatchlist: isInWatchlist
+            )
+            $0.statusResult = outcome.status
+            return outcome
         }
     }
 
-    func remove(movieId: Int) throws {
-        try state.withLock {
-            $0.removeCallCount += 1
-            $0.lastRemovedMovieId = movieId
-            if let error = $0.removeError {
-                throw error
-            }
-        }
-    }
-
-    func setWatched(movieId: Int, isWatched: Bool) throws {
+    func setWatched(
+        movieId: Int,
+        isWatched: Bool
+    ) async throws -> WatchlistMutationOutcome {
         try state.withLock {
             $0.setWatchedCallCount += 1
             $0.lastSetWatchedMovieId = movieId
@@ -146,10 +137,20 @@ final class MockWatchlistRepository: WatchlistRepository {
             if let error = $0.setWatchedError {
                 throw error
             }
+            guard $0.statusResult != .notInWatchlist else {
+                throw WatchlistError.movieNotInWatchlist
+            }
+            let requestedStatus: WatchlistStatus = isWatched ? .watched : .toWatch
+            let outcome = WatchlistMutationOutcome(
+                status: requestedStatus,
+                didChange: $0.statusResult != requestedStatus
+            )
+            $0.statusResult = requestedStatus
+            return outcome
         }
     }
 
-    func getStatus(movieId: Int) -> WatchlistStatus {
+    func getStatus(movieId: Int) async throws -> WatchlistStatus {
         state.withLock {
             $0.getStatusCallCount += 1
             $0.lastGetStatusMovieId = movieId
@@ -161,5 +162,21 @@ final class MockWatchlistRepository: WatchlistRepository {
 
     func reset() {
         state.withLock { $0 = State() }
+    }
+
+    private func membershipOutcome(
+        status: WatchlistStatus,
+        isInWatchlist: Bool
+    ) -> WatchlistMutationOutcome {
+        if isInWatchlist {
+            return WatchlistMutationOutcome(
+                status: status == .notInWatchlist ? .toWatch : status,
+                didChange: status == .notInWatchlist
+            )
+        }
+        return WatchlistMutationOutcome(
+            status: status == .toWatch ? .notInWatchlist : status,
+            didChange: status == .toWatch
+        )
     }
 }

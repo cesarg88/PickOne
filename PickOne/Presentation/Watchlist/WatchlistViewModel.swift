@@ -44,35 +44,49 @@ final class WatchlistViewModel {
 
     // MARK: - Actions
 
-    func load() {
-        let snapshot = getWatchlist.execute()
-        applySnapshot(snapshot)
-    }
-
-    func applyFilter(_ filter: WatchlistFilter) {
-        currentFilter = filter
-        load()
-    }
-
-    func toggleWatched(movieId: Int) {
-        guard let item = findItem(movieId: movieId) else { return }
-
+    func load() async {
         do {
-            try setWatched.execute(movieId: movieId, isWatched: !item.isWatched)
-            load()
-            notifyEligibilityChange(movieID: movieId)
+            let snapshot = try await getWatchlist.execute()
+            applySnapshot(snapshot)
         } catch {
             actionErrorMessage = error.localizedDescription
         }
     }
 
-    func remove(movieId: Int) {
+    func applyFilter(_ filter: WatchlistFilter) async {
+        currentFilter = filter
+        await load()
+    }
+
+    func toggleWatched(movieId: Int) async {
         guard let item = findItem(movieId: movieId) else { return }
 
         do {
-            try setMembership.execute(movie: item.movieSummary, isInWatchlist: false)
-            load()
-            notifyEligibilityChange(movieID: movieId)
+            let outcome = try await setWatched.execute(
+                movieId: movieId,
+                isWatched: !item.isWatched
+            )
+            await load()
+            if outcome.didChange {
+                notifyEligibilityChange(movieID: movieId)
+            }
+        } catch {
+            actionErrorMessage = error.localizedDescription
+        }
+    }
+
+    func remove(movieId: Int) async {
+        guard let item = findItem(movieId: movieId) else { return }
+
+        do {
+            let outcome = try await setMembership.execute(
+                movie: item.movieSummary,
+                isInWatchlist: false
+            )
+            await load()
+            if outcome.didChange {
+                notifyEligibilityChange(movieID: movieId)
+            }
         } catch {
             actionErrorMessage = error.localizedDescription
         }

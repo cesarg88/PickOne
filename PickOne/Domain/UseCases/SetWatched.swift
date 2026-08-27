@@ -13,7 +13,12 @@ protocol SetWatchedUseCase: Sendable {
     ///   - movieId: The ID of the movie
     ///   - isWatched: True if watched, false if to-watch
     /// - Throws: WatchlistError if movie is not in watchlist
-    func execute(movieId: Int, isWatched: Bool) throws
+    /// - Returns: The atomically persisted compatibility outcome.
+    @discardableResult
+    func execute(
+        movieId: Int,
+        isWatched: Bool
+    ) async throws -> WatchlistMutationOutcome
 }
 
 final class SetWatched: SetWatchedUseCase, Sendable {
@@ -23,20 +28,10 @@ final class SetWatched: SetWatchedUseCase, Sendable {
         self.repository = repository
     }
 
-    func execute(movieId: Int, isWatched: Bool) throws {
-        let currentStatus = repository.getStatus(movieId: movieId)
-
-        guard currentStatus != .notInWatchlist else {
-            throw WatchlistError.movieNotInWatchlist
-        }
-
-        // Check if already in desired state - if so, silently succeed (idempotent)
-        let alreadyInDesiredState = (isWatched && currentStatus == .watched) ||
-            (!isWatched && currentStatus == .toWatch)
-        if alreadyInDesiredState {
-            return
-        }
-
-        try repository.setWatched(movieId: movieId, isWatched: isWatched)
+    func execute(
+        movieId: Int,
+        isWatched: Bool
+    ) async throws -> WatchlistMutationOutcome {
+        try await repository.setWatched(movieId: movieId, isWatched: isWatched)
     }
 }

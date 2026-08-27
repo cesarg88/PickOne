@@ -35,3 +35,8 @@ enum WatchlistStatus: Equatable, Sendable {
     case toWatch
     case watched
 }
+
+struct WatchlistMutationOutcome: Equatable, Sendable {
+    let status: WatchlistStatus
+    let didChange: Bool
+}

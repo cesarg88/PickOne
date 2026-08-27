@@ -89,8 +89,8 @@ struct MovieDetailView: View {
                         WatchlistActionsView(
                             isInWatchlist: data.isInWatchlist,
                             isWatched: data.isWatched,
-                            onToggleWatchlist: { model.toggleWatchlist() },
-                            onToggleWatched: { model.toggleWatched() }
+                            onToggleWatchlist: { Task { await model.toggleWatchlist() } },
+                            onToggleWatched: { Task { await model.toggleWatched() } }
                         )
 
                         ExpandableText(

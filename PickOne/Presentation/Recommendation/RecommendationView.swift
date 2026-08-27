@@ -315,7 +315,7 @@ private struct RecommendationCard: View {
                 Spacer()
 
                 Button {
-                    addToWatchlist()
+                    Task { await addToWatchlist() }
                 } label: {
                     Label(
                         didAddToWatchlist ? "Added" : "Add to Watchlist",
@@ -344,9 +344,9 @@ private struct RecommendationCard: View {
         }
     }
 
-    private func addToWatchlist() {
+    private func addToWatchlist() async {
         do {
-            try setMembership.execute(movie: item.movieSummary, isInWatchlist: true)
+            try await setMembership.execute(movie: item.movieSummary, isInWatchlist: true)
             didAddToWatchlist = true
         } catch {
             actionErrorMessage = error.localizedDescription
