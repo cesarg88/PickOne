@@ -1,4 +1,5 @@
 protocol ResetUnrecoverableViewerStateUseCase: Sendable {
+    func availability() async -> DestructiveRecoveryAvailability
     func execute() async throws
 }
 
@@ -7,6 +8,10 @@ struct ResetUnrecoverableViewerState: ResetUnrecoverableViewerStateUseCase {
 
     init(repository: any ViewerStateDestructiveRecoveryRepository) {
         self.repository = repository
+    }
+
+    func availability() async -> DestructiveRecoveryAvailability {
+        await repository.destructiveRecoveryAvailability()
     }
 
     func execute() async throws {

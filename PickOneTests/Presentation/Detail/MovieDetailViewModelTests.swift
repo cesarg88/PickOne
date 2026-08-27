@@ -56,6 +56,61 @@ struct MovieDetailViewModelTests {
         }
     }
 
+    @Test("removing Watchlist intent from watched-only Detail keeps persisted and visible state")
+    func removingWatchlistIntentFromWatchedOnlyDetailIsTruthfulNoOp() async throws {
+        let snapshotID = try LocalViewerStateTestFixtures.uuid(
+            LocalViewerStateTestFixtures.firstID
+        )
+        let watched = try ViewerMovieState(
+            movieID: 1,
+            displayMetadata: LocalViewerStateTestFixtures.metadata(),
+            watchState: .watched,
+            preference: nil,
+            watchlistIntent: nil,
+            stateChangedAt: LocalViewerStateTestFixtures.date
+        )
+        let envelope = LocalViewerStateEnvelopeMapper().replacingStates(
+            in: LocalViewerStateTestFixtures.emptyEnvelope(id: snapshotID),
+            snapshotID: snapshotID,
+            states: [watched]
+        )
+        let files = try InMemoryLocalViewerStateFileStore(
+            activeData: LocalViewerStateTestFixtures.encoded(envelope)
+        )
+        let stateRepository = LocalViewerStateRepository(
+            fileStore: files,
+            legacySource: InMemoryLegacyViewerStateSource()
+        )
+        let watchlistRepository = LocalViewerStateWatchlistAdapter(
+            repository: stateRepository
+        )
+        var changes: [DecisionEligibilityChange] = []
+        let sut = MovieDetailViewModel(
+            movieId: watched.movieID,
+            getMovieDetail: MockGetMovieDetailUseCase(results: [
+                .success(CacheResult(value: TestFixtures.watchedSnapshot, isStale: false)),
+            ]),
+            setMembership: SetWatchlistMembership(repository: watchlistRepository),
+            setWatched: SetWatched(repository: watchlistRepository),
+            checkAvailability: UnknownMovieAvailability(),
+            preparePlaybackOptions: UnavailablePlaybackOptions(),
+            eligibilityDidChange: { changes.append($0) }
+        )
+
+        await sut.load()
+        await sut.toggleWatchlist()
+
+        guard case let .loaded(model) = sut.state else {
+            Issue.record("Expected Detail to remain loaded")
+            return
+        }
+        #expect(model.isInWatchlist)
+        #expect(model.isWatched)
+        #expect(try await stateRepository.state(movieID: watched.movieID) == watched)
+        #expect(changes.isEmpty)
+        #expect(files.activeReplacementCount == 0)
+    }
+
     private func makeSUT(
         getMovieDetail: GetMovieDetailUseCase
     ) -> MovieDetailViewModel {
@@ -71,11 +126,15 @@ struct MovieDetailViewModelTests {
 }
 
 private struct NoOpSetWatchlistMembership: SetWatchlistMembershipUseCase {
-    func execute(movie: MovieSummary, isInWatchlist: Bool) throws {}
+    func execute(movie: MovieSummary, isInWatchlist: Bool) throws -> Bool {
+        true
+    }
 }
 
 private struct NoOpSetWatched: SetWatchedUseCase {
-    func execute(movieId: Int, isWatched: Bool) throws {}
+    func execute(movieId: Int, isWatched: Bool) throws -> Bool {
+        true
+    }
 }
 
 private struct UnknownMovieAvailability: CheckMovieAvailabilityUseCase {
@@ -165,5 +224,17 @@ private enum TestFixtures {
         isSimilarUnavailable: true,
         isCreditsUnavailable: true,
         asOf: Date()
+    )
+
+    static let watchedSnapshot = MovieDetailSnapshot(
+        movie: snapshot.movie,
+        similar: snapshot.similar,
+        isInWatchlist: true,
+        isWatched: true,
+        director: snapshot.director,
+        topCast: snapshot.topCast,
+        isSimilarUnavailable: snapshot.isSimilarUnavailable,
+        isCreditsUnavailable: snapshot.isCreditsUnavailable,
+        asOf: snapshot.asOf
     )
 }

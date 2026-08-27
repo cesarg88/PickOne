@@ -139,6 +139,56 @@ struct WatchlistViewModelTests {
         #expect(repository.getAllItemsCallCount > initialCallCount)
     }
 
+    @Test("removing a watched-only compatibility row keeps repository and UI unchanged")
+    func removingWatchedOnlyRowIsTruthfulNoOp() async throws {
+        let snapshotID = try LocalViewerStateTestFixtures.uuid(
+            LocalViewerStateTestFixtures.firstID
+        )
+        let watched = try ViewerMovieState(
+            movieID: 1,
+            displayMetadata: LocalViewerStateTestFixtures.metadata(),
+            watchState: .watched,
+            preference: nil,
+            watchlistIntent: nil,
+            stateChangedAt: LocalViewerStateTestFixtures.date
+        )
+        let envelope = LocalViewerStateEnvelopeMapper().replacingStates(
+            in: LocalViewerStateTestFixtures.emptyEnvelope(id: snapshotID),
+            snapshotID: snapshotID,
+            states: [watched]
+        )
+        let files = try InMemoryLocalViewerStateFileStore(
+            activeData: LocalViewerStateTestFixtures.encoded(envelope)
+        )
+        let stateRepository = LocalViewerStateRepository(
+            fileStore: files,
+            legacySource: InMemoryLegacyViewerStateSource()
+        )
+        let watchlistRepository = LocalViewerStateWatchlistAdapter(
+            repository: stateRepository
+        )
+        var changes: [DecisionEligibilityChange] = []
+        let sut = WatchlistViewModel(
+            getWatchlist: GetWatchlist(repository: watchlistRepository),
+            setMembership: SetWatchlistMembership(repository: watchlistRepository),
+            setWatched: SetWatched(repository: watchlistRepository),
+            eligibilityDidChange: { changes.append($0) }
+        )
+
+        await sut.load()
+        await sut.remove(movieId: watched.movieID)
+
+        guard case let .loaded(model) = sut.state else {
+            Issue.record("Expected watched-only compatibility row to remain visible")
+            return
+        }
+        #expect(model.items.map(\.id) == [watched.movieID])
+        #expect(model.items.first?.isWatched == true)
+        #expect(try await stateRepository.state(movieID: watched.movieID) == watched)
+        #expect(changes.isEmpty)
+        #expect(files.activeReplacementCount == 0)
+    }
+
     @Test("successful mutation reports a bounded Home repair change")
     func successfulMutationReportsRepairChange() async throws {
         let repository = MockWatchlistRepository()

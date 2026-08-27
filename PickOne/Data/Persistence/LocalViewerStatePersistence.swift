@@ -191,10 +191,14 @@ struct UnavailableLocalViewerStateFileStore: LocalViewerStateFileStore {
 struct ApplicationSupportViewerStateStore: LocalViewerStateFileStore {
     private let directoryURL: URL
     private let quarantineName: @Sendable () -> UUID
+    private let removeReplacementBackup: @Sendable (URL) throws -> Void
 
     init(
         directoryURL: URL? = nil,
-        quarantineName: @escaping @Sendable () -> UUID = UUID.init
+        quarantineName: @escaping @Sendable () -> UUID = UUID.init,
+        removeReplacementBackup: @escaping @Sendable (URL) throws -> Void = {
+            try FileManager.default.removeItem(at: $0)
+        }
     ) throws {
         if let directoryURL {
             self.directoryURL = directoryURL
@@ -207,6 +211,7 @@ struct ApplicationSupportViewerStateStore: LocalViewerStateFileStore {
             ).appending(path: "PickOne/ViewerState", directoryHint: .isDirectory)
         }
         self.quarantineName = quarantineName
+        self.removeReplacementBackup = removeReplacementBackup
     }
 
     func readActive() throws -> Data? {
@@ -300,7 +305,7 @@ struct ApplicationSupportViewerStateStore: LocalViewerStateFileStore {
                     options: [.usingNewMetadataOnly, .withoutDeletingBackupItem]
                 )
                 if fileManager.fileExists(atPath: backup.path(percentEncoded: false)) {
-                    try fileManager.removeItem(at: backup)
+                    try? removeReplacementBackup(backup)
                 }
             } else {
                 try fileManager.moveItem(at: staged, to: destination)

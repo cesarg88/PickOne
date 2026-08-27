@@ -52,6 +52,7 @@ struct ViewerProfileViewModelTests {
             let recovery = makeSUT(loadStates: [.recovery(reason)])
             await recovery.load()
             #expect(recovery.rootState == .recovery(reason))
+            #expect(!recovery.canDestructivelyResetViewerState)
         }
     }
 
@@ -261,7 +262,7 @@ struct ViewerProfileViewModelTests {
 
     @Test("confirmed destructive recovery creates a new onboarding route")
     func destructiveRecoveryRoutesToOnboarding() async {
-        let reset = DestructiveViewerStateRecoverySpy()
+        let reset = DestructiveViewerStateRecoverySpy(availability: .available)
         let sut = makeSUT(
             manage: ViewerProfileManageSpy(
                 loadStates: [.recovery(.corruptData), .absent]
@@ -362,7 +363,7 @@ private actor ControlledCalibrationMetadata: GetCalibrationMovieMetadataUseCase 
     }
 }
 
-private actor AsyncViewerProfileGate {
+actor AsyncViewerProfileGate {
     private var isOpen = false
     private var waiters: [CheckedContinuation<Void, Never>] = []
 
@@ -383,7 +384,7 @@ private actor AsyncViewerProfileGate {
     }
 }
 
-private actor ViewerProfileManageSpy: ManageViewerProfileUseCase {
+actor ViewerProfileManageSpy: ManageViewerProfileUseCase {
     nonisolated let catalog = ViewerProfileTestFixtures.catalog
 
     private let loadStates: [ViewerProfileLoadState]

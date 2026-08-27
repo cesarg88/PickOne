@@ -18,8 +18,9 @@ struct SetWatchlistMembershipTests {
         let sut = SetWatchlistMembership(repository: repository)
         let movie = WatchlistTestFixtures.movieSummary
 
-        try await sut.execute(movie: movie, isInWatchlist: true)
+        let didChange = try await sut.execute(movie: movie, isInWatchlist: true)
 
+        #expect(didChange)
         #expect(repository.addCallCount == 1)
         #expect(repository.lastAddedMovie?.id == movie.id)
         #expect(repository.removeCallCount == 0)
@@ -32,8 +33,9 @@ struct SetWatchlistMembershipTests {
         let sut = SetWatchlistMembership(repository: repository)
         let movie = WatchlistTestFixtures.movieSummary
 
-        try await sut.execute(movie: movie, isInWatchlist: false)
+        let didChange = try await sut.execute(movie: movie, isInWatchlist: false)
 
+        #expect(didChange)
         #expect(repository.removeCallCount == 1)
         #expect(repository.lastRemovedMovieId == movie.id)
         #expect(repository.addCallCount == 0)
@@ -45,8 +47,12 @@ struct SetWatchlistMembershipTests {
         repository.statusResult = .toWatch // Already in watchlist
         let sut = SetWatchlistMembership(repository: repository)
 
-        try await sut.execute(movie: WatchlistTestFixtures.movieSummary, isInWatchlist: true)
+        let didChange = try await sut.execute(
+            movie: WatchlistTestFixtures.movieSummary,
+            isInWatchlist: true
+        )
 
+        #expect(!didChange)
         #expect(repository.addCallCount == 0) // No call, already in watchlist
     }
 
@@ -56,9 +62,28 @@ struct SetWatchlistMembershipTests {
         repository.statusResult = .notInWatchlist // Not in watchlist
         let sut = SetWatchlistMembership(repository: repository)
 
-        try await sut.execute(movie: WatchlistTestFixtures.movieSummary, isInWatchlist: false)
+        let didChange = try await sut.execute(
+            movie: WatchlistTestFixtures.movieSummary,
+            isInWatchlist: false
+        )
 
+        #expect(!didChange)
         #expect(repository.removeCallCount == 0) // No call, not in watchlist anyway
+    }
+
+    @Test("removing membership from watched-only compatibility state is a semantic no-op")
+    func removingMembershipFromWatchedOnlyStateIsNoOp() async throws {
+        let repository = MockWatchlistRepository()
+        repository.statusResult = .watched
+        let sut = SetWatchlistMembership(repository: repository)
+
+        let didChange = try await sut.execute(
+            movie: WatchlistTestFixtures.movieSummary,
+            isInWatchlist: false
+        )
+
+        #expect(!didChange)
+        #expect(repository.removeCallCount == 0)
     }
 
     @Test("execute propagates add error")

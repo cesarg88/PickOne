@@ -50,6 +50,11 @@ final class ViewerProfileViewModel {
     var saveErrorMessage: String?
     var isSaving = false
     var recoveryNotice: ViewerStateRecoveryNotice?
+    var destructiveRecoveryAvailability: DestructiveRecoveryAvailability = .unavailable
+
+    var canDestructivelyResetViewerState: Bool {
+        destructiveRecoveryAvailability == .available
+    }
 
     var hasPendingCompletionRetry: Bool {
         switch retryAction {
@@ -81,6 +86,7 @@ final class ViewerProfileViewModel {
     func load() async {
         cancelMetadataHydration()
         rootState = .loading
+        destructiveRecoveryAvailability = .unavailable
         if resetsProfileForUITests, !didApplyUITestReset {
             didApplyUITestReset = true
             do {
@@ -93,6 +99,8 @@ final class ViewerProfileViewModel {
         await apply(loadState: manageProfile.loadState())
         if case .recovery = rootState {
             recoveryNotice = nil
+            destructiveRecoveryAvailability = await resetUnrecoverableViewerState?.availability()
+                ?? .unavailable
         } else {
             recoveryNotice = await getRecoveryNotice?.execute()
         }
@@ -277,12 +285,15 @@ final class ViewerProfileViewModel {
     }
 
     func destructivelyResetUnrecoverableViewerState() async {
-        guard let resetUnrecoverableViewerState else { return }
+        guard canDestructivelyResetViewerState,
+              let resetUnrecoverableViewerState
+        else { return }
         let result = await perform(.destructiveRecovery) {
             try await resetUnrecoverableViewerState.execute()
         }
         guard result == .success else { return }
         recoveryNotice = nil
+        destructiveRecoveryAvailability = .unavailable
         activeProfile = nil
         recalibrationDraft = nil
         presentedCalibration = nil
@@ -537,6 +548,7 @@ private extension ViewerProfileViewModel {
         retryAction = action
         saveErrorMessage = "Your preferences couldn't be saved. Please try again."
         if case .load = action {
+            destructiveRecoveryAvailability = .unavailable
             rootState = .recovery(.loadFailed)
         }
     }

@@ -1,5 +1,6 @@
 import Foundation
 @testable import PickOne
+import Synchronization
 import Testing
 
 @Suite("Local Viewer State persistence", .serialized)
@@ -147,6 +148,37 @@ struct LocalViewerStatePersistenceTests {
             includingPropertiesForKeys: nil
         ).map(\.lastPathComponent).sorted()
         #expect(remainingNames == ["viewer-state-v2.json", "viewer-state-v2.previous.json"])
+    }
+
+    @Test("post-commit backup cleanup failure does not report replacement failure")
+    func postCommitBackupCleanupFailure() throws {
+        let support = try FileManager.default.url(
+            for: .applicationSupportDirectory,
+            in: .userDomainMask,
+            appropriateFor: nil,
+            create: true
+        )
+        let root = support.appending(
+            path: "PickOne-LocalViewerState-Cleanup-Test-\(UUID().uuidString)",
+            directoryHint: .isDirectory
+        )
+        defer { try? FileManager.default.removeItem(at: root) }
+        let cleanupAttempts = Mutex(0)
+        let store = try ApplicationSupportViewerStateStore(
+            directoryURL: root,
+            removeReplacementBackup: { _ in
+                cleanupAttempts.withLock { $0 += 1 }
+                throw LocalViewerStateTestError.rejected
+            }
+        )
+        let original = Data("original".utf8)
+        let replacement = Data("replacement".utf8)
+
+        try store.replaceActive(with: original)
+        try store.replaceActive(with: replacement)
+
+        #expect(try store.readActive() == replacement)
+        #expect(cleanupAttempts.withLock { $0 } == 1)
     }
 
     @Test("a v2 fixture remains readable after repository recreation")

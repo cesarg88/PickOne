@@ -152,11 +152,12 @@ final class MovieDetailViewModel {
         )
 
         do {
-            try await setMembership.execute(movie: movie, isInWatchlist: !model.isInWatchlist)
+            let didChange = try await setMembership.execute(
+                movie: movie,
+                isInWatchlist: !model.isInWatchlist
+            )
+            guard didChange else { return }
             model.isInWatchlist.toggle()
-            if !model.isInWatchlist {
-                model.isWatched = false // Remove from watchlist clears watched status
-            }
             state = .loaded(model)
             notifyEligibilityChange(cause: .watchlist)
         } catch {
@@ -169,8 +170,15 @@ final class MovieDetailViewModel {
               model.isInWatchlist else { return }
 
         do {
-            try await setWatched.execute(movieId: model.id, isWatched: !model.isWatched)
+            let didChange = try await setWatched.execute(
+                movieId: model.id,
+                isWatched: !model.isWatched
+            )
+            guard didChange else { return }
             model.isWatched.toggle()
+            if !model.isWatched {
+                model.isInWatchlist = false
+            }
             state = .loaded(model)
             notifyEligibilityChange(cause: .watchlist)
         } catch {

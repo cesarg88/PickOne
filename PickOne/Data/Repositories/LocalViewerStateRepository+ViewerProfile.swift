@@ -8,14 +8,19 @@ extension LocalViewerStateRepository {
                 from: current.envelope,
                 snapshot: current.snapshot
             )
-            destructiveResetAuthorized = false
+            destructiveResetAvailability = .unavailable
             return loadState
+        } catch let failure as ExhaustedSourcesFailure {
+            destructiveResetAvailability = .available
+            return .recovery(profileRecoveryReason(for: failure.repositoryError))
         } catch let failure as ResolutionFailure {
-            destructiveResetAuthorized = true
+            destructiveResetAvailability = .unavailable
             return .recovery(profileRecoveryReason(for: failure.repositoryError))
         } catch let error as LocalViewerProfileMappingError {
+            destructiveResetAvailability = .unavailable
             return .recovery(error == .unsupportedCatalog ? .unsupportedVersion : .corruptData)
         } catch {
+            destructiveResetAvailability = .unavailable
             return .recovery(.corruptData)
         }
     }
@@ -32,13 +37,8 @@ extension LocalViewerStateRepository {
         guard legacyResetter != nil else {
             throw ViewerStateDestructiveRecoveryError.resetUnavailable
         }
-        if !destructiveResetAuthorized {
-            do {
-                _ = try resolve()
-                throw ViewerStateDestructiveRecoveryError.stateIsRecoverable
-            } catch is ResolutionFailure {
-                destructiveResetAuthorized = true
-            }
+        guard destructiveResetAvailability == .available else {
+            throw ViewerStateDestructiveRecoveryError.stateIsRecoverable
         }
 
         resolvedState = nil
@@ -53,12 +53,17 @@ extension LocalViewerStateRepository {
                 source: .freshInstall
             )
             resolvedState = try publishInitial(envelope)
-            destructiveResetAuthorized = false
+            destructiveResetAvailability = .unavailable
         } catch let error as ViewerStateDestructiveRecoveryError {
             throw error
         } catch {
             throw ViewerStateDestructiveRecoveryError.resetFailed
         }
+    }
+
+    func destructiveRecoveryAvailability() -> DestructiveRecoveryAvailability {
+        guard legacyResetter != nil else { return .unavailable }
+        return destructiveResetAvailability
     }
 
     func beginFirstOnboardingProfile(

@@ -12,7 +12,9 @@ protocol SetWatchlistMembershipUseCase: Sendable {
     /// - Parameters:
     ///   - movie: The movie summary (required for adding)
     ///   - isInWatchlist: True to add, false to remove
-    func execute(movie: MovieSummary, isInWatchlist: Bool) async throws
+    /// - Returns: Whether Watchlist intent changed.
+    @discardableResult
+    func execute(movie: MovieSummary, isInWatchlist: Bool) async throws -> Bool
 }
 
 final class SetWatchlistMembership: SetWatchlistMembershipUseCase, Sendable {
@@ -22,21 +24,21 @@ final class SetWatchlistMembership: SetWatchlistMembershipUseCase, Sendable {
         self.repository = repository
     }
 
-    func execute(movie: MovieSummary, isInWatchlist: Bool) async throws {
+    func execute(movie: MovieSummary, isInWatchlist: Bool) async throws -> Bool {
         if isInWatchlist {
-            // Check if already in watchlist - if so, silently succeed (idempotent)
             let currentStatus = try await repository.getStatus(movieId: movie.id)
             if currentStatus != .notInWatchlist {
-                return
+                return false
             }
             try await repository.add(movie: movie)
+            return true
         } else {
-            // Check if not in watchlist - if so, silently succeed (idempotent)
             let currentStatus = try await repository.getStatus(movieId: movie.id)
-            if currentStatus == .notInWatchlist {
-                return
+            if currentStatus != .toWatch {
+                return false
             }
             try await repository.remove(movieId: movie.id)
+            return true
         }
     }
 }

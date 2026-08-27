@@ -110,6 +110,10 @@ struct ViewerStateDestructiveRecoveryAdapter:
         self.repository = repository
     }
 
+    func destructiveRecoveryAvailability() async -> DestructiveRecoveryAvailability {
+        await repository.destructiveRecoveryAvailability()
+    }
+
     func resetUnrecoverableViewerState() async throws {
         try await repository.resetUnrecoverableViewerState()
     }

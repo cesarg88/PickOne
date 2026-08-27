@@ -17,7 +17,16 @@ struct ConstantViewerStateRecoveryNotice: GetViewerStateRecoveryNoticeUseCase {
 }
 
 actor DestructiveViewerStateRecoverySpy: ResetUnrecoverableViewerStateUseCase {
+    let configuredAvailability: DestructiveRecoveryAvailability
     private(set) var callCount = 0
+
+    init(availability: DestructiveRecoveryAvailability) {
+        configuredAvailability = availability
+    }
+
+    func availability() -> DestructiveRecoveryAvailability {
+        configuredAvailability
+    }
 
     func execute() async throws {
         callCount += 1

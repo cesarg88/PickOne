@@ -26,7 +26,9 @@ struct AppRootView: View {
                     ViewerProfileRecoveryView(
                         reason: reason,
                         tryAgain: { Task { await profileModel.load() } },
-                        reset: { showsDestructiveResetConfirmation = true }
+                        reset: profileModel.canDestructivelyResetViewerState
+                            ? { showsDestructiveResetConfirmation = true }
+                            : nil
                     )
             }
         }
@@ -106,7 +108,7 @@ private struct ViewerStateRecoveryNoticeView: View {
 private struct ViewerProfileRecoveryView: View {
     let reason: ViewerProfileRecoveryReason
     let tryAgain: () -> Void
-    let reset: () -> Void
+    let reset: (() -> Void)?
 
     private var title: String {
         switch reason {
@@ -134,7 +136,9 @@ private struct ViewerProfileRecoveryView: View {
             Text(message)
         } actions: {
             Button("Try again", action: tryAgain)
-            Button("Reset all movie data", role: .destructive, action: reset)
+            if let reset {
+                Button("Reset all movie data", role: .destructive, action: reset)
+            }
         }
     }
 }

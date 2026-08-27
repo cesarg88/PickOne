@@ -24,6 +24,7 @@ struct LocalViewerStateDestructiveRecoveryTests {
         )
 
         #expect(await repository.loadState() == .recovery(.migrationFailure))
+        #expect(await repository.destructiveRecoveryAvailability() == .available)
 
         try await repository.resetUnrecoverableViewerState()
 
@@ -59,6 +60,71 @@ struct LocalViewerStateDestructiveRecoveryTests {
             try await repository.resetUnrecoverableViewerState()
         }
         #expect(files.activeData != nil)
+    }
+
+    @Test("read failure exposes retry without destructive recovery")
+    func readFailureDoesNotAuthorizeReset() async throws {
+        let files = InMemoryLocalViewerStateFileStore()
+        files.rejectActiveRead = true
+        let legacy = InMemoryLegacyViewerStateSource()
+        let repository = makeRepository(files: files, legacy: legacy, ids: [])
+
+        #expect(await repository.loadState() == .recovery(.loadFailure))
+        #expect(await repository.destructiveRecoveryAvailability() == .unavailable)
+
+        files.rejectActiveRead = false
+        await #expect(throws: ViewerStateDestructiveRecoveryError.stateIsRecoverable) {
+            try await repository.resetUnrecoverableViewerState()
+        }
+    }
+
+    @Test("quarantine failure exposes retry without destructive recovery")
+    func quarantineFailureDoesNotAuthorizeReset() async throws {
+        let invalid = Data("invalid-active".utf8)
+        let files = InMemoryLocalViewerStateFileStore(activeData: invalid)
+        files.rejectQuarantine = true
+        let legacy = InMemoryLegacyViewerStateSource()
+        let repository = makeRepository(files: files, legacy: legacy, ids: [])
+
+        #expect(await repository.loadState() == .recovery(.quarantineFailure))
+        #expect(await repository.destructiveRecoveryAvailability() == .unavailable)
+
+        files.rejectQuarantine = false
+        await #expect(throws: ViewerStateDestructiveRecoveryError.stateIsRecoverable) {
+            try await repository.resetUnrecoverableViewerState()
+        }
+        #expect(files.activeData == invalid)
+    }
+
+    @Test("replacement failure exposes retry without destructive recovery")
+    func replacementFailureDoesNotAuthorizeReset() async throws {
+        let oldID = try LocalViewerStateTestFixtures.uuid(LocalViewerStateTestFixtures.firstID)
+        let recoveredID = try LocalViewerStateTestFixtures.uuid(LocalViewerStateTestFixtures.secondID)
+        let invalid = Data("invalid-active".utf8)
+        let previous = try LocalViewerStateTestFixtures.encoded(
+            LocalViewerStateTestFixtures.emptyEnvelope(id: oldID)
+        )
+        let files = InMemoryLocalViewerStateFileStore(
+            activeData: invalid,
+            previousData: previous
+        )
+        files.rejectActiveReplacement = true
+        let legacy = InMemoryLegacyViewerStateSource()
+        let repository = makeRepository(
+            files: files,
+            legacy: legacy,
+            ids: [recoveredID]
+        )
+
+        #expect(await repository.loadState() == .recovery(.replacementFailure))
+        #expect(await repository.destructiveRecoveryAvailability() == .unavailable)
+
+        files.rejectActiveReplacement = false
+        await #expect(throws: ViewerStateDestructiveRecoveryError.stateIsRecoverable) {
+            try await repository.resetUnrecoverableViewerState()
+        }
+        #expect(files.activeData == invalid)
+        #expect(files.previousData == previous)
     }
 
     private func makeRepository(

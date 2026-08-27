@@ -106,11 +106,13 @@ struct WatchlistView: View {
                 NavigationLink(value: WatchlistRoute(movieID: item.id)) {
                     WatchlistRow(item: item, imagePipeline: imagePipeline)
                 }
-                .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-                    Button(role: .destructive) {
-                        Task { await model.remove(movieId: item.id) }
-                    } label: {
-                        Label("Remove", systemImage: "trash")
+                .swipeActions(edge: .trailing, allowsFullSwipe: !item.isWatched) {
+                    if !item.isWatched {
+                        Button(role: .destructive) {
+                            Task { await model.remove(movieId: item.id) }
+                        } label: {
+                            Label("Remove", systemImage: "trash")
+                        }
                     }
                 }
                 .swipeActions(edge: .leading, allowsFullSwipe: true) {

@@ -30,7 +30,13 @@ protocol ViewerStateRecoveryNoticeRepository: Sendable {
 }
 
 protocol ViewerStateDestructiveRecoveryRepository: Sendable {
+    func destructiveRecoveryAvailability() async -> DestructiveRecoveryAvailability
     func resetUnrecoverableViewerState() async throws
+}
+
+enum DestructiveRecoveryAvailability: Equatable, Sendable {
+    case unavailable
+    case available
 }
 
 enum ViewerStateDestructiveRecoveryError: Error, Equatable, Sendable {

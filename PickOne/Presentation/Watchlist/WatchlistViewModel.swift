@@ -62,9 +62,14 @@ final class WatchlistViewModel {
         guard let item = findItem(movieId: movieId) else { return }
 
         do {
-            try await setWatched.execute(movieId: movieId, isWatched: !item.isWatched)
+            let didChange = try await setWatched.execute(
+                movieId: movieId,
+                isWatched: !item.isWatched
+            )
             await load()
-            notifyEligibilityChange(movieID: movieId)
+            if didChange {
+                notifyEligibilityChange(movieID: movieId)
+            }
         } catch {
             actionErrorMessage = error.localizedDescription
         }
@@ -74,9 +79,14 @@ final class WatchlistViewModel {
         guard let item = findItem(movieId: movieId) else { return }
 
         do {
-            try await setMembership.execute(movie: item.movieSummary, isInWatchlist: false)
+            let didChange = try await setMembership.execute(
+                movie: item.movieSummary,
+                isInWatchlist: false
+            )
             await load()
-            notifyEligibilityChange(movieID: movieId)
+            if didChange {
+                notifyEligibilityChange(movieID: movieId)
+            }
         } catch {
             actionErrorMessage = error.localizedDescription
         }

@@ -12,6 +12,11 @@ actor LocalViewerStateRepository: ViewerMovieStateRepository {
         let recoveryReason: ViewerMovieStateRecoveryReason
     }
 
+    struct ExhaustedSourcesFailure: Error, Sendable {
+        let repositoryError: ViewerMovieStateRepositoryError
+        let recoveryReason: ViewerMovieStateRecoveryReason
+    }
+
     let fileStore: any LocalViewerStateFileStore
     private let legacySource: any LegacyViewerStateSource
     let legacyResetter: (any LegacyViewerStateResetter)?
@@ -22,7 +27,7 @@ actor LocalViewerStateRepository: ViewerMovieStateRepository {
     let makeSnapshotID: @Sendable () -> UUID
     let now: @Sendable () -> Date
     var resolvedState: ResolvedState?
-    var destructiveResetAuthorized = false
+    var destructiveResetAvailability: DestructiveRecoveryAvailability = .unavailable
 
     init(
         fileStore: any LocalViewerStateFileStore,
@@ -44,38 +49,6 @@ actor LocalViewerStateRepository: ViewerMovieStateRepository {
         self.migrator = migrator
         makeSnapshotID = snapshotID
         self.now = now
-    }
-
-    func loadState() -> ViewerMovieStateLoadState {
-        do {
-            let snapshot = try resolve().snapshot
-            destructiveResetAuthorized = false
-            return .loaded(snapshot)
-        } catch let failure as ResolutionFailure {
-            destructiveResetAuthorized = true
-            return .recovery(failure.recoveryReason)
-        } catch {
-            return .recovery(.loadFailure)
-        }
-    }
-
-    func snapshot() throws -> ViewerMovieStateSnapshot {
-        do {
-            let snapshot = try resolve().snapshot
-            destructiveResetAuthorized = false
-            return snapshot
-        } catch let failure as ResolutionFailure {
-            throw failure.repositoryError
-        } catch {
-            throw ViewerMovieStateRepositoryError.loadFailure
-        }
-    }
-
-    func state(movieID: Int) throws -> ViewerMovieState? {
-        guard movieID > 0 else {
-            throw ViewerMovieStateRepositoryError.invalidMovieID
-        }
-        return try snapshot().state(for: movieID)
     }
 
     func apply(
@@ -239,7 +212,7 @@ actor LocalViewerStateRepository: ViewerMovieStateRepository {
 
         let hasLegacyData = profileData != nil || watchlistData != nil
         guard hasLegacyData || currentFailure == nil else {
-            throw failure(
+            throw exhaustedSourcesFailure(
                 currentFailure ?? .migrationFailure,
                 recoveryReason ?? .migrationFailure
             )
@@ -260,6 +233,9 @@ actor LocalViewerStateRepository: ViewerMovieStateRepository {
                 source: source
             )
         } catch {
+            if hasLegacyData {
+                throw exhaustedSourcesFailure(.migrationFailure, .migrationFailure)
+            }
             throw failure(.migrationFailure, .migrationFailure)
         }
         let persisted = try publishInitial(
@@ -411,6 +387,16 @@ actor LocalViewerStateRepository: ViewerMovieStateRepository {
         _ recoveryReason: ViewerMovieStateRecoveryReason
     ) -> ResolutionFailure {
         ResolutionFailure(
+            repositoryError: repositoryError,
+            recoveryReason: recoveryReason
+        )
+    }
+
+    private func exhaustedSourcesFailure(
+        _ repositoryError: ViewerMovieStateRepositoryError,
+        _ recoveryReason: ViewerMovieStateRecoveryReason
+    ) -> ExhaustedSourcesFailure {
+        ExhaustedSourcesFailure(
             repositoryError: repositoryError,
             recoveryReason: recoveryReason
         )
