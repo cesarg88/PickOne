@@ -68,6 +68,85 @@ struct P1DecisionEngineEvidenceTests {
         #expect(affinity.genres.map(\.id) == [18])
     }
 
+    @Test("production-shaped candidate IDs resolve anchor labels from Taste Profile metadata")
+    func unnamedCandidateAnchorGenresResolveFromTasteProfile() throws {
+        let profile = P1TasteProfile(evidence: [
+            evidence(100, title: "Arrival", .loveIt, [.scienceFiction, .drama], 2016),
+        ])
+        let selection = try engine.select(from: input(
+            profile: profile,
+            candidates: [candidate(
+                1,
+                [DecisionGenre(id: 18), DecisionGenre(id: 878)],
+                year: 2019
+            )]
+        ))
+        let primary = try #require(selection.recommendations.first?.evidence.primary)
+
+        guard case let .positiveAnchor(anchor) = primary else {
+            Issue.record("Expected named anchor evidence")
+            return
+        }
+        #expect(anchor.sharedGenres.map(\.name) == ["Drama", "Science Fiction"])
+    }
+
+    @Test("production-shaped candidate IDs resolve affinity labels from Taste Profile metadata")
+    func unnamedCandidateAffinityGenresResolveFromTasteProfile() throws {
+        let profile = P1TasteProfile(evidence: [
+            evidence(100, title: nil, .loveIt, [.drama], 2016),
+        ])
+        let selection = try engine.select(from: input(
+            profile: profile,
+            candidates: [candidate(1, [DecisionGenre(id: 18)], year: 2019)]
+        ))
+        let primary = try #require(selection.recommendations.first?.evidence.primary)
+
+        guard case let .positiveGenreAffinity(affinity) = primary else {
+            Issue.record("Expected positive genre affinity evidence")
+            return
+        }
+        #expect(affinity.genres.map(\.name) == ["Drama"])
+    }
+
+    @Test("genre label resolution does not depend on Taste Profile evidence order")
+    func genreLabelResolutionIsOrderIndependent() throws {
+        let evidence = [
+            evidence(
+                100,
+                title: nil,
+                .loveIt,
+                [DecisionGenre(id: 18, name: "Drama")],
+                2016
+            ),
+            evidence(
+                101,
+                title: nil,
+                .likeIt,
+                [DecisionGenre(id: 18, name: "Drama ES")],
+                2017
+            ),
+        ]
+        let candidate = try candidate(1, [DecisionGenre(id: 18)], year: 2019)
+
+        let forward = engine.select(from: input(
+            profile: P1TasteProfile(evidence: evidence),
+            candidates: [candidate]
+        ))
+        let reversed = engine.select(from: input(
+            profile: P1TasteProfile(evidence: evidence.reversed()),
+            candidates: [candidate]
+        ))
+
+        #expect(forward == reversed)
+        guard case let .positiveGenreAffinity(affinity) = forward
+            .recommendations.first?.evidence.primary
+        else {
+            Issue.record("Expected positive genre affinity evidence")
+            return
+        }
+        #expect(affinity.genres.map(\.name) == ["Drama"])
+    }
+
     @Test("Fixture M keeps Deadpool similarity without naming it for Parasite")
     func weakDeadpoolParasiteAnchorIsNotVisible() throws {
         let profile = P1TasteProfile(evidence: [

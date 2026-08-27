@@ -27,4 +27,55 @@ struct DecisionSetV2ContractTests {
 
         #expect(decisionSet.sourceViewerStateSnapshotID == sourceID)
     }
+
+    @Test("new persisted evidence rejects genre signals without readable labels")
+    func persistedEvidenceRequiresReadableGenreLabels() throws {
+        let unnamedGenre = DecisionGenre(id: 18)
+        let anchor = PositiveAnchorEvidence(
+            movieID: 20,
+            movieTitle: "Anchor",
+            reaction: .loved,
+            anchorGenres: [unnamedGenre],
+            sharedGenres: [unnamedGenre],
+            eraMatch: nil
+        )
+        let affinity = PositiveAffinityEvidence(genres: [unnamedGenre], era: nil)
+        let primaryEvidence: [RecommendationPrimaryEvidence] = [
+            .positiveAnchor(anchor),
+            .watchlistIntent(match: .positiveAnchor(anchor)),
+            .positiveGenreAffinity(affinity),
+            .watchlistIntent(match: .positiveAffinity(affinity)),
+        ]
+
+        for primary in primaryEvidence {
+            #expect(throws: DecisionSetValidationError.invalidEvidence) {
+                try PersistedDecisionRecommendation(
+                    role: .safeChoice,
+                    evidence: RecommendationEvidence(
+                        primary: primary,
+                        diversity: nil
+                    ),
+                    display: DecisionDisplaySnapshot(
+                        movieID: 10,
+                        localizedTitle: "Movie 10",
+                        posterPath: nil,
+                        backdropPath: nil,
+                        runtimeMinutes: 100,
+                        releaseYear: 2024,
+                        genres: [unnamedGenre]
+                    ),
+                    availability: DecisionAvailabilitySnapshot(
+                        matchingProviders: [DecisionProviderSnapshot(
+                            providerID: PilotStreamingService.netflix.providerID,
+                            name: PilotStreamingService.netflix.name,
+                            logoPath: nil,
+                            productOrder: PilotStreamingService.netflix.productOrder
+                        )],
+                        verifiedAt: Date(timeIntervalSince1970: 1000),
+                        regionalWatchURL: nil
+                    )
+                )
+            }
+        }
+    }
 }

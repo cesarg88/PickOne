@@ -25,7 +25,7 @@ struct HomeDecisionProviderItem: Identifiable, Equatable, Hashable {
 enum HomeDecisionPresentationMapper {
     static func map(snapshot: ThreeForTonightSnapshot) -> HomeDecisionSetPresentationModel {
         HomeDecisionSetPresentationModel(
-            items: snapshot.decisionSet.recommendations.map { recommendation in
+            items: snapshot.decisionSet.recommendations.compactMap { recommendation in
                 map(
                     recommendation: recommendation,
                     isSaved: snapshot.savedMovieIDs.contains(recommendation.display.movieID)
@@ -37,8 +37,11 @@ enum HomeDecisionPresentationMapper {
     private static func map(
         recommendation: PersistedDecisionRecommendation,
         isSaved: Bool
-    ) -> HomeDecisionMovieItem {
-        HomeDecisionMovieItem(
+    ) -> HomeDecisionMovieItem? {
+        guard let reason = reason(recommendation.evidence.primary) else {
+            return nil
+        }
+        return HomeDecisionMovieItem(
             id: recommendation.display.movieID,
             title: recommendation.display.localizedTitle,
             posterURL: ImageURLBuilder.posterURL(
@@ -46,7 +49,7 @@ enum HomeDecisionPresentationMapper {
                 size: .posterLarge
             ),
             role: roleTitle(recommendation.role),
-            reason: reason(recommendation.evidence.primary),
+            reason: reason,
             details: details(recommendation.display),
             providers: recommendation.availability.matchingProviders.map { provider in
                 HomeDecisionProviderItem(
@@ -67,10 +70,10 @@ enum HomeDecisionPresentationMapper {
         }
     }
 
-    private static func reason(_ evidence: RecommendationPrimaryEvidence) -> String {
+    private static func reason(_ evidence: RecommendationPrimaryEvidence) -> String? {
         switch evidence {
             case let .watchlistIntent(match):
-                "Saved for later, and \(tasteMatch(match))"
+                tasteMatch(match).map { "Saved for later, and \($0)" }
             case let .positiveAnchor(anchor):
                 positiveAnchorReason(anchor, sentenceStart: true)
             case let .positiveGenreAffinity(affinity):
@@ -80,7 +83,7 @@ enum HomeDecisionPresentationMapper {
         }
     }
 
-    private static func tasteMatch(_ evidence: RecommendationTasteEvidence) -> String {
+    private static func tasteMatch(_ evidence: RecommendationTasteEvidence) -> String? {
         switch evidence {
             case let .positiveAnchor(anchor):
                 positiveAnchorReason(anchor, sentenceStart: false)
@@ -99,9 +102,11 @@ enum HomeDecisionPresentationMapper {
     private static func positiveAnchorReason(
         _ anchor: PositiveAnchorEvidence,
         sentenceStart: Bool
-    ) -> String {
+    ) -> String? {
         let prefix = sentenceStart ? "Similar" : "similar"
-        var sharedSignals = sharedGenreDescription(anchor.sharedGenres)
+        guard var sharedSignals = sharedGenreDescription(anchor.sharedGenres) else {
+            return nil
+        }
         switch anchor.eraMatch {
             case let .sameDecade(decade):
                 sharedSignals += "; both are from the \(decade.startingYear)s"
@@ -117,9 +122,10 @@ enum HomeDecisionPresentationMapper {
 
     private static func sharedGenreDescription(
         _ genres: [DecisionGenre]
-    ) -> String {
-        let genreLabels = genres.map { genre in
-            genre.name ?? "genre \(genre.id)"
+    ) -> String? {
+        let genreLabels = genres.compactMap(\.name)
+        guard !genreLabels.isEmpty, genreLabels.count == genres.count else {
+            return nil
         }
         return "shares \(naturalList(genreLabels))"
     }
@@ -127,13 +133,18 @@ enum HomeDecisionPresentationMapper {
     private static func affinityReason(
         _ affinity: PositiveAffinityEvidence,
         sentenceStart: Bool
-    ) -> String {
+    ) -> String? {
         let prefix = sentenceStart ? "Matches" : "matches"
         let genreNames = affinity.genres.compactMap(\.name)
-        if !genreNames.isEmpty {
+        if !affinity.genres.isEmpty {
+            guard genreNames.count == affinity.genres.count else {
+                return nil
+            }
             return "\(prefix) your taste for \(naturalList(genreNames))."
         }
-        return "\(prefix) a release era you tend to enjoy."
+        return affinity.era == nil
+            ? nil
+            : "\(prefix) a release era you tend to enjoy."
     }
 
     private static func naturalList(_ values: [String]) -> String {

@@ -165,9 +165,16 @@ struct P1DecisionEngine: DecisionSelecting, Sendable {
                     return nil
                 }
 
-                let sharedGenres = candidate.genres
-                    .filter { anchor.genres.contains($0) }
-                    .sorted { $0.id < $1.id }
+                let sharedGenreIDs = candidate.genres
+                    .intersection(anchor.genres)
+                    .map(\.id)
+                    .sorted()
+                let sharedGenres = sharedGenreIDs.compactMap { genreID in
+                    readableGenre(id: genreID, in: anchor.genres)
+                }
+                guard sharedGenres.count == sharedGenreIDs.count else {
+                    return nil
+                }
                 let anchorGenres = anchor.genres.sorted { $0.id < $1.id }
                 return RankedAnchor(
                     similarity: similarity,
@@ -198,16 +205,18 @@ struct P1DecisionEngine: DecisionSelecting, Sendable {
     ) -> PositiveAffinityEvidence {
         let genres = candidate.genres
             .map { genre in
-                (genre: genre, affinity: P1Scoring.affinity(for: genre, in: profile))
+                (genreID: genre.id, affinity: P1Scoring.affinity(for: genre, in: profile))
             }
             .filter { $0.affinity > 0.05 }
             .sorted {
                 if $0.affinity != $1.affinity {
                     return $0.affinity > $1.affinity
                 }
-                return $0.genre.id < $1.genre.id
+                return $0.genreID < $1.genreID
             }
-            .map(\.genre)
+            .compactMap { match in
+                readableGenre(id: match.genreID, in: profile)
+            }
         let era = candidate.releaseYear
             .flatMap(DecisionDecade.init(releaseYear:))
             .flatMap { decade in
@@ -217,6 +226,29 @@ struct P1DecisionEngine: DecisionSelecting, Sendable {
             }
 
         return PositiveAffinityEvidence(genres: genres, era: era)
+    }
+
+    private func readableGenre(
+        id: Int,
+        in genres: Set<DecisionGenre>
+    ) -> DecisionGenre? {
+        genres
+            .filter { $0.id == id }
+            .compactMap(\.name)
+            .min()
+            .map { DecisionGenre(id: id, name: $0) }
+    }
+
+    private func readableGenre(
+        id: Int,
+        in profile: P1TasteProfile
+    ) -> DecisionGenre? {
+        profile.evidence
+            .flatMap(\.genres)
+            .filter { $0.id == id }
+            .compactMap(\.name)
+            .min()
+            .map { DecisionGenre(id: id, name: $0) }
     }
 
     private func positiveAnchorReaction(
