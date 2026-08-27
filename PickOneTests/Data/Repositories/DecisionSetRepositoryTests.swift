@@ -111,6 +111,7 @@ struct DecisionSetRepositoryTests {
                 generatedAt: Date(),
                 engineModelVersion: .p1Model,
                 cycle: cycle,
+                sourceViewerStateSnapshotID: ViewerStateSnapshotID(rawValue: UUID()),
                 region: .spain,
                 selectedProviderIDs: [8],
                 recommendations: [recommendation(movieID: 10, role: .safeChoice)]
@@ -210,9 +211,18 @@ struct DecisionSetRepositoryTests {
         let expected = try decisionSet()
         try await DefaultDecisionSetRepository(store: store).replace(expected)
 
+        let decoded = try JSONDecisionSetEnvelopeCoder().decodeEnvelope(
+            from: #require(store.activeData)
+        )
+        guard case let .currentV2(dto) = decoded else {
+            Issue.record("Expected production persistence to use Decision Set v2")
+            return
+        }
+
         let relaunched = DefaultDecisionSetRepository(store: store)
 
         #expect(await relaunched.load() == .available(expected))
+        #expect(dto.sourceViewerStateSnapshotID == expected.sourceViewerStateSnapshotID.rawValue)
         #expect(store.activeReplacementCount == 1)
     }
 
@@ -295,7 +305,7 @@ struct DecisionSetRepositoryTests {
 
     @Test("unsupported schema bytes are quarantined without migration guesses")
     func unsupportedRecovery() async {
-        for version in [0, 2] {
+        for version in [0, 3] {
             let bytes = Data(#"{"envelopeSchemaVersion":\#(version)}"#.utf8)
             let store = InMemoryDecisionSetDataStore(activeData: bytes)
             let repository = DefaultDecisionSetRepository(store: store)
@@ -330,8 +340,10 @@ struct DecisionSetRepositoryTests {
                 == .recovery(.loadFailed)
         )
     }
+}
 
-    private func profile(
+private extension DecisionSetRepositoryTests {
+    func profile(
         services: [PilotStreamingService],
         reactions: [Int: CalibrationReaction]
     ) -> ViewerProfile {
@@ -344,11 +356,11 @@ struct DecisionSetRepositoryTests {
         )
     }
 
-    private func signature() throws -> DecisionCycleSignature {
+    func signature() throws -> DecisionCycleSignature {
         try #require(DecisionCycleSignature(rawValue: String(repeating: "a", count: 64)))
     }
 
-    private func decisionSet(
+    func decisionSet(
         recommendations: [PersistedDecisionRecommendation]? = nil
     ) throws -> PersistedDecisionSet {
         let items = try recommendations ?? [
@@ -366,13 +378,16 @@ struct DecisionSetRepositoryTests {
             generatedAt: Date(timeIntervalSince1970: 1_700_000_000.125),
             engineModelVersion: .p1Model,
             cycle: cycle,
+            sourceViewerStateSnapshotID: ViewerStateSnapshotID(
+                rawValue: #require(UUID(uuidString: "30000000-0000-0000-0000-000000000003"))
+            ),
             region: .spain,
             selectedProviderIDs: [337, 8],
             recommendations: items
         )
     }
 
-    private func recommendation(
+    func recommendation(
         movieID: Int,
         role: DecisionRole,
         evidence suppliedEvidence: RecommendationEvidence? = nil
@@ -514,11 +529,11 @@ final class InMemoryDecisionSetDataStore: DecisionSetDataStore {
 }
 
 private struct FailingDecisionSetEncoder: DecisionSetEnvelopeCoding {
-    func decodeEnvelope(from data: Data) throws -> DecisionSetEnvelopeV1DTO {
+    func decodeEnvelope(from data: Data) throws -> DecodedDecisionSetEnvelopeDTO {
         try JSONDecisionSetEnvelopeCoder().decodeEnvelope(from: data)
     }
 
-    func encodeEnvelope(_ envelope: DecisionSetEnvelopeV1DTO) throws -> Data {
+    func encodeEnvelope(_: DecisionSetEnvelopeV2DTO) throws -> Data {
         throw TestStoreError.rejected
     }
 }

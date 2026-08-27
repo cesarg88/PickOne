@@ -255,6 +255,7 @@ private extension AppContainer {
             ),
             threeForTonight: ThreeForTonightCoordinator(
                 viewerProfileRepository: repositories.viewerProfile,
+                viewerMovieStateRepository: repositories.viewerState,
                 watchlistRepository: repositories.watchlist,
                 decisionSetRepository: repositories.decisionSet,
                 inputAssembler: inputAssembler,

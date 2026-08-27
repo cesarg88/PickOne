@@ -8,6 +8,7 @@ enum DecisionSetRecoveryReason: Equatable, Sendable {
 enum DecisionSetLoadResult: Equatable, Sendable {
     case absent
     case available(PersistedDecisionSet)
+    case migrationRequired(DecisionSetMigrationSource)
     case recovery(DecisionSetRecoveryReason)
 }
 

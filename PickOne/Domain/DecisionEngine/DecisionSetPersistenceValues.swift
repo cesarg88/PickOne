@@ -216,6 +216,7 @@ struct PersistedDecisionSet: Equatable, Sendable {
     let generatedAt: Date
     let engineModelVersion: DecisionEngineModelVersion
     let cycle: DecisionCycle
+    let sourceViewerStateSnapshotID: ViewerStateSnapshotID
     let region: ViewingRegion
     let selectedProviderIDs: [Int]
     let recommendations: [PersistedDecisionRecommendation]
@@ -225,10 +226,34 @@ struct PersistedDecisionSet: Equatable, Sendable {
         generatedAt: Date,
         engineModelVersion: DecisionEngineModelVersion,
         cycle: DecisionCycle,
+        sourceViewerStateSnapshotID: ViewerStateSnapshotID,
         region: ViewingRegion,
         selectedProviderIDs: [Int],
         recommendations: [PersistedDecisionRecommendation]
     ) throws {
+        let normalizedProviderIDs = try Self.validateContents(
+            cycle: cycle,
+            region: region,
+            selectedProviderIDs: selectedProviderIDs,
+            recommendations: recommendations
+        )
+
+        self.id = id
+        self.generatedAt = generatedAt
+        self.engineModelVersion = engineModelVersion
+        self.cycle = cycle
+        self.sourceViewerStateSnapshotID = sourceViewerStateSnapshotID
+        self.region = region
+        self.selectedProviderIDs = normalizedProviderIDs
+        self.recommendations = recommendations
+    }
+
+    fileprivate static func validateContents(
+        cycle: DecisionCycle,
+        region: ViewingRegion,
+        selectedProviderIDs: [Int],
+        recommendations: [PersistedDecisionRecommendation]
+    ) throws -> [Int] {
         let movieIDs = recommendations.map(\.display.movieID)
         let expectedRoles = Array(
             [DecisionRole.safeChoice, .stretchChoice, .discoveryChoice]
@@ -254,14 +279,7 @@ struct PersistedDecisionSet: Equatable, Sendable {
         else {
             throw DecisionSetValidationError.invalidProviderEvidence
         }
-
-        self.id = id
-        self.generatedAt = generatedAt
-        self.engineModelVersion = engineModelVersion
-        self.cycle = cycle
-        self.region = region
-        self.selectedProviderIDs = normalizedProviderIDs
-        self.recommendations = recommendations
+        return normalizedProviderIDs
     }
 
     private static func validateDiversity(
@@ -282,6 +300,25 @@ struct PersistedDecisionSet: Equatable, Sendable {
                 throw DecisionSetValidationError.invalidEvidence
             }
         }
+    }
+}
+
+struct DecisionSetMigrationSource: Equatable, Sendable {
+    let cycle: DecisionCycle
+
+    init(
+        cycle: DecisionCycle,
+        region: ViewingRegion,
+        selectedProviderIDs: [Int],
+        recommendations: [PersistedDecisionRecommendation]
+    ) throws {
+        _ = try PersistedDecisionSet.validateContents(
+            cycle: cycle,
+            region: region,
+            selectedProviderIDs: selectedProviderIDs,
+            recommendations: recommendations
+        )
+        self.cycle = cycle
     }
 }
 
