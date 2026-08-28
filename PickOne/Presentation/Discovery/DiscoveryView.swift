@@ -6,11 +6,12 @@ struct DiscoveryView: View {
 
     let model: DiscoveryViewModel
     let getMovieDetail: GetMovieDetailUseCase
-    let setMembership: SetWatchlistMembershipUseCase
-    let setWatched: SetWatchedUseCase
+    let getViewerMovieState: GetViewerMovieStateUseCase
+    let updateViewerMovieState: UpdateViewerMovieStateUseCase
     let checkAvailability: CheckMovieAvailabilityUseCase
     let preparePlaybackOptions: PreparePlaybackOptionsUseCase
     let imagePipeline: ImagePipeline
+    var viewerStateDidChange: @MainActor (DecisionViewerStateChange) -> Void = { _ in }
     var eligibilityDidChange: @MainActor (DecisionEligibilityChange) -> Void = { _ in }
 
     var body: some View {
@@ -80,10 +81,11 @@ struct DiscoveryView: View {
     private func movieDetail(movieID: Int) -> some View {
         let dependencies = MovieDetailNavigationDependencies(
             getMovieDetail: getMovieDetail,
-            setMembership: setMembership,
-            setWatched: setWatched,
+            getViewerMovieState: getViewerMovieState,
+            updateViewerMovieState: updateViewerMovieState,
             checkAvailability: checkAvailability,
             preparePlaybackOptions: preparePlaybackOptions,
+            viewerStateDidChange: viewerStateDidChange,
             eligibilityDidChange: eligibilityDidChange
         )
         return MovieDetailView(

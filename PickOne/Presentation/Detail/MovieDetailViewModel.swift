@@ -12,34 +12,45 @@ enum MovieDetailViewState: Equatable {
 @Observable
 final class MovieDetailViewModel {
     let movieId: Int
-    private let getMovieDetail: GetMovieDetailUseCase
-    private let setMembership: SetWatchlistMembershipUseCase
-    private let setWatched: SetWatchedUseCase
-    private let checkAvailability: CheckMovieAvailabilityUseCase
-    private let preparePlaybackOptionsUseCase: PreparePlaybackOptionsUseCase
+    private let getMovieDetail: any GetMovieDetailUseCase
+    private let getViewerMovieState: any GetViewerMovieStateUseCase
+    private let updateViewerMovieState: any UpdateViewerMovieStateUseCase
+    private let checkAvailability: any CheckMovieAvailabilityUseCase
+    private let preparePlaybackOptionsUseCase: any PreparePlaybackOptionsUseCase
+    private let viewerStateDidChange: @MainActor (DecisionViewerStateChange) -> Void
     private let eligibilityDidChange: @MainActor (DecisionEligibilityChange) -> Void
-    private var activeLoadID = UUID()
-    private var availabilityOutcome: AvailabilityOutcome?
+    @ObservationIgnored private var activeLoadID = UUID()
+    @ObservationIgnored private var activeFeedbackLoadID = UUID()
+    @ObservationIgnored private var activeMutationID = UUID()
+    @ObservationIgnored private var availabilityOutcome: AvailabilityOutcome?
+    @ObservationIgnored private var confirmedFeedbackState: ViewerMovieState?
+    @ObservationIgnored private var feedbackMetadata: MovieFeedbackMetadata?
+    @ObservationIgnored private var detailMetadata: MovieFeedbackMetadata?
+    @ObservationIgnored private var hasConfirmedFeedback = false
+    @ObservationIgnored private var isFeedbackSaving = false
 
     var state: MovieDetailViewState = .idle
     var availabilityState: MovieAvailabilityViewState = .loading
-    var actionErrorMessage: String?
+    var feedbackState: MovieFeedbackViewState = .loading
+    var feedbackActionErrorMessage: String?
 
     init(
         movieId: Int,
-        getMovieDetail: GetMovieDetailUseCase,
-        setMembership: SetWatchlistMembershipUseCase,
-        setWatched: SetWatchedUseCase,
-        checkAvailability: CheckMovieAvailabilityUseCase,
-        preparePlaybackOptions: PreparePlaybackOptionsUseCase,
+        getMovieDetail: any GetMovieDetailUseCase,
+        getViewerMovieState: any GetViewerMovieStateUseCase,
+        updateViewerMovieState: any UpdateViewerMovieStateUseCase,
+        checkAvailability: any CheckMovieAvailabilityUseCase,
+        preparePlaybackOptions: any PreparePlaybackOptionsUseCase,
+        viewerStateDidChange: @escaping @MainActor (DecisionViewerStateChange) -> Void = { _ in },
         eligibilityDidChange: @escaping @MainActor (DecisionEligibilityChange) -> Void = { _ in }
     ) {
         self.movieId = movieId
         self.getMovieDetail = getMovieDetail
-        self.setMembership = setMembership
-        self.setWatched = setWatched
+        self.getViewerMovieState = getViewerMovieState
+        self.updateViewerMovieState = updateViewerMovieState
         self.checkAvailability = checkAvailability
         preparePlaybackOptionsUseCase = preparePlaybackOptions
+        self.viewerStateDidChange = viewerStateDidChange
         self.eligibilityDidChange = eligibilityDidChange
     }
 
@@ -51,29 +62,55 @@ final class MovieDetailViewModel {
         state = .loading
         availabilityState = .loading
         availabilityOutcome = nil
+        feedbackState = .loading
 
         async let detailLoad: Void = loadDetail(loadID: loadID)
         async let availabilityLoad: Void = loadAvailability(loadID: loadID)
-        _ = await (detailLoad, availabilityLoad)
+        async let feedbackLoad: Void = loadFeedback()
+        _ = await (detailLoad, availabilityLoad, feedbackLoad)
+    }
+
+    func retryFeedback() async {
+        guard !isFeedbackSaving else { return }
+        feedbackState = .loading
+        await loadFeedback()
     }
 
     private func loadDetail(loadID: UUID) async {
         do {
-            let cached = try await getMovieDetail.execute(id: movieId, policy: .returnCacheElseLoad)
+            let cached = try await getMovieDetail.execute(
+                id: movieId,
+                policy: .returnCacheElseLoad
+            )
             try Task.checkCancellation()
             guard activeLoadID == loadID else { return }
-            state = .loaded(MovieDetailPresentationMapper.map(snapshot: cached.value))
+            publishDetail(cached.value)
             if cached.isStale {
-                let refreshed = try await getMovieDetail.execute(id: movieId, policy: .refresh)
+                let refreshed = try await getMovieDetail.execute(
+                    id: movieId,
+                    policy: .refresh
+                )
                 try Task.checkCancellation()
                 guard activeLoadID == loadID else { return }
-                state = .loaded(MovieDetailPresentationMapper.map(snapshot: refreshed.value))
+                publishDetail(refreshed.value)
             }
         } catch is CancellationError {
             return
         } catch {
             guard activeLoadID == loadID else { return }
             state = .error(error.localizedDescription)
+        }
+    }
+
+    private func publishDetail(_ snapshot: MovieDetailSnapshot) {
+        detailMetadata = try? MovieFeedbackMetadata(
+            title: snapshot.movie.title,
+            releaseYear: snapshot.movie.releaseYear,
+            posterPath: snapshot.movie.posterPath
+        )
+        state = .loaded(MovieDetailPresentationMapper.map(snapshot: snapshot))
+        if hasConfirmedFeedback {
+            publishFeedbackState()
         }
     }
 
@@ -98,6 +135,28 @@ final class MovieDetailViewModel {
             )
             availabilityOutcome = outcome
             availabilityState = .unknown
+        }
+    }
+
+    private func loadFeedback() async {
+        let loadID = UUID()
+        activeFeedbackLoadID = loadID
+        do {
+            let loadedState = try await getViewerMovieState.execute(movieID: movieId)
+            try Task.checkCancellation()
+            guard activeFeedbackLoadID == loadID else { return }
+            confirmedFeedbackState = loadedState
+            feedbackMetadata = loadedState?.displayMetadata
+            hasConfirmedFeedback = true
+            publishFeedbackState()
+        } catch is CancellationError {
+            return
+        } catch {
+            guard activeFeedbackLoadID == loadID else { return }
+            hasConfirmedFeedback = false
+            feedbackState = .failure(
+                "Your movie feedback couldn't be loaded. Please try again."
+            )
         }
     }
 
@@ -138,77 +197,107 @@ final class MovieDetailViewModel {
         }
     }
 
-    // MARK: - Watchlist Actions
+    // MARK: - Feedback Actions
 
-    func toggleWatchlist() async {
-        guard case var .loaded(model) = state else { return }
+    func setReaction(_ reaction: MovieReaction) async {
+        await apply(.assignReaction(reaction))
+    }
 
-        let movie = MovieSummary(
-            id: model.id,
-            title: model.title,
-            posterPath: extractPosterPath(from: model.posterURL),
-            releaseYear: extractYear(from: model.releaseYear),
-            rating: extractRating(from: model.rating)
-        )
-
-        do {
-            let outcome = try await setMembership.execute(
-                movie: movie,
-                isInWatchlist: !model.isInWatchlist
-            )
-            model.isInWatchlist = outcome.status != .notInWatchlist
-            model.isWatched = outcome.status == .watched
-            state = .loaded(model)
-            if outcome.didChange {
-                notifyEligibilityChange(cause: .watchlist)
-            }
-        } catch {
-            actionErrorMessage = error.localizedDescription
-        }
+    func removeReaction() async {
+        await apply(.removeReaction)
     }
 
     func toggleWatched() async {
-        guard case var .loaded(model) = state,
-              model.isInWatchlist else { return }
+        let action: ViewerMovieStateTransition.Action =
+            confirmedFeedbackState?.watchState.isWatched == true
+                ? .markUnwatched
+                : .markWatched
+        await apply(action)
+    }
+
+    func toggleNotInterested() async {
+        let action: ViewerMovieStateTransition.Action =
+            confirmedFeedbackState?.isNotInterested == true
+                ? .removeNotInterested
+                : .setNotInterested
+        await apply(action)
+    }
+
+    func toggleWatchlist() async {
+        let action: ViewerMovieStateTransition.Action =
+            confirmedFeedbackState?.watchlistIntent != nil
+                ? .removeFromWatchlist
+                : .saveToWatchlist
+        await apply(action)
+    }
+
+    private func apply(_ action: ViewerMovieStateTransition.Action) async {
+        guard !isFeedbackSaving,
+              let metadata = mutationMetadata
+        else {
+            return
+        }
+
+        let mutationID = UUID()
+        activeMutationID = mutationID
+        activeFeedbackLoadID = UUID()
+        isFeedbackSaving = true
+        feedbackActionErrorMessage = nil
+        publishFeedbackState()
 
         do {
-            let outcome = try await setWatched.execute(
-                movieId: model.id,
-                isWatched: !model.isWatched
+            let change = try await updateViewerMovieState.execute(
+                transition: ViewerMovieStateTransition(
+                    movieID: movieId,
+                    action: action
+                ),
+                metadata: metadata
             )
-            model.isInWatchlist = outcome.status != .notInWatchlist
-            model.isWatched = outcome.status == .watched
-            state = .loaded(model)
-            if outcome.didChange {
-                notifyEligibilityChange(cause: .watchlist)
-            }
+            guard activeMutationID == mutationID else { return }
+            activeFeedbackLoadID = UUID()
+            confirmedFeedbackState = change.state
+            feedbackMetadata = change.state?.displayMetadata ?? metadata
+            hasConfirmedFeedback = true
+            isFeedbackSaving = false
+            publishFeedbackState()
+            notifyViewerStateChange(change)
+        } catch is CancellationError {
+            guard activeMutationID == mutationID else { return }
+            activeFeedbackLoadID = UUID()
+            isFeedbackSaving = false
+            publishFeedbackState()
         } catch {
-            actionErrorMessage = error.localizedDescription
+            guard activeMutationID == mutationID else { return }
+            activeFeedbackLoadID = UUID()
+            isFeedbackSaving = false
+            publishFeedbackState()
+            feedbackActionErrorMessage = error.localizedDescription
         }
     }
 
-    // MARK: - Helpers
+    private var mutationMetadata: MovieFeedbackMetadata? {
+        detailMetadata ?? feedbackMetadata
+    }
 
-    private func extractPosterPath(from url: URL?) -> String? {
-        guard let url else { return nil }
-        // URL format: https://image.tmdb.org/t/p/w500/path.jpg
-        let path = url.path
-        // Remove the size prefix (e.g., /w500)
-        if let range = path.range(of: "/", options: .backwards) {
-            return String(path[range.lowerBound...])
+    private func publishFeedbackState() {
+        feedbackState = .loaded(
+            MovieFeedbackPresentationMapper.map(state: confirmedFeedbackState),
+            isSaving: isFeedbackSaving,
+            canSubmit: mutationMetadata != nil
+        )
+    }
+
+    private func notifyViewerStateChange(_ change: ViewerMovieStateChange) {
+        guard change.impact != .none,
+              let decisionChange = DecisionViewerStateChange(
+                  movieID: movieId,
+                  impact: change.impact,
+                  snapshotID: change.snapshotID
+              )
+        else {
+            return
         }
-        return path
-    }
-
-    private func extractYear(from yearText: String?) -> Int? {
-        guard let yearText else { return nil }
-        return Int(yearText)
-    }
-
-    private func extractRating(from ratingText: String) -> Double {
-        // Rating format: "7.5 (1,234)"
-        let components = ratingText.components(separatedBy: " ")
-        return Double(components.first ?? "0") ?? 0
+        viewerStateDidChange(decisionChange)
     }
 
     private func notifyEligibilityChange(cause: DecisionEligibilityRepairCause) {

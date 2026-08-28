@@ -14,8 +14,23 @@ struct MovieDetailPresentationModel: Equatable {
     let isCreditsUnavailable: Bool
     let directorName: String?
     let topCastNames: [String]
-    var isInWatchlist: Bool
-    var isWatched: Bool
+}
+
+struct MovieFeedbackPresentationModel: Equatable {
+    let reaction: MovieReaction?
+    let isWatched: Bool
+    let isNotInterested: Bool
+    let isInWatchlist: Bool
+}
+
+enum MovieFeedbackViewState: Equatable {
+    case loading
+    case loaded(
+        MovieFeedbackPresentationModel,
+        isSaving: Bool,
+        canSubmit: Bool
+    )
+    case failure(String)
 }
 
 struct SimilarMovieItem: Identifiable, Equatable {

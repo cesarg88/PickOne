@@ -19,6 +19,8 @@ final class AppContainer {
     let setWatchlistMembership: SetWatchlistMembershipUseCase
     let setWatched: SetWatchedUseCase
     let getMyMovies: GetMyMoviesUseCase
+    let getViewerMovieState: GetViewerMovieStateUseCase
+    let updateViewerMovieState: UpdateViewerMovieStateUseCase
 
     // MARK: - Use Cases - Search
 
@@ -73,6 +75,8 @@ final class AppContainer {
         setWatchlistMembership = useCases.setWatchlistMembership
         setWatched = useCases.setWatched
         getMyMovies = useCases.getMyMovies
+        getViewerMovieState = useCases.getViewerMovieState
+        updateViewerMovieState = useCases.updateViewerMovieState
         searchMovies = useCases.searchMovies
         searchHistory = useCases.searchHistory
         getChatRecommendations = useCases.getChatRecommendations
@@ -137,6 +141,8 @@ private extension AppContainer {
         let setWatchlistMembership: SetWatchlistMembership
         let setWatched: SetWatched
         let getMyMovies: GetMyMovies
+        let getViewerMovieState: GetViewerMovieState
+        let updateViewerMovieState: UpdateViewerMovieState
         let searchMovies: SearchMovies
         let searchHistory: SearchHistory
         let getChatRecommendations: GetChatRecommendations
@@ -227,10 +233,7 @@ private extension AppContainer {
         )
         return UseCases(
             getDiscoveryFeed: GetDiscoveryFeed(repository: repositories.movie),
-            getMovieDetail: GetMovieDetail(
-                repository: repositories.movie,
-                watchlistRepository: repositories.watchlist
-            ),
+            getMovieDetail: GetMovieDetail(repository: repositories.movie),
             checkMovieAvailability: checkAvailability,
             preparePlaybackOptions: PreparePlaybackOptions(
                 checkAvailability: checkAvailability,
@@ -240,6 +243,12 @@ private extension AppContainer {
             setWatchlistMembership: SetWatchlistMembership(repository: repositories.watchlist),
             setWatched: SetWatched(repository: repositories.watchlist),
             getMyMovies: GetMyMovies(repository: repositories.viewerState),
+            getViewerMovieState: GetViewerMovieState(
+                repository: repositories.viewerState
+            ),
+            updateViewerMovieState: UpdateViewerMovieState(
+                repository: repositories.viewerState
+            ),
             searchMovies: SearchMovies(
                 movieRepository: repositories.movie,
                 searchHistoryRepository: repositories.searchHistory
