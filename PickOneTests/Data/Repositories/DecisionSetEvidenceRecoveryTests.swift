@@ -371,7 +371,9 @@ extension DecisionSetEvidenceRecoveryTests {
         let trustedState = try TrustedDecisionState(
             profile: profile,
             viewerMovieState: ViewerMovieStateSnapshot(
-                id: ViewerStateSnapshotID(rawValue: UUID()),
+                id: ViewerStateSnapshotID(
+                    rawValue: envelope.sourceViewerStateSnapshotID
+                ),
                 states: [ViewerMovieState(
                     movieID: anchor.movieID,
                     displayMetadata: MovieFeedbackMetadata(

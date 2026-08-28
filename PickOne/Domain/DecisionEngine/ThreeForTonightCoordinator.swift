@@ -340,6 +340,16 @@ private extension ThreeForTonightCoordinator {
         switch await decisionSetRepository.load() {
             case let .available(envelope):
                 let retained = safeRetainedSnapshot(envelope, trusted: trusted)
+                if envelope.sourceViewerStateSnapshotID == trusted.snapshotID,
+                   envelope.cycle.identitySignature == signature,
+                   ThreeForTonightSnapshotFactory.localRepairMovieIDs(
+                       envelope: envelope,
+                       trustedState: trusted
+                   ).isEmpty,
+                   let retained
+                {
+                    return .usable(retained)
+                }
                 let plan = try reconciliationPlanner.plan(
                     change: change,
                     sourceCycle: envelope.cycle,

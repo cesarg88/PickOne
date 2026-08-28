@@ -44,7 +44,8 @@ enum CoordinatorTestFixtures {
     static func envelope(
         currentMovieIDs: [Int],
         shownMovieIDs: Set<Int>? = nil,
-        profile: ViewerProfile = sparseProfile()
+        profile: ViewerProfile = sparseProfile(),
+        primaryEvidence: RecommendationPrimaryEvidence = .sparseQuality
     ) throws -> PersistedDecisionSet {
         let signature = try StableDecisionCycleSigner().signature(for: DecisionCycleIdentity(
             engineModelVersion: .p1Model,
@@ -52,7 +53,11 @@ enum CoordinatorTestFixtures {
         ))
         let roles: [DecisionRole] = [.safeChoice, .stretchChoice, .discoveryChoice]
         let recommendations = try currentMovieIDs.enumerated().map { index, movieID in
-            try recommendation(movieID: movieID, role: roles[index])
+            try recommendation(
+                movieID: movieID,
+                role: roles[index],
+                primaryEvidence: primaryEvidence
+            )
         }
         return try PersistedDecisionSet(
             id: UUID(),
@@ -140,7 +145,8 @@ enum CoordinatorTestFixtures {
 
     private static func recommendation(
         movieID: Int,
-        role: DecisionRole
+        role: DecisionRole,
+        primaryEvidence: RecommendationPrimaryEvidence
     ) throws -> PersistedDecisionRecommendation {
         let display = try DecisionDisplaySnapshot(
             movieID: movieID,
@@ -159,7 +165,7 @@ enum CoordinatorTestFixtures {
         )
         return try PersistedDecisionRecommendation(
             role: role,
-            evidence: RecommendationEvidence(primary: .sparseQuality, diversity: nil),
+            evidence: RecommendationEvidence(primary: primaryEvidence, diversity: nil),
             display: display,
             availability: DecisionAvailabilitySnapshot(
                 matchingProviders: [provider],

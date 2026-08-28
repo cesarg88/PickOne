@@ -237,12 +237,19 @@ extension ThreeForTonightCoordinator {
         operationID: UUID,
         staleRetryCount: Int
     ) async throws -> ThreeForTonightResult {
-        guard staleRetryCount == 0,
-              let latest = await loadTrustedState()
-        else {
+        guard let latest = await loadTrustedState() else {
             return .retryableFailure(
                 reason: .trustedInputsChanged,
-                retained: retained
+                retained: nil
+            )
+        }
+        let latestRetained = retained.flatMap {
+            safeRetainedSnapshot($0.decisionSet, trusted: latest)
+        }
+        guard staleRetryCount == 0 else {
+            return .retryableFailure(
+                reason: .trustedInputsChanged,
+                retained: latestRetained
             )
         }
         let signature = try cycleSignature(for: latest)
@@ -254,7 +261,7 @@ extension ThreeForTonightCoordinator {
         return try await generate(
             cycle: cycle,
             trusted: latest,
-            retained: retained,
+            retained: latestRetained,
             recovery: recovery,
             operationID: operationID,
             staleRetryCount: staleRetryCount + 1

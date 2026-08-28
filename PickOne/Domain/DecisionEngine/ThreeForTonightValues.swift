@@ -151,7 +151,9 @@ enum ThreeForTonightSnapshotFactory {
         envelope: PersistedDecisionSet,
         trustedState: TrustedDecisionState
     ) -> Set<Int> {
-        Set(envelope.recommendations.compactMap { recommendation in
+        let requiresCurrentTasteEvidence =
+            envelope.sourceViewerStateSnapshotID != trustedState.snapshotID
+        return Set(envelope.recommendations.compactMap { recommendation in
             let movieID = recommendation.display.movieID
             if trustedState.recommendationExcludedMovieIDs.contains(movieID) {
                 return movieID
@@ -162,6 +164,13 @@ enum ThreeForTonightSnapshotFactory {
                 return movieID
             }
             if recommendation.evidence.requiresReadableGenreRepair {
+                return movieID
+            }
+            if requiresCurrentTasteEvidence,
+               recommendation.evidence.requiresTasteEvidenceRepair(
+                   reactions: trustedState.reactions
+               )
+            {
                 return movieID
             }
             if case .watchlistIntent = recommendation.evidence.primary,
@@ -212,6 +221,27 @@ private extension RecommendationEvidence {
         return switch anchor.reaction {
             case .loved: currentReaction != MovieReaction.loveIt
             case .liked: currentReaction != MovieReaction.likeIt
+        }
+    }
+
+    func requiresTasteEvidenceRepair(reactions: [Int: MovieReaction]) -> Bool {
+        switch primary {
+            case let .watchlistIntent(match):
+                if case .positiveAffinity = match {
+                    return true
+                }
+                return false
+            case .positiveGenreAffinity:
+                return true
+            case .sparseQuality:
+                let directionalCount = reactions.values.count {
+                    $0.calibrationReaction.isDirectionalEvidence
+                }
+                return P1Scoring.profileConfidence(
+                    directionalCount: directionalCount
+                ) >= 1.0 / 3.0
+            case .positiveAnchor:
+                return false
         }
     }
 }

@@ -6,7 +6,7 @@ final class MutableTrustedDecisionStateLoader: TrustedDecisionStateLoading, Send
     private struct State: Sendable {
         var current: TrustedDecisionState
         var next: TrustedDecisionState?
-        var switchOnMatchCall: Int?
+        var statesByMatchCall: [Int: TrustedDecisionState]
         var matchCallCount = 0
     }
 
@@ -17,10 +17,28 @@ final class MutableTrustedDecisionStateLoader: TrustedDecisionStateLoading, Send
         next: TrustedDecisionState? = nil,
         switchOnMatchCall: Int? = nil
     ) {
+        let statesByMatchCall: [Int: TrustedDecisionState] = if let switchOnMatchCall,
+                                                                let next
+        {
+            [switchOnMatchCall: next]
+        } else {
+            [:]
+        }
         state = Mutex(State(
             current: current,
             next: next,
-            switchOnMatchCall: switchOnMatchCall
+            statesByMatchCall: statesByMatchCall
+        ))
+    }
+
+    init(
+        current: TrustedDecisionState,
+        statesByMatchCall: [Int: TrustedDecisionState]
+    ) {
+        state = Mutex(State(
+            current: current,
+            next: nil,
+            statesByMatchCall: statesByMatchCall
         ))
     }
 
@@ -31,10 +49,8 @@ final class MutableTrustedDecisionStateLoader: TrustedDecisionStateLoading, Send
     func matches(snapshotID: ViewerStateSnapshotID) -> Bool {
         state.withLock { state in
             state.matchCallCount += 1
-            if state.matchCallCount == state.switchOnMatchCall,
-               let next = state.next
-            {
-                state.current = next
+            if let scheduledState = state.statesByMatchCall[state.matchCallCount] {
+                state.current = scheduledState
             }
             return state.current.snapshotID == snapshotID
         }

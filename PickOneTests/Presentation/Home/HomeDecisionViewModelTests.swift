@@ -110,6 +110,45 @@ struct HomeDecisionViewModelTests {
         #expect(sut.updateFeedback == nil)
     }
 
+    @Test("a published queued snapshot is coalesced into one Home update")
+    func publishedQueuedSnapshotIsCoalesced() async throws {
+        let published = try HomeDecisionTestFixtures.snapshot()
+        let gate = HomeDecisionOperationGate()
+        let useCase = GatedHomeDecisionUseCase(
+            loadResult: .usable(published),
+            repairResult: .usable(published),
+            gate: gate
+        )
+        let sut = HomeDecisionViewModel(
+            threeForTonight: useCase,
+            feedbackDuration: .milliseconds(20)
+        )
+        let activeChange = try #require(DecisionViewerStateChange(
+            movieID: 201,
+            impact: .tasteChanged,
+            snapshotID: ViewerStateSnapshotID(rawValue: UUID())
+        ))
+        let queuedChange = try #require(DecisionViewerStateChange(
+            movieID: 202,
+            impact: .tasteChanged,
+            snapshotID: published.decisionSet.sourceViewerStateSnapshotID
+        ))
+
+        sut.reconcile(after: activeChange)
+        await useCase.waitForRepairStart()
+        sut.reconcile(after: queuedChange)
+        await gate.open()
+        await waitForUpdateFeedback(in: sut)
+        await waitUntilSettled(sut)
+
+        #expect(await useCase.recordedViewerChanges() == [activeChange])
+        #expect(sut.updateFeedback == "Recommendations updated.")
+
+        await waitForUpdateFeedbackDismissal(in: sut)
+        #expect(sut.updateFeedback == nil)
+        #expect(await useCase.recordedViewerChanges() == [activeChange])
+    }
+
     @Test("failed reconciliation and semantic no-op show no update feedback")
     func unsuccessfulOrNoOpReconciliationShowsNoFeedback() async throws {
         let snapshot = try HomeDecisionTestFixtures.snapshot()
@@ -325,6 +364,7 @@ private actor GatedHomeDecisionUseCase: ThreeForTonightUseCase {
     private var refreshStarted = false
     private var repairStarted = false
     private var repairs: [DecisionEligibilityChange] = []
+    private var viewerChanges: [DecisionViewerStateChange] = []
 
     init(
         loadResult: ThreeForTonightResult,
@@ -364,13 +404,7 @@ private actor GatedHomeDecisionUseCase: ThreeForTonightUseCase {
     func reconcileAfterViewerStateChange(
         _ change: DecisionViewerStateChange
     ) async throws -> ThreeForTonightResult {
-        guard let repair = DecisionEligibilityChange(
-            movieID: change.movieID,
-            cause: .watchlist
-        ) else {
-            throw HomeDecisionTestError.missingResult
-        }
-        repairs.append(repair)
+        viewerChanges.append(change)
         repairStarted = true
         await gate.wait()
         try Task.checkCancellation()
@@ -401,6 +435,10 @@ private actor GatedHomeDecisionUseCase: ThreeForTonightUseCase {
 
     func recordedRepairs() -> [DecisionEligibilityChange] {
         repairs
+    }
+
+    func recordedViewerChanges() -> [DecisionViewerStateChange] {
+        viewerChanges
     }
 }
 

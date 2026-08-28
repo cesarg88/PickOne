@@ -130,6 +130,10 @@ final class HomeDecisionViewModel {
             case let .usable(snapshot):
                 apply(snapshot: snapshot, refreshError: nil)
                 if operation.isReconciliation {
+                    pendingReconciliations.removeAll {
+                        $0.viewerStateSnapshotID
+                            == snapshot.decisionSet.sourceViewerStateSnapshotID
+                    }
                     showUpdateFeedback()
                 }
             case let .retryableFailure(reason, retained):
@@ -217,6 +221,11 @@ private extension HomeDecisionViewModel {
                 case .load, .refresh:
                     false
             }
+        }
+
+        var viewerStateSnapshotID: ViewerStateSnapshotID? {
+            guard case let .viewerState(change) = self else { return nil }
+            return change.snapshotID
         }
 
         func execute(
