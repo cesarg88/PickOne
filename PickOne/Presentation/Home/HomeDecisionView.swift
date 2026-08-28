@@ -21,6 +21,12 @@ struct HomeDecisionView: View {
                 refresh: model.refresh,
                 retry: model.load
             )
+            .onAppear {
+                model.homeDidAppear()
+            }
+            .onDisappear {
+                model.homeDidDisappear()
+            }
             .navigationTitle("Home")
             .navigationDestination(for: HomeDecisionRoute.self) { route in
                 movieDetail(movieID: route.movieID)

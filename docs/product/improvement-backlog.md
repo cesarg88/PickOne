@@ -365,19 +365,23 @@ Priorities:
 
 ### IMP-007 — Preserve domain movie data through Movie Detail presentation
 
-- Status: `Proposed`
+- Status: `Completed`
 - Priority: `P1`
-- Proposed roadmap relationship: Milestone 7
+- Roadmap relationship: Milestone 7
 - Verified gap:
   `MovieDetailViewModel` reconstructs `MovieSummary` from formatted year,
   rating, and poster URL strings.
 - Why: reverse-mapping presentation strings can lose precision and break under
   localization.
-- Implementation:
-  - retain the original `MovieSummary` or required domain values in the
-    presentation model
-  - remove `extractPosterPath`, `extractYear`, and `extractRating`
-  - add mapping and localized-format regression tests
+- Implementation: [PR #39](https://github.com/cesarg88/PickOne/pull/39)
+- Completed result:
+  - Movie Detail feedback mutations use validated raw Domain title, release
+    year, and poster-path metadata instead of reconstructing values from
+    Presentation strings or URLs
+  - persisted Viewer Movie State metadata remains the offline fallback when
+    fresh Detail metadata is unavailable
+  - the former `extractPosterPath`, `extractYear`, and `extractRating`
+    reverse-mapping boundary is removed and covered by focused regression tests
 - Done when:
   - Watchlist mutations never reconstruct Domain from UI-formatted values
 
