@@ -328,6 +328,69 @@ struct DecisionSetEvidenceRecoveryTests {
 }
 
 extension DecisionSetEvidenceRecoveryTests {
+    @Test("unnamed persisted genre evidence stays readable for trusted-input repair")
+    func unnamedGenreEvidenceRemainsRepairable() async throws {
+        let coder = JSONDecisionSetEnvelopeCoder()
+        let envelope = try await validEnvelope()
+        let evidence = try #require(envelope.recommendations.first?.evidence)
+        let anchor = try #require(evidence.anchor)
+        let unnamedSharedGenres = anchor.sharedGenres.map {
+            DecisionGenreV1DTO(id: $0.id, name: nil)
+        }
+        let unnamedAnchorGenres = anchor.anchorGenres?.map {
+            DecisionGenreV1DTO(id: $0.id, name: nil)
+        }
+        let legacyAnchor = PositiveAnchorEvidenceV1DTO(
+            movieID: anchor.movieID,
+            movieTitle: anchor.movieTitle,
+            reaction: anchor.reaction,
+            anchorGenres: unnamedAnchorGenres,
+            sharedGenres: unnamedSharedGenres,
+            eraMatch: anchor.eraMatch
+        )
+        let unreadableEvidence = [
+            replacingAnchor(in: evidence, anchor: legacyAnchor),
+            RecommendationEvidenceV1DTO(
+                primaryKind: "positiveGenreAffinity",
+                tasteKind: nil,
+                anchor: nil,
+                affinity: PositiveAffinityEvidenceV1DTO(
+                    genres: unnamedSharedGenres,
+                    eraStartingYear: nil
+                ),
+                diversityKind: nil
+            ),
+        ]
+        let profile = ViewerProfile(
+            profileSchemaVersion: ViewerProfile.currentSchemaVersion,
+            catalogID: .spainHouseholdV1,
+            region: .spain,
+            selectedServices: [.netflix],
+            reactions: [anchor.movieID: .loveIt]
+        )
+
+        for evidence in unreadableEvidence {
+            let bytes = try coder.encodeEnvelope(replacingEvidence(
+                in: envelope,
+                with: evidence
+            ))
+            let store = InMemoryDecisionSetDataStore(activeData: bytes)
+
+            let result = await DefaultDecisionSetRepository(store: store).load()
+            guard case let .available(decisionSet) = result else {
+                Issue.record("Expected legacy evidence to remain available for repair")
+                continue
+            }
+
+            #expect(ThreeForTonightSnapshotFactory.localRepairMovieIDs(
+                envelope: decisionSet,
+                watchlistItems: [],
+                profile: profile
+            ) == [10])
+            #expect(store.quarantineData == nil)
+        }
+    }
+
     @Test("legacy anchor metadata remains readable for trusted-input repair")
     func legacyAnchorMetadataRemainsReadable() async throws {
         let coder = JSONDecisionSetEnvelopeCoder()

@@ -203,7 +203,42 @@ struct PersistedDecisionRecommendation: Equatable, Sendable {
         display: DecisionDisplaySnapshot,
         availability: DecisionAvailabilitySnapshot
     ) throws {
-        try evidence.validateForPersistence(role: role, display: display)
+        try self.init(
+            role: role,
+            evidence: evidence,
+            display: display,
+            availability: availability,
+            requiresReadableGenreEvidence: true
+        )
+    }
+
+    static func restoringLegacyEvidence(
+        role: DecisionRole,
+        evidence: RecommendationEvidence,
+        display: DecisionDisplaySnapshot,
+        availability: DecisionAvailabilitySnapshot
+    ) throws -> Self {
+        try Self(
+            role: role,
+            evidence: evidence,
+            display: display,
+            availability: availability,
+            requiresReadableGenreEvidence: false
+        )
+    }
+
+    private init(
+        role: DecisionRole,
+        evidence: RecommendationEvidence,
+        display: DecisionDisplaySnapshot,
+        availability: DecisionAvailabilitySnapshot,
+        requiresReadableGenreEvidence: Bool
+    ) throws {
+        try evidence.validateForPersistence(
+            role: role,
+            display: display,
+            requiresReadableGenreEvidence: requiresReadableGenreEvidence
+        )
         self.role = role
         self.evidence = evidence
         self.display = display
@@ -334,7 +369,8 @@ enum DecisionSetValidationError: Error, Equatable, Sendable {
 private extension RecommendationEvidence {
     func validateForPersistence(
         role: DecisionRole,
-        display: DecisionDisplaySnapshot
+        display: DecisionDisplaySnapshot,
+        requiresReadableGenreEvidence: Bool
     ) throws {
         guard role != .safeChoice || diversity == nil else {
             throw DecisionSetValidationError.invalidEvidence
@@ -344,19 +380,27 @@ private extension RecommendationEvidence {
             case let .watchlistIntent(match):
                 switch match {
                     case let .positiveAnchor(anchor):
-                        try anchor.validateForPersistence(display: display)
+                        try anchor.validateForPersistence(
+                            display: display,
+                            requiresReadableGenreEvidence: requiresReadableGenreEvidence
+                        )
                     case let .positiveAffinity(affinity):
                         try affinity.validateForPersistence(
                             requiresGenre: false,
-                            display: display
+                            display: display,
+                            requiresReadableGenreEvidence: requiresReadableGenreEvidence
                         )
                 }
             case let .positiveAnchor(anchor):
-                try anchor.validateForPersistence(display: display)
+                try anchor.validateForPersistence(
+                    display: display,
+                    requiresReadableGenreEvidence: requiresReadableGenreEvidence
+                )
             case let .positiveGenreAffinity(affinity):
                 try affinity.validateForPersistence(
                     requiresGenre: true,
-                    display: display
+                    display: display,
+                    requiresReadableGenreEvidence: requiresReadableGenreEvidence
                 )
             case .sparseQuality:
                 break
@@ -365,7 +409,10 @@ private extension RecommendationEvidence {
 }
 
 private extension PositiveAnchorEvidence {
-    func validateForPersistence(display: DecisionDisplaySnapshot) throws {
+    func validateForPersistence(
+        display: DecisionDisplaySnapshot,
+        requiresReadableGenreEvidence: Bool
+    ) throws {
         let title = movieTitle.trimmingCharacters(in: .whitespacesAndNewlines)
         let displayGenreIDs = Set(display.genres.map(\.id))
         let evidenceGenreIDs = Set(sharedGenres.map(\.id))
@@ -374,6 +421,7 @@ private extension PositiveAnchorEvidence {
             movieID != display.movieID,
             !title.isEmpty,
             sharedGenres.allSatisfy({ $0.id > 0 }),
+            !requiresReadableGenreEvidence || sharedGenres.allSatisfy({ $0.name != nil }),
             evidenceGenreIDs.count == sharedGenres.count,
             evidenceGenreIDs.isSubset(of: displayGenreIDs),
             !sharedGenres.isEmpty || eraMatch != nil
@@ -422,12 +470,14 @@ private extension PositiveAnchorEvidence {
 private extension PositiveAffinityEvidence {
     func validateForPersistence(
         requiresGenre: Bool,
-        display: DecisionDisplaySnapshot
+        display: DecisionDisplaySnapshot,
+        requiresReadableGenreEvidence: Bool
     ) throws {
         let displayGenreIDs = Set(display.genres.map(\.id))
         let evidenceGenreIDs = Set(genres.map(\.id))
         guard
             genres.allSatisfy({ $0.id > 0 }),
+            !requiresReadableGenreEvidence || genres.allSatisfy({ $0.name != nil }),
             evidenceGenreIDs.count == genres.count,
             evidenceGenreIDs.isSubset(of: displayGenreIDs),
             !genres.isEmpty || era != nil,

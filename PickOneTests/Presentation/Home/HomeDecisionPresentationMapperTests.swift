@@ -62,6 +62,25 @@ struct HomeDecisionPresentationMapperTests {
                 + "both are from the 2020s."
         )
     }
+
+    @Test("unreadable restored evidence is not rendered with a numeric fallback")
+    func unreadableEvidenceIsNotRendered() throws {
+        let recommendations = try [
+            HomeDecisionTestFixtures.unreadableRecommendation(movieID: 101),
+            HomeDecisionTestFixtures.unreadableRecommendation(
+                movieID: 102,
+                role: .stretchChoice,
+                usesAffinity: true
+            ),
+        ]
+        let snapshot = try HomeDecisionTestFixtures.snapshot(
+            recommendations: recommendations
+        )
+
+        let model = HomeDecisionPresentationMapper.map(snapshot: snapshot)
+
+        #expect(model.items.isEmpty)
+    }
 }
 
 enum HomeDecisionTestFixtures {
@@ -147,6 +166,55 @@ enum HomeDecisionTestFixtures {
                 ],
                 verifiedAt: Date(timeIntervalSince1970: 1_700_000_000),
                 regionalWatchURL: URL(string: "https://www.themoviedb.org/movie/101/watch")
+            )
+        )
+    }
+
+    static func unreadableRecommendation(
+        movieID: Int,
+        role: DecisionRole = .safeChoice,
+        usesAffinity: Bool = false
+    ) throws -> PersistedDecisionRecommendation {
+        let unnamedDrama = DecisionGenre(id: 18)
+        let primary: RecommendationPrimaryEvidence = usesAffinity
+            ? .positiveGenreAffinity(PositiveAffinityEvidence(
+                genres: [unnamedDrama],
+                era: DecisionDecade(year: 2020)
+            ))
+            : .positiveAnchor(PositiveAnchorEvidence(
+                movieID: 201,
+                movieTitle: "Arrival",
+                reaction: .loved,
+                anchorGenres: [unnamedDrama],
+                sharedGenres: [unnamedDrama],
+                eraMatch: nil
+            ))
+        return try PersistedDecisionRecommendation.restoringLegacyEvidence(
+            role: role,
+            evidence: RecommendationEvidence(
+                primary: primary,
+                diversity: nil
+            ),
+            display: DecisionDisplaySnapshot(
+                movieID: movieID,
+                localizedTitle: "Tonight's Movie",
+                posterPath: nil,
+                backdropPath: nil,
+                runtimeMinutes: 123,
+                releaseYear: 2024,
+                genres: [unnamedDrama]
+            ),
+            availability: DecisionAvailabilitySnapshot(
+                matchingProviders: [
+                    DecisionProviderSnapshot(
+                        providerID: PilotStreamingService.netflix.providerID,
+                        name: PilotStreamingService.netflix.name,
+                        logoPath: nil,
+                        productOrder: PilotStreamingService.netflix.productOrder
+                    ),
+                ],
+                verifiedAt: Date(timeIntervalSince1970: 1_700_000_000),
+                regionalWatchURL: nil
             )
         )
     }

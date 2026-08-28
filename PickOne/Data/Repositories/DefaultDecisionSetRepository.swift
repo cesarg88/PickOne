@@ -261,7 +261,7 @@ actor DefaultDecisionSetRepository: DecisionSetRepository {
         } else {
             url = nil
         }
-        return try PersistedDecisionRecommendation(
+        return try PersistedDecisionRecommendation.restoringLegacyEvidence(
             role: mapRole(dto.role),
             evidence: map(dto.evidence),
             display: display,

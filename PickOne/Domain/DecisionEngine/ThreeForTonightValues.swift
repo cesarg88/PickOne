@@ -169,6 +169,9 @@ enum ThreeForTonightSnapshotFactory {
             if recommendation.evidence.requiresAnchorRepair(profile: profile) {
                 return movieID
             }
+            if recommendation.evidence.requiresReadableGenreRepair {
+                return movieID
+            }
             if case .watchlistIntent = recommendation.evidence.primary,
                !savedIDs.contains(movieID)
             {
@@ -180,6 +183,23 @@ enum ThreeForTonightSnapshotFactory {
 }
 
 private extension RecommendationEvidence {
+    var requiresReadableGenreRepair: Bool {
+        let genres: [DecisionGenre] = switch primary {
+            case let .watchlistIntent(match):
+                switch match {
+                    case let .positiveAnchor(anchor): anchor.sharedGenres
+                    case let .positiveAffinity(affinity): affinity.genres
+                }
+            case let .positiveAnchor(anchor):
+                anchor.sharedGenres
+            case let .positiveGenreAffinity(affinity):
+                affinity.genres
+            case .sparseQuality:
+                []
+        }
+        return genres.contains { $0.name == nil }
+    }
+
     func requiresAnchorRepair(profile: ViewerProfile) -> Bool {
         let anchor: PositiveAnchorEvidence? = switch primary {
             case let .watchlistIntent(match):
