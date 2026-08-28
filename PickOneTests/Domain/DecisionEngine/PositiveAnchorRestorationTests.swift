@@ -9,7 +9,7 @@ struct PositiveAnchorRestorationTests {
         let profile = profile(reaction: .loveIt)
         let envelope = try legacyUnnamedEnvelope(profile: profile)
         let decisionSets = CoordinatorDecisionSetRepository(loadResult: .available(envelope))
-        let sut = CoordinatorTestFixtures.makeCoordinator(
+        let sut = try CoordinatorTestFixtures.makeCoordinator(
             profile: profile,
             candidateRepository: CoordinatorCandidateRepository(),
             availabilityRepository: CoordinatorAvailabilityRepository(
@@ -19,7 +19,8 @@ struct PositiveAnchorRestorationTests {
             movieRepository: CoordinatorMovieRepository(movies: [
                 10: CoordinatorTestFixtures.movie(10),
                 155: CoordinatorTestFixtures.movie(155),
-            ])
+            ]),
+            viewerMovieStates: [reactionState(.loveIt)]
         )
 
         let result = try await sut.load()
@@ -46,7 +47,7 @@ struct PositiveAnchorRestorationTests {
             anchorGenres: nil
         )
         let decisionSets = CoordinatorDecisionSetRepository(loadResult: .available(envelope))
-        let sut = CoordinatorTestFixtures.makeCoordinator(
+        let sut = try CoordinatorTestFixtures.makeCoordinator(
             profile: profile,
             candidateRepository: CoordinatorCandidateRepository(),
             availabilityRepository: CoordinatorAvailabilityRepository(
@@ -56,13 +57,13 @@ struct PositiveAnchorRestorationTests {
             movieRepository: CoordinatorMovieRepository(movies: [
                 10: CoordinatorTestFixtures.movie(10),
                 155: CoordinatorTestFixtures.movie(155),
-            ])
+            ]),
+            viewerMovieStates: [reactionState(.loveIt)]
         )
 
-        #expect(ThreeForTonightSnapshotFactory.safeRetainedSnapshot(
+        #expect(try ThreeForTonightSnapshotFactory.safeRetainedSnapshot(
             envelope,
-            watchlistItems: [],
-            profile: profile
+            trustedState: trustedState(profile: profile, reaction: .loveIt)
         )?.decisionSet.recommendations.isEmpty == true)
 
         let result = try await sut.load()
@@ -90,15 +91,13 @@ struct PositiveAnchorRestorationTests {
             anchorGenres: [DecisionGenre(id: 18, name: "Drama")]
         )
 
-        #expect(ThreeForTonightSnapshotFactory.localRepairMovieIDs(
+        #expect(try ThreeForTonightSnapshotFactory.localRepairMovieIDs(
             envelope: envelope,
-            watchlistItems: [],
-            profile: profile
+            trustedState: trustedState(profile: profile, reaction: .likeIt)
         ) == [10])
-        #expect(ThreeForTonightSnapshotFactory.safeRetainedSnapshot(
+        #expect(try ThreeForTonightSnapshotFactory.safeRetainedSnapshot(
             envelope,
-            watchlistItems: [],
-            profile: profile
+            trustedState: trustedState(profile: profile, reaction: .likeIt)
         )?.decisionSet.recommendations.isEmpty == true)
     }
 
@@ -109,6 +108,34 @@ struct PositiveAnchorRestorationTests {
             region: .spain,
             selectedServices: [.netflix],
             reactions: [155: reaction]
+        )
+    }
+
+    private func trustedState(
+        profile: ViewerProfile,
+        reaction: MovieReaction
+    ) throws -> TrustedDecisionState {
+        try TrustedDecisionState(
+            profile: profile,
+            viewerMovieState: ViewerMovieStateSnapshot(
+                id: CoordinatorViewerMovieStateRepository.defaultSnapshotID,
+                states: [reactionState(reaction)]
+            )
+        )
+    }
+
+    private func reactionState(_ reaction: MovieReaction) throws -> ViewerMovieState {
+        try ViewerMovieState(
+            movieID: 155,
+            displayMetadata: MovieFeedbackMetadata(
+                title: "Movie 155",
+                releaseYear: 2024,
+                posterPath: nil
+            ),
+            watchState: .watched,
+            preference: .reaction(reaction),
+            watchlistIntent: nil,
+            stateChangedAt: .distantPast
         )
     }
 

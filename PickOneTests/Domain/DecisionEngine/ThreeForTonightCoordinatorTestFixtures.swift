@@ -8,20 +8,19 @@ enum CoordinatorTestFixtures {
         availabilityRepository: CoordinatorAvailabilityRepository,
         decisionSetRepository: CoordinatorDecisionSetRepository,
         movieRepository: CoordinatorMovieRepository = CoordinatorMovieRepository(),
-        watchlistRepository: any WatchlistRepository = CoordinatorWatchlistRepository(),
-        snapshotID: ViewerStateSnapshotID = CoordinatorViewerMovieStateRepository.defaultSnapshotID
+        snapshotID: ViewerStateSnapshotID = CoordinatorViewerMovieStateRepository.defaultSnapshotID,
+        viewerMovieStates: [ViewerMovieState] = []
     ) -> ThreeForTonightCoordinator {
         let profileRepository = CoordinatorProfileRepository(profile: profile)
+        let viewerMovieStateRepository = CoordinatorViewerMovieStateRepository(
+            snapshotID: snapshotID,
+            states: viewerMovieStates
+        )
         return ThreeForTonightCoordinator(
             viewerProfileRepository: profileRepository,
-            viewerMovieStateRepository: CoordinatorViewerMovieStateRepository(
-                snapshotID: snapshotID
-            ),
-            watchlistRepository: watchlistRepository,
+            viewerMovieStateRepository: viewerMovieStateRepository,
             decisionSetRepository: decisionSetRepository,
             inputAssembler: AssembleDecisionEngineInput(
-                viewerProfileRepository: profileRepository,
-                watchlistRepository: watchlistRepository,
                 candidateRepository: candidateRepository,
                 movieRepository: movieRepository,
                 availabilityRepository: availabilityRepository
@@ -124,18 +123,18 @@ enum CoordinatorTestFixtures {
         )
     }
 
-    static func watchedItem(_ movieID: Int) -> WatchlistItem {
-        WatchlistItem(
-            id: movieID,
-            addedAt: Date(timeIntervalSince1970: 3000),
-            isWatched: true,
-            movie: MovieSummary(
-                id: movieID,
+    static func watchedState(_ movieID: Int) throws -> ViewerMovieState {
+        try ViewerMovieState(
+            movieID: movieID,
+            displayMetadata: MovieFeedbackMetadata(
                 title: "Movie \(movieID)",
-                posterPath: nil,
                 releaseYear: 2024,
-                rating: 8.5
-            )
+                posterPath: nil
+            ),
+            watchState: .watched,
+            preference: nil,
+            watchlistIntent: nil,
+            stateChangedAt: Date(timeIntervalSince1970: 3000)
         )
     }
 

@@ -12,7 +12,7 @@ struct ThreeForTonightCoordinatorRepairTests {
             20: CoordinatorTestFixtures.evidence(20),
         ])
         let decisionSets = CoordinatorDecisionSetRepository(loadResult: .available(envelope))
-        let sut = CoordinatorTestFixtures.makeCoordinator(
+        let sut = try CoordinatorTestFixtures.makeCoordinator(
             candidateRepository: CoordinatorCandidateRepository(candidatesByPage: [1: [replacement]]),
             availabilityRepository: availability,
             decisionSetRepository: decisionSets,
@@ -20,9 +20,7 @@ struct ThreeForTonightCoordinatorRepairTests {
                 10: CoordinatorTestFixtures.movie(10),
                 20: CoordinatorTestFixtures.movie(20),
             ]),
-            watchlistRepository: CoordinatorWatchlistRepository(items: [
-                CoordinatorTestFixtures.watchedItem(10),
-            ])
+            viewerMovieStates: [CoordinatorTestFixtures.watchedState(10)]
         )
         let change = try #require(DecisionEligibilityChange(movieID: 10, cause: .watchlist))
 

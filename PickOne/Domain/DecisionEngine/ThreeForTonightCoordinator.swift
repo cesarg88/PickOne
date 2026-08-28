@@ -1,18 +1,17 @@
 import Foundation
 
 actor ThreeForTonightCoordinator: ThreeForTonightUseCase {
-    private let viewerProfileRepository: any ViewerProfileRepository
-    private let viewerMovieStateRepository: any ViewerMovieStateRepository
-    private let watchlistRepository: any WatchlistRepository
-    private let decisionSetRepository: any DecisionSetRepository
-    private let inputAssembler: AssembleDecisionEngineInput
-    private let envelopeComposer: DecisionSetEnvelopeComposer
-    private let memberRehydrator: DecisionMemberRehydrator
+    let trustedStateLoader: any TrustedDecisionStateLoading
+    let decisionSetRepository: any DecisionSetRepository
+    let inputAssembler: AssembleDecisionEngineInput
+    let envelopeComposer: DecisionSetEnvelopeComposer
+    let memberRehydrator: DecisionMemberRehydrator
     private let signer: any DecisionCycleSigning
-    private let selector: any DecisionSelecting
-    private let repairComposer: P1DecisionRepairComposer
-    private let migrationPlanner: DecisionSetMigrationPlanner
-    private let makeUUID: @Sendable () -> UUID
+    let selector: any DecisionSelecting
+    let repairComposer: P1DecisionRepairComposer
+    let migrationPlanner: DecisionSetMigrationPlanner
+    private let reconciliationPlanner: DecisionStateReconciliationPlanner
+    let makeUUID: @Sendable () -> UUID
 
     private var activeTask: Task<ThreeForTonightResult, Error>?
     private var activeOperationID: UUID?
@@ -20,7 +19,6 @@ actor ThreeForTonightCoordinator: ThreeForTonightUseCase {
     init(
         viewerProfileRepository: any ViewerProfileRepository,
         viewerMovieStateRepository: any ViewerMovieStateRepository,
-        watchlistRepository: any WatchlistRepository,
         decisionSetRepository: any DecisionSetRepository,
         inputAssembler: AssembleDecisionEngineInput,
         movieRepository: any MovieRepository,
@@ -32,9 +30,38 @@ actor ThreeForTonightCoordinator: ThreeForTonightUseCase {
         clock: any DecisionSetClock = SystemDecisionSetClock(),
         makeUUID: @escaping @Sendable () -> UUID = { UUID() }
     ) {
-        self.viewerProfileRepository = viewerProfileRepository
-        self.viewerMovieStateRepository = viewerMovieStateRepository
-        self.watchlistRepository = watchlistRepository
+        self.init(
+            trustedStateLoader: LoadTrustedDecisionState(
+                viewerProfileRepository: viewerProfileRepository,
+                viewerMovieStateRepository: viewerMovieStateRepository
+            ),
+            decisionSetRepository: decisionSetRepository,
+            inputAssembler: inputAssembler,
+            movieRepository: movieRepository,
+            availabilityRepository: availabilityRepository,
+            availabilityEvaluator: availabilityEvaluator,
+            signer: signer,
+            selector: selector,
+            repairComposer: repairComposer,
+            clock: clock,
+            makeUUID: makeUUID
+        )
+    }
+
+    init(
+        trustedStateLoader: any TrustedDecisionStateLoading,
+        decisionSetRepository: any DecisionSetRepository,
+        inputAssembler: AssembleDecisionEngineInput,
+        movieRepository: any MovieRepository,
+        availabilityRepository: any AvailabilityRepository,
+        availabilityEvaluator: DecisionAvailabilityEvaluator = DecisionAvailabilityEvaluator(),
+        signer: any DecisionCycleSigning,
+        selector: any DecisionSelecting = P1DecisionEngine(),
+        repairComposer: P1DecisionRepairComposer = P1DecisionRepairComposer(),
+        clock: any DecisionSetClock = SystemDecisionSetClock(),
+        makeUUID: @escaping @Sendable () -> UUID = { UUID() }
+    ) {
+        self.trustedStateLoader = trustedStateLoader
         self.decisionSetRepository = decisionSetRepository
         self.inputAssembler = inputAssembler
         envelopeComposer = DecisionSetEnvelopeComposer(
@@ -51,6 +78,7 @@ actor ThreeForTonightCoordinator: ThreeForTonightUseCase {
         self.selector = selector
         self.repairComposer = repairComposer
         migrationPlanner = DecisionSetMigrationPlanner()
+        reconciliationPlanner = DecisionStateReconciliationPlanner()
         self.makeUUID = makeUUID
     }
 
@@ -68,7 +96,15 @@ actor ThreeForTonightCoordinator: ThreeForTonightUseCase {
         try await start(.repair(change))
     }
 
-    private func start(_ request: ThreeForTonightRequest) async throws -> ThreeForTonightResult {
+    func reconcileAfterViewerStateChange(
+        _ change: DecisionViewerStateChange
+    ) async throws -> ThreeForTonightResult {
+        try await start(.reconcile(change))
+    }
+
+    private func start(
+        _ request: ThreeForTonightRequest
+    ) async throws -> ThreeForTonightResult {
         activeTask?.cancel()
         let operationID = makeUUID()
         activeOperationID = operationID
@@ -106,205 +142,9 @@ actor ThreeForTonightCoordinator: ThreeForTonightUseCase {
                     change,
                     operationID: operationID
                 )
-        }
-    }
-
-    private func performLoad(
-        operationID: UUID
-    ) async throws -> ThreeForTonightResult {
-        let trusted: TrustedLocalState
-        do {
-            trusted = try await loadTrustedLocalState()
-        } catch let error as CoordinatorError {
-            return .retryableFailure(reason: error.failureReason(recovery: false), retained: nil)
-        }
-        let signature: DecisionCycleSignature
-        do {
-            signature = try cycleSignature(for: trusted.profile)
-        } catch {
-            return .retryableFailure(reason: .profileUnavailable, retained: nil)
-        }
-
-        switch await decisionSetRepository.load() {
-            case .absent:
-                return try await generate(
-                    cycle: newCycle(signature: signature),
-                    retained: nil,
-                    recovery: false,
-                    sourceViewerStateSnapshotID: trusted.snapshotID,
-                    operationID: operationID
-                )
-            case let .migrationRequired(source):
-                return try await regenerate(
-                    from: source.cycle,
-                    currentSignature: signature,
-                    recovery: true,
-                    trusted: trusted,
-                    operationID: operationID
-                )
-            case let .recovery(reason):
-                guard reason == .corruptData || reason == .unsupportedVersion else {
-                    return .retryableFailure(reason: .recoveryFailed, retained: nil)
-                }
-                return try await generate(
-                    cycle: newCycle(signature: signature),
-                    retained: nil,
-                    recovery: true,
-                    sourceViewerStateSnapshotID: trusted.snapshotID,
-                    operationID: operationID
-                )
-            case let .available(envelope):
-                guard envelope.sourceViewerStateSnapshotID == trusted.snapshotID else {
-                    return try await regenerate(
-                        from: envelope.cycle,
-                        currentSignature: signature,
-                        recovery: false,
-                        trusted: trusted,
-                        operationID: operationID
-                    )
-                }
-                guard envelope.cycle.identitySignature == signature else {
-                    return try await generate(
-                        cycle: newCycle(signature: signature),
-                        retained: nil,
-                        recovery: false,
-                        sourceViewerStateSnapshotID: trusted.snapshotID,
-                        operationID: operationID
-                    )
-                }
-                let repairIDs = ThreeForTonightSnapshotFactory.localRepairMovieIDs(
-                    envelope: envelope,
-                    watchlistItems: trusted.watchlistItems,
-                    profile: trusted.profile
-                )
-                guard repairIDs.isEmpty else {
-                    return try await repair(
-                        envelope: envelope,
-                        reevaluatedMovieIDs: repairIDs,
-                        operationID: operationID
-                    )
-                }
-                return .usable(ThreeForTonightSnapshotFactory.snapshot(
-                    envelope,
-                    watchlistItems: trusted.watchlistItems
-                ))
-        }
-    }
-
-    private func performRefresh(
-        operationID: UUID
-    ) async throws -> ThreeForTonightResult {
-        let trusted: TrustedLocalState
-        do {
-            trusted = try await loadTrustedLocalState()
-        } catch let error as CoordinatorError {
-            return .retryableFailure(reason: error.failureReason(recovery: false), retained: nil)
-        }
-        guard let signature = try? cycleSignature(for: trusted.profile) else {
-            return .retryableFailure(reason: .profileUnavailable, retained: nil)
-        }
-
-        switch await decisionSetRepository.load() {
-            case let .available(envelope)
-            where envelope.cycle.identitySignature == signature
-            && envelope.sourceViewerStateSnapshotID == trusted.snapshotID:
-                let retained = ThreeForTonightSnapshotFactory.safeRetainedSnapshot(
-                    envelope,
-                    watchlistItems: trusted.watchlistItems,
-                    profile: trusted.profile
-                )
-                return try await generate(
-                    cycle: envelope.cycle,
-                    retained: retained,
-                    recovery: false,
-                    sourceViewerStateSnapshotID: trusted.snapshotID,
-                    operationID: operationID
-                )
-            case let .migrationRequired(source):
-                return try await regenerate(
-                    from: source.cycle,
-                    currentSignature: signature,
-                    recovery: true,
-                    trusted: trusted,
-                    operationID: operationID
-                )
-            case let .recovery(reason):
-                guard reason == .corruptData || reason == .unsupportedVersion else {
-                    return .retryableFailure(reason: .recoveryFailed, retained: nil)
-                }
-                return try await generate(
-                    cycle: newCycle(signature: signature),
-                    retained: nil,
-                    recovery: true,
-                    sourceViewerStateSnapshotID: trusted.snapshotID,
-                    operationID: operationID
-                )
-            case let .available(envelope)
-            where envelope.sourceViewerStateSnapshotID != trusted.snapshotID:
-                return try await regenerate(
-                    from: envelope.cycle,
-                    currentSignature: signature,
-                    recovery: false,
-                    trusted: trusted,
-                    operationID: operationID
-                )
-            case .absent, .available:
-                return try await generate(
-                    cycle: newCycle(signature: signature),
-                    retained: nil,
-                    recovery: false,
-                    sourceViewerStateSnapshotID: trusted.snapshotID,
-                    operationID: operationID
-                )
-        }
-    }
-
-    private func performRepairRequest(
-        _ change: DecisionEligibilityChange,
-        operationID: UUID
-    ) async throws -> ThreeForTonightResult {
-        let trusted: TrustedLocalState
-        do {
-            trusted = try await loadTrustedLocalState()
-        } catch let error as CoordinatorError {
-            return .retryableFailure(reason: error.failureReason(recovery: false), retained: nil)
-        }
-        guard let signature = try? cycleSignature(for: trusted.profile) else {
-            return .retryableFailure(reason: .profileUnavailable, retained: nil)
-        }
-        switch await decisionSetRepository.load() {
-            case let .available(envelope)
-            where envelope.cycle.identitySignature == signature
-            && envelope.sourceViewerStateSnapshotID == trusted.snapshotID:
-                return try await repair(
-                    envelope: envelope,
-                    reevaluatedMovieIDs: [change.movieID],
-                    forceAvailabilityReloadMovieID: change.availabilityMovieID,
-                    operationID: operationID
-                )
-            case let .migrationRequired(source):
-                return try await regenerate(
-                    from: source.cycle,
-                    currentSignature: signature,
-                    recovery: true,
-                    trusted: trusted,
-                    operationID: operationID
-                )
-            case let .available(envelope)
-            where envelope.sourceViewerStateSnapshotID != trusted.snapshotID:
-                return try await regenerate(
-                    from: envelope.cycle,
-                    currentSignature: signature,
-                    recovery: false,
-                    trusted: trusted,
-                    operationID: operationID
-                )
-            case .absent, .available, .recovery:
-                return try await generate(
-                    cycle: newCycle(signature: signature),
-                    retained: nil,
-                    recovery: false,
-                    sourceViewerStateSnapshotID: trusted.snapshotID,
+            case let .reconcile(change):
+                return try await performViewerStateReconciliation(
+                    change,
                     operationID: operationID
                 )
         }
@@ -312,285 +152,298 @@ actor ThreeForTonightCoordinator: ThreeForTonightUseCase {
 }
 
 private extension ThreeForTonightCoordinator {
-    private func regenerate(
-        from sourceCycle: DecisionCycle,
-        currentSignature: DecisionCycleSignature,
-        recovery: Bool,
-        trusted: TrustedLocalState,
-        operationID: UUID
-    ) async throws -> ThreeForTonightResult {
-        let cycle = try migrationPlanner.reconciledCycle(
-            sourceCycle: sourceCycle,
-            currentSignature: currentSignature,
-            makeCycleID: makeUUID
-        )
-        return try await generate(
-            cycle: cycle,
-            retained: nil,
-            recovery: recovery,
-            sourceViewerStateSnapshotID: trusted.snapshotID,
-            operationID: operationID
-        )
-    }
-
-    private func generate(
-        cycle: DecisionCycle,
-        retained: ThreeForTonightSnapshot?,
-        recovery: Bool,
-        sourceViewerStateSnapshotID: ViewerStateSnapshotID,
-        operationID: UUID
-    ) async throws -> ThreeForTonightResult {
-        do {
-            let inputSnapshot = try await inputAssembler.execute(
-                currentCycleShownMovieIDs: cycle.shownMovieIDs
-            )
-            try ensureCurrent(operationID)
-            let signature = try cycleSignature(for: inputSnapshot.profile)
-            guard signature == cycle.identitySignature else {
-                return .retryableFailure(
-                    reason: .trustedInputsChanged,
-                    retained: retained
-                )
-            }
-            let selection = selector.select(from: inputSnapshot.input)
-            let envelope = try await envelopeComposer.makeEnvelope(
-                selection: selection,
-                candidates: inputSnapshot.candidates,
-                profile: inputSnapshot.profile,
-                cycle: cycle,
-                sourceViewerStateSnapshotID: sourceViewerStateSnapshotID
-            )
-            return try await validatePersistAndPublish(
-                envelope,
-                expectedProfile: inputSnapshot.profile,
-                expectedWatchlist: inputSnapshot.watchlistItems,
-                retained: retained,
-                recovery: recovery,
-                operationID: operationID
-            )
-        } catch is CancellationError {
-            throw CancellationError()
-        } catch let error as CoordinatorError {
-            return .retryableFailure(
-                reason: error.failureReason(recovery: recovery),
-                retained: retained
-            )
-        } catch let error as DecisionEngineInputAssemblyError {
-            return .retryableFailure(
-                reason: error.failureReason(recovery: recovery),
-                retained: retained
-            )
-        } catch {
-            return .retryableFailure(
-                reason: recovery ? .recoveryFailed : .generationUnavailable,
-                retained: retained
-            )
+    func performLoad(operationID: UUID) async throws -> ThreeForTonightResult {
+        guard let trusted = await loadTrustedState() else {
+            return .retryableFailure(reason: .profileUnavailable, retained: nil)
         }
-    }
+        let signature = try cycleSignature(for: trusted)
 
-    private func repair(
-        envelope: PersistedDecisionSet,
-        reevaluatedMovieIDs: Set<Int>,
-        forceAvailabilityReloadMovieID: Int? = nil,
-        operationID: UUID
-    ) async throws -> ThreeForTonightResult {
-        let trustedBefore: TrustedLocalState
-        do {
-            trustedBefore = try await loadTrustedLocalState()
-        } catch let error as CoordinatorError {
-            return .retryableFailure(reason: error.failureReason(recovery: false), retained: nil)
-        }
-        var retained = safeRetainedSnapshot(
-            envelope,
-            trusted: trustedBefore,
-            additionallyUnsafeMovieIDs: reevaluatedMovieIDs
-        )
-
-        do {
-            var currentCandidates: [DecisionInputCandidate] = []
-            var pendingReevaluatedMovieIDs = reevaluatedMovieIDs
-            var rehydratedUnsafeMovieIDs: Set<Int> = []
-            for recommendation in envelope.recommendations {
-                try ensureCurrent(operationID)
-                let candidate = try await memberRehydrator.rehydrate(
-                    recommendation,
-                    profile: trustedBefore.profile,
-                    forceAvailabilityReload: recommendation.display.movieID
-                        == forceAvailabilityReloadMovieID
+        switch await decisionSetRepository.load() {
+            case .absent:
+                return try await generate(
+                    cycle: newCycle(signature: signature),
+                    trusted: trusted,
+                    retained: nil,
+                    recovery: false,
+                    operationID: operationID
                 )
-                currentCandidates.append(candidate)
-                pendingReevaluatedMovieIDs.remove(candidate.seed.movieID)
-                if candidate.decisionCandidate.availability != .eligible {
-                    rehydratedUnsafeMovieIDs.insert(candidate.seed.movieID)
+            case let .migrationRequired(source):
+                return try await regenerate(
+                    from: source.cycle,
+                    currentSignature: signature,
+                    recovery: true,
+                    trusted: trusted,
+                    retained: nil,
+                    operationID: operationID
+                )
+            case let .recovery(reason):
+                guard reason == .corruptData || reason == .unsupportedVersion else {
+                    return .retryableFailure(reason: .recoveryFailed, retained: nil)
                 }
-                retained = safeRetainedSnapshot(
+                return try await generate(
+                    cycle: newCycle(signature: signature),
+                    trusted: trusted,
+                    retained: nil,
+                    recovery: true,
+                    operationID: operationID
+                )
+            case let .available(envelope):
+                let retained = safeRetainedSnapshot(envelope, trusted: trusted)
+                guard envelope.sourceViewerStateSnapshotID == trusted.snapshotID,
+                      envelope.cycle.identitySignature == signature
+                else {
+                    return try await regenerate(
+                        from: envelope.cycle,
+                        currentSignature: signature,
+                        recovery: false,
+                        trusted: trusted,
+                        retained: retained,
+                        operationID: operationID
+                    )
+                }
+                let repairIDs = ThreeForTonightSnapshotFactory.localRepairMovieIDs(
+                    envelope: envelope,
+                    trustedState: trusted
+                )
+                guard repairIDs.isEmpty else {
+                    return try await repair(
+                        envelope: envelope,
+                        trusted: trusted,
+                        reevaluatedMovieIDs: repairIDs,
+                        operationID: operationID
+                    )
+                }
+                return .usable(ThreeForTonightSnapshotFactory.snapshot(
                     envelope,
-                    trusted: trustedBefore,
-                    additionallyUnsafeMovieIDs: pendingReevaluatedMovieIDs
-                        .union(rehydratedUnsafeMovieIDs)
-                )
-            }
-
-            let currentMovieIDs = Set(envelope.recommendations.map(\.display.movieID))
-            let currentReevaluatedMovieIDs = reevaluatedMovieIDs.intersection(currentMovieIDs)
-            let selectionExclusions = envelope.cycle.shownMovieIDs
-                .subtracting(currentReevaluatedMovieIDs)
-            let assembled = try await inputAssembler.execute(
-                currentCycleShownMovieIDs: selectionExclusions
-            )
-            let currentByID = Dictionary(
-                uniqueKeysWithValues: currentCandidates.map {
-                    ($0.seed.movieID, $0)
-                }
-            )
-            let allCandidates = currentCandidates + assembled.candidates.filter {
-                currentByID[$0.seed.movieID] == nil
-            }
-            let input = DecisionEngineInput(
-                profile: assembled.input.profile,
-                candidates: allCandidates.map(\.decisionCandidate),
-                watchlistWatchedMovieIDs: assembled.input.watchlistWatchedMovieIDs,
-                savedUnwatchedMovieIDs: assembled.input.savedUnwatchedMovieIDs,
-                currentCycleShownMovieIDs: selectionExclusions
-            )
-            let mandatoryIDs = Set(envelope.recommendations.map(\.display.movieID))
-                .subtracting(reevaluatedMovieIDs)
-                .union(reevaluatedMovieIDs.filter { movieID in
-                    input.candidates.contains {
-                        $0.movieID == movieID && $0.availability == .eligible
-                    } && !input.watchlistWatchedMovieIDs.contains(movieID)
-                })
-            let selection = repairComposer.compose(
-                input: input,
-                mandatoryRetainedMovieIDs: mandatoryIDs
-            )
-            let repairedEnvelope = try await envelopeComposer.makeEnvelope(
-                selection: selection,
-                candidates: allCandidates,
-                profile: assembled.profile,
-                cycle: envelope.cycle,
-                sourceViewerStateSnapshotID: trustedBefore.snapshotID
-            )
-            return try await validatePersistAndPublish(
-                repairedEnvelope,
-                expectedProfile: assembled.profile,
-                expectedWatchlist: assembled.watchlistItems,
-                retained: retained,
-                recovery: false,
-                operationID: operationID
-            )
-        } catch is CancellationError {
-            throw CancellationError()
-        } catch {
-            return .retryableFailure(reason: .repairFailed, retained: retained)
+                    trustedState: trusted
+                ))
         }
     }
 
-    private func validatePersistAndPublish(
-        _ envelope: PersistedDecisionSet,
-        expectedProfile: ViewerProfile,
-        expectedWatchlist: [WatchlistItem],
-        retained: ThreeForTonightSnapshot?,
-        recovery: Bool,
+    func performRefresh(operationID: UUID) async throws -> ThreeForTonightResult {
+        guard let trusted = await loadTrustedState() else {
+            return .retryableFailure(reason: .profileUnavailable, retained: nil)
+        }
+        let signature = try cycleSignature(for: trusted)
+
+        switch await decisionSetRepository.load() {
+            case let .available(envelope)
+            where envelope.cycle.identitySignature == signature
+            && envelope.sourceViewerStateSnapshotID == trusted.snapshotID:
+                return try await generate(
+                    cycle: envelope.cycle,
+                    trusted: trusted,
+                    retained: safeRetainedSnapshot(envelope, trusted: trusted),
+                    recovery: false,
+                    operationID: operationID
+                )
+            case let .available(envelope):
+                return try await regenerate(
+                    from: envelope.cycle,
+                    currentSignature: signature,
+                    recovery: false,
+                    trusted: trusted,
+                    retained: safeRetainedSnapshot(envelope, trusted: trusted),
+                    operationID: operationID
+                )
+            case let .migrationRequired(source):
+                return try await regenerate(
+                    from: source.cycle,
+                    currentSignature: signature,
+                    recovery: true,
+                    trusted: trusted,
+                    retained: nil,
+                    operationID: operationID
+                )
+            case let .recovery(reason):
+                guard reason == .corruptData || reason == .unsupportedVersion else {
+                    return .retryableFailure(reason: .recoveryFailed, retained: nil)
+                }
+                return try await generate(
+                    cycle: newCycle(signature: signature),
+                    trusted: trusted,
+                    retained: nil,
+                    recovery: true,
+                    operationID: operationID
+                )
+            case .absent:
+                return try await generate(
+                    cycle: newCycle(signature: signature),
+                    trusted: trusted,
+                    retained: nil,
+                    recovery: false,
+                    operationID: operationID
+                )
+        }
+    }
+
+    func performRepairRequest(
+        _ change: DecisionEligibilityChange,
         operationID: UUID
     ) async throws -> ThreeForTonightResult {
-        try ensureCurrent(operationID)
-        guard await trustedInputsMatch(
-            profile: expectedProfile,
-            watchlistItems: expectedWatchlist
-        ) else {
-            return .retryableFailure(
-                reason: .trustedInputsChanged,
-                retained: retained
-            )
+        guard let trusted = await loadTrustedState() else {
+            return .retryableFailure(reason: .profileUnavailable, retained: nil)
         }
-        do {
-            try await decisionSetRepository.replace(envelope)
-        } catch is CancellationError {
-            throw CancellationError()
-        } catch {
-            return .retryableFailure(
-                reason: recovery ? .recoveryFailed : .persistenceFailed,
-                retained: retained
-            )
+        let signature = try cycleSignature(for: trusted)
+
+        switch await decisionSetRepository.load() {
+            case let .available(envelope)
+            where envelope.cycle.identitySignature == signature:
+                return try await repair(
+                    envelope: envelope,
+                    trusted: trusted,
+                    reevaluatedMovieIDs: [change.movieID],
+                    forceAvailabilityReloadMovieID: change.availabilityMovieID,
+                    operationID: operationID
+                )
+            case let .available(envelope):
+                return try await regenerate(
+                    from: envelope.cycle,
+                    currentSignature: signature,
+                    recovery: false,
+                    trusted: trusted,
+                    retained: safeRetainedSnapshot(envelope, trusted: trusted),
+                    operationID: operationID
+                )
+            case let .migrationRequired(source):
+                return try await regenerate(
+                    from: source.cycle,
+                    currentSignature: signature,
+                    recovery: true,
+                    trusted: trusted,
+                    retained: nil,
+                    operationID: operationID
+                )
+            case .absent, .recovery:
+                return try await generate(
+                    cycle: newCycle(signature: signature),
+                    trusted: trusted,
+                    retained: nil,
+                    recovery: false,
+                    operationID: operationID
+                )
         }
-        try ensureCurrent(operationID)
-        guard await trustedInputsMatch(
-            profile: expectedProfile,
-            watchlistItems: expectedWatchlist
-        ) else {
-            return .retryableFailure(
-                reason: .trustedInputsChanged,
-                retained: retained
-            )
-        }
-        return .usable(ThreeForTonightSnapshotFactory.snapshot(
-            envelope,
-            watchlistItems: expectedWatchlist
-        ))
     }
 
-    private func loadTrustedLocalState() async throws -> TrustedLocalState {
-        guard case let .completed(profile, _) = await viewerProfileRepository.loadState() else {
-            throw CoordinatorError.profileUnavailable
+    func performViewerStateReconciliation(
+        _ change: DecisionViewerStateChange,
+        operationID: UUID
+    ) async throws -> ThreeForTonightResult {
+        guard let trusted = await loadTrustedState() else {
+            return .retryableFailure(reason: .profileUnavailable, retained: nil)
         }
-        let watchlistItems: [WatchlistItem]
+        guard trusted.snapshotID == change.snapshotID else {
+            return .retryableFailure(reason: .trustedInputsChanged, retained: nil)
+        }
+        let signature = try cycleSignature(for: trusted)
+
+        switch await decisionSetRepository.load() {
+            case let .available(envelope):
+                let retained = safeRetainedSnapshot(envelope, trusted: trusted)
+                let plan = try reconciliationPlanner.plan(
+                    change: change,
+                    sourceCycle: envelope.cycle,
+                    currentSignature: signature,
+                    makeCycleID: makeUUID
+                )
+                switch plan {
+                    case .none:
+                        guard envelope.sourceViewerStateSnapshotID == trusted.snapshotID,
+                              envelope.cycle.identitySignature == signature,
+                              let retained
+                        else {
+                            return .retryableFailure(
+                                reason: .trustedInputsChanged,
+                                retained: retained
+                            )
+                        }
+                        return .usable(retained)
+                    case let .successorCycle(cycle):
+                        return try await generate(
+                            cycle: cycle,
+                            trusted: trusted,
+                            retained: retained,
+                            recovery: false,
+                            operationID: operationID
+                        )
+                    case let .repair(movieID):
+                        guard envelope.cycle.identitySignature == signature else {
+                            return try await regenerate(
+                                from: envelope.cycle,
+                                currentSignature: signature,
+                                recovery: false,
+                                trusted: trusted,
+                                retained: retained,
+                                operationID: operationID
+                            )
+                        }
+                        return try await repair(
+                            envelope: envelope,
+                            trusted: trusted,
+                            reevaluatedMovieIDs: [movieID],
+                            operationID: operationID
+                        )
+                }
+            case let .migrationRequired(source):
+                return try await regenerate(
+                    from: source.cycle,
+                    currentSignature: signature,
+                    recovery: true,
+                    trusted: trusted,
+                    retained: nil,
+                    operationID: operationID
+                )
+            case .absent, .recovery:
+                guard change.impact != .none else {
+                    return .retryableFailure(reason: .trustedInputsChanged, retained: nil)
+                }
+                return try await generate(
+                    cycle: newCycle(signature: signature),
+                    trusted: trusted,
+                    retained: nil,
+                    recovery: false,
+                    operationID: operationID
+                )
+        }
+    }
+}
+
+extension ThreeForTonightCoordinator {
+    func loadTrustedState() async -> TrustedDecisionState? {
         do {
-            watchlistItems = try await watchlistRepository.loadAllItems()
+            return try await trustedStateLoader.load()
         } catch {
-            throw CoordinatorError.watchlistUnavailable
+            return nil
         }
-        let snapshot: ViewerMovieStateSnapshot
-        do {
-            snapshot = try await viewerMovieStateRepository.snapshot()
-        } catch {
-            throw CoordinatorError.profileUnavailable
-        }
-        return TrustedLocalState(
-            profile: profile,
-            watchlistItems: watchlistItems,
-            snapshotID: snapshot.id
-        )
     }
 
-    private func safeRetainedSnapshot(
+    func safeRetainedSnapshot(
         _ envelope: PersistedDecisionSet,
-        trusted: TrustedLocalState,
-        additionallyUnsafeMovieIDs: Set<Int>
+        trusted: TrustedDecisionState,
+        additionallyUnsafeMovieIDs: Set<Int> = []
     ) -> ThreeForTonightSnapshot? {
         ThreeForTonightSnapshotFactory.safeRetainedSnapshot(
             envelope,
-            watchlistItems: trusted.watchlistItems,
-            profile: trusted.profile,
+            trustedState: trusted,
             additionallyUnsafeMovieIDs: additionallyUnsafeMovieIDs
         )
     }
 
-    private func trustedInputsMatch(
-        profile: ViewerProfile,
-        watchlistItems: [WatchlistItem]
-    ) async -> Bool {
-        guard case let .completed(currentProfile, _) = await viewerProfileRepository.loadState(),
-              currentProfile == profile,
-              let currentWatchlist = try? await watchlistRepository.loadAllItems()
-        else {
-            return false
-        }
-        return currentWatchlist == watchlistItems
-    }
-
-    private func cycleSignature(for profile: ViewerProfile) throws -> DecisionCycleSignature {
+    func cycleSignature(
+        for trusted: TrustedDecisionState
+    ) throws -> DecisionCycleSignature {
         try signer.signature(for: DecisionCycleIdentity(
             engineModelVersion: .p1Model,
-            profile: profile
+            profile: trusted.profile,
+            reactions: trusted.reactions
         ))
     }
 
-    private func newCycle(signature: DecisionCycleSignature) throws -> DecisionCycle {
+    func newCycle(signature: DecisionCycleSignature) throws -> DecisionCycle {
         try DecisionCycle(id: makeUUID(), identitySignature: signature)
     }
 
-    private func ensureCurrent(_ operationID: UUID) throws {
+    func ensureCurrent(_ operationID: UUID) throws {
         try Task.checkCancellation()
         guard activeOperationID == operationID else {
             throw CancellationError()

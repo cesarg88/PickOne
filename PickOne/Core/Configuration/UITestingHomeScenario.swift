@@ -15,6 +15,12 @@ struct UITestingThreeForTonightUseCase: ThreeForTonightUseCase {
         try .usable(Self.snapshot())
     }
 
+    func reconcileAfterViewerStateChange(
+        _ change: DecisionViewerStateChange
+    ) async throws -> ThreeForTonightResult {
+        try .usable(Self.snapshot())
+    }
+
     private static func snapshot() throws -> ThreeForTonightSnapshot {
         guard
             let signature = DecisionCycleSignature(

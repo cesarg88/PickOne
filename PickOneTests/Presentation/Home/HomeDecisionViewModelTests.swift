@@ -81,6 +81,63 @@ struct HomeDecisionViewModelTests {
         #expect(await useCase.recordedRepairs() == [change])
     }
 
+    @Test("successful reconciliation shows transient feedback only after publication")
+    func successfulReconciliationShowsTransientFeedback() async throws {
+        let snapshot = try HomeDecisionTestFixtures.snapshot()
+        let gate = HomeDecisionOperationGate()
+        let useCase = GatedHomeDecisionUseCase(
+            loadResult: .usable(snapshot),
+            repairResult: .usable(snapshot),
+            gate: gate
+        )
+        let sut = HomeDecisionViewModel(
+            threeForTonight: useCase,
+            feedbackDuration: .milliseconds(20)
+        )
+        let change = try #require(
+            DecisionEligibilityChange(movieID: 101, cause: .watchlist)
+        )
+
+        sut.repair(after: change)
+        await useCase.waitForRepairStart()
+        #expect(sut.updateFeedback == nil)
+
+        await gate.open()
+        await waitForUpdateFeedback(in: sut)
+        #expect(sut.updateFeedback == "Recommendations updated.")
+
+        await waitForUpdateFeedbackDismissal(in: sut)
+        #expect(sut.updateFeedback == nil)
+    }
+
+    @Test("failed reconciliation and semantic no-op show no update feedback")
+    func unsuccessfulOrNoOpReconciliationShowsNoFeedback() async throws {
+        let snapshot = try HomeDecisionTestFixtures.snapshot()
+        let useCase = HomeDecisionUseCase(results: [
+            .success(.retryableFailure(reason: .repairFailed, retained: snapshot)),
+        ])
+        let sut = HomeDecisionViewModel(threeForTonight: useCase)
+        let repair = try #require(
+            DecisionEligibilityChange(movieID: 101, cause: .watchlist)
+        )
+
+        sut.repair(after: repair)
+        await useCase.waitForCallCount(1)
+        await waitUntilSettled(sut)
+        #expect(sut.updateFeedback == nil)
+
+        let noOp = try #require(DecisionViewerStateChange(
+            movieID: 101,
+            impact: .none,
+            snapshotID: ViewerStateSnapshotID(rawValue: UUID())
+        ))
+        sut.reconcile(after: noOp)
+        await Task.yield()
+
+        #expect(await useCase.recordedCallCount() == 1)
+        #expect(sut.updateFeedback == nil)
+    }
+
     @Test("blocking failure retries into usable content")
     func blockingFailureRetries() async throws {
         let snapshot = try HomeDecisionTestFixtures.snapshot()
@@ -218,6 +275,22 @@ struct HomeDecisionViewModelTests {
             await Task.yield()
         }
     }
+
+    private func waitForUpdateFeedback(
+        in sut: HomeDecisionViewModel
+    ) async {
+        for _ in 0 ..< 100 where sut.updateFeedback == nil {
+            await Task.yield()
+        }
+    }
+
+    private func waitForUpdateFeedbackDismissal(
+        in sut: HomeDecisionViewModel
+    ) async {
+        for _ in 0 ..< 100 where sut.updateFeedback != nil {
+            try? await Task.sleep(for: .milliseconds(2))
+        }
+    }
 }
 
 private actor HomeDecisionOperationGate {
@@ -288,6 +361,22 @@ private actor GatedHomeDecisionUseCase: ThreeForTonightUseCase {
         return repairResult
     }
 
+    func reconcileAfterViewerStateChange(
+        _ change: DecisionViewerStateChange
+    ) async throws -> ThreeForTonightResult {
+        guard let repair = DecisionEligibilityChange(
+            movieID: change.movieID,
+            cause: .watchlist
+        ) else {
+            throw HomeDecisionTestError.missingResult
+        }
+        repairs.append(repair)
+        repairStarted = true
+        await gate.wait()
+        try Task.checkCancellation()
+        return repairResult
+    }
+
     func waitForRepairStart() async {
         while !repairStarted {
             await Task.yield()
@@ -339,6 +428,19 @@ private actor HomeDecisionUseCase: ThreeForTonightUseCase {
         return try nextResult()
     }
 
+    func reconcileAfterViewerStateChange(
+        _ change: DecisionViewerStateChange
+    ) async throws -> ThreeForTonightResult {
+        guard let repair = DecisionEligibilityChange(
+            movieID: change.movieID,
+            cause: .watchlist
+        ) else {
+            throw HomeDecisionTestError.missingResult
+        }
+        repairs.append(repair)
+        return try nextResult()
+    }
+
     func waitForCallCount(_ expectedCount: Int) async {
         while callCount < expectedCount {
             await Task.yield()
@@ -347,6 +449,10 @@ private actor HomeDecisionUseCase: ThreeForTonightUseCase {
 
     func recordedRepairs() -> [DecisionEligibilityChange] {
         repairs
+    }
+
+    func recordedCallCount() -> Int {
+        callCount
     }
 
     private func nextResult() throws -> ThreeForTonightResult {

@@ -25,6 +25,7 @@ struct DecisionCycleIdentity: Equatable, Sendable {
     init(
         engineModelVersion: DecisionEngineModelVersion,
         profile: ViewerProfile,
+        reactions currentReactions: [Int: MovieReaction],
         viewingContext: DecisionViewingContext = .milestone6DefaultV1
     ) {
         self.engineModelVersion = engineModelVersion
@@ -32,10 +33,36 @@ struct DecisionCycleIdentity: Equatable, Sendable {
         calibrationCatalogVersion = profile.catalogID.rawValue
         region = profile.region
         selectedProviderIDs = Array(Set(profile.selectedServices.map(\.providerID))).sorted()
-        reactions = profile.reactions
-            .map { DecisionIdentityReaction(movieID: $0.key, reaction: $0.value) }
+        reactions = currentReactions
+            .map {
+                DecisionIdentityReaction(
+                    movieID: $0.key,
+                    reaction: $0.value.calibrationReaction
+                )
+            }
             .sorted { $0.movieID < $1.movieID }
         self.viewingContext = viewingContext
+    }
+
+    init(
+        engineModelVersion: DecisionEngineModelVersion,
+        profile: ViewerProfile,
+        viewingContext: DecisionViewingContext = .milestone6DefaultV1
+    ) {
+        self.init(
+            engineModelVersion: engineModelVersion,
+            profile: profile,
+            reactions: profile.reactions.compactMapValues { reaction in
+                switch reaction {
+                    case .loveIt: .loveIt
+                    case .likeIt: .likeIt
+                    case .itWasOkay: .itWasOkay
+                    case .didNotLikeIt: .didNotLikeIt
+                    case .haveNotSeenIt, .doNotKnowIt: nil
+                }
+            },
+            viewingContext: viewingContext
+        )
     }
 }
 

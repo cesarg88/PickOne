@@ -16,6 +16,7 @@ struct HomeDecisionView: View {
         NavigationStack(path: $navigationPath) {
             HomeDecisionContent(
                 state: model.state,
+                updateFeedback: model.updateFeedback,
                 imagePipeline: imagePipeline,
                 refresh: model.refresh,
                 retry: model.load
@@ -51,11 +52,29 @@ struct HomeDecisionView: View {
 @MainActor
 private struct HomeDecisionContent: View {
     let state: HomeDecisionViewState
+    let updateFeedback: String?
     let imagePipeline: ImagePipeline
     let refresh: () -> Void
     let retry: () -> Void
 
     var body: some View {
+        content
+            .overlay(alignment: .top) {
+                if let updateFeedback {
+                    Label(updateFeedback, systemImage: "checkmark.circle")
+                        .font(.footnote.weight(.medium))
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 10)
+                        .background(.regularMaterial, in: .capsule)
+                        .padding(.top, 8)
+                        .allowsHitTesting(false)
+                        .accessibilityIdentifier("home-recommendations-updated")
+                }
+            }
+    }
+
+    @ViewBuilder
+    private var content: some View {
         switch state {
             case .idle, .loading:
                 ProgressView("Finding tonight's picks...")

@@ -368,6 +368,24 @@ extension DecisionSetEvidenceRecoveryTests {
             selectedServices: [.netflix],
             reactions: [anchor.movieID: .loveIt]
         )
+        let trustedState = try TrustedDecisionState(
+            profile: profile,
+            viewerMovieState: ViewerMovieStateSnapshot(
+                id: ViewerStateSnapshotID(rawValue: UUID()),
+                states: [ViewerMovieState(
+                    movieID: anchor.movieID,
+                    displayMetadata: MovieFeedbackMetadata(
+                        title: anchor.movieTitle,
+                        releaseYear: nil,
+                        posterPath: nil
+                    ),
+                    watchState: .watched,
+                    preference: .reaction(.loveIt),
+                    watchlistIntent: nil,
+                    stateChangedAt: .distantPast
+                )]
+            )
+        )
 
         for evidence in unreadableEvidence {
             let bytes = try coder.encodeEnvelope(replacingEvidence(
@@ -384,8 +402,7 @@ extension DecisionSetEvidenceRecoveryTests {
 
             #expect(ThreeForTonightSnapshotFactory.localRepairMovieIDs(
                 envelope: decisionSet,
-                watchlistItems: [],
-                profile: profile
+                trustedState: trustedState
             ) == [10])
             #expect(store.quarantineData == nil)
         }

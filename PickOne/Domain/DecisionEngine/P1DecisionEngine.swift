@@ -7,19 +7,19 @@ struct P1DecisionEngine: DecisionSelecting, Sendable {
         from input: DecisionEngineInput,
         allowingShownMovieIDs: Set<Int> = []
     ) -> [RankedDecisionCandidate] {
-        let calibrationWatchedMovieIDs = Set(
+        let reactionMovieIDs = Set(
             input.profile.evidence
                 .filter(\.reaction.meansWatchedInCalibration)
                 .map(\.movieID)
         )
-        let watchedMovieIDs = calibrationWatchedMovieIDs.union(
-            input.watchlistWatchedMovieIDs
+        let excludedMovieIDs = input.recommendationExcludedMovieIDs.union(
+            reactionMovieIDs
         )
         return input.candidates.compactMap { candidate in
             scoreEligibleCandidate(
                 candidate,
                 input: input,
-                watchedMovieIDs: watchedMovieIDs,
+                excludedMovieIDs: excludedMovieIDs,
                 allowingShownMovieIDs: allowingShownMovieIDs
             )
         }
@@ -63,11 +63,11 @@ struct P1DecisionEngine: DecisionSelecting, Sendable {
     private func scoreEligibleCandidate(
         _ candidate: DecisionCandidate,
         input: DecisionEngineInput,
-        watchedMovieIDs: Set<Int>,
+        excludedMovieIDs: Set<Int>,
         allowingShownMovieIDs: Set<Int>
     ) -> RankedDecisionCandidate? {
         guard
-            !watchedMovieIDs.contains(candidate.movieID),
+            !excludedMovieIDs.contains(candidate.movieID),
             allowingShownMovieIDs.contains(candidate.movieID)
             || !input.currentCycleShownMovieIDs.contains(candidate.movieID),
             candidate.availability == .eligible

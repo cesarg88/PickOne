@@ -36,7 +36,7 @@ struct DecisionCandidate: Equatable, Sendable {
 struct DecisionEngineInput: Equatable, Sendable {
     let profile: P1TasteProfile
     let candidates: [DecisionCandidate]
-    let watchlistWatchedMovieIDs: Set<Int>
+    let recommendationExcludedMovieIDs: Set<Int>
     let savedUnwatchedMovieIDs: Set<Int>
     let currentCycleShownMovieIDs: Set<Int>
 }
