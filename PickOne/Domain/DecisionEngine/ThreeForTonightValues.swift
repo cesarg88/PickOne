@@ -102,11 +102,13 @@ enum ThreeForTonightSnapshotFactory {
     static func safeRetainedSnapshot(
         _ envelope: PersistedDecisionSet,
         trustedState: TrustedDecisionState,
+        currentCycleSignature: DecisionCycleSignature,
         additionallyUnsafeMovieIDs: Set<Int> = []
     ) -> ThreeForTonightSnapshot? {
         let unsafeMovieIDs = localRepairMovieIDs(
             envelope: envelope,
-            trustedState: trustedState
+            trustedState: trustedState,
+            currentCycleSignature: currentCycleSignature
         ).union(additionallyUnsafeMovieIDs)
         guard !unsafeMovieIDs.isEmpty else {
             return snapshot(envelope, trustedState: trustedState)
@@ -149,10 +151,11 @@ enum ThreeForTonightSnapshotFactory {
 
     static func localRepairMovieIDs(
         envelope: PersistedDecisionSet,
-        trustedState: TrustedDecisionState
+        trustedState: TrustedDecisionState,
+        currentCycleSignature: DecisionCycleSignature
     ) -> Set<Int> {
-        let requiresCurrentTasteEvidence =
-            envelope.sourceViewerStateSnapshotID != trustedState.snapshotID
+        let hasStaleTasteEvidence =
+            envelope.cycle.identitySignature != currentCycleSignature
         return Set(envelope.recommendations.compactMap { recommendation in
             let movieID = recommendation.display.movieID
             if trustedState.recommendationExcludedMovieIDs.contains(movieID) {
@@ -166,7 +169,7 @@ enum ThreeForTonightSnapshotFactory {
             if recommendation.evidence.requiresReadableGenreRepair {
                 return movieID
             }
-            if requiresCurrentTasteEvidence,
+            if hasStaleTasteEvidence,
                recommendation.evidence.requiresTasteEvidenceRepair(
                    reactions: trustedState.reactions
                )

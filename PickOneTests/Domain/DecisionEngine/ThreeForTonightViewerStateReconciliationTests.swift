@@ -96,6 +96,51 @@ struct ViewerStateReconciliationTests {
         #expect(snapshot.decisionSet.sourceViewerStateSnapshotID == snapshotID)
     }
 
+    @Test("eligibility-only identity change retains unaffected affinity on repair failure")
+    func eligibilityOnlyIdentityChangeRetainsAffinityOnFailure() async throws {
+        let profile = profile(reactions: [155: .loveIt])
+        let affinity = PositiveAffinityEvidence(
+            genres: [DecisionGenre(id: 18, name: "Drama")],
+            era: nil
+        )
+        let source = try CoordinatorTestFixtures.envelope(
+            currentMovieIDs: [10],
+            profile: profile,
+            primaryEvidence: .positiveGenreAffinity(affinity)
+        )
+        let snapshotID = ViewerStateSnapshotID(rawValue: UUID())
+        let reaction = try viewerState(movieID: 155, preference: .reaction(.loveIt))
+        let watched = try CoordinatorTestFixtures.watchedState(166)
+        let candidates = CoordinatorCandidateRepository()
+        let decisionSets = CoordinatorDecisionSetRepository(loadResult: .available(source))
+        let sut = CoordinatorTestFixtures.makeCoordinator(
+            profile: profile,
+            candidateRepository: candidates,
+            availabilityRepository: CoordinatorAvailabilityRepository(),
+            decisionSetRepository: decisionSets,
+            movieRepository: CoordinatorMovieRepository(movies: [:]),
+            snapshotID: snapshotID,
+            viewerMovieStates: [reaction, watched]
+        )
+        let change = try #require(DecisionViewerStateChange(
+            movieID: 166,
+            impact: .eligibilityChanged,
+            snapshotID: snapshotID
+        ))
+
+        let result = try await sut.reconcileAfterViewerStateChange(change)
+
+        #expect(result == .retryableFailure(
+            reason: .repairFailed,
+            retained: ThreeForTonightSnapshot(
+                decisionSet: source,
+                savedMovieIDs: []
+            )
+        ))
+        #expect(await candidates.requestedPages.isEmpty)
+        #expect(await decisionSets.replacements.isEmpty)
+    }
+
     @Test("semantic no-op performs no generation, repair, or persistence")
     func semanticNoOpPerformsNoWork() async throws {
         let profile = profile()
@@ -164,7 +209,7 @@ struct ViewerStateReconciliationTests {
     }
 
     @Test(
-        "incomplete Taste hydration removes stale positive-affinity evidence",
+        "reaction-signature change removes unprovable positive-affinity evidence",
         arguments: AffinityEvidencePlacement.allCases
     )
     func incompleteTasteHydrationRemovesAffinityEvidence(

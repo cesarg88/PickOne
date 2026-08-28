@@ -14,9 +14,10 @@ struct RetainedDecisionEvidenceTests {
         ])
 
         let retained = try #require(
-            ThreeForTonightSnapshotFactory.safeRetainedSnapshot(
+            try ThreeForTonightSnapshotFactory.safeRetainedSnapshot(
                 source,
-                trustedState: trusted
+                trustedState: trusted,
+                currentCycleSignature: signature(for: trusted)
             )
         )
 
@@ -33,9 +34,10 @@ struct RetainedDecisionEvidenceTests {
         ])
 
         let retained = try #require(
-            ThreeForTonightSnapshotFactory.safeRetainedSnapshot(
+            try ThreeForTonightSnapshotFactory.safeRetainedSnapshot(
                 source,
-                trustedState: trusted
+                trustedState: trusted,
+                currentCycleSignature: signature(for: trusted)
             )
         )
 
@@ -66,5 +68,15 @@ struct RetainedDecisionEvidenceTests {
                 states: states
             )
         )
+    }
+
+    private func signature(
+        for trusted: TrustedDecisionState
+    ) throws -> DecisionCycleSignature {
+        try StableDecisionCycleSigner().signature(for: DecisionCycleIdentity(
+            engineModelVersion: .p1Model,
+            profile: trusted.profile,
+            reactions: trusted.reactions
+        ))
     }
 }

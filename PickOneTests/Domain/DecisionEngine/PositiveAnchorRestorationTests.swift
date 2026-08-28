@@ -61,9 +61,11 @@ struct PositiveAnchorRestorationTests {
             viewerMovieStates: [reactionState(.loveIt)]
         )
 
+        let trusted = try trustedState(profile: profile, reaction: .loveIt)
         #expect(try ThreeForTonightSnapshotFactory.safeRetainedSnapshot(
             envelope,
-            trustedState: trustedState(profile: profile, reaction: .loveIt)
+            trustedState: trusted,
+            currentCycleSignature: signature(for: trusted)
         )?.decisionSet.recommendations.isEmpty == true)
 
         let result = try await sut.load()
@@ -91,13 +93,17 @@ struct PositiveAnchorRestorationTests {
             anchorGenres: [DecisionGenre(id: 18, name: "Drama")]
         )
 
-        #expect(try ThreeForTonightSnapshotFactory.localRepairMovieIDs(
+        let trusted = try trustedState(profile: profile, reaction: .likeIt)
+        let signature = try signature(for: trusted)
+        #expect(ThreeForTonightSnapshotFactory.localRepairMovieIDs(
             envelope: envelope,
-            trustedState: trustedState(profile: profile, reaction: .likeIt)
+            trustedState: trusted,
+            currentCycleSignature: signature
         ) == [10])
-        #expect(try ThreeForTonightSnapshotFactory.safeRetainedSnapshot(
+        #expect(ThreeForTonightSnapshotFactory.safeRetainedSnapshot(
             envelope,
-            trustedState: trustedState(profile: profile, reaction: .likeIt)
+            trustedState: trusted,
+            currentCycleSignature: signature
         )?.decisionSet.recommendations.isEmpty == true)
     }
 
@@ -137,6 +143,16 @@ struct PositiveAnchorRestorationTests {
             watchlistIntent: nil,
             stateChangedAt: .distantPast
         )
+    }
+
+    private func signature(
+        for trusted: TrustedDecisionState
+    ) throws -> DecisionCycleSignature {
+        try StableDecisionCycleSigner().signature(for: DecisionCycleIdentity(
+            engineModelVersion: .p1Model,
+            profile: trusted.profile,
+            reactions: trusted.reactions
+        ))
     }
 
     private func envelope(

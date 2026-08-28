@@ -130,10 +130,9 @@ final class HomeDecisionViewModel {
             case let .usable(snapshot):
                 apply(snapshot: snapshot, refreshError: nil)
                 if operation.isReconciliation {
-                    pendingReconciliations.removeAll {
-                        $0.viewerStateSnapshotID
-                            == snapshot.decisionSet.sourceViewerStateSnapshotID
-                    }
+                    coalesceViewerStateChanges(
+                        through: snapshot.decisionSet.sourceViewerStateSnapshotID
+                    )
                     showUpdateFeedback()
                 }
             case let .retryableFailure(reason, retained):
@@ -156,6 +155,24 @@ final class HomeDecisionViewModel {
             return
         }
         start(operation)
+    }
+
+    private func coalesceViewerStateChanges(
+        through publishedSnapshotID: ViewerStateSnapshotID
+    ) {
+        guard let publishedIndex = pendingReconciliations.firstIndex(where: {
+            $0.viewerStateSnapshotID == publishedSnapshotID
+        }) else {
+            return
+        }
+        let supersededSnapshotIDs = Set(
+            pendingReconciliations[...publishedIndex]
+                .compactMap(\.viewerStateSnapshotID)
+        )
+        pendingReconciliations.removeAll { operation in
+            guard let snapshotID = operation.viewerStateSnapshotID else { return false }
+            return supersededSnapshotIDs.contains(snapshotID)
+        }
     }
 
     private func showUpdateFeedback() {

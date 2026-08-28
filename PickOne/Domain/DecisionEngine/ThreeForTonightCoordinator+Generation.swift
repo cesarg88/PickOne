@@ -84,6 +84,7 @@ extension ThreeForTonightCoordinator {
     func repair(
         envelope: PersistedDecisionSet,
         trusted: TrustedDecisionState,
+        currentSignature: DecisionCycleSignature,
         reevaluatedMovieIDs: Set<Int>,
         forceAvailabilityReloadMovieID: Int? = nil,
         operationID: UUID
@@ -91,6 +92,7 @@ extension ThreeForTonightCoordinator {
         var retained = safeRetainedSnapshot(
             envelope,
             trusted: trusted,
+            currentSignature: currentSignature,
             additionallyUnsafeMovieIDs: reevaluatedMovieIDs
         )
 
@@ -114,6 +116,7 @@ extension ThreeForTonightCoordinator {
                 retained = safeRetainedSnapshot(
                     envelope,
                     trusted: trusted,
+                    currentSignature: currentSignature,
                     additionallyUnsafeMovieIDs: pendingReevaluatedMovieIDs
                         .union(rehydratedUnsafeMovieIDs)
                 )
@@ -135,12 +138,10 @@ extension ThreeForTonightCoordinator {
             let allCandidates = currentCandidates + assembled.candidates.filter {
                 currentByID[$0.seed.movieID] == nil
             }
-            let input = DecisionEngineInput(
-                profile: assembled.input.profile,
-                candidates: allCandidates.map(\.decisionCandidate),
-                recommendationExcludedMovieIDs: assembled.input.recommendationExcludedMovieIDs,
-                savedUnwatchedMovieIDs: assembled.input.savedUnwatchedMovieIDs,
-                currentCycleShownMovieIDs: selectionExclusions
+            let input = makeRepairInput(
+                assembled: assembled,
+                candidates: allCandidates,
+                selectionExclusions: selectionExclusions
             )
             let mandatoryIDs = Set(envelope.recommendations.map(\.display.movieID))
                 .subtracting(reevaluatedMovieIDs)
@@ -179,6 +180,20 @@ extension ThreeForTonightCoordinator {
         } catch {
             return .retryableFailure(reason: .repairFailed, retained: retained)
         }
+    }
+
+    func makeRepairInput(
+        assembled: DecisionEngineInputSnapshot,
+        candidates: [DecisionInputCandidate],
+        selectionExclusions: Set<Int>
+    ) -> DecisionEngineInput {
+        DecisionEngineInput(
+            profile: assembled.input.profile,
+            candidates: candidates.map(\.decisionCandidate),
+            recommendationExcludedMovieIDs: assembled.input.recommendationExcludedMovieIDs,
+            savedUnwatchedMovieIDs: assembled.input.savedUnwatchedMovieIDs,
+            currentCycleShownMovieIDs: selectionExclusions
+        )
     }
 
     func validatePersistAndPublish(
@@ -243,8 +258,13 @@ extension ThreeForTonightCoordinator {
                 retained: nil
             )
         }
+        let signature = try cycleSignature(for: latest)
         let latestRetained = retained.flatMap {
-            safeRetainedSnapshot($0.decisionSet, trusted: latest)
+            safeRetainedSnapshot(
+                $0.decisionSet,
+                trusted: latest,
+                currentSignature: signature
+            )
         }
         guard staleRetryCount == 0 else {
             return .retryableFailure(
@@ -252,7 +272,6 @@ extension ThreeForTonightCoordinator {
                 retained: latestRetained
             )
         }
-        let signature = try cycleSignature(for: latest)
         let cycle = try migrationPlanner.reconciledCycle(
             sourceCycle: sourceCycle,
             currentSignature: signature,

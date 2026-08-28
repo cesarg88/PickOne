@@ -188,7 +188,11 @@ private extension ThreeForTonightCoordinator {
                     operationID: operationID
                 )
             case let .available(envelope):
-                let retained = safeRetainedSnapshot(envelope, trusted: trusted)
+                let retained = safeRetainedSnapshot(
+                    envelope,
+                    trusted: trusted,
+                    currentSignature: signature
+                )
                 guard envelope.sourceViewerStateSnapshotID == trusted.snapshotID,
                       envelope.cycle.identitySignature == signature
                 else {
@@ -203,12 +207,14 @@ private extension ThreeForTonightCoordinator {
                 }
                 let repairIDs = ThreeForTonightSnapshotFactory.localRepairMovieIDs(
                     envelope: envelope,
-                    trustedState: trusted
+                    trustedState: trusted,
+                    currentCycleSignature: signature
                 )
                 guard repairIDs.isEmpty else {
                     return try await repair(
                         envelope: envelope,
                         trusted: trusted,
+                        currentSignature: signature,
                         reevaluatedMovieIDs: repairIDs,
                         operationID: operationID
                     )
@@ -233,7 +239,11 @@ private extension ThreeForTonightCoordinator {
                 return try await generate(
                     cycle: envelope.cycle,
                     trusted: trusted,
-                    retained: safeRetainedSnapshot(envelope, trusted: trusted),
+                    retained: safeRetainedSnapshot(
+                        envelope,
+                        trusted: trusted,
+                        currentSignature: signature
+                    ),
                     recovery: false,
                     operationID: operationID
                 )
@@ -243,7 +253,11 @@ private extension ThreeForTonightCoordinator {
                     currentSignature: signature,
                     recovery: false,
                     trusted: trusted,
-                    retained: safeRetainedSnapshot(envelope, trusted: trusted),
+                    retained: safeRetainedSnapshot(
+                        envelope,
+                        trusted: trusted,
+                        currentSignature: signature
+                    ),
                     operationID: operationID
                 )
             case let .migrationRequired(source):
@@ -292,6 +306,7 @@ private extension ThreeForTonightCoordinator {
                 return try await repair(
                     envelope: envelope,
                     trusted: trusted,
+                    currentSignature: signature,
                     reevaluatedMovieIDs: [change.movieID],
                     forceAvailabilityReloadMovieID: change.availabilityMovieID,
                     operationID: operationID
@@ -302,7 +317,11 @@ private extension ThreeForTonightCoordinator {
                     currentSignature: signature,
                     recovery: false,
                     trusted: trusted,
-                    retained: safeRetainedSnapshot(envelope, trusted: trusted),
+                    retained: safeRetainedSnapshot(
+                        envelope,
+                        trusted: trusted,
+                        currentSignature: signature
+                    ),
                     operationID: operationID
                 )
             case let .migrationRequired(source):
@@ -339,15 +358,16 @@ private extension ThreeForTonightCoordinator {
 
         switch await decisionSetRepository.load() {
             case let .available(envelope):
-                let retained = safeRetainedSnapshot(envelope, trusted: trusted)
-                if envelope.sourceViewerStateSnapshotID == trusted.snapshotID,
-                   envelope.cycle.identitySignature == signature,
-                   ThreeForTonightSnapshotFactory.localRepairMovieIDs(
-                       envelope: envelope,
-                       trustedState: trusted
-                   ).isEmpty,
-                   let retained
-                {
+                let retained = safeRetainedSnapshot(
+                    envelope,
+                    trusted: trusted,
+                    currentSignature: signature
+                )
+                if isCurrentPublishedEnvelope(
+                    envelope,
+                    trusted: trusted,
+                    signature: signature
+                ), let retained {
                     return .usable(retained)
                 }
                 let plan = try reconciliationPlanner.plan(
@@ -390,6 +410,7 @@ private extension ThreeForTonightCoordinator {
                         return try await repair(
                             envelope: envelope,
                             trusted: trusted,
+                            currentSignature: signature,
                             reevaluatedMovieIDs: [movieID],
                             operationID: operationID
                         )
@@ -416,6 +437,20 @@ private extension ThreeForTonightCoordinator {
                 )
         }
     }
+
+    func isCurrentPublishedEnvelope(
+        _ envelope: PersistedDecisionSet,
+        trusted: TrustedDecisionState,
+        signature: DecisionCycleSignature
+    ) -> Bool {
+        envelope.sourceViewerStateSnapshotID == trusted.snapshotID
+            && envelope.cycle.identitySignature == signature
+            && ThreeForTonightSnapshotFactory.localRepairMovieIDs(
+                envelope: envelope,
+                trustedState: trusted,
+                currentCycleSignature: signature
+            ).isEmpty
+    }
 }
 
 extension ThreeForTonightCoordinator {
@@ -430,11 +465,13 @@ extension ThreeForTonightCoordinator {
     func safeRetainedSnapshot(
         _ envelope: PersistedDecisionSet,
         trusted: TrustedDecisionState,
+        currentSignature: DecisionCycleSignature,
         additionallyUnsafeMovieIDs: Set<Int> = []
     ) -> ThreeForTonightSnapshot? {
         ThreeForTonightSnapshotFactory.safeRetainedSnapshot(
             envelope,
             trustedState: trusted,
+            currentCycleSignature: currentSignature,
             additionallyUnsafeMovieIDs: additionallyUnsafeMovieIDs
         )
     }

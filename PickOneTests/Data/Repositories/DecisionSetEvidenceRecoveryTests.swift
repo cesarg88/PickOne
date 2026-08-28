@@ -404,7 +404,8 @@ extension DecisionSetEvidenceRecoveryTests {
 
             #expect(ThreeForTonightSnapshotFactory.localRepairMovieIDs(
                 envelope: decisionSet,
-                trustedState: trustedState
+                trustedState: trustedState,
+                currentCycleSignature: decisionSet.cycle.identitySignature
             ) == [10])
             #expect(store.quarantineData == nil)
         }

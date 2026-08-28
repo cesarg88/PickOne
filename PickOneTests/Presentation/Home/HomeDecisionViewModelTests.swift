@@ -110,13 +110,20 @@ struct HomeDecisionViewModelTests {
         #expect(sut.updateFeedback == nil)
     }
 
-    @Test("a published queued snapshot is coalesced into one Home update")
-    func publishedQueuedSnapshotIsCoalesced() async throws {
+    @Test("a newest published queued snapshot coalesces every earlier Viewer State event")
+    func newestPublishedQueuedSnapshotCoalescesEarlierEvents() async throws {
         let published = try HomeDecisionTestFixtures.snapshot()
         let gate = HomeDecisionOperationGate()
+        let supersededSnapshotID = ViewerStateSnapshotID(rawValue: UUID())
         let useCase = GatedHomeDecisionUseCase(
             loadResult: .usable(published),
             repairResult: .usable(published),
+            viewerStateResults: [
+                supersededSnapshotID: .retryableFailure(
+                    reason: .trustedInputsChanged,
+                    retained: nil
+                ),
+            ],
             gate: gate
         )
         let sut = HomeDecisionViewModel(
@@ -128,21 +135,33 @@ struct HomeDecisionViewModelTests {
             impact: .tasteChanged,
             snapshotID: ViewerStateSnapshotID(rawValue: UUID())
         ))
-        let queuedChange = try #require(DecisionViewerStateChange(
+        let supersededChange = try #require(DecisionViewerStateChange(
             movieID: 202,
+            impact: .tasteChanged,
+            snapshotID: supersededSnapshotID
+        ))
+        let publishedChange = try #require(DecisionViewerStateChange(
+            movieID: 203,
             impact: .tasteChanged,
             snapshotID: published.decisionSet.sourceViewerStateSnapshotID
         ))
 
         sut.reconcile(after: activeChange)
         await useCase.waitForRepairStart()
-        sut.reconcile(after: queuedChange)
+        sut.reconcile(after: supersededChange)
+        sut.reconcile(after: publishedChange)
         await gate.open()
         await waitForUpdateFeedback(in: sut)
         await waitUntilSettled(sut)
 
         #expect(await useCase.recordedViewerChanges() == [activeChange])
         #expect(sut.updateFeedback == "Recommendations updated.")
+        guard case let .loaded(_, isRefreshing, refreshError) = sut.state else {
+            Issue.record("Expected one usable publication without a blocking failure")
+            return
+        }
+        #expect(!isRefreshing)
+        #expect(refreshError == nil)
 
         await waitForUpdateFeedbackDismissal(in: sut)
         #expect(sut.updateFeedback == nil)
@@ -359,6 +378,7 @@ private actor GatedHomeDecisionUseCase: ThreeForTonightUseCase {
     private let loadResult: ThreeForTonightResult
     private let refreshResult: ThreeForTonightResult?
     private let repairResult: ThreeForTonightResult
+    private let viewerStateResults: [ViewerStateSnapshotID: ThreeForTonightResult]
     private let gate: HomeDecisionOperationGate
     private var loadCallCount = 0
     private var refreshStarted = false
@@ -370,11 +390,13 @@ private actor GatedHomeDecisionUseCase: ThreeForTonightUseCase {
         loadResult: ThreeForTonightResult,
         refreshResult: ThreeForTonightResult? = nil,
         repairResult: ThreeForTonightResult,
+        viewerStateResults: [ViewerStateSnapshotID: ThreeForTonightResult] = [:],
         gate: HomeDecisionOperationGate
     ) {
         self.loadResult = loadResult
         self.refreshResult = refreshResult
         self.repairResult = repairResult
+        self.viewerStateResults = viewerStateResults
         self.gate = gate
     }
 
@@ -408,7 +430,7 @@ private actor GatedHomeDecisionUseCase: ThreeForTonightUseCase {
         repairStarted = true
         await gate.wait()
         try Task.checkCancellation()
-        return repairResult
+        return viewerStateResults[change.snapshotID] ?? repairResult
     }
 
     func waitForRepairStart() async {
