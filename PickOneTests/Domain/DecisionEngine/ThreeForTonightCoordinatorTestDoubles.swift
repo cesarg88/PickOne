@@ -2,6 +2,68 @@ import Foundation
 @testable import PickOne
 import Synchronization
 
+final class MutableTrustedDecisionStateLoader: TrustedDecisionStateLoading, Sendable {
+    private struct State: Sendable {
+        var current: TrustedDecisionState
+        var next: TrustedDecisionState?
+        var statesByMatchCall: [Int: TrustedDecisionState]
+        var matchCallCount = 0
+    }
+
+    private let state: Mutex<State>
+
+    init(
+        current: TrustedDecisionState,
+        next: TrustedDecisionState? = nil,
+        switchOnMatchCall: Int? = nil
+    ) {
+        let statesByMatchCall: [Int: TrustedDecisionState] = if let switchOnMatchCall,
+                                                                let next
+        {
+            [switchOnMatchCall: next]
+        } else {
+            [:]
+        }
+        state = Mutex(State(
+            current: current,
+            next: next,
+            statesByMatchCall: statesByMatchCall
+        ))
+    }
+
+    init(
+        current: TrustedDecisionState,
+        statesByMatchCall: [Int: TrustedDecisionState]
+    ) {
+        state = Mutex(State(
+            current: current,
+            next: nil,
+            statesByMatchCall: statesByMatchCall
+        ))
+    }
+
+    func load() -> TrustedDecisionState {
+        state.withLock { $0.current }
+    }
+
+    func matches(snapshotID: ViewerStateSnapshotID) -> Bool {
+        state.withLock { state in
+            state.matchCallCount += 1
+            if let scheduledState = state.statesByMatchCall[state.matchCallCount] {
+                state.current = scheduledState
+            }
+            return state.current.snapshotID == snapshotID
+        }
+    }
+
+    func publishNext() {
+        state.withLock { state in
+            guard let next = state.next else { return }
+            state.current = next
+        }
+    }
+}
+
 actor CoordinatorProfileRepository: ViewerProfileRepository {
     let profile: ViewerProfile
 
@@ -58,9 +120,14 @@ struct CoordinatorViewerMovieStateRepository: ViewerMovieStateRepository {
     static let defaultSnapshotID = ViewerStateSnapshotID(rawValue: UUID())
 
     let snapshotID: ViewerStateSnapshotID
+    let states: [ViewerMovieState]
 
-    init(snapshotID: ViewerStateSnapshotID = Self.defaultSnapshotID) {
+    init(
+        snapshotID: ViewerStateSnapshotID = Self.defaultSnapshotID,
+        states: [ViewerMovieState] = []
+    ) {
         self.snapshotID = snapshotID
+        self.states = states
     }
 
     func loadState() -> ViewerMovieStateLoadState {
@@ -68,7 +135,7 @@ struct CoordinatorViewerMovieStateRepository: ViewerMovieStateRepository {
     }
 
     func snapshot() throws -> ViewerMovieStateSnapshot {
-        try ViewerMovieStateSnapshot(id: snapshotID, states: [])
+        try ViewerMovieStateSnapshot(id: snapshotID, states: states)
     }
 
     func state(movieID _: Int) throws -> ViewerMovieState? {
@@ -80,69 +147,6 @@ struct CoordinatorViewerMovieStateRepository: ViewerMovieStateRepository {
         metadata _: MovieFeedbackMetadata
     ) throws -> ViewerMovieStateChange {
         throw ViewerMovieStateRepositoryError.invalidMovieID
-    }
-}
-
-struct CoordinatorWatchlistRepository: WatchlistRepository {
-    let items: [WatchlistItem]
-    let loadError: CoordinatorTestError?
-
-    init(items: [WatchlistItem] = [], loadError: CoordinatorTestError? = nil) {
-        self.items = items
-        self.loadError = loadError
-    }
-
-    func loadAllItems() throws -> [WatchlistItem] {
-        if let loadError { throw loadError }
-        return items
-    }
-
-    func setMembership(
-        movie _: MovieSummary,
-        isInWatchlist _: Bool
-    ) throws -> WatchlistMutationOutcome {
-        throw WatchlistError.movieNotInWatchlist
-    }
-
-    func setWatched(
-        movieId _: Int,
-        isWatched _: Bool
-    ) throws -> WatchlistMutationOutcome {
-        throw WatchlistError.movieNotInWatchlist
-    }
-
-    func getStatus(movieId _: Int) -> WatchlistStatus {
-        .notInWatchlist
-    }
-}
-
-final class MutableCoordinatorWatchlistRepository: WatchlistRepository, Sendable {
-    private let items = Mutex<[WatchlistItem]>([])
-
-    func setItems(_ newItems: [WatchlistItem]) {
-        items.withLock { $0 = newItems }
-    }
-
-    func loadAllItems() throws -> [WatchlistItem] {
-        items.withLock { $0 }
-    }
-
-    func setMembership(
-        movie _: MovieSummary,
-        isInWatchlist _: Bool
-    ) throws -> WatchlistMutationOutcome {
-        throw WatchlistError.movieNotInWatchlist
-    }
-
-    func setWatched(
-        movieId _: Int,
-        isWatched _: Bool
-    ) throws -> WatchlistMutationOutcome {
-        throw WatchlistError.movieNotInWatchlist
-    }
-
-    func getStatus(movieId _: Int) -> WatchlistStatus {
-        .notInWatchlist
     }
 }
 
@@ -206,7 +210,7 @@ struct CoordinatorAvailabilityRequest: Equatable, Sendable {
 }
 
 actor CoordinatorDecisionSetRepository: DecisionSetRepository {
-    let loadResult: DecisionSetLoadResult
+    private var loadResult: DecisionSetLoadResult
     let replaceError: CoordinatorTestError?
     let onReplace: @Sendable () -> Void
     private(set) var replacements: [PersistedDecisionSet] = []
@@ -228,6 +232,7 @@ actor CoordinatorDecisionSetRepository: DecisionSetRepository {
     func replace(_ envelope: PersistedDecisionSet) throws {
         if let replaceError { throw replaceError }
         replacements.append(envelope)
+        loadResult = .available(envelope)
         onReplace()
     }
 }

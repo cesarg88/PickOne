@@ -221,8 +221,6 @@ private extension AppContainer {
             )
         )
         let inputAssembler = AssembleDecisionEngineInput(
-            viewerProfileRepository: repositories.viewerProfile,
-            watchlistRepository: repositories.watchlist,
             candidateRepository: repositories.decisionCandidate,
             movieRepository: repositories.movie,
             availabilityRepository: repositories.availability
@@ -256,7 +254,6 @@ private extension AppContainer {
             threeForTonight: ThreeForTonightCoordinator(
                 viewerProfileRepository: repositories.viewerProfile,
                 viewerMovieStateRepository: repositories.viewerState,
-                watchlistRepository: repositories.watchlist,
                 decisionSetRepository: repositories.decisionSet,
                 inputAssembler: inputAssembler,
                 movieRepository: repositories.movie,

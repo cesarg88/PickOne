@@ -34,7 +34,7 @@ struct P1DecisionEngineSelectionTests {
         let selection = engine.select(from: input(
             profile: profile,
             candidates: candidates,
-            watchlistWatchedMovieIDs: [2],
+            recommendationExcludedMovieIDs: [2],
             savedUnwatchedMovieIDs: [3]
         ))
 
@@ -85,7 +85,7 @@ struct P1DecisionEngineSelectionTests {
         let selection = engine.select(from: input(
             profile: profile,
             candidates: candidates,
-            watchlistWatchedMovieIDs: [4]
+            recommendationExcludedMovieIDs: [4]
         ))
 
         #expect(selection.recommendations.isEmpty)
@@ -185,14 +185,14 @@ struct P1DecisionEngineSelectionTests {
     private func input(
         profile: P1TasteProfile = P1TasteProfile(evidence: []),
         candidates: [DecisionCandidate],
-        watchlistWatchedMovieIDs: Set<Int> = [],
+        recommendationExcludedMovieIDs: Set<Int> = [],
         savedUnwatchedMovieIDs: Set<Int> = [],
         currentCycleShownMovieIDs: Set<Int> = []
     ) -> DecisionEngineInput {
         DecisionEngineInput(
             profile: profile,
             candidates: candidates,
-            watchlistWatchedMovieIDs: watchlistWatchedMovieIDs,
+            recommendationExcludedMovieIDs: recommendationExcludedMovieIDs,
             savedUnwatchedMovieIDs: savedUnwatchedMovieIDs,
             currentCycleShownMovieIDs: currentCycleShownMovieIDs
         )

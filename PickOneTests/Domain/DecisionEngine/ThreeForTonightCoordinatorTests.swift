@@ -232,24 +232,6 @@ struct ThreeForTonightCoordinatorTests {
         }
     }
 
-    @Test("unreadable Watchlist blocks generation with its bounded failure reason")
-    func unreadableWatchlistBlocksGeneration() async throws {
-        let candidates = CoordinatorCandidateRepository()
-        let sut = makeCoordinator(
-            profile: sparseProfile(),
-            candidateRepository: candidates,
-            availabilityRepository: CoordinatorAvailabilityRepository(),
-            decisionSetRepository: CoordinatorDecisionSetRepository(loadResult: .absent),
-            watchlistRepository: CoordinatorWatchlistRepository(loadError: .unavailable)
-        )
-
-        #expect(try await sut.load() == .retryableFailure(
-            reason: .watchlistUnavailable,
-            retained: nil
-        ))
-        #expect(await candidates.requestedPages.isEmpty)
-    }
-
     @Test("a newer request cancels a generation before persistence")
     func newerRequestSupersedesOlderWork() async throws {
         let candidates = CoordinatorCandidateRepository(delay: .milliseconds(20))
@@ -277,43 +259,6 @@ struct ThreeForTonightCoordinatorTests {
         #expect(await decisionSetRepository.replacements.count == 1)
     }
 
-    @Test("a cross-store change after persistence prevents stale publication")
-    func crossStoreRaceDoesNotPublish() async throws {
-        let profile = sparseProfile()
-        let watchlist = MutableCoordinatorWatchlistRepository()
-        let changedItem = WatchlistItem(
-            id: 999,
-            addedAt: Date(timeIntervalSince1970: 3000),
-            isWatched: false,
-            movie: MovieSummary(
-                id: 999,
-                title: "Changed",
-                posterPath: nil,
-                releaseYear: 2024,
-                rating: 8
-            )
-        )
-        let decisionSetRepository = CoordinatorDecisionSetRepository(
-            loadResult: .absent,
-            onReplace: { watchlist.setItems([changedItem]) }
-        )
-        let sut = makeCoordinator(
-            profile: profile,
-            candidateRepository: CoordinatorCandidateRepository(),
-            availabilityRepository: CoordinatorAvailabilityRepository(),
-            decisionSetRepository: decisionSetRepository,
-            watchlistRepository: watchlist
-        )
-
-        let result = try await sut.load()
-
-        #expect(result == .retryableFailure(
-            reason: .trustedInputsChanged,
-            retained: nil
-        ))
-        #expect(await decisionSetRepository.replacements.count == 1)
-    }
-
     @Test("load repairs a newly watched member without resetting cycle history")
     func loadRepairsWatchedMember() async throws {
         let profile = sparseProfile()
@@ -328,18 +273,7 @@ struct ThreeForTonightCoordinatorTests {
             voteAverage: 8.5,
             voteCount: 20000
         ))
-        let watchlist = CoordinatorWatchlistRepository(items: [WatchlistItem(
-            id: 10,
-            addedAt: Date(timeIntervalSince1970: 3000),
-            isWatched: true,
-            movie: MovieSummary(
-                id: 10,
-                title: "Watched",
-                posterPath: nil,
-                releaseYear: 2024,
-                rating: 8.5
-            )
-        )])
+        let watchedState = try CoordinatorTestFixtures.watchedState(10)
         let availability = CoordinatorAvailabilityRepository(
             evidenceByMovieID: [
                 10: verifiedEvidence(movieID: 10),
@@ -358,7 +292,7 @@ struct ThreeForTonightCoordinatorTests {
                 10: movie(id: 10, title: "Watched", runtime: 100),
                 20: movie(id: 20, title: "Replacement", runtime: 110),
             ]),
-            watchlistRepository: watchlist
+            viewerMovieStates: [watchedState]
         )
 
         let result = try await sut.load()
@@ -381,17 +315,16 @@ private extension ThreeForTonightCoordinatorTests {
         availabilityRepository: CoordinatorAvailabilityRepository,
         decisionSetRepository: CoordinatorDecisionSetRepository,
         movieRepository: CoordinatorMovieRepository = CoordinatorMovieRepository(),
-        watchlistRepository: any WatchlistRepository = CoordinatorWatchlistRepository()
+        viewerMovieStates: [ViewerMovieState] = []
     ) -> ThreeForTonightCoordinator {
         let profileRepository = CoordinatorProfileRepository(profile: profile)
         return ThreeForTonightCoordinator(
             viewerProfileRepository: profileRepository,
-            viewerMovieStateRepository: CoordinatorViewerMovieStateRepository(),
-            watchlistRepository: watchlistRepository,
+            viewerMovieStateRepository: CoordinatorViewerMovieStateRepository(
+                states: viewerMovieStates
+            ),
             decisionSetRepository: decisionSetRepository,
             inputAssembler: AssembleDecisionEngineInput(
-                viewerProfileRepository: profileRepository,
-                watchlistRepository: watchlistRepository,
                 candidateRepository: candidateRepository,
                 movieRepository: movieRepository,
                 availabilityRepository: availabilityRepository

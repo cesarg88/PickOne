@@ -1,11 +1,9 @@
 import Foundation
 
 enum DecisionEngineInputAssemblyError: Error, Equatable, Sendable {
-    case profileUnavailable
     case invalidCandidateContext
-    case watchlistUnavailable
     case candidateRecallFailed
-    case calibrationHydrationFailed(movieID: Int)
+    case tasteHydrationFailed(movieID: Int)
     case availabilitySourceUnavailable
 }
 
@@ -20,8 +18,7 @@ struct DecisionInputCandidate: Equatable, Sendable {
 }
 
 struct DecisionEngineInputSnapshot: Equatable, Sendable {
-    let profile: ViewerProfile
-    let watchlistItems: [WatchlistItem]
+    let trustedState: TrustedDecisionState
     let candidates: [DecisionInputCandidate]
     let input: DecisionEngineInput
 }
@@ -29,36 +26,45 @@ struct DecisionEngineInputSnapshot: Equatable, Sendable {
 struct AssembleDecisionEngineInput: Sendable {
     private static let availabilityRequestLimit = 8
 
-    private let viewerProfileRepository: any ViewerProfileRepository
-    private let watchlistRepository: any WatchlistRepository
     private let recallCandidates: RecallDecisionCandidates
-    private let movieRepository: any MovieRepository
+    private let tasteProfileHydrator: HydrateDecisionTasteProfile
     private let availabilityRepository: any AvailabilityRepository
     private let availabilityEvaluator: DecisionAvailabilityEvaluator
 
     init(
-        viewerProfileRepository: any ViewerProfileRepository,
-        watchlistRepository: any WatchlistRepository,
         candidateRepository: any DecisionCandidateRepository,
         movieRepository: any MovieRepository,
         availabilityRepository: any AvailabilityRepository,
         availabilityEvaluator: DecisionAvailabilityEvaluator = DecisionAvailabilityEvaluator()
     ) {
-        self.viewerProfileRepository = viewerProfileRepository
-        self.watchlistRepository = watchlistRepository
         recallCandidates = RecallDecisionCandidates(repository: candidateRepository)
-        self.movieRepository = movieRepository
+        tasteProfileHydrator = HydrateDecisionTasteProfile(
+            movieRepository: movieRepository
+        )
         self.availabilityRepository = availabilityRepository
         self.availabilityEvaluator = availabilityEvaluator
     }
 
     func execute(
+        trustedState: TrustedDecisionState,
         currentCycleShownMovieIDs: Set<Int>
     ) async throws -> DecisionEngineInputSnapshot {
-        let profile = try await loadCompletedProfile()
-        let watchlistItems = try await loadWatchlist()
-        let context = try candidateContext(for: profile)
-        let tasteProfile = try await hydrateTasteProfile(profile)
+        let context = try candidateContext(for: trustedState.profile)
+        let tasteProfile: P1TasteProfile
+        do {
+            tasteProfile = try await tasteProfileHydrator.execute(
+                reactions: trustedState.reactions
+            )
+        } catch is CancellationError {
+            throw CancellationError()
+        } catch let error as DecisionTasteProfileHydrationError {
+            switch error {
+                case let .movieUnavailable(movieID):
+                    throw DecisionEngineInputAssemblyError.tasteHydrationFailed(
+                        movieID: movieID
+                    )
+            }
+        }
         try Task.checkCancellation()
 
         let seeds: [DecisionCandidateSeed]
@@ -70,16 +76,7 @@ struct AssembleDecisionEngineInput: Sendable {
             throw DecisionEngineInputAssemblyError.candidateRecallFailed
         }
 
-        let calibrationWatchedMovieIDs = Set(
-            tasteProfile.evidence.lazy
-                .filter(\.reaction.meansWatchedInCalibration)
-                .map(\.movieID)
-        )
-        let watchlistWatchedMovieIDs = Set(
-            watchlistItems.lazy.filter(\.isWatched).map(\.id)
-        )
-        let locallyExcludedMovieIDs = calibrationWatchedMovieIDs
-            .union(watchlistWatchedMovieIDs)
+        let locallyExcludedMovieIDs = trustedState.recommendationExcludedMovieIDs
             .union(currentCycleShownMovieIDs)
         let locallyEligibleSeeds = seeds.filter {
             !locallyExcludedMovieIDs.contains($0.movieID)
@@ -87,41 +84,22 @@ struct AssembleDecisionEngineInput: Sendable {
         let candidates = try await enrichAvailability(
             locallyEligibleSeeds,
             context: AvailabilityViewingContext(
-                region: profile.region,
-                selectedServices: profile.selectedServices
+                region: trustedState.profile.region,
+                selectedServices: trustedState.profile.selectedServices
             )
-        )
-        let savedUnwatchedMovieIDs = Set(
-            watchlistItems.lazy.filter { !$0.isWatched }.map(\.id)
         )
         let input = DecisionEngineInput(
             profile: tasteProfile,
             candidates: candidates.map(\.decisionCandidate),
-            watchlistWatchedMovieIDs: watchlistWatchedMovieIDs,
-            savedUnwatchedMovieIDs: savedUnwatchedMovieIDs,
+            recommendationExcludedMovieIDs: trustedState.recommendationExcludedMovieIDs,
+            savedUnwatchedMovieIDs: trustedState.savedUnwatchedMovieIDs,
             currentCycleShownMovieIDs: currentCycleShownMovieIDs
         )
         return DecisionEngineInputSnapshot(
-            profile: profile,
-            watchlistItems: watchlistItems,
+            trustedState: trustedState,
             candidates: candidates,
             input: input
         )
-    }
-
-    private func loadCompletedProfile() async throws -> ViewerProfile {
-        guard case let .completed(profile, _) = await viewerProfileRepository.loadState() else {
-            throw DecisionEngineInputAssemblyError.profileUnavailable
-        }
-        return profile
-    }
-
-    private func loadWatchlist() async throws -> [WatchlistItem] {
-        do {
-            return try await watchlistRepository.loadAllItems()
-        } catch {
-            throw DecisionEngineInputAssemblyError.watchlistUnavailable
-        }
     }
 
     private func candidateContext(
@@ -134,49 +112,6 @@ struct AssembleDecisionEngineInput: Sendable {
             throw DecisionEngineInputAssemblyError.invalidCandidateContext
         }
         return context
-    }
-
-    private func hydrateTasteProfile(
-        _ profile: ViewerProfile
-    ) async throws -> P1TasteProfile {
-        var evidence: [TasteReactionEvidence] = []
-        evidence.reserveCapacity(profile.reactions.count)
-
-        let informativeReactions = profile.reactions.filter { $0.value.p1Value != nil }
-        for movieID in informativeReactions.keys.sorted() {
-            try Task.checkCancellation()
-            guard let reaction = informativeReactions[movieID] else {
-                continue
-            }
-            let movie: Movie
-            do {
-                movie = try await movieRepository.getMovieDetail(
-                    id: movieID,
-                    policy: .returnCacheElseLoad
-                ).value
-            } catch is CancellationError {
-                throw CancellationError()
-            } catch {
-                throw DecisionEngineInputAssemblyError.calibrationHydrationFailed(
-                    movieID: movieID
-                )
-            }
-            guard movie.id == movieID else {
-                throw DecisionEngineInputAssemblyError.calibrationHydrationFailed(
-                    movieID: movieID
-                )
-            }
-            evidence.append(TasteReactionEvidence(
-                movieID: movieID,
-                movieTitle: movie.title,
-                reaction: reaction,
-                genres: Set(movie.genres.map {
-                    DecisionGenre(id: $0.id, name: $0.name)
-                }),
-                releaseYear: movie.releaseYear
-            ))
-        }
-        return P1TasteProfile(evidence: evidence)
     }
 
     private func enrichAvailability(

@@ -30,7 +30,7 @@ struct DecisionRepairComposerTests {
         let input = DecisionEngineInput(
             profile: profile,
             candidates: candidates,
-            watchlistWatchedMovieIDs: [],
+            recommendationExcludedMovieIDs: [],
             savedUnwatchedMovieIDs: [],
             currentCycleShownMovieIDs: [20, 30]
         )
@@ -57,7 +57,7 @@ struct DecisionRepairComposerTests {
         let input = DecisionEngineInput(
             profile: P1TasteProfile(evidence: []),
             candidates: [watched, replacement],
-            watchlistWatchedMovieIDs: [10],
+            recommendationExcludedMovieIDs: [10],
             savedUnwatchedMovieIDs: [],
             currentCycleShownMovieIDs: []
         )

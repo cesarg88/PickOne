@@ -20,17 +20,24 @@ final class HomeDecisionViewModel {
     @ObservationIgnored private var activeTask: Task<Void, Never>?
     @ObservationIgnored private var activeOperationID = UUID()
     @ObservationIgnored private var activeOperation: Operation?
-    @ObservationIgnored private var pendingRepairs: [DecisionEligibilityChange] = []
+    @ObservationIgnored private var pendingReconciliations: [Operation] = []
     @ObservationIgnored private var isReconciliationPending = false
+    @ObservationIgnored private var feedbackTask: Task<Void, Never>?
+    @ObservationIgnored private let feedbackDuration: Duration
 
     var state: HomeDecisionViewState = .idle
+    var updateFeedback: String?
 
-    init(threeForTonight: any ThreeForTonightUseCase) {
+    init(
+        threeForTonight: any ThreeForTonightUseCase,
+        feedbackDuration: Duration = .seconds(3)
+    ) {
         self.threeForTonight = threeForTonight
+        self.feedbackDuration = feedbackDuration
     }
 
     func load() {
-        guard activeOperation == nil, pendingRepairs.isEmpty else {
+        guard activeOperation == nil, pendingReconciliations.isEmpty else {
             isReconciliationPending = true
             return
         }
@@ -38,18 +45,21 @@ final class HomeDecisionViewModel {
     }
 
     func refresh() {
-        guard activeOperation?.isRepair != true, pendingRepairs.isEmpty else { return }
+        guard activeOperation?.isReconciliation != true,
+              pendingReconciliations.isEmpty
+        else {
+            return
+        }
         start(.refresh)
     }
 
     func repair(after change: DecisionEligibilityChange) {
-        if activeOperation?.isRepair == true {
-            if !pendingRepairs.contains(change) {
-                pendingRepairs.append(change)
-            }
-            return
-        }
-        start(.repair(change))
+        enqueueReconciliation(.repair(change))
+    }
+
+    func reconcile(after change: DecisionViewerStateChange) {
+        guard change.impact != .none else { return }
+        enqueueReconciliation(.viewerState(change))
     }
 
     private func start(_ operation: Operation) {
@@ -64,7 +74,7 @@ final class HomeDecisionViewModel {
                 let result = try await operation.execute(with: threeForTonight)
                 try Task.checkCancellation()
                 guard activeOperationID == operationID else { return }
-                apply(result)
+                apply(result, operation: operation)
                 finish(operationID: operationID)
             } catch is CancellationError {
                 guard activeOperationID == operationID else { return }
@@ -82,9 +92,8 @@ final class HomeDecisionViewModel {
         guard activeOperationID == operationID else { return }
         activeTask = nil
         activeOperation = nil
-        if !pendingRepairs.isEmpty {
-            let nextRepair = pendingRepairs.removeFirst()
-            start(.repair(nextRepair))
+        if !pendingReconciliations.isEmpty {
+            start(pendingReconciliations.removeFirst())
         } else if isReconciliationPending {
             isReconciliationPending = false
             start(.load)
@@ -99,7 +108,7 @@ final class HomeDecisionViewModel {
                 } else if case .failure = state {
                     state = .loading
                 }
-            case .refresh, .repair:
+            case .refresh, .repair, .viewerState:
                 switch state {
                     case let .loaded(set, _, refreshError):
                         state = .loaded(set, isRefreshing: true, refreshError: refreshError)
@@ -113,10 +122,19 @@ final class HomeDecisionViewModel {
         }
     }
 
-    private func apply(_ result: ThreeForTonightResult) {
+    private func apply(
+        _ result: ThreeForTonightResult,
+        operation: Operation
+    ) {
         switch result {
             case let .usable(snapshot):
                 apply(snapshot: snapshot, refreshError: nil)
+                if operation.isReconciliation {
+                    coalesceViewerStateChanges(
+                        through: snapshot.decisionSet.sourceViewerStateSnapshotID
+                    )
+                    showUpdateFeedback()
+                }
             case let .retryableFailure(reason, retained):
                 guard let retained else {
                     state = .failure(blockingMessage(for: reason))
@@ -126,6 +144,50 @@ final class HomeDecisionViewModel {
                     snapshot: retained,
                     refreshError: "Couldn't update tonight's picks. Please try again."
                 )
+        }
+    }
+
+    private func enqueueReconciliation(_ operation: Operation) {
+        if activeOperation?.isReconciliation == true {
+            if !pendingReconciliations.contains(operation) {
+                pendingReconciliations.append(operation)
+            }
+            return
+        }
+        start(operation)
+    }
+
+    private func coalesceViewerStateChanges(
+        through publishedSnapshotID: ViewerStateSnapshotID
+    ) {
+        guard let publishedIndex = pendingReconciliations.firstIndex(where: {
+            $0.viewerStateSnapshotID == publishedSnapshotID
+        }) else {
+            return
+        }
+        let supersededSnapshotIDs = Set(
+            pendingReconciliations[...publishedIndex]
+                .compactMap(\.viewerStateSnapshotID)
+        )
+        pendingReconciliations.removeAll { operation in
+            guard let snapshotID = operation.viewerStateSnapshotID else { return false }
+            return supersededSnapshotIDs.contains(snapshotID)
+        }
+    }
+
+    private func showUpdateFeedback() {
+        feedbackTask?.cancel()
+        updateFeedback = "Recommendations updated."
+        let duration = feedbackDuration
+        feedbackTask = Task { [weak self] in
+            do {
+                try await Task.sleep(for: duration)
+                try Task.checkCancellation()
+                self?.updateFeedback = nil
+                self?.feedbackTask = nil
+            } catch {
+                return
+            }
         }
     }
 
@@ -149,8 +211,6 @@ final class HomeDecisionViewModel {
         switch reason {
             case .profileUnavailable:
                 "Your preferences couldn't be loaded. Please try again."
-            case .watchlistUnavailable:
-                "Your Watchlist couldn't be checked safely. Please try again."
             case .persistenceFailed:
                 "Tonight's picks couldn't be saved. Please try again."
             case .recoveryFailed:
@@ -165,16 +225,24 @@ final class HomeDecisionViewModel {
 }
 
 private extension HomeDecisionViewModel {
-    enum Operation {
+    enum Operation: Equatable {
         case load
         case refresh
         case repair(DecisionEligibilityChange)
+        case viewerState(DecisionViewerStateChange)
 
-        var isRepair: Bool {
-            if case .repair = self {
-                return true
+        var isReconciliation: Bool {
+            switch self {
+                case .repair, .viewerState:
+                    true
+                case .load, .refresh:
+                    false
             }
-            return false
+        }
+
+        var viewerStateSnapshotID: ViewerStateSnapshotID? {
+            guard case let .viewerState(change) = self else { return nil }
+            return change.snapshotID
         }
 
         func execute(
@@ -187,6 +255,8 @@ private extension HomeDecisionViewModel {
                     try await useCase.refresh()
                 case let .repair(change):
                     try await useCase.repairAfterEligibilityChange(change)
+                case let .viewerState(change):
+                    try await useCase.reconcileAfterViewerStateChange(change)
             }
         }
     }

@@ -4,216 +4,153 @@ import Testing
 
 @Suite("Decision Engine input assembly")
 struct DecisionEngineInputAssemblyTests {
-    @Test("assembles profile, Watchlist, calibration, recall, and availability")
-    func assemblesTrustedSnapshot() async throws {
-        let profileRepository = try await makeCompletedProfileRepository()
-        let watched = watchlistItem(id: 20, isWatched: true)
-        let saved = watchlistItem(id: 30, isWatched: false)
-        let candidates = try [
-            candidateSeed(id: 20),
-            candidateSeed(id: 30),
-            candidateSeed(id: 40),
-        ]
+    @Test("assembles Taste, exclusions, and Watchlist intent only from Viewer Movie State")
+    func assemblesViewerMovieStateSnapshot() async throws {
+        let trusted = try trustedState(
+            reactions: [10: .loveIt, 11: .likeIt, 12: .itWasOkay, 13: .didNotLikeIt],
+            watchedMovieIDs: [20],
+            notInterestedMovieIDs: [25],
+            savedMovieIDs: [30]
+        )
+        let candidates = try [20, 25, 30, 40].map(candidateSeed)
         let sut = AssembleDecisionEngineInput(
-            viewerProfileRepository: profileRepository,
-            watchlistRepository: InputAssemblyWatchlistRepository(items: [watched, saved]),
             candidateRepository: InputAssemblyCandidateRepository(candidates: candidates),
             movieRepository: InputAssemblyMovieRepository(
-                movies: calibrationMovies(for: ViewerProfileTestFixtures.reactions(count: 8))
+                movies: hydrationMovies(for: trusted.reactions)
             ),
             availabilityRepository: InputAssemblyAvailabilityRepository(
                 evidenceByMovieID: [
-                    20: verifiedEvidence(movieID: 20, providerID: 8),
                     30: verifiedEvidence(movieID: 30, providerID: 119),
                     40: verifiedEvidence(movieID: 40, providerID: 8),
                 ]
             )
         )
 
-        let snapshot = try await sut.execute(currentCycleShownMovieIDs: [40])
+        let snapshot = try await sut.execute(
+            trustedState: trusted,
+            currentCycleShownMovieIDs: [40]
+        )
 
-        #expect(snapshot.profile.selectedServices == [.netflix])
-        #expect(snapshot.watchlistItems == [watched, saved])
-        #expect(snapshot.input.profile.evidence.count == 8)
-        #expect(snapshot.input.watchlistWatchedMovieIDs == [20])
+        #expect(snapshot.trustedState == trusted)
+        #expect(snapshot.input.profile.evidence.map(\.movieID) == [10, 11, 12, 13])
+        #expect(snapshot.input.recommendationExcludedMovieIDs == [10, 11, 12, 13, 20, 25])
         #expect(snapshot.input.savedUnwatchedMovieIDs == [30])
         #expect(snapshot.input.currentCycleShownMovieIDs == [40])
         #expect(snapshot.candidates.map(\.seed.movieID) == [30])
-        #expect(snapshot.candidates.map(\.availability) == [.ineligible])
         #expect(snapshot.input.candidates == snapshot.candidates.map(\.decisionCandidate))
     }
 
-    @Test("local exclusions never reach availability verification")
-    func localExclusionsSkipAvailability() async throws {
-        let reactions = ViewerProfileTestFixtures.reactions(count: 8)
-        let calibrationMovieID = try #require(reactions.keys.min())
-        let watchlistWatchedMovieID = 20
-        let shownMovieID = 30
-        let remainingMovieID = 40
-        let candidateIDs = [
-            calibrationMovieID,
-            watchlistWatchedMovieID,
-            shownMovieID,
-            remainingMovieID,
-        ]
-        let availabilityRepository = InputAssemblyAvailabilityRepository(
-            evidenceByMovieID: [
-                remainingMovieID: verifiedEvidence(
-                    movieID: remainingMovieID,
-                    providerID: 8
-                ),
-            ]
+    @Test("Not interested excludes its title without becoming Taste evidence")
+    func notInterestedIsExclusionOnly() async throws {
+        let trusted = try trustedState(
+            reactions: [10: .loveIt],
+            notInterestedMovieIDs: [20]
         )
-        let sut = try await AssembleDecisionEngineInput(
-            viewerProfileRepository: makeCompletedProfileRepository(),
-            watchlistRepository: InputAssemblyWatchlistRepository(
-                items: [watchlistItem(id: watchlistWatchedMovieID, isWatched: true)]
-            ),
+        let availability = InputAssemblyAvailabilityRepository(
+            evidenceByMovieID: [30: verifiedEvidence(movieID: 30, providerID: 8)]
+        )
+        let sut = try AssembleDecisionEngineInput(
             candidateRepository: InputAssemblyCandidateRepository(
-                candidates: candidateIDs.map { try candidateSeed(id: $0) }
+                candidates: [20, 30].map(candidateSeed)
             ),
             movieRepository: InputAssemblyMovieRepository(
-                movies: calibrationMovies(for: reactions)
+                movies: hydrationMovies(for: trusted.reactions)
             ),
-            availabilityRepository: availabilityRepository
+            availabilityRepository: availability
         )
 
         let snapshot = try await sut.execute(
-            currentCycleShownMovieIDs: [shownMovieID]
+            trustedState: trusted,
+            currentCycleShownMovieIDs: []
         )
 
-        #expect(snapshot.candidates.map(\.seed.movieID) == [remainingMovieID])
-        #expect(await availabilityRepository.requestedMovieIDs == [remainingMovieID])
+        #expect(snapshot.input.profile.evidence.map(\.movieID) == [10])
+        #expect(snapshot.input.recommendationExcludedMovieIDs.contains(20))
+        #expect(snapshot.candidates.map(\.seed.movieID) == [30])
+        #expect(await availability.requestedMovieIDs == [30])
     }
 
     @Test("an entirely locally excluded pool succeeds as empty")
     func entirelyExcludedPoolSucceedsAsEmpty() async throws {
-        let reactions = ViewerProfileTestFixtures.reactions(count: 8)
-        let calibrationMovieID = try #require(reactions.keys.min())
-        let watchlistWatchedMovieID = 20
-        let shownMovieID = 30
-        let availabilityRepository = InputAssemblyAvailabilityRepository(
-            failingMovieIDs: [calibrationMovieID, watchlistWatchedMovieID, shownMovieID]
+        let trusted = try trustedState(watchedMovieIDs: [20])
+        let availability = InputAssemblyAvailabilityRepository(
+            failingMovieIDs: [20, 30]
         )
-        let sut = try await AssembleDecisionEngineInput(
-            viewerProfileRepository: makeCompletedProfileRepository(),
-            watchlistRepository: InputAssemblyWatchlistRepository(
-                items: [watchlistItem(id: watchlistWatchedMovieID, isWatched: true)]
-            ),
+        let sut = try AssembleDecisionEngineInput(
             candidateRepository: InputAssemblyCandidateRepository(
-                candidates: [
-                    candidateSeed(id: calibrationMovieID),
-                    candidateSeed(id: watchlistWatchedMovieID),
-                    candidateSeed(id: shownMovieID),
-                ]
+                candidates: [20, 30].map(candidateSeed)
             ),
-            movieRepository: InputAssemblyMovieRepository(
-                movies: calibrationMovies(for: reactions)
-            ),
-            availabilityRepository: availabilityRepository
+            movieRepository: InputAssemblyMovieRepository(movies: [:]),
+            availabilityRepository: availability
         )
 
         let snapshot = try await sut.execute(
-            currentCycleShownMovieIDs: [shownMovieID]
+            trustedState: trusted,
+            currentCycleShownMovieIDs: [30]
         )
 
         #expect(snapshot.candidates.isEmpty)
         #expect(snapshot.input.candidates.isEmpty)
-        #expect(await availabilityRepository.requestedMovieIDs.isEmpty)
+        #expect(await availability.requestedMovieIDs.isEmpty)
     }
 
     @Test("mixed pools verify remaining candidates in recall order")
     func mixedPoolsPreserveRemainingRecallOrder() async throws {
-        let reactions = ViewerProfileTestFixtures.reactions(count: 8)
-        let calibrationMovieID = try #require(reactions.keys.min())
-        let watchedMovieID = 20
-        let shownMovieID = 30
+        let trusted = try trustedState(watchedMovieIDs: [20])
         let remainingMovieIDs = [50, 40, 60]
-        let recalledMovieIDs = [
-            50,
-            calibrationMovieID,
-            40,
-            watchedMovieID,
-            shownMovieID,
-            60,
-        ]
-        let availabilityRepository = InputAssemblyAvailabilityRepository(
+        let availability = InputAssemblyAvailabilityRepository(
             evidenceByMovieID: Dictionary(
                 uniqueKeysWithValues: remainingMovieIDs.map {
                     ($0, verifiedEvidence(movieID: $0, providerID: 8))
                 }
             )
         )
-        let sut = try await AssembleDecisionEngineInput(
-            viewerProfileRepository: makeCompletedProfileRepository(),
-            watchlistRepository: InputAssemblyWatchlistRepository(
-                items: [watchlistItem(id: watchedMovieID, isWatched: true)]
-            ),
+        let sut = try AssembleDecisionEngineInput(
             candidateRepository: InputAssemblyCandidateRepository(
-                candidates: recalledMovieIDs.map { try candidateSeed(id: $0) }
+                candidates: [50, 40, 20, 30, 60].map(candidateSeed)
             ),
-            movieRepository: InputAssemblyMovieRepository(
-                movies: calibrationMovies(for: reactions)
-            ),
-            availabilityRepository: availabilityRepository
+            movieRepository: InputAssemblyMovieRepository(movies: [:]),
+            availabilityRepository: availability
         )
 
         let snapshot = try await sut.execute(
-            currentCycleShownMovieIDs: [shownMovieID]
+            trustedState: trusted,
+            currentCycleShownMovieIDs: [30]
         )
 
         #expect(snapshot.candidates.map(\.seed.movieID) == remainingMovieIDs)
-        #expect(await Set(availabilityRepository.requestedMovieIDs) == Set(remainingMovieIDs))
-    }
-
-    @Test("Watchlist corruption blocks assembly instead of becoming empty")
-    func watchlistFailureBlocksAssembly() async throws {
-        let candidateRepository = InputAssemblyCandidateRepository(candidates: [])
-        let sut = try await AssembleDecisionEngineInput(
-            viewerProfileRepository: makeCompletedProfileRepository(),
-            watchlistRepository: InputAssemblyWatchlistRepository(error: .unreadable),
-            candidateRepository: candidateRepository,
-            movieRepository: InputAssemblyMovieRepository(movies: [:]),
-            availabilityRepository: InputAssemblyAvailabilityRepository()
-        )
-
-        await #expect(throws: DecisionEngineInputAssemblyError.watchlistUnavailable) {
-            _ = try await sut.execute(currentCycleShownMovieIDs: [])
-        }
-        #expect(await candidateRepository.requestedPages.isEmpty)
+        #expect(await Set(availability.requestedMovieIDs) == Set(remainingMovieIDs))
     }
 
     @Test("one availability failure remains unknown while usable candidates survive")
     func availabilityFailureIsPartial() async throws {
-        let candidates = try [candidateSeed(id: 30), candidateSeed(id: 40)]
-        let sut = try await AssembleDecisionEngineInput(
-            viewerProfileRepository: makeCompletedProfileRepository(),
-            watchlistRepository: InputAssemblyWatchlistRepository(),
-            candidateRepository: InputAssemblyCandidateRepository(candidates: candidates),
-            movieRepository: InputAssemblyMovieRepository(
-                movies: calibrationMovies(for: ViewerProfileTestFixtures.reactions(count: 8))
+        let trusted = try trustedState()
+        let sut = try AssembleDecisionEngineInput(
+            candidateRepository: InputAssemblyCandidateRepository(
+                candidates: [30, 40].map(candidateSeed)
             ),
+            movieRepository: InputAssemblyMovieRepository(movies: [:]),
             availabilityRepository: InputAssemblyAvailabilityRepository(
                 evidenceByMovieID: [40: verifiedEvidence(movieID: 40, providerID: 8)],
                 failingMovieIDs: [30]
             )
         )
 
-        let snapshot = try await sut.execute(currentCycleShownMovieIDs: [])
+        let snapshot = try await sut.execute(
+            trustedState: trusted,
+            currentCycleShownMovieIDs: []
+        )
 
         #expect(snapshot.candidates.map(\.availability) == [.unknown, .eligible])
     }
 
     @Test("source-wide availability failure is not reported as honest empty")
     func sourceWideAvailabilityFailureBlocksAssembly() async throws {
-        let candidates = try [candidateSeed(id: 30), candidateSeed(id: 40)]
-        let sut = try await AssembleDecisionEngineInput(
-            viewerProfileRepository: makeCompletedProfileRepository(),
-            watchlistRepository: InputAssemblyWatchlistRepository(),
-            candidateRepository: InputAssemblyCandidateRepository(candidates: candidates),
-            movieRepository: InputAssemblyMovieRepository(
-                movies: calibrationMovies(for: ViewerProfileTestFixtures.reactions(count: 8))
+        let sut = try AssembleDecisionEngineInput(
+            candidateRepository: InputAssemblyCandidateRepository(
+                candidates: [30, 40].map(candidateSeed)
             ),
+            movieRepository: InputAssemblyMovieRepository(movies: [:]),
             availabilityRepository: InputAssemblyAvailabilityRepository(
                 failingMovieIDs: [30, 40]
             )
@@ -222,126 +159,93 @@ struct DecisionEngineInputAssemblyTests {
         await #expect(
             throws: DecisionEngineInputAssemblyError.availabilitySourceUnavailable
         ) {
-            _ = try await sut.execute(currentCycleShownMovieIDs: [])
+            _ = try await sut.execute(
+                trustedState: trustedState(),
+                currentCycleShownMovieIDs: []
+            )
         }
     }
 
     @Test("availability verification never exceeds eight concurrent requests")
     func boundsAvailabilityConcurrency() async throws {
         let candidateIDs = Array(30 ... 38)
-        let candidates = try candidateIDs.map { try candidateSeed(id: $0) }
-        let evidence = Dictionary(
-            uniqueKeysWithValues: candidateIDs.map {
+        let availability = InputAssemblyAvailabilityRepository(
+            evidenceByMovieID: Dictionary(uniqueKeysWithValues: candidateIDs.map {
                 ($0, verifiedEvidence(movieID: $0, providerID: 8))
-            }
-        )
-        let availabilityRepository = InputAssemblyAvailabilityRepository(
-            evidenceByMovieID: evidence,
+            }),
             delay: .milliseconds(20)
         )
-        let sut = try await AssembleDecisionEngineInput(
-            viewerProfileRepository: makeCompletedProfileRepository(),
-            watchlistRepository: InputAssemblyWatchlistRepository(),
-            candidateRepository: InputAssemblyCandidateRepository(candidates: candidates),
-            movieRepository: InputAssemblyMovieRepository(
-                movies: calibrationMovies(for: ViewerProfileTestFixtures.reactions(count: 8))
+        let sut = try AssembleDecisionEngineInput(
+            candidateRepository: InputAssemblyCandidateRepository(
+                candidates: candidateIDs.map(candidateSeed)
             ),
-            availabilityRepository: availabilityRepository
+            movieRepository: InputAssemblyMovieRepository(movies: [:]),
+            availabilityRepository: availability
         )
 
-        let snapshot = try await sut.execute(currentCycleShownMovieIDs: [])
+        let snapshot = try await sut.execute(
+            trustedState: trustedState(),
+            currentCycleShownMovieIDs: []
+        )
 
         #expect(snapshot.candidates.count == 9)
-        #expect(await availabilityRepository.maximumActiveRequestCount <= 8)
-        #expect(await availabilityRepository.requestCount == 9)
+        #expect(await availability.maximumActiveRequestCount <= 8)
+        #expect(await availability.requestCount == 9)
     }
 
     @Test("cancellation stops bounded availability scheduling and propagates")
     func cancellationStopsAvailabilityScheduling() async throws {
         let candidateIDs = Array(30 ... 41)
-        let availabilityRepository = InputAssemblyAvailabilityRepository(
+        let availability = InputAssemblyAvailabilityRepository(
             suspendsUntilCancelled: true
         )
-        let sut = try await AssembleDecisionEngineInput(
-            viewerProfileRepository: makeCompletedProfileRepository(),
-            watchlistRepository: InputAssemblyWatchlistRepository(),
+        let sut = try AssembleDecisionEngineInput(
             candidateRepository: InputAssemblyCandidateRepository(
-                candidates: candidateIDs.map { try candidateSeed(id: $0) }
+                candidates: candidateIDs.map(candidateSeed)
             ),
-            movieRepository: InputAssemblyMovieRepository(
-                movies: calibrationMovies(for: ViewerProfileTestFixtures.reactions(count: 8))
-            ),
-            availabilityRepository: availabilityRepository
+            movieRepository: InputAssemblyMovieRepository(movies: [:]),
+            availabilityRepository: availability
         )
         let assembly = Task {
-            try await sut.execute(currentCycleShownMovieIDs: [])
+            try await sut.execute(
+                trustedState: trustedState(),
+                currentCycleShownMovieIDs: []
+            )
         }
 
-        await availabilityRepository.waitUntilRequestCount(8)
+        await availability.waitUntilRequestCount(8)
         assembly.cancel()
 
         await #expect(throws: CancellationError.self) {
             _ = try await assembly.value
         }
-        let requestedMovieIDs = await availabilityRepository.requestedMovieIDs
+        let requestedMovieIDs = await availability.requestedMovieIDs
         #expect(requestedMovieIDs.count == 8)
         #expect(Set(requestedMovieIDs) == Set(candidateIDs.prefix(8)))
     }
 
-    @Test("calibration hydration failure blocks an incomplete taste profile")
-    func calibrationHydrationFailureBlocksAssembly() async throws {
-        let reactions = ViewerProfileTestFixtures.reactions(count: 8)
-        let failedMovieID = try #require(reactions.keys.min())
-        let sut = try await AssembleDecisionEngineInput(
-            viewerProfileRepository: makeCompletedProfileRepository(),
-            watchlistRepository: InputAssemblyWatchlistRepository(),
-            candidateRepository: InputAssemblyCandidateRepository(candidates: []),
+    @Test("Taste hydration failure prevents candidate recall")
+    func tasteHydrationFailureBlocksAssembly() async throws {
+        let trusted = try trustedState(reactions: [10: .loveIt, 20: .likeIt])
+        let candidates = InputAssemblyCandidateRepository(candidates: [])
+        let sut = AssembleDecisionEngineInput(
+            candidateRepository: candidates,
             movieRepository: InputAssemblyMovieRepository(
-                movies: calibrationMovies(for: reactions),
-                failingMovieIDs: [failedMovieID]
+                movies: hydrationMovies(for: trusted.reactions),
+                failingMovieIDs: [10]
             ),
             availabilityRepository: InputAssemblyAvailabilityRepository()
         )
 
         await #expect(
-            throws: DecisionEngineInputAssemblyError.calibrationHydrationFailed(
-                movieID: failedMovieID
-            )
+            throws: DecisionEngineInputAssemblyError.tasteHydrationFailed(movieID: 10)
         ) {
-            _ = try await sut.execute(currentCycleShownMovieIDs: [])
-        }
-    }
-
-    @Test("assembled watched exclusions are honored by the pure selector")
-    func assembledExclusionsReachSelector() async throws {
-        let reactions = ViewerProfileTestFixtures.reactions(count: 8)
-        let calibrationMovieID = try #require(reactions.keys.min())
-        let watchedMovieID = 20
-        let candidateIDs = [calibrationMovieID, watchedMovieID, 30]
-        let candidates = try candidateIDs.map { try candidateSeed(id: $0) }
-        let evidence = Dictionary(
-            uniqueKeysWithValues: candidateIDs.map {
-                ($0, verifiedEvidence(movieID: $0, providerID: 8))
-            }
-        )
-        let sut = try await AssembleDecisionEngineInput(
-            viewerProfileRepository: makeCompletedProfileRepository(),
-            watchlistRepository: InputAssemblyWatchlistRepository(
-                items: [watchlistItem(id: watchedMovieID, isWatched: true)]
-            ),
-            candidateRepository: InputAssemblyCandidateRepository(candidates: candidates),
-            movieRepository: InputAssemblyMovieRepository(
-                movies: calibrationMovies(for: reactions)
-            ),
-            availabilityRepository: InputAssemblyAvailabilityRepository(
-                evidenceByMovieID: evidence
+            _ = try await sut.execute(
+                trustedState: trusted,
+                currentCycleShownMovieIDs: []
             )
-        )
-
-        let snapshot = try await sut.execute(currentCycleShownMovieIDs: [])
-        let selection = P1DecisionEngine().select(from: snapshot.input)
-
-        #expect(selection.recommendations.map(\.candidate.movieID) == [30])
+        }
+        #expect(await candidates.requestedPages.isEmpty)
     }
 }
 
@@ -357,7 +261,7 @@ private actor InputAssemblyCandidateRepository: DecisionCandidateRepository {
 
     func discoverPage(
         _ page: Int,
-        context: DecisionCandidateContext
+        context _: DecisionCandidateContext
     ) async throws -> [DecisionCandidateSeed] {
         requestedPages.append(page)
         return page == 1 ? candidates : []
@@ -373,30 +277,30 @@ private actor InputAssemblyMovieRepository: MovieRepository {
         self.failingMovieIDs = failingMovieIDs
     }
 
-    func getMovieDetail(id: Int, policy: CachePolicy) async throws -> CacheResult<Movie> {
+    func getMovieDetail(id: Int, policy _: CachePolicy) async throws -> CacheResult<Movie> {
         guard !failingMovieIDs.contains(id), let movie = movies[id] else {
             throw InputAssemblyTestError.failed
         }
         return CacheResult(value: movie, isStale: false)
     }
 
-    func getTopRated(page: Int, policy: CachePolicy) async throws -> CacheResult<MoviePage> {
+    func getTopRated(page _: Int, policy _: CachePolicy) async throws -> CacheResult<MoviePage> {
         throw InputAssemblyTestError.failed
     }
 
     func getSimilarMovies(
-        id: Int,
-        page: Int,
-        policy: CachePolicy
+        id _: Int,
+        page _: Int,
+        policy _: CachePolicy
     ) async throws -> CacheResult<MoviePage> {
         throw InputAssemblyTestError.failed
     }
 
-    func getCredits(id: Int, policy: CachePolicy) async throws -> CacheResult<Credits> {
+    func getCredits(id _: Int, policy _: CachePolicy) async throws -> CacheResult<Credits> {
         throw InputAssemblyTestError.failed
     }
 
-    func searchMovies(query: String, page: Int) async throws -> MoviePage {
+    func searchMovies(query _: String, page _: Int) async throws -> MoviePage {
         throw InputAssemblyTestError.failed
     }
 }
@@ -426,16 +330,13 @@ private actor InputAssemblyAvailabilityRepository: AvailabilityRepository {
 
     func getVerifiedEvidence(
         movieID: Int,
-        region: ViewingRegion,
-        policy: AvailabilityFetchPolicy
+        region _: ViewingRegion,
+        policy _: AvailabilityFetchPolicy
     ) async throws -> VerifiedAvailabilityEvidence? {
         requestCount += 1
         requestedMovieIDs.append(movieID)
         activeRequestCount += 1
-        maximumActiveRequestCount = max(
-            maximumActiveRequestCount,
-            activeRequestCount
-        )
+        maximumActiveRequestCount = max(maximumActiveRequestCount, activeRequestCount)
         resumeSatisfiedRequestCountWaiters()
         defer { activeRequestCount -= 1 }
         if suspendsUntilCancelled {
@@ -451,9 +352,7 @@ private actor InputAssemblyAvailabilityRepository: AvailabilityRepository {
     }
 
     func waitUntilRequestCount(_ expectedCount: Int) async {
-        guard requestCount < expectedCount else {
-            return
-        }
+        guard requestCount < expectedCount else { return }
         await withCheckedContinuation { continuation in
             requestCountWaiters.append(RequestCountWaiter(
                 expectedCount: expectedCount,
@@ -480,10 +379,70 @@ private struct RequestCountWaiter {
     let continuation: CheckedContinuation<Void, Never>
 }
 
-private func makeCompletedProfileRepository() async throws -> DefaultViewerProfileRepository {
-    let repository = DefaultViewerProfileRepository(store: InMemoryViewerProfileDataStore())
-    _ = try await ViewerProfileTestFixtures.completedProfile(in: repository)
-    return repository
+private func trustedState(
+    reactions: [Int: MovieReaction] = [:],
+    watchedMovieIDs: Set<Int> = [],
+    notInterestedMovieIDs: Set<Int> = [],
+    savedMovieIDs: Set<Int> = []
+) throws -> TrustedDecisionState {
+    let metadata = try MovieFeedbackMetadata(
+        title: "Movie",
+        releaseYear: 2010,
+        posterPath: nil
+    )
+    var states = try reactions.map { movieID, reaction in
+        try ViewerMovieState(
+            movieID: movieID,
+            displayMetadata: metadata,
+            watchState: .watched,
+            preference: .reaction(reaction),
+            watchlistIntent: nil,
+            stateChangedAt: .distantPast
+        )
+    }
+    states += try watchedMovieIDs.subtracting(reactions.keys).map { movieID in
+        try ViewerMovieState(
+            movieID: movieID,
+            displayMetadata: metadata,
+            watchState: .watched,
+            preference: nil,
+            watchlistIntent: nil,
+            stateChangedAt: .distantPast
+        )
+    }
+    states += try notInterestedMovieIDs.map { movieID in
+        try ViewerMovieState(
+            movieID: movieID,
+            displayMetadata: metadata,
+            watchState: .unwatched,
+            preference: .notInterested,
+            watchlistIntent: nil,
+            stateChangedAt: .distantPast
+        )
+    }
+    states += try savedMovieIDs.map { movieID in
+        try ViewerMovieState(
+            movieID: movieID,
+            displayMetadata: metadata,
+            watchState: .unwatched,
+            preference: nil,
+            watchlistIntent: WatchlistIntent(addedAt: .distantPast),
+            stateChangedAt: .distantPast
+        )
+    }
+    return try TrustedDecisionState(
+        profile: ViewerProfile(
+            profileSchemaVersion: ViewerProfile.currentSchemaVersion,
+            catalogID: .spainHouseholdV1,
+            region: .spain,
+            selectedServices: [.netflix],
+            reactions: [:]
+        ),
+        viewerMovieState: ViewerMovieStateSnapshot(
+            id: ViewerStateSnapshotID(rawValue: UUID()),
+            states: states
+        )
+    )
 }
 
 private func candidateSeed(id: Int) throws -> DecisionCandidateSeed {
@@ -499,24 +458,7 @@ private func candidateSeed(id: Int) throws -> DecisionCandidateSeed {
     ))
 }
 
-private func watchlistItem(id: Int, isWatched: Bool) -> WatchlistItem {
-    WatchlistItem(
-        id: id,
-        addedAt: Date(timeIntervalSince1970: TimeInterval(id)),
-        isWatched: isWatched,
-        movie: MovieSummary(
-            id: id,
-            title: "Movie \(id)",
-            posterPath: nil,
-            releaseYear: 2010,
-            rating: 8
-        )
-    )
-}
-
-private func calibrationMovies(
-    for reactions: [Int: CalibrationReaction]
-) -> [Int: Movie] {
+private func hydrationMovies(for reactions: [Int: MovieReaction]) -> [Int: Movie] {
     Dictionary(uniqueKeysWithValues: reactions.keys.map { movieID in
         (
             movieID,

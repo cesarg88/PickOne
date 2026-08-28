@@ -319,7 +319,7 @@ struct P1DecisionEngineEvidenceTests {
         DecisionEngineInput(
             profile: profile,
             candidates: candidates,
-            watchlistWatchedMovieIDs: [],
+            recommendationExcludedMovieIDs: [],
             savedUnwatchedMovieIDs: savedUnwatchedMovieIDs,
             currentCycleShownMovieIDs: []
         )

@@ -4,12 +4,7 @@ enum ThreeForTonightRequest: Sendable {
     case load
     case refresh
     case repair(DecisionEligibilityChange)
-}
-
-struct TrustedLocalState: Sendable {
-    let profile: ViewerProfile
-    let watchlistItems: [WatchlistItem]
-    let snapshotID: ViewerStateSnapshotID
+    case reconcile(DecisionViewerStateChange)
 }
 
 extension DecisionEligibilityChange {
@@ -32,7 +27,6 @@ struct ThreeForTonightSnapshot: Equatable, Sendable {
 
 enum ThreeForTonightFailureReason: Equatable, Sendable {
     case profileUnavailable
-    case watchlistUnavailable
     case generationUnavailable
     case persistenceFailed
     case recoveryFailed
@@ -73,6 +67,9 @@ protocol ThreeForTonightUseCase: Sendable {
     func repairAfterEligibilityChange(
         _ change: DecisionEligibilityChange
     ) async throws -> ThreeForTonightResult
+    func reconcileAfterViewerStateChange(
+        _ change: DecisionViewerStateChange
+    ) async throws -> ThreeForTonightResult
 }
 
 protocol DecisionCycleSigning: Sendable {
@@ -94,29 +91,27 @@ struct SystemDecisionSetClock: DecisionSetClock {
 enum ThreeForTonightSnapshotFactory {
     static func snapshot(
         _ envelope: PersistedDecisionSet,
-        watchlistItems: [WatchlistItem]
+        trustedState: TrustedDecisionState
     ) -> ThreeForTonightSnapshot {
         ThreeForTonightSnapshot(
             decisionSet: envelope,
-            savedMovieIDs: Set(
-                watchlistItems.lazy.filter { !$0.isWatched }.map(\.id)
-            )
+            savedMovieIDs: trustedState.savedUnwatchedMovieIDs
         )
     }
 
     static func safeRetainedSnapshot(
         _ envelope: PersistedDecisionSet,
-        watchlistItems: [WatchlistItem],
-        profile: ViewerProfile,
+        trustedState: TrustedDecisionState,
+        currentCycleSignature: DecisionCycleSignature,
         additionallyUnsafeMovieIDs: Set<Int> = []
     ) -> ThreeForTonightSnapshot? {
         let unsafeMovieIDs = localRepairMovieIDs(
             envelope: envelope,
-            watchlistItems: watchlistItems,
-            profile: profile
+            trustedState: trustedState,
+            currentCycleSignature: currentCycleSignature
         ).union(additionallyUnsafeMovieIDs)
         guard !unsafeMovieIDs.isEmpty else {
-            return snapshot(envelope, watchlistItems: watchlistItems)
+            return snapshot(envelope, trustedState: trustedState)
         }
 
         do {
@@ -148,7 +143,7 @@ enum ThreeForTonightSnapshotFactory {
                 selectedProviderIDs: envelope.selectedProviderIDs,
                 recommendations: retained
             )
-            return snapshot(retainedEnvelope, watchlistItems: watchlistItems)
+            return snapshot(retainedEnvelope, trustedState: trustedState)
         } catch {
             return nil
         }
@@ -156,24 +151,33 @@ enum ThreeForTonightSnapshotFactory {
 
     static func localRepairMovieIDs(
         envelope: PersistedDecisionSet,
-        watchlistItems: [WatchlistItem],
-        profile: ViewerProfile
+        trustedState: TrustedDecisionState,
+        currentCycleSignature: DecisionCycleSignature
     ) -> Set<Int> {
-        let watchedIDs = Set(watchlistItems.lazy.filter(\.isWatched).map(\.id))
-        let savedIDs = Set(watchlistItems.lazy.filter { !$0.isWatched }.map(\.id))
+        let hasStaleTasteEvidence =
+            envelope.cycle.identitySignature != currentCycleSignature
         return Set(envelope.recommendations.compactMap { recommendation in
             let movieID = recommendation.display.movieID
-            if watchedIDs.contains(movieID) {
+            if trustedState.recommendationExcludedMovieIDs.contains(movieID) {
                 return movieID
             }
-            if recommendation.evidence.requiresAnchorRepair(profile: profile) {
+            if recommendation.evidence.requiresAnchorRepair(
+                reactions: trustedState.reactions
+            ) {
                 return movieID
             }
             if recommendation.evidence.requiresReadableGenreRepair {
                 return movieID
             }
+            if hasStaleTasteEvidence,
+               recommendation.evidence.requiresTasteEvidenceRepair(
+                   reactions: trustedState.reactions
+               )
+            {
+                return movieID
+            }
             if case .watchlistIntent = recommendation.evidence.primary,
-               !savedIDs.contains(movieID)
+               !trustedState.savedUnwatchedMovieIDs.contains(movieID)
             {
                 return movieID
             }
@@ -200,7 +204,7 @@ private extension RecommendationEvidence {
         return genres.contains { $0.name == nil }
     }
 
-    func requiresAnchorRepair(profile: ViewerProfile) -> Bool {
+    func requiresAnchorRepair(reactions: [Int: MovieReaction]) -> Bool {
         let anchor: PositiveAnchorEvidence? = switch primary {
             case let .watchlistIntent(match):
                 if case let .positiveAnchor(anchor) = match {
@@ -216,10 +220,31 @@ private extension RecommendationEvidence {
         guard let anchor else { return false }
         guard anchor.anchorGenres != nil else { return true }
 
-        let currentReaction = profile.reactions[anchor.movieID]
+        let currentReaction = reactions[anchor.movieID]
         return switch anchor.reaction {
-            case .loved: currentReaction != .loveIt
-            case .liked: currentReaction != .likeIt
+            case .loved: currentReaction != MovieReaction.loveIt
+            case .liked: currentReaction != MovieReaction.likeIt
+        }
+    }
+
+    func requiresTasteEvidenceRepair(reactions: [Int: MovieReaction]) -> Bool {
+        switch primary {
+            case let .watchlistIntent(match):
+                if case .positiveAffinity = match {
+                    return true
+                }
+                return false
+            case .positiveGenreAffinity:
+                return true
+            case .sparseQuality:
+                let directionalCount = reactions.values.count {
+                    $0.calibrationReaction.isDirectionalEvidence
+                }
+                return P1Scoring.profileConfidence(
+                    directionalCount: directionalCount
+                ) >= 1.0 / 3.0
+            case .positiveAnchor:
+                return false
         }
     }
 }
@@ -230,29 +255,21 @@ extension DecisionEngineInputAssemblyError {
             return .recoveryFailed
         }
         return switch self {
-            case .profileUnavailable: .profileUnavailable
-            case .watchlistUnavailable: .watchlistUnavailable
             case .invalidCandidateContext,
                  .candidateRecallFailed,
-                 .calibrationHydrationFailed,
+                 .tasteHydrationFailed,
                  .availabilitySourceUnavailable: .generationUnavailable
         }
     }
 }
 
 enum CoordinatorError: Error {
-    case profileUnavailable
-    case watchlistUnavailable
     case invariantViolation
 
     func failureReason(recovery: Bool) -> ThreeForTonightFailureReason {
         if recovery {
             return .recoveryFailed
         }
-        return switch self {
-            case .profileUnavailable: .profileUnavailable
-            case .watchlistUnavailable: .watchlistUnavailable
-            case .invariantViolation: .invariantViolation
-        }
+        return .invariantViolation
     }
 }
