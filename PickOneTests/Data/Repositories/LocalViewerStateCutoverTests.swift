@@ -181,8 +181,8 @@ struct LocalViewerStateCutoverTests {
         #expect(snapshot.state(for: saved.movieID)?.watchlistIntent != nil)
     }
 
-    @Test("Watchlist adapter derives temporary watched and future-intent rows from v2")
-    func watchlistCompatibilityProjection() async throws {
+    @Test("Watchlist adapter derives future-intent rows only from v2")
+    func finalWatchlistProjection() async throws {
         let firstID = try LocalViewerStateTestFixtures.uuid(LocalViewerStateTestFixtures.firstID)
         let catalog = CalibrationCatalog.spainHouseholdV1
         let watched = try viewerState(
@@ -215,8 +215,8 @@ struct LocalViewerStateCutoverTests {
 
         let items = try await repository.loadAllItems()
 
-        #expect(items.map(\.id) == [saved.movieID, watched.movieID])
-        #expect(items.first { $0.id == watched.movieID }?.isWatched == true)
+        #expect(items.map(\.id) == [saved.movieID])
+        #expect(!items.contains { $0.id == watched.movieID })
         #expect(items.first { $0.id == saved.movieID }?.isWatched == false)
         #expect(try await repository.getStatus(movieId: rejected.movieID) == .notInWatchlist)
     }

@@ -51,8 +51,18 @@ final class PickOneSmokeTests: XCTestCase {
             app.buttons["Remove from Watchlist"].waitForExistence(timeout: 15)
         )
         XCTAssertFalse(app.buttons["Undo Not interested"].exists)
+        tapButton("Mark watched", in: app)
 
         app.tabBars.buttons["Settings"].tap()
+        tapButton("My movies", in: app)
+        XCTAssertTrue(app.navigationBars["My movies"].waitForExistence(timeout: 15))
+        let myMoviesRow = app.buttons["my-movies-row-101"]
+        XCTAssertTrue(myMoviesRow.waitForExistence(timeout: 15))
+        myMoviesRow.tap()
+        XCTAssertTrue(app.navigationBars["Details"].waitForExistence(timeout: 15))
+        XCTAssertTrue(app.staticTexts["Tonight's Movie"].waitForExistence(timeout: 15))
+        app.navigationBars["Details"].buttons["My movies"].tap()
+        app.navigationBars["My movies"].buttons["Settings"].tap()
         app.buttons["About"].tap()
         XCTAssertTrue(app.navigationBars["About"].waitForExistence(timeout: 15))
         XCTAssertTrue(app.images["The Movie Database"].exists)

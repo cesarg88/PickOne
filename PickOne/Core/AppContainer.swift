@@ -46,6 +46,7 @@ final class AppContainer {
     let recommendationViewModel: RecommendationViewModel
     let homeDecisionViewModel: HomeDecisionViewModel
     let viewerProfileViewModel: ViewerProfileViewModel
+    let myMoviesViewModel: MyMoviesViewModel
 
     init() {
         let repositories = Self.makeRepositories()
@@ -95,7 +96,6 @@ final class AppContainer {
         watchlistViewModel = WatchlistViewModel(
             getWatchlist: useCases.getWatchlist,
             setMembership: useCases.setWatchlistMembership,
-            setWatched: useCases.setWatched,
             eligibilityDidChange: { [weak homeDecisionViewModel] change in
                 homeDecisionViewModel?.repair(after: change)
             }
@@ -114,6 +114,7 @@ final class AppContainer {
             resetUnrecoverableViewerState: useCases.resetUnrecoverableViewerState,
             resetsProfileForUITests: AppConfiguration.resetsViewerProfileForUITests
         )
+        myMoviesViewModel = MyMoviesViewModel(getMyMovies: useCases.getMyMovies)
     }
 }
 

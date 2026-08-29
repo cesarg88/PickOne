@@ -8,8 +8,7 @@
 import Foundation
 
 protocol GetWatchlistUseCase: Sendable {
-    /// Retrieves the complete watchlist organized by status
-    /// - Returns: A snapshot containing toWatch and watched items
+    /// Retrieves the current future-intent Watchlist.
     func execute() async throws -> WatchlistSnapshot
 }
 
@@ -24,11 +23,9 @@ final class GetWatchlist: GetWatchlistUseCase, Sendable {
         let allItems = try await repository.loadAllItems()
 
         let toWatch = allItems.filter { !$0.isWatched }
-        let watched = allItems.filter { $0.isWatched }
-
         return WatchlistSnapshot(
             toWatch: toWatch,
-            watched: watched,
+            watched: [],
             asOf: Date()
         )
     }

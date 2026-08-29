@@ -3,12 +3,23 @@ import SwiftUI
 @MainActor
 struct SettingsView: View {
     @Bindable var model: ViewerProfileViewModel
+    let myMoviesModel: MyMoviesViewModel
+    let imagePipeline: ImagePipeline
+    let movieDetailDependencies: MovieDetailNavigationDependencies
     @State private var confirmsResetProfile = false
 
     var body: some View {
         NavigationStack {
             List {
                 Section("Preferences") {
+                    NavigationLink("My movies") {
+                        MyMoviesView(
+                            model: myMoviesModel,
+                            imagePipeline: imagePipeline,
+                            movieDetailDependencies: myMoviesDetailDependencies
+                        )
+                    }
+
                     NavigationLink("Streaming services") {
                         EditStreamingServicesView(model: model)
                     }
@@ -46,6 +57,21 @@ struct SettingsView: View {
                 Text(ViewerProfileCopy.resetBody)
             }
         }
+    }
+
+    private var myMoviesDetailDependencies: MovieDetailNavigationDependencies {
+        MovieDetailNavigationDependencies(
+            getMovieDetail: movieDetailDependencies.getMovieDetail,
+            getViewerMovieState: movieDetailDependencies.getViewerMovieState,
+            updateViewerMovieState: movieDetailDependencies.updateViewerMovieState,
+            checkAvailability: movieDetailDependencies.checkAvailability,
+            preparePlaybackOptions: movieDetailDependencies.preparePlaybackOptions,
+            viewerStateDidChange: { change in
+                movieDetailDependencies.viewerStateDidChange(change)
+                Task { await myMoviesModel.load() }
+            },
+            eligibilityDidChange: movieDetailDependencies.eligibilityDidChange
+        )
     }
 }
 

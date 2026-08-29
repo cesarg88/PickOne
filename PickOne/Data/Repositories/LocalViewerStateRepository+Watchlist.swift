@@ -2,11 +2,11 @@ import Foundation
 
 extension LocalViewerStateRepository {
     func loadWatchlistProjection() throws -> [WatchlistItem] {
-        try ViewerMovieStateProjections.watchlistCompatibility(from: snapshot()).map { state in
+        try ViewerMovieStateProjections.watchlist(from: snapshot()).map { state in
             WatchlistItem(
                 id: state.movieID,
-                addedAt: state.watchlistIntent?.addedAt ?? state.stateChangedAt,
-                isWatched: state.watchState.isWatched,
+                addedAt: state.watchlistIntent?.addedAt ?? .distantPast,
+                isWatched: false,
                 movie: MovieSummary(
                     id: state.movieID,
                     title: state.displayMetadata.title,

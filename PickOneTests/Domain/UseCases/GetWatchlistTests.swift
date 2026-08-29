@@ -11,8 +11,8 @@ import Testing
 
 @Suite("GetWatchlist Tests", .serialized)
 struct GetWatchlistTests {
-    @Test("execute returns snapshot with separated toWatch and watched")
-    func executeReturnsSnapshotWithSeparatedItems() async throws {
+    @Test("execute returns future intent and omits watched history")
+    func executeReturnsFutureIntentOnly() async throws {
         let repository = MockWatchlistRepository()
         repository.getAllItemsResult = WatchlistTestFixtures.twoItems
         let sut = GetWatchlist(repository: repository)
@@ -20,7 +20,7 @@ struct GetWatchlistTests {
         let snapshot = try await sut.execute()
 
         #expect(snapshot.toWatch.count == 1)
-        #expect(snapshot.watched.count == 1)
+        #expect(snapshot.watched.isEmpty)
         #expect(repository.loadAllItemsCallCount == 1)
     }
 
@@ -35,15 +35,16 @@ struct GetWatchlistTests {
         #expect(snapshot.toWatch.allSatisfy { !$0.isWatched })
     }
 
-    @Test("execute puts watched items in watched")
-    func executePutsWatchedInWatched() async throws {
+    @Test("execute excludes watched items")
+    func executeExcludesWatched() async throws {
         let repository = MockWatchlistRepository()
         repository.getAllItemsResult = WatchlistTestFixtures.twoItems
         let sut = GetWatchlist(repository: repository)
 
         let snapshot = try await sut.execute()
 
-        #expect(snapshot.watched.allSatisfy { $0.isWatched })
+        #expect(snapshot.toWatch.map(\.id) == [WatchlistTestFixtures.unwatchedItem.id])
+        #expect(snapshot.watched.isEmpty)
     }
 
     @Test("execute returns empty snapshot when no items")
