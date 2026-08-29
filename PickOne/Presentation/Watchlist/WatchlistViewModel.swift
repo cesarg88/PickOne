@@ -13,7 +13,7 @@ import Observation
 enum WatchlistViewState: Equatable {
     case idle
     case loaded(WatchlistPresentationModel)
-    case empty(WatchlistFilter)
+    case empty
 }
 
 // MARK: - ViewModel
@@ -23,54 +23,37 @@ enum WatchlistViewState: Equatable {
 final class WatchlistViewModel {
     private let getWatchlist: GetWatchlistUseCase
     private let setMembership: SetWatchlistMembershipUseCase
-    private let setWatched: SetWatchedUseCase
     @ObservationIgnored private let eligibilityDidChange: @MainActor (DecisionEligibilityChange) -> Void
+    @ObservationIgnored private var activeLoadID = UUID()
 
     var state: WatchlistViewState = .idle
-    var currentFilter: WatchlistFilter = .all
     var actionErrorMessage: String?
 
     init(
         getWatchlist: GetWatchlistUseCase,
         setMembership: SetWatchlistMembershipUseCase,
-        setWatched: SetWatchedUseCase,
         eligibilityDidChange: @escaping @MainActor (DecisionEligibilityChange) -> Void = { _ in }
     ) {
         self.getWatchlist = getWatchlist
         self.setMembership = setMembership
-        self.setWatched = setWatched
         self.eligibilityDidChange = eligibilityDidChange
     }
 
     // MARK: - Actions
 
     func load() async {
+        let loadID = UUID()
+        activeLoadID = loadID
+
         do {
             let snapshot = try await getWatchlist.execute()
+            try Task.checkCancellation()
+            guard activeLoadID == loadID else { return }
             applySnapshot(snapshot)
+        } catch is CancellationError {
+            return
         } catch {
-            actionErrorMessage = error.localizedDescription
-        }
-    }
-
-    func applyFilter(_ filter: WatchlistFilter) async {
-        currentFilter = filter
-        await load()
-    }
-
-    func toggleWatched(movieId: Int) async {
-        guard let item = findItem(movieId: movieId) else { return }
-
-        do {
-            let outcome = try await setWatched.execute(
-                movieId: movieId,
-                isWatched: !item.isWatched
-            )
-            await load()
-            if outcome.didChange {
-                notifyEligibilityChange(movieID: movieId)
-            }
-        } catch {
+            guard activeLoadID == loadID else { return }
             actionErrorMessage = error.localizedDescription
         }
     }
@@ -95,10 +78,10 @@ final class WatchlistViewModel {
     // MARK: - Private
 
     private func applySnapshot(_ snapshot: WatchlistSnapshot) {
-        let model = WatchlistPresentationMapper.map(snapshot: snapshot, filter: currentFilter)
+        let model = WatchlistPresentationMapper.map(snapshot: snapshot)
 
         if model.isEmpty {
-            state = .empty(currentFilter)
+            state = .empty
         } else {
             state = .loaded(model)
         }

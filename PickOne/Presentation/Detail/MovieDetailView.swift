@@ -22,6 +22,24 @@ struct MovieDetailNavigationDependencies {
             eligibilityDidChange: eligibilityDidChange
         )
     }
+
+    func refreshingProjection(
+        _ refresh: @escaping @MainActor () async -> Void
+    ) -> MovieDetailNavigationDependencies {
+        let upstreamViewerStateDidChange = viewerStateDidChange
+        return MovieDetailNavigationDependencies(
+            getMovieDetail: getMovieDetail,
+            getViewerMovieState: getViewerMovieState,
+            updateViewerMovieState: updateViewerMovieState,
+            checkAvailability: checkAvailability,
+            preparePlaybackOptions: preparePlaybackOptions,
+            viewerStateDidChange: { change in
+                upstreamViewerStateDidChange(change)
+                Task { await refresh() }
+            },
+            eligibilityDidChange: eligibilityDidChange
+        )
+    }
 }
 
 @MainActor

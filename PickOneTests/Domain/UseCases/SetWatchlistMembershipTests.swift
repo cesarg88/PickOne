@@ -24,7 +24,6 @@ struct SetWatchlistMembershipTests {
         #expect(repository.membershipCallCount == 1)
         #expect(repository.lastMembershipMovie?.id == movie.id)
         #expect(repository.lastMembershipValue == true)
-        #expect(repository.getStatusCallCount == 0)
     }
 
     @Test("execute removes movie when isInWatchlist is false and in watchlist")
@@ -40,7 +39,6 @@ struct SetWatchlistMembershipTests {
         #expect(repository.membershipCallCount == 1)
         #expect(repository.lastMembershipMovie?.id == movie.id)
         #expect(repository.lastMembershipValue == false)
-        #expect(repository.getStatusCallCount == 0)
     }
 
     @Test("execute is idempotent - no-op when already in watchlist and adding")
@@ -56,7 +54,6 @@ struct SetWatchlistMembershipTests {
 
         #expect(outcome == WatchlistMutationOutcome(status: .toWatch, didChange: false))
         #expect(repository.membershipCallCount == 1)
-        #expect(repository.getStatusCallCount == 0)
     }
 
     @Test("execute is idempotent - no-op when not in watchlist and removing")
@@ -72,46 +69,17 @@ struct SetWatchlistMembershipTests {
 
         #expect(outcome == WatchlistMutationOutcome(status: .notInWatchlist, didChange: false))
         #expect(repository.membershipCallCount == 1)
-        #expect(repository.getStatusCallCount == 0)
     }
 
-    @Test("removing membership from watched-only compatibility state is a semantic no-op")
-    func removingMembershipFromWatchedOnlyStateIsNoOp() async throws {
-        let repository = MockWatchlistRepository()
-        repository.statusResult = .watched
-        let sut = SetWatchlistMembership(repository: repository)
-
-        let outcome = try await sut.execute(
-            movie: WatchlistTestFixtures.movieSummary,
-            isInWatchlist: false
-        )
-
-        #expect(outcome == WatchlistMutationOutcome(status: .watched, didChange: false))
-        #expect(repository.membershipCallCount == 1)
-        #expect(repository.getStatusCallCount == 0)
-    }
-
-    @Test("execute propagates add error")
-    func executePropagatesAddError() async {
+    @Test("execute propagates repository error")
+    func executePropagatesRepositoryError() async {
         let repository = MockWatchlistRepository()
         repository.statusResult = .notInWatchlist
-        repository.membershipError = WatchlistError.movieAlreadyInWatchlist
+        repository.membershipError = .failed
         let sut = SetWatchlistMembership(repository: repository)
 
-        await #expect(throws: WatchlistError.movieAlreadyInWatchlist) {
+        await #expect(throws: MockWatchlistRepositoryError.failed) {
             try await sut.execute(movie: WatchlistTestFixtures.movieSummary, isInWatchlist: true)
-        }
-    }
-
-    @Test("execute propagates remove error")
-    func executePropagatesRemoveError() async {
-        let repository = MockWatchlistRepository()
-        repository.statusResult = .toWatch // In watchlist so remove will be called
-        repository.membershipError = WatchlistError.movieNotInWatchlist
-        let sut = SetWatchlistMembership(repository: repository)
-
-        await #expect(throws: WatchlistError.movieNotInWatchlist) {
-            try await sut.execute(movie: WatchlistTestFixtures.movieSummary, isInWatchlist: false)
         }
     }
 }

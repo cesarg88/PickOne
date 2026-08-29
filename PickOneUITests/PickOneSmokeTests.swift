@@ -52,7 +52,38 @@ final class PickOneSmokeTests: XCTestCase {
         )
         XCTAssertFalse(app.buttons["Undo Not interested"].exists)
 
+        app.navigationBars["Details"].buttons["Home"].tap()
+        app.tabBars.buttons["Watchlist"].tap()
+        let watchlistRow = app.buttons["watchlist-row-101"]
+        XCTAssertTrue(watchlistRow.waitForExistence(timeout: 15))
+        watchlistRow.tap()
+        XCTAssertTrue(app.navigationBars["Details"].waitForExistence(timeout: 15))
+        tapButton("Mark watched", in: app)
+        app.navigationBars["Details"].buttons["Watchlist"].tap()
+        XCTAssertTrue(watchlistRow.waitForNonExistence(timeout: 15))
+
         app.tabBars.buttons["Settings"].tap()
+        tapButton("My movies", in: app)
+        XCTAssertTrue(app.navigationBars["My movies"].waitForExistence(timeout: 15))
+        let myMoviesRow = app.buttons["my-movies-row-101"]
+        XCTAssertTrue(myMoviesRow.waitForExistence(timeout: 15))
+        myMoviesRow.tap()
+        XCTAssertTrue(app.navigationBars["Details"].waitForExistence(timeout: 15))
+        XCTAssertTrue(app.staticTexts["Tonight's Movie"].waitForExistence(timeout: 15))
+        tapButton("Love it", in: app)
+        app.navigationBars["Details"].buttons["My movies"].tap()
+        XCTAssertTrue(
+            waitUntilLabel(
+                myMoviesRow,
+                equals: "Tonight's Movie, Love it",
+                timeout: 15
+            )
+        )
+        myMoviesRow.tap()
+        tapButton("Mark unwatched", in: app)
+        app.navigationBars["Details"].buttons["My movies"].tap()
+        XCTAssertTrue(myMoviesRow.waitForNonExistence(timeout: 15))
+        app.navigationBars["My movies"].buttons["Settings"].tap()
         app.buttons["About"].tap()
         XCTAssertTrue(app.navigationBars["About"].waitForExistence(timeout: 15))
         XCTAssertTrue(app.images["The Movie Database"].exists)
@@ -92,6 +123,18 @@ final class PickOneSmokeTests: XCTestCase {
     ) -> Bool {
         let expectation = XCTNSPredicateExpectation(
             predicate: NSPredicate(format: "enabled == true"),
+            object: element
+        )
+        return XCTWaiter.wait(for: [expectation], timeout: timeout) == .completed
+    }
+
+    private func waitUntilLabel(
+        _ element: XCUIElement,
+        equals label: String,
+        timeout: TimeInterval
+    ) -> Bool {
+        let expectation = XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "label == %@", label),
             object: element
         )
         return XCTWaiter.wait(for: [expectation], timeout: timeout) == .completed

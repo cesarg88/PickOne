@@ -2,11 +2,10 @@ import Foundation
 
 extension LocalViewerStateRepository {
     func loadWatchlistProjection() throws -> [WatchlistItem] {
-        try ViewerMovieStateProjections.watchlistCompatibility(from: snapshot()).map { state in
+        try ViewerMovieStateProjections.watchlist(from: snapshot()).map { state in
             WatchlistItem(
                 id: state.movieID,
-                addedAt: state.watchlistIntent?.addedAt ?? state.stateChangedAt,
-                isWatched: state.watchState.isWatched,
+                addedAt: state.watchlistIntent?.addedAt ?? .distantPast,
                 movie: MovieSummary(
                     id: state.movieID,
                     title: state.displayMetadata.title,
@@ -16,13 +15,6 @@ extension LocalViewerStateRepository {
                 )
             )
         }
-    }
-
-    func watchlistStatus(movieID: Int) throws -> WatchlistStatus {
-        guard movieID > 0 else { return .notInWatchlist }
-        guard let state = try state(movieID: movieID) else { return .notInWatchlist }
-        if state.watchState.isWatched { return .watched }
-        return state.watchlistIntent == nil ? .notInWatchlist : .toWatch
     }
 
     func setWatchlistMembership(
@@ -35,25 +27,6 @@ extension LocalViewerStateRepository {
                 action: isInWatchlist ? .saveToWatchlist : .removeFromWatchlist
             ),
             metadata: feedbackMetadata(movie)
-        )
-        return watchlistOutcome(change)
-    }
-
-    func setWatchlistWatched(
-        movieID: Int,
-        isWatched: Bool
-    ) throws -> WatchlistMutationOutcome {
-        guard try watchlistStatus(movieID: movieID) != .notInWatchlist,
-              let state = try state(movieID: movieID)
-        else {
-            throw WatchlistError.movieNotInWatchlist
-        }
-        let change = try apply(
-            ViewerMovieStateTransition(
-                movieID: movieID,
-                action: isWatched ? .markWatched : .markUnwatched
-            ),
-            metadata: state.displayMetadata
         )
         return watchlistOutcome(change)
     }
@@ -80,8 +53,6 @@ extension LocalViewerStateRepository {
     }
 
     private func watchlistStatus(_ state: ViewerMovieState?) -> WatchlistStatus {
-        guard let state else { return .notInWatchlist }
-        if state.watchState.isWatched { return .watched }
-        return state.watchlistIntent == nil ? .notInWatchlist : .toWatch
+        state?.watchlistIntent == nil ? .notInWatchlist : .toWatch
     }
 }

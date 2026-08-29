@@ -7,29 +7,16 @@
 
 import Foundation
 
-// MARK: - Filter
-
-enum WatchlistFilter: String, CaseIterable, Identifiable {
-    case all = "All"
-    case toWatch = "To Watch"
-    case watched = "Watched"
-
-    var id: String {
-        rawValue
-    }
-}
-
 // MARK: - Presentation Model
 
 struct WatchlistPresentationModel: Equatable {
     let items: [WatchlistItemPresentation]
-    let filter: WatchlistFilter
 
     var isEmpty: Bool {
         items.isEmpty
     }
 
-    static let empty = WatchlistPresentationModel(items: [], filter: .all)
+    static let empty = WatchlistPresentationModel(items: [])
 }
 
 struct WatchlistItemPresentation: Identifiable, Equatable {
@@ -38,7 +25,6 @@ struct WatchlistItemPresentation: Identifiable, Equatable {
     let posterURL: URL?
     let releaseYear: String?
     let rating: String?
-    let isWatched: Bool
     let addedDate: String
 
     /// The MovieSummary for passing to use cases
@@ -49,22 +35,11 @@ struct WatchlistItemPresentation: Identifiable, Equatable {
 
 @MainActor
 enum WatchlistPresentationMapper {
-    static func map(snapshot: WatchlistSnapshot, filter: WatchlistFilter) -> WatchlistPresentationModel {
-        let items: [WatchlistItem] = switch filter {
-            case .all:
-                snapshot.toWatch + snapshot.watched
-            case .toWatch:
-                snapshot.toWatch
-            case .watched:
-                snapshot.watched
-        }
-
-        // Sort by addedAt descending (most recent first)
-        let sorted = items.sorted { $0.addedAt > $1.addedAt }
+    static func map(snapshot: WatchlistSnapshot) -> WatchlistPresentationModel {
+        let sorted = snapshot.toWatch.sorted { $0.addedAt > $1.addedAt }
 
         return WatchlistPresentationModel(
-            items: sorted.map(mapItem),
-            filter: filter
+            items: sorted.map(mapItem)
         )
     }
 
@@ -75,7 +50,6 @@ enum WatchlistPresentationMapper {
             posterURL: posterURL(for: item.movie.posterPath),
             releaseYear: item.movie.releaseYear.map(String.init),
             rating: item.movie.rating > 0 ? String(format: "%.1f", item.movie.rating) : nil,
-            isWatched: item.isWatched,
             addedDate: formatDate(item.addedAt),
             movieSummary: item.movie
         )

@@ -12,7 +12,7 @@ protocol SetWatchlistMembershipUseCase: Sendable {
     /// - Parameters:
     ///   - movie: The movie summary (required for adding)
     ///   - isInWatchlist: True to add, false to remove
-    /// - Returns: The atomically persisted compatibility outcome.
+    /// - Returns: The atomically persisted membership outcome.
     @discardableResult
     func execute(
         movie: MovieSummary,

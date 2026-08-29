@@ -400,13 +400,14 @@ struct ViewerProfileUserDefaultsIsolationTests {
             addedAt: Date(timeIntervalSince1970: 100),
             isWatched: true
         )
-        try localStore.saveWatchlistItem(item)
+        let watchlistData = try JSONEncoder().encode([item])
+        defaults.set(watchlistData, forKey: "watchlist_items_v2")
         localStore.addSearchQuery("Arrival")
         _ = try await ViewerProfileTestFixtures.completedProfile(in: profileRepository)
 
         try await profileRepository.resetProfileAndDraft()
 
-        #expect(localStore.getWatchlistItems() == [item])
+        #expect(defaults.data(forKey: "watchlist_items_v2") == watchlistData)
         #expect(localStore.getSearchHistory() == ["Arrival"])
         #expect(defaults.data(forKey: UserDefaultsViewerProfileDataStore.storageKey) == nil)
     }

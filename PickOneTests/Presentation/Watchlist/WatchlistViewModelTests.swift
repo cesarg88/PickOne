@@ -22,10 +22,9 @@ struct WatchlistViewModelTests {
 
         await sut.load()
 
-        if case let .empty(filter) = sut.state {
-            #expect(filter == .all)
-        } else {
+        guard case .empty = sut.state else {
             Issue.record("Expected empty state")
+            return
         }
     }
 
@@ -44,14 +43,13 @@ struct WatchlistViewModelTests {
         }
     }
 
-    @Test("load omits an unavailable compatibility rating")
-    func loadOmitsUnavailableCompatibilityRating() async {
+    @Test("load omits an unavailable rating")
+    func loadOmitsUnavailableRating() async {
         let repository = MockWatchlistRepository()
         repository.getAllItemsResult = [
             WatchlistItem(
                 id: 1,
                 addedAt: Date(timeIntervalSince1970: 100),
-                isWatched: false,
                 movie: MovieSummary(
                     id: 1,
                     title: "Movie",
@@ -72,40 +70,47 @@ struct WatchlistViewModelTests {
         #expect(data.items.first?.rating == nil)
     }
 
-    // MARK: - Filter
+    @Test("older load cannot overwrite a newer projection")
+    func olderLoadCannotOverwriteNewerProjection() async {
+        let getWatchlist = ControlledGetWatchlistUseCase()
+        let sut = WatchlistViewModel(
+            getWatchlist: getWatchlist,
+            setMembership: SetWatchlistMembership(repository: MockWatchlistRepository())
+        )
 
-    @Test("applyFilter updates current filter and reloads")
-    func applyFilterUpdatesAndReloads() async {
-        let repository = MockWatchlistRepository()
-        repository.getAllItemsResult = WatchlistTestFixtures.twoItems
-        let (sut, _) = makeSUT(repository: repository)
+        let olderLoad = Task { await sut.load() }
+        await getWatchlist.waitUntilStarted(call: 1)
 
-        await sut.load()
-        await sut.applyFilter(.watched)
+        let newerLoad = Task { await sut.load() }
+        await getWatchlist.waitUntilStarted(call: 2)
 
-        #expect(sut.currentFilter == .watched)
-        if case let .loaded(data) = sut.state {
-            #expect(data.items.count == 1)
-            #expect(data.items[0].isWatched == true)
-        } else {
-            Issue.record("Expected loaded state")
+        await getWatchlist.complete(
+            call: 2,
+            with: .success(
+                WatchlistSnapshot(
+                    toWatch: [WatchlistTestFixtures.anotherUnwatchedItem],
+                    asOf: Date(timeIntervalSince1970: 200)
+                )
+            )
+        )
+        await newerLoad.value
+
+        await getWatchlist.complete(
+            call: 1,
+            with: .success(
+                WatchlistSnapshot(
+                    toWatch: [WatchlistTestFixtures.unwatchedItem],
+                    asOf: Date(timeIntervalSince1970: 100)
+                )
+            )
+        )
+        await olderLoad.value
+
+        guard case let .loaded(data) = sut.state else {
+            Issue.record("Expected the latest projection")
+            return
         }
-    }
-
-    @Test("applyFilter shows empty when no items match")
-    func applyFilterShowsEmptyWhenNoMatch() async {
-        let repository = MockWatchlistRepository()
-        repository.getAllItemsResult = [WatchlistTestFixtures.unwatchedItem]
-        let (sut, _) = makeSUT(repository: repository)
-
-        await sut.load()
-        await sut.applyFilter(.watched)
-
-        if case let .empty(filter) = sut.state {
-            #expect(filter == .watched)
-        } else {
-            Issue.record("Expected empty state")
-        }
+        #expect(data.items.map(\.id) == [WatchlistTestFixtures.anotherUnwatchedItem.id])
     }
 
     // MARK: - Remove
@@ -140,8 +145,8 @@ struct WatchlistViewModelTests {
         #expect(repository.getAllItemsCallCount > initialCallCount)
     }
 
-    @Test("removing a watched-only compatibility row keeps repository and UI unchanged")
-    func removingWatchedOnlyRowIsTruthfulNoOp() async throws {
+    @Test("watched-only state is absent from the final Watchlist")
+    func watchedOnlyStateIsAbsent() async throws {
         let snapshotID = try LocalViewerStateTestFixtures.uuid(
             LocalViewerStateTestFixtures.firstID
         )
@@ -172,19 +177,14 @@ struct WatchlistViewModelTests {
         let sut = WatchlistViewModel(
             getWatchlist: GetWatchlist(repository: watchlistRepository),
             setMembership: SetWatchlistMembership(repository: watchlistRepository),
-            setWatched: SetWatched(repository: watchlistRepository),
             eligibilityDidChange: { changes.append($0) }
         )
 
         await sut.load()
-        await sut.remove(movieId: watched.movieID)
-
-        guard case let .loaded(model) = sut.state else {
-            Issue.record("Expected watched-only compatibility row to remain visible")
+        guard case .empty = sut.state else {
+            Issue.record("Expected watched-only state to be absent")
             return
         }
-        #expect(model.items.map(\.id) == [watched.movieID])
-        #expect(model.items.first?.isWatched == true)
         #expect(try await stateRepository.state(movieID: watched.movieID) == watched)
         #expect(changes.isEmpty)
         #expect(files.activeReplacementCount == 0)
@@ -202,44 +202,12 @@ struct WatchlistViewModelTests {
         )
 
         await sut.load()
-        await sut.toggleWatched(movieId: 1)
+        await sut.remove(movieId: 1)
 
         let expectedChange = try #require(
             DecisionEligibilityChange(movieID: 1, cause: .watchlist)
         )
         #expect(changes == [expectedChange])
-    }
-
-    // MARK: - Toggle Watched
-
-    @Test("toggleWatched calls repository setWatched via use case")
-    func toggleWatchedCallsRepositorySetWatched() async {
-        let repository = MockWatchlistRepository()
-        repository.getAllItemsResult = [WatchlistTestFixtures.unwatchedItem]
-        repository.statusResult = .toWatch // Item is unwatched (toWatch), so setWatched will be called
-        let (sut, _) = makeSUT(repository: repository)
-
-        await sut.load()
-        await sut.toggleWatched(movieId: 1)
-
-        #expect(repository.setWatchedCallCount == 1)
-        #expect(repository.lastSetWatchedMovieId == 1)
-        #expect(repository.lastSetWatchedValue == true) // Was false, toggled to true
-    }
-
-    @Test("toggleWatched reloads list after success")
-    func toggleWatchedReloadsListAfterSuccess() async {
-        let repository = MockWatchlistRepository()
-        repository.getAllItemsResult = [WatchlistTestFixtures.unwatchedItem]
-        repository.statusResult = .toWatch
-        let (sut, _) = makeSUT(repository: repository)
-
-        await sut.load()
-        let initialCallCount = repository.getAllItemsCallCount
-
-        await sut.toggleWatched(movieId: 1)
-
-        #expect(repository.getAllItemsCallCount > initialCallCount)
     }
 
     // MARK: - Helpers
@@ -250,15 +218,45 @@ struct WatchlistViewModelTests {
     ) -> (sut: WatchlistViewModel, repository: MockWatchlistRepository) {
         let getWatchlist = GetWatchlist(repository: repository)
         let setMembership = SetWatchlistMembership(repository: repository)
-        let setWatched = SetWatched(repository: repository)
-
         let sut = WatchlistViewModel(
             getWatchlist: getWatchlist,
             setMembership: setMembership,
-            setWatched: setWatched,
             eligibilityDidChange: eligibilityDidChange
         )
 
         return (sut, repository)
+    }
+}
+
+private actor ControlledGetWatchlistUseCase: GetWatchlistUseCase {
+    private var continuations: [
+        Int: CheckedContinuation<WatchlistSnapshot, Error>
+    ] = [:]
+    private var startedCalls: Set<Int> = []
+    private var callCount = 0
+
+    func execute() async throws -> WatchlistSnapshot {
+        callCount += 1
+        let call = callCount
+        startedCalls.insert(call)
+        return try await withCheckedThrowingContinuation { continuation in
+            continuations[call] = continuation
+        }
+    }
+
+    func waitUntilStarted(call: Int) async {
+        while !startedCalls.contains(call) {
+            await Task.yield()
+        }
+    }
+
+    func complete(
+        call: Int,
+        with result: Result<WatchlistSnapshot, Error>
+    ) {
+        guard let continuation = continuations.removeValue(forKey: call) else {
+            return
+        }
+        continuation.resume(with: result)
     }
 }

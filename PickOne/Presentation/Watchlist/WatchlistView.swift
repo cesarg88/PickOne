@@ -21,32 +21,17 @@ struct WatchlistView: View {
 
     var body: some View {
         NavigationStack {
-            VStack(spacing: 0) {
-                // Filter picker
-                Picker("Filter", selection: Binding(
-                    get: { model.currentFilter },
-                    set: { filter in Task { await model.applyFilter(filter) } }
-                )) {
-                    ForEach(WatchlistFilter.allCases) { filter in
-                        Text(filter.rawValue).tag(filter)
-                    }
-                }
-                .pickerStyle(.segmented)
-                .padding()
+            Group {
+                switch model.state {
+                    case .idle:
+                        ProgressView()
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
 
-                // Content
-                Group {
-                    switch model.state {
-                        case .idle:
-                            ProgressView()
-                                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    case .empty:
+                        emptyView
 
-                        case let .empty(filter):
-                            emptyView(for: filter)
-
-                        case let .loaded(data):
-                            watchlistContent(data: data)
-                    }
+                    case let .loaded(data):
+                        watchlistContent(data: data)
                 }
             }
             .navigationTitle("Watchlist")
@@ -74,13 +59,11 @@ struct WatchlistView: View {
 
     // MARK: - Subviews
 
-    @ViewBuilder
-    private func emptyView(for filter: WatchlistFilter) -> some View {
-        let (title, message) = emptyStateContent(for: filter)
+    private var emptyView: some View {
         VStack {
             EmptyStateView(
-                title: title,
-                message: message,
+                title: "Your watchlist is empty",
+                message: "Add movies from discovery or search to start building your list.",
                 actionTitle: nil,
                 action: nil
             )
@@ -90,43 +73,19 @@ struct WatchlistView: View {
         }
     }
 
-    private func emptyStateContent(for filter: WatchlistFilter) -> (title: String, message: String) {
-        switch filter {
-            case .all:
-                ("Your watchlist is empty", "Add movies from discovery or search to start building your list.")
-            case .toWatch:
-                ("Nothing to watch", "Movies you haven't watched yet will appear here.")
-            case .watched:
-                ("No watched movies", "Movies you've marked as watched will appear here.")
-        }
-    }
-
     private func watchlistContent(data: WatchlistPresentationModel) -> some View {
         List {
             ForEach(data.items) { item in
                 NavigationLink(value: WatchlistRoute(movieID: item.id)) {
                     WatchlistRow(item: item, imagePipeline: imagePipeline)
                 }
-                .swipeActions(edge: .trailing, allowsFullSwipe: !item.isWatched) {
-                    if !item.isWatched {
-                        Button(role: .destructive) {
-                            Task { await model.remove(movieId: item.id) }
-                        } label: {
-                            Label("Remove", systemImage: "trash")
-                        }
-                    }
-                }
-                .swipeActions(edge: .leading, allowsFullSwipe: true) {
-                    Button {
-                        Task { await model.toggleWatched(movieId: item.id) }
+                .accessibilityIdentifier("watchlist-row-\(item.id)")
+                .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                    Button(role: .destructive) {
+                        Task { await model.remove(movieId: item.id) }
                     } label: {
-                        if item.isWatched {
-                            Label("To Watch", systemImage: "eye.slash")
-                        } else {
-                            Label("Watched", systemImage: "eye")
-                        }
+                        Label("Remove", systemImage: "trash")
                     }
-                    .tint(item.isWatched ? .orange : .green)
                 }
             }
         }
@@ -142,7 +101,9 @@ struct WatchlistView: View {
             preparePlaybackOptions: preparePlaybackOptions,
             viewerStateDidChange: viewerStateDidChange,
             eligibilityDidChange: eligibilityDidChange
-        )
+        ).refreshingProjection {
+            await model.load()
+        }
         return MovieDetailView(
             model: dependencies.makeViewModel(movieID: movieID),
             imagePipeline: imagePipeline,
@@ -200,12 +161,12 @@ private struct WatchlistRow: View {
                 }
 
                 HStack(spacing: 4) {
-                    Image(systemName: item.isWatched ? "eye.fill" : "bookmark.fill")
+                    Image(systemName: "bookmark.fill")
                         .font(.caption)
-                        .foregroundStyle(item.isWatched ? .green : .blue)
+                        .foregroundStyle(.blue)
                         .accessibilityHidden(true)
 
-                    Text(item.isWatched ? "Watched" : "To Watch")
+                    Text("To Watch")
                         .font(.caption)
                         .foregroundStyle(.secondary)
 

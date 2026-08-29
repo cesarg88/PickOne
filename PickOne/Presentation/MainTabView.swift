@@ -70,7 +70,20 @@ struct MainTabView: View {
             }
 
             Tab("Settings", systemImage: "gearshape", value: MainTab.settings) {
-                SettingsView(model: profileModel)
+                SettingsView(
+                    model: profileModel,
+                    myMoviesModel: container.myMoviesViewModel,
+                    imagePipeline: container.imagePipeline,
+                    movieDetailDependencies: MovieDetailNavigationDependencies(
+                        getMovieDetail: container.getMovieDetail,
+                        getViewerMovieState: container.getViewerMovieState,
+                        updateViewerMovieState: container.updateViewerMovieState,
+                        checkAvailability: container.checkMovieAvailability,
+                        preparePlaybackOptions: container.preparePlaybackOptions,
+                        viewerStateDidChange: reconcileHome,
+                        eligibilityDidChange: repairHome
+                    )
+                )
             }
         }
         .task {

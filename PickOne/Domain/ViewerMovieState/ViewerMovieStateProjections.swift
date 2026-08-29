@@ -36,19 +36,6 @@ enum ViewerMovieStateProjections {
             }
     }
 
-    static func watchlistCompatibility(
-        from snapshot: ViewerMovieStateSnapshot
-    ) -> [ViewerMovieState] {
-        snapshot.states
-            .filter { $0.watchlistIntent != nil || $0.watchState.isWatched }
-            .sorted { first, second in
-                let firstDate = first.watchlistIntent?.addedAt ?? first.stateChangedAt
-                let secondDate = second.watchlistIntent?.addedAt ?? second.stateChangedAt
-                guard firstDate == secondDate else { return firstDate > secondDate }
-                return first.movieID < second.movieID
-            }
-    }
-
     static func myMovies(
         from snapshot: ViewerMovieStateSnapshot
     ) -> [ViewerMovieState] {

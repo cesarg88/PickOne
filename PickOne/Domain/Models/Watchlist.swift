@@ -12,18 +12,15 @@ import Foundation
 struct WatchlistItem: Identifiable, Equatable, Sendable {
     let id: Int // Movie ID
     let addedAt: Date
-    let isWatched: Bool
     let movie: MovieSummary
 
     nonisolated init(
         id: Int,
         addedAt: Date,
-        isWatched: Bool,
         movie: MovieSummary
     ) {
         self.id = id
         self.addedAt = addedAt
-        self.isWatched = isWatched
         self.movie = movie
     }
 }
@@ -33,7 +30,6 @@ struct WatchlistItem: Identifiable, Equatable, Sendable {
 enum WatchlistStatus: Equatable, Sendable {
     case notInWatchlist
     case toWatch
-    case watched
 }
 
 struct WatchlistMutationOutcome: Equatable, Sendable {

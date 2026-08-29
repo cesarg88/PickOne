@@ -17,7 +17,6 @@ final class AppContainer {
 
     let getWatchlist: GetWatchlistUseCase
     let setWatchlistMembership: SetWatchlistMembershipUseCase
-    let setWatched: SetWatchedUseCase
     let getMyMovies: GetMyMoviesUseCase
     let getViewerMovieState: GetViewerMovieStateUseCase
     let updateViewerMovieState: UpdateViewerMovieStateUseCase
@@ -46,6 +45,7 @@ final class AppContainer {
     let recommendationViewModel: RecommendationViewModel
     let homeDecisionViewModel: HomeDecisionViewModel
     let viewerProfileViewModel: ViewerProfileViewModel
+    let myMoviesViewModel: MyMoviesViewModel
 
     init() {
         let repositories = Self.makeRepositories()
@@ -73,7 +73,6 @@ final class AppContainer {
         preparePlaybackOptions = playbackOptionsUseCase
         getWatchlist = useCases.getWatchlist
         setWatchlistMembership = useCases.setWatchlistMembership
-        setWatched = useCases.setWatched
         getMyMovies = useCases.getMyMovies
         getViewerMovieState = useCases.getViewerMovieState
         updateViewerMovieState = useCases.updateViewerMovieState
@@ -95,7 +94,6 @@ final class AppContainer {
         watchlistViewModel = WatchlistViewModel(
             getWatchlist: useCases.getWatchlist,
             setMembership: useCases.setWatchlistMembership,
-            setWatched: useCases.setWatched,
             eligibilityDidChange: { [weak homeDecisionViewModel] change in
                 homeDecisionViewModel?.repair(after: change)
             }
@@ -114,6 +112,7 @@ final class AppContainer {
             resetUnrecoverableViewerState: useCases.resetUnrecoverableViewerState,
             resetsProfileForUITests: AppConfiguration.resetsViewerProfileForUITests
         )
+        myMoviesViewModel = MyMoviesViewModel(getMyMovies: useCases.getMyMovies)
     }
 }
 
@@ -139,7 +138,6 @@ private extension AppContainer {
         let preparePlaybackOptions: PreparePlaybackOptions
         let getWatchlist: GetWatchlist
         let setWatchlistMembership: SetWatchlistMembership
-        let setWatched: SetWatched
         let getMyMovies: GetMyMovies
         let getViewerMovieState: GetViewerMovieState
         let updateViewerMovieState: UpdateViewerMovieState
@@ -241,7 +239,6 @@ private extension AppContainer {
             ),
             getWatchlist: GetWatchlist(repository: repositories.watchlist),
             setWatchlistMembership: SetWatchlistMembership(repository: repositories.watchlist),
-            setWatched: SetWatched(repository: repositories.watchlist),
             getMyMovies: GetMyMovies(repository: repositories.viewerState),
             getViewerMovieState: GetViewerMovieState(
                 repository: repositories.viewerState
