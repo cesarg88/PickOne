@@ -32,28 +32,14 @@ enum WatchlistTestFixtures {
     static let unwatchedItem = WatchlistItem(
         id: 1,
         addedAt: Date(),
-        isWatched: false,
         movie: movieSummary
     )
 
-    static let watchedItem = WatchlistItem(
+    static let anotherUnwatchedItem = WatchlistItem(
         id: 2,
         addedAt: Date().addingTimeInterval(-3600),
-        isWatched: true,
         movie: anotherMovieSummary
     )
 
-    static let twoItems: [WatchlistItem] = [unwatchedItem, watchedItem]
-
-    // MARK: - PersistedWatchlistItem
-
-    static let persistedItem = PersistedWatchlistItem(
-        movieId: 1,
-        title: "Test Movie",
-        posterPath: "/poster.jpg",
-        releaseYear: 2024,
-        rating: 8.5,
-        addedAt: Date(),
-        isWatched: false
-    )
+    static let twoItems: [WatchlistItem] = [unwatchedItem, anotherUnwatchedItem]
 }

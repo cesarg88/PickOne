@@ -79,6 +79,7 @@ struct WatchlistView: View {
                 NavigationLink(value: WatchlistRoute(movieID: item.id)) {
                     WatchlistRow(item: item, imagePipeline: imagePipeline)
                 }
+                .accessibilityIdentifier("watchlist-row-\(item.id)")
                 .swipeActions(edge: .trailing, allowsFullSwipe: true) {
                     Button(role: .destructive) {
                         Task { await model.remove(movieId: item.id) }
@@ -100,7 +101,9 @@ struct WatchlistView: View {
             preparePlaybackOptions: preparePlaybackOptions,
             viewerStateDidChange: viewerStateDidChange,
             eligibilityDidChange: eligibilityDidChange
-        )
+        ).refreshingProjection {
+            await model.load()
+        }
         return MovieDetailView(
             model: dependencies.makeViewModel(movieID: movieID),
             imagePipeline: imagePipeline,

@@ -37,20 +37,19 @@ struct WatchlistViewModelTests {
         await sut.load()
 
         if case let .loaded(data) = sut.state {
-            #expect(data.items.count == 1)
+            #expect(data.items.count == 2)
         } else {
             Issue.record("Expected loaded state")
         }
     }
 
-    @Test("load omits an unavailable compatibility rating")
-    func loadOmitsUnavailableCompatibilityRating() async {
+    @Test("load omits an unavailable rating")
+    func loadOmitsUnavailableRating() async {
         let repository = MockWatchlistRepository()
         repository.getAllItemsResult = [
             WatchlistItem(
                 id: 1,
                 addedAt: Date(timeIntervalSince1970: 100),
-                isWatched: false,
                 movie: MovieSummary(
                     id: 1,
                     title: "Movie",

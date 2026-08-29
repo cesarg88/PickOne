@@ -60,18 +60,9 @@ struct SettingsView: View {
     }
 
     private var myMoviesDetailDependencies: MovieDetailNavigationDependencies {
-        MovieDetailNavigationDependencies(
-            getMovieDetail: movieDetailDependencies.getMovieDetail,
-            getViewerMovieState: movieDetailDependencies.getViewerMovieState,
-            updateViewerMovieState: movieDetailDependencies.updateViewerMovieState,
-            checkAvailability: movieDetailDependencies.checkAvailability,
-            preparePlaybackOptions: movieDetailDependencies.preparePlaybackOptions,
-            viewerStateDidChange: { change in
-                movieDetailDependencies.viewerStateDidChange(change)
-                Task { await myMoviesModel.load() }
-            },
-            eligibilityDidChange: movieDetailDependencies.eligibilityDidChange
-        )
+        movieDetailDependencies.refreshingProjection {
+            await myMoviesModel.load()
+        }
     }
 }
 

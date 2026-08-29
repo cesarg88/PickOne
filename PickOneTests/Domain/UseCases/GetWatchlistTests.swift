@@ -19,32 +19,8 @@ struct GetWatchlistTests {
 
         let snapshot = try await sut.execute()
 
-        #expect(snapshot.toWatch.count == 1)
-        #expect(snapshot.watched.isEmpty)
+        #expect(snapshot.toWatch == WatchlistTestFixtures.twoItems)
         #expect(repository.loadAllItemsCallCount == 1)
-    }
-
-    @Test("execute puts unwatched items in toWatch")
-    func executePutsUnwatchedInToWatch() async throws {
-        let repository = MockWatchlistRepository()
-        repository.getAllItemsResult = WatchlistTestFixtures.twoItems
-        let sut = GetWatchlist(repository: repository)
-
-        let snapshot = try await sut.execute()
-
-        #expect(snapshot.toWatch.allSatisfy { !$0.isWatched })
-    }
-
-    @Test("execute excludes watched items")
-    func executeExcludesWatched() async throws {
-        let repository = MockWatchlistRepository()
-        repository.getAllItemsResult = WatchlistTestFixtures.twoItems
-        let sut = GetWatchlist(repository: repository)
-
-        let snapshot = try await sut.execute()
-
-        #expect(snapshot.toWatch.map(\.id) == [WatchlistTestFixtures.unwatchedItem.id])
-        #expect(snapshot.watched.isEmpty)
     }
 
     @Test("execute returns empty snapshot when no items")
@@ -56,6 +32,5 @@ struct GetWatchlistTests {
         let snapshot = try await sut.execute()
 
         #expect(snapshot.toWatch.isEmpty)
-        #expect(snapshot.watched.isEmpty)
     }
 }

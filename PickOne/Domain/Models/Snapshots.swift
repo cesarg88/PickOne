@@ -40,12 +40,10 @@ struct MovieDetailSnapshot: Equatable, Sendable {
 
 struct WatchlistSnapshot: Equatable, Sendable {
     let toWatch: [WatchlistItem]
-    let watched: [WatchlistItem]
     let asOf: Date
 
     static let empty = WatchlistSnapshot(
         toWatch: [],
-        watched: [],
         asOf: Date()
     )
 }

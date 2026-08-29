@@ -217,8 +217,7 @@ struct LocalViewerStateCutoverTests {
 
         #expect(items.map(\.id) == [saved.movieID])
         #expect(!items.contains { $0.id == watched.movieID })
-        #expect(items.first { $0.id == saved.movieID }?.isWatched == false)
-        #expect(try await repository.getStatus(movieId: rejected.movieID) == .notInWatchlist)
+        #expect(!items.contains { $0.id == rejected.movieID })
     }
 
     @Test("Watchlist mutations use accepted unified-state transitions")
@@ -229,6 +228,7 @@ struct LocalViewerStateCutoverTests {
         let files = InMemoryLocalViewerStateFileStore()
         let stateRepository = repository(files: files, ids: [firstID, secondID, thirdID])
         let repository = LocalViewerStateWatchlistAdapter(repository: stateRepository)
+        let updateViewerState = UpdateViewerMovieState(repository: stateRepository)
         let movie = MovieSummary(
             id: 500,
             title: "Arrival",
@@ -236,22 +236,36 @@ struct LocalViewerStateCutoverTests {
             releaseYear: 2016,
             rating: 8
         )
+        let feedbackMetadata = try MovieFeedbackMetadata(
+            title: movie.title,
+            releaseYear: movie.releaseYear,
+            posterPath: movie.posterPath
+        )
 
         let saved = try await repository.setMembership(
             movie: movie,
             isInWatchlist: true
         )
         #expect(saved == WatchlistMutationOutcome(status: .toWatch, didChange: true))
-        #expect(try await repository.getStatus(movieId: movie.id) == .toWatch)
 
-        let watched = try await repository.setWatched(movieId: movie.id, isWatched: true)
-        #expect(watched == WatchlistMutationOutcome(status: .watched, didChange: true))
-        #expect(try await repository.getStatus(movieId: movie.id) == .watched)
+        let watched = try await updateViewerState.execute(
+            transition: ViewerMovieStateTransition(
+                movieID: movie.id,
+                action: .markWatched
+            ),
+            metadata: feedbackMetadata
+        )
+        #expect(watched.impact == .eligibilityChanged)
         #expect(try await stateRepository.state(movieID: movie.id)?.watchlistIntent == nil)
 
-        let unwatched = try await repository.setWatched(movieId: movie.id, isWatched: false)
-        #expect(unwatched == WatchlistMutationOutcome(status: .notInWatchlist, didChange: true))
-        #expect(try await repository.getStatus(movieId: movie.id) == .notInWatchlist)
+        let unwatched = try await updateViewerState.execute(
+            transition: ViewerMovieStateTransition(
+                movieID: movie.id,
+                action: .markUnwatched
+            ),
+            metadata: feedbackMetadata
+        )
+        #expect(unwatched.impact == .eligibilityChanged)
         #expect(try await stateRepository.state(movieID: movie.id) == nil)
     }
 

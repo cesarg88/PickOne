@@ -43,7 +43,7 @@ struct ViewerStateWatchlistConsistencyTests {
             isInWatchlist: false
         )
 
-        #expect(outcome == WatchlistMutationOutcome(status: .watched, didChange: false))
+        #expect(outcome == WatchlistMutationOutcome(status: .notInWatchlist, didChange: false))
         #expect(try await stateRepository.state(movieID: watched.movieID) == watched)
         #expect(try await stateRepository.snapshot().id.rawValue == snapshotID)
         #expect(files.activeData == original)

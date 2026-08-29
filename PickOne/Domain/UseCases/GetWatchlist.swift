@@ -20,12 +20,8 @@ final class GetWatchlist: GetWatchlistUseCase, Sendable {
     }
 
     func execute() async throws -> WatchlistSnapshot {
-        let allItems = try await repository.loadAllItems()
-
-        let toWatch = allItems.filter { !$0.isWatched }
-        return WatchlistSnapshot(
-            toWatch: toWatch,
-            watched: [],
+        try await WatchlistSnapshot(
+            toWatch: repository.loadAllItems(),
             asOf: Date()
         )
     }

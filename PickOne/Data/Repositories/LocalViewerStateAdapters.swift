@@ -78,20 +78,6 @@ struct LocalViewerStateWatchlistAdapter: WatchlistRepository {
             isInWatchlist: isInWatchlist
         )
     }
-
-    func setWatched(
-        movieId: Int,
-        isWatched: Bool
-    ) async throws -> WatchlistMutationOutcome {
-        try await repository.setWatchlistWatched(
-            movieID: movieId,
-            isWatched: isWatched
-        )
-    }
-
-    func getStatus(movieId: Int) async throws -> WatchlistStatus {
-        try await repository.watchlistStatus(movieID: movieId)
-    }
 }
 
 struct ViewerStateRecoveryNoticeAdapter: ViewerStateRecoveryNoticeRepository {
