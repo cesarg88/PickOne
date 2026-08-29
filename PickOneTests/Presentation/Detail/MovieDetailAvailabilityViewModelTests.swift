@@ -180,27 +180,35 @@ struct MovieDetailAvailabilityViewModelTests {
         #expect(changes == [expectedChange])
     }
 
-    @Test("nested detail dependencies preserve the eligibility callback")
+    @Test("nested detail dependencies preserve the Viewer State callback")
     func nestedDetailDependenciesPreserveCallback() async throws {
-        var changes: [DecisionEligibilityChange] = []
+        let snapshotID = ViewerStateSnapshotID(rawValue: UUID())
+        var changes: [DecisionViewerStateChange] = []
         let dependencies = MovieDetailNavigationDependencies(
             getMovieDetail: ImmediateMovieDetailUseCase(),
-            setMembership: NoOpSetWatchlistMembership(),
-            setWatched: NoOpSetWatched(),
+            getViewerMovieState: NoOpGetViewerMovieState(),
+            updateViewerMovieState: FixedFeedbackUpdate(change: ViewerMovieStateChange(
+                state: nil,
+                impact: .watchlistIntentChanged,
+                snapshotID: snapshotID
+            )),
             checkAvailability: SequenceAvailabilityUseCase(
                 steps: [.outcome(eligibleOutcome())]
             ),
             preparePlaybackOptions: StubPreparePlaybackOptions(result: .unavailable),
-            eligibilityDidChange: { changes.append($0) }
+            viewerStateDidChange: { changes.append($0) },
+            eligibilityDidChange: { _ in }
         )
         let sut = dependencies.makeViewModel(movieID: 42)
 
         await sut.load()
         await sut.toggleWatchlist()
 
-        let expectedChange = try #require(
-            DecisionEligibilityChange(movieID: 42, cause: .watchlist)
-        )
+        let expectedChange = try #require(DecisionViewerStateChange(
+            movieID: 42,
+            impact: .watchlistIntentChanged,
+            snapshotID: snapshotID
+        ))
         #expect(changes == [expectedChange])
     }
 
@@ -215,8 +223,8 @@ struct MovieDetailAvailabilityViewModelTests {
         MovieDetailViewModel(
             movieId: 42,
             getMovieDetail: detail,
-            setMembership: NoOpSetWatchlistMembership(),
-            setWatched: NoOpSetWatched(),
+            getViewerMovieState: NoOpGetViewerMovieState(),
+            updateViewerMovieState: NoOpUpdateViewerMovieState(),
             checkAvailability: availability,
             preparePlaybackOptions: prepare,
             eligibilityDidChange: eligibilityDidChange
@@ -252,27 +260,33 @@ struct MovieDetailAvailabilityViewModelTests {
     }
 }
 
-private struct NoOpSetWatchlistMembership: SetWatchlistMembershipUseCase {
+private struct NoOpGetViewerMovieState: GetViewerMovieStateUseCase {
+    func execute(movieID: Int) -> ViewerMovieState? {
+        nil
+    }
+}
+
+private struct NoOpUpdateViewerMovieState: UpdateViewerMovieStateUseCase {
     func execute(
-        movie: MovieSummary,
-        isInWatchlist: Bool
-    ) throws -> WatchlistMutationOutcome {
-        WatchlistMutationOutcome(
-            status: isInWatchlist ? .toWatch : .notInWatchlist,
-            didChange: true
+        transition: ViewerMovieStateTransition,
+        metadata: MovieFeedbackMetadata
+    ) -> ViewerMovieStateChange {
+        ViewerMovieStateChange(
+            state: nil,
+            impact: .none,
+            snapshotID: ViewerStateSnapshotID(rawValue: UUID())
         )
     }
 }
 
-private struct NoOpSetWatched: SetWatchedUseCase {
+private struct FixedFeedbackUpdate: UpdateViewerMovieStateUseCase {
+    let change: ViewerMovieStateChange
+
     func execute(
-        movieId: Int,
-        isWatched: Bool
-    ) throws -> WatchlistMutationOutcome {
-        WatchlistMutationOutcome(
-            status: isWatched ? .watched : .notInWatchlist,
-            didChange: true
-        )
+        transition: ViewerMovieStateTransition,
+        metadata: MovieFeedbackMetadata
+    ) -> ViewerMovieStateChange {
+        change
     }
 }
 
@@ -391,8 +405,6 @@ private let movieDetailSnapshot = MovieDetailSnapshot(
         tagline: nil
     ),
     similar: [],
-    isInWatchlist: false,
-    isWatched: false,
     director: nil,
     topCast: [],
     isSimilarUnavailable: false,

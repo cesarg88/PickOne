@@ -4,8 +4,8 @@ import SwiftUI
 struct HomeDecisionView: View {
     let model: HomeDecisionViewModel
     let getMovieDetail: GetMovieDetailUseCase
-    let setMembership: SetWatchlistMembershipUseCase
-    let setWatched: SetWatchedUseCase
+    let getViewerMovieState: GetViewerMovieStateUseCase
+    let updateViewerMovieState: UpdateViewerMovieStateUseCase
     let checkAvailability: CheckMovieAvailabilityUseCase
     let preparePlaybackOptions: PreparePlaybackOptionsUseCase
     let imagePipeline: ImagePipeline
@@ -21,6 +21,12 @@ struct HomeDecisionView: View {
                 refresh: model.refresh,
                 retry: model.load
             )
+            .onAppear {
+                model.homeDidAppear()
+            }
+            .onDisappear {
+                model.homeDidDisappear()
+            }
             .navigationTitle("Home")
             .navigationDestination(for: HomeDecisionRoute.self) { route in
                 movieDetail(movieID: route.movieID)
@@ -35,10 +41,11 @@ struct HomeDecisionView: View {
     private func movieDetail(movieID: Int) -> some View {
         let dependencies = MovieDetailNavigationDependencies(
             getMovieDetail: getMovieDetail,
-            setMembership: setMembership,
-            setWatched: setWatched,
+            getViewerMovieState: getViewerMovieState,
+            updateViewerMovieState: updateViewerMovieState,
             checkAvailability: checkAvailability,
             preparePlaybackOptions: preparePlaybackOptions,
+            viewerStateDidChange: model.reconcile,
             eligibilityDidChange: model.repair
         )
         return MovieDetailView(

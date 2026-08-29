@@ -25,8 +25,6 @@ struct MovieDetailPresentationMapperTests {
             similar: [
                 MovieSummary(id: 2, title: "Movie B", posterPath: "/posterB.jpg", releaseYear: 2022, rating: 7.4),
             ],
-            isInWatchlist: false,
-            isWatched: false,
             director: Person(id: 10, name: "Director", profilePath: nil, role: .director),
             topCast: [Person(id: 11, name: "Actor", profilePath: nil, role: .cast(character: "Hero"))],
             isSimilarUnavailable: false,

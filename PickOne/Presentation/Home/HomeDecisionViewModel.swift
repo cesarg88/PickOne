@@ -24,16 +24,39 @@ final class HomeDecisionViewModel {
     @ObservationIgnored private var isReconciliationPending = false
     @ObservationIgnored private var feedbackTask: Task<Void, Never>?
     @ObservationIgnored private let feedbackDuration: Duration
+    @ObservationIgnored private let feedbackSleep: @Sendable (Duration) async throws -> Void
+    @ObservationIgnored private var isHomeVisible = false
+    @ObservationIgnored private var isUpdateFeedbackPending = false
 
     var state: HomeDecisionViewState = .idle
     var updateFeedback: String?
 
     init(
         threeForTonight: any ThreeForTonightUseCase,
-        feedbackDuration: Duration = .seconds(3)
+        feedbackDuration: Duration = .seconds(3),
+        feedbackSleep: @escaping @Sendable (Duration) async throws -> Void = {
+            try await Task.sleep(for: $0)
+        }
     ) {
         self.threeForTonight = threeForTonight
         self.feedbackDuration = feedbackDuration
+        self.feedbackSleep = feedbackSleep
+    }
+
+    func homeDidAppear() {
+        guard !isHomeVisible else { return }
+        isHomeVisible = true
+        presentPendingUpdateFeedback()
+    }
+
+    func homeDidDisappear() {
+        guard isHomeVisible else { return }
+        isHomeVisible = false
+        guard updateFeedback != nil else { return }
+        feedbackTask?.cancel()
+        feedbackTask = nil
+        updateFeedback = nil
+        isUpdateFeedbackPending = true
     }
 
     func load() {
@@ -133,7 +156,7 @@ final class HomeDecisionViewModel {
                     coalesceViewerStateChanges(
                         through: snapshot.decisionSet.sourceViewerStateSnapshotID
                     )
-                    showUpdateFeedback()
+                    enqueueUpdateFeedback()
                 }
             case let .retryableFailure(reason, retained):
                 guard let retained else {
@@ -175,13 +198,21 @@ final class HomeDecisionViewModel {
         }
     }
 
-    private func showUpdateFeedback() {
+    private func enqueueUpdateFeedback() {
+        isUpdateFeedbackPending = true
+        presentPendingUpdateFeedback()
+    }
+
+    private func presentPendingUpdateFeedback() {
+        guard isHomeVisible, isUpdateFeedbackPending else { return }
+        isUpdateFeedbackPending = false
         feedbackTask?.cancel()
         updateFeedback = "Recommendations updated."
         let duration = feedbackDuration
+        let sleep = feedbackSleep
         feedbackTask = Task { [weak self] in
             do {
-                try await Task.sleep(for: duration)
+                try await sleep(duration)
                 try Task.checkCancellation()
                 self?.updateFeedback = nil
                 self?.feedbackTask = nil

@@ -6,14 +6,9 @@ protocol GetMovieDetailUseCase: Sendable {
 
 final class GetMovieDetail: GetMovieDetailUseCase, Sendable {
     private let repository: MovieRepository
-    private let watchlistRepository: WatchlistRepository
 
-    init(
-        repository: MovieRepository,
-        watchlistRepository: WatchlistRepository
-    ) {
+    init(repository: MovieRepository) {
         self.repository = repository
-        self.watchlistRepository = watchlistRepository
     }
 
     func execute(id: Int, policy: CachePolicy) async throws -> CacheResult<MovieDetailSnapshot> {
@@ -85,16 +80,9 @@ final class GetMovieDetail: GetMovieDetailUseCase, Sendable {
                 isCreditsUnavailable = true
         }
 
-        // Get watchlist status
-        let watchlistStatus = try await watchlistRepository.getStatus(movieId: id)
-        let isInWatchlist = watchlistStatus != .notInWatchlist
-        let isWatched = watchlistStatus == .watched
-
         let snapshot = MovieDetailSnapshot(
             movie: detailResult.value,
             similar: similar,
-            isInWatchlist: isInWatchlist,
-            isWatched: isWatched,
             director: credits.director,
             topCast: credits.topCast,
             isSimilarUnavailable: isSimilarUnavailable,

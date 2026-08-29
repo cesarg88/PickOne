@@ -29,8 +29,6 @@ struct DiscoverySnapshot: Equatable, Sendable {
 struct MovieDetailSnapshot: Equatable, Sendable {
     let movie: Movie
     let similar: [MovieSummary]
-    let isInWatchlist: Bool
-    let isWatched: Bool
     let director: Person?
     let topCast: [Person]
     let isSimilarUnavailable: Bool

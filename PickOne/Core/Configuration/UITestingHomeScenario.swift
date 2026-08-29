@@ -112,8 +112,6 @@ struct UITestingMovieDetailUseCase: GetMovieDetailUseCase {
                         ),
                     ]
                     : [],
-                isInWatchlist: false,
-                isWatched: false,
                 director: nil,
                 topCast: [],
                 isSimilarUnavailable: false,

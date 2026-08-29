@@ -85,6 +85,7 @@ struct HomeDecisionViewModelTests {
     func successfulReconciliationShowsTransientFeedback() async throws {
         let snapshot = try HomeDecisionTestFixtures.snapshot()
         let gate = HomeDecisionOperationGate()
+        let delay = HomeFeedbackTestDelay()
         let useCase = GatedHomeDecisionUseCase(
             loadResult: .usable(snapshot),
             repairResult: .usable(snapshot),
@@ -92,12 +93,14 @@ struct HomeDecisionViewModelTests {
         )
         let sut = HomeDecisionViewModel(
             threeForTonight: useCase,
-            feedbackDuration: .milliseconds(20)
+            feedbackDuration: .seconds(3),
+            feedbackSleep: delay.sleep
         )
         let change = try #require(
             DecisionEligibilityChange(movieID: 101, cause: .watchlist)
         )
 
+        sut.homeDidAppear()
         sut.repair(after: change)
         await useCase.waitForRepairStart()
         #expect(sut.updateFeedback == nil)
@@ -105,7 +108,10 @@ struct HomeDecisionViewModelTests {
         await gate.open()
         await waitForUpdateFeedback(in: sut)
         #expect(sut.updateFeedback == "Recommendations updated.")
+        await delay.waitForRequestCount(1)
+        #expect(await delay.requestedDurations() == [.seconds(3)])
 
+        await delay.resumeAll()
         await waitForUpdateFeedbackDismissal(in: sut)
         #expect(sut.updateFeedback == nil)
     }
@@ -114,6 +120,7 @@ struct HomeDecisionViewModelTests {
     func newestPublishedQueuedSnapshotCoalescesEarlierEvents() async throws {
         let published = try HomeDecisionTestFixtures.snapshot()
         let gate = HomeDecisionOperationGate()
+        let delay = HomeFeedbackTestDelay()
         let supersededSnapshotID = ViewerStateSnapshotID(rawValue: UUID())
         let useCase = GatedHomeDecisionUseCase(
             loadResult: .usable(published),
@@ -128,7 +135,8 @@ struct HomeDecisionViewModelTests {
         )
         let sut = HomeDecisionViewModel(
             threeForTonight: useCase,
-            feedbackDuration: .milliseconds(20)
+            feedbackDuration: .seconds(3),
+            feedbackSleep: delay.sleep
         )
         let activeChange = try #require(DecisionViewerStateChange(
             movieID: 201,
@@ -146,6 +154,7 @@ struct HomeDecisionViewModelTests {
             snapshotID: published.decisionSet.sourceViewerStateSnapshotID
         ))
 
+        sut.homeDidAppear()
         sut.reconcile(after: activeChange)
         await useCase.waitForRepairStart()
         sut.reconcile(after: supersededChange)
@@ -162,7 +171,10 @@ struct HomeDecisionViewModelTests {
         }
         #expect(!isRefreshing)
         #expect(refreshError == nil)
+        await delay.waitForRequestCount(1)
+        #expect(await delay.requestedDurations() == [.seconds(3)])
 
+        await delay.resumeAll()
         await waitForUpdateFeedbackDismissal(in: sut)
         #expect(sut.updateFeedback == nil)
         #expect(await useCase.recordedViewerChanges() == [activeChange])
@@ -179,6 +191,7 @@ struct HomeDecisionViewModelTests {
             DecisionEligibilityChange(movieID: 101, cause: .watchlist)
         )
 
+        sut.homeDidAppear()
         sut.repair(after: repair)
         await useCase.waitForCallCount(1)
         await waitUntilSettled(sut)

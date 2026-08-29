@@ -4,8 +4,9 @@ import SwiftUI
 struct RecommendationView: View {
     let model: RecommendationViewModel
     let getMovieDetail: GetMovieDetailUseCase
+    let getViewerMovieState: GetViewerMovieStateUseCase
+    let updateViewerMovieState: UpdateViewerMovieStateUseCase
     let setMembership: SetWatchlistMembershipUseCase
-    let setWatched: SetWatchedUseCase
     let checkAvailability: CheckMovieAvailabilityUseCase
     let preparePlaybackOptions: PreparePlaybackOptionsUseCase
     let imagePipeline: ImagePipeline
@@ -174,8 +175,9 @@ struct RecommendationView: View {
                     RecommendationCard(
                         item: item,
                         getMovieDetail: getMovieDetail,
+                        getViewerMovieState: getViewerMovieState,
+                        updateViewerMovieState: updateViewerMovieState,
                         setMembership: setMembership,
-                        setWatched: setWatched,
                         checkAvailability: checkAvailability,
                         preparePlaybackOptions: preparePlaybackOptions,
                         imagePipeline: imagePipeline
@@ -234,8 +236,9 @@ struct RecommendationView: View {
 private struct RecommendationCard: View {
     let item: RecommendationMovieItem
     let getMovieDetail: GetMovieDetailUseCase
+    let getViewerMovieState: GetViewerMovieStateUseCase
+    let updateViewerMovieState: UpdateViewerMovieStateUseCase
     let setMembership: SetWatchlistMembershipUseCase
-    let setWatched: SetWatchedUseCase
     let checkAvailability: CheckMovieAvailabilityUseCase
     let preparePlaybackOptions: PreparePlaybackOptionsUseCase
     let imagePipeline: ImagePipeline
@@ -252,10 +255,11 @@ private struct RecommendationCard: View {
             NavigationLink {
                 let dependencies = MovieDetailNavigationDependencies(
                     getMovieDetail: getMovieDetail,
-                    setMembership: setMembership,
-                    setWatched: setWatched,
+                    getViewerMovieState: getViewerMovieState,
+                    updateViewerMovieState: updateViewerMovieState,
                     checkAvailability: checkAvailability,
                     preparePlaybackOptions: preparePlaybackOptions,
+                    viewerStateDidChange: { _ in },
                     eligibilityDidChange: { _ in }
                 )
                 MovieDetailView(

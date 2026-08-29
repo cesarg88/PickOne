@@ -40,6 +40,17 @@ final class PickOneSmokeTests: XCTestCase {
         recommendation.tap()
         XCTAssertTrue(app.navigationBars["Details"].waitForExistence(timeout: 15))
         XCTAssertTrue(app.staticTexts["Tonight's Movie"].waitForExistence(timeout: 15))
+        XCTAssertTrue(
+            app.otherElements["movie-feedback-section"].waitForExistence(timeout: 15)
+        )
+        tapButton("Love it", in: app)
+        tapButton("Mark unwatched", in: app)
+        tapButton("Not interested", in: app)
+        tapButton("Add to Watchlist", in: app)
+        XCTAssertTrue(
+            app.buttons["Remove from Watchlist"].waitForExistence(timeout: 15)
+        )
+        XCTAssertFalse(app.buttons["Undo Not interested"].exists)
 
         app.tabBars.buttons["Settings"].tap()
         app.buttons["About"].tap()

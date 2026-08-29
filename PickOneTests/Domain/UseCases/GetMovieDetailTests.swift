@@ -13,10 +13,7 @@ struct GetMovieDetailTests {
             credits: .success(CacheResult(value: TestFixtures.credits, isStale: false))
         )
 
-        let sut = GetMovieDetail(
-            repository: repository,
-            watchlistRepository: MockWatchlistRepository()
-        )
+        let sut = GetMovieDetail(repository: repository)
         let result = try await sut.execute(id: 1, policy: .returnCacheElseLoad)
 
         #expect(result.value.movie.id == 1)
@@ -34,10 +31,7 @@ struct GetMovieDetailTests {
             credits: .failure(.creditsFailed)
         )
 
-        let sut = GetMovieDetail(
-            repository: repository,
-            watchlistRepository: MockWatchlistRepository()
-        )
+        let sut = GetMovieDetail(repository: repository)
         let result = try await sut.execute(id: 1, policy: .returnCacheElseLoad)
 
         #expect(result.value.isCreditsUnavailable == true)
@@ -58,10 +52,7 @@ struct GetMovieDetailTests {
             credits: .success(CacheResult(value: TestFixtures.credits, isStale: false))
         )
 
-        let sut = GetMovieDetail(
-            repository: repository,
-            watchlistRepository: MockWatchlistRepository()
-        )
+        let sut = GetMovieDetail(repository: repository)
 
         await #expect(throws: TestError.self) {
             _ = try await sut.execute(id: 1, policy: .returnCacheElseLoad)
@@ -76,10 +67,7 @@ struct GetMovieDetailTests {
             credits: .success(CacheResult(value: TestFixtures.credits, isStale: false))
         )
 
-        let sut = GetMovieDetail(
-            repository: repository,
-            watchlistRepository: MockWatchlistRepository()
-        )
+        let sut = GetMovieDetail(repository: repository)
         let result = try await sut.execute(id: 1, policy: .returnCacheElseLoad)
 
         #expect(result.isStale == true)

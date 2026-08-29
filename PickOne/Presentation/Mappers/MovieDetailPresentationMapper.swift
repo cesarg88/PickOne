@@ -23,9 +23,7 @@ enum MovieDetailPresentationMapper {
             isSimilarUnavailable: snapshot.isSimilarUnavailable,
             isCreditsUnavailable: snapshot.isCreditsUnavailable,
             directorName: snapshot.director?.name,
-            topCastNames: snapshot.topCast.map(\.name),
-            isInWatchlist: snapshot.isInWatchlist,
-            isWatched: snapshot.isWatched
+            topCastNames: snapshot.topCast.map(\.name)
         )
     }
 
@@ -35,5 +33,17 @@ enum MovieDetailPresentationMapper {
         formatter.maximumFractionDigits = 0
         let votesFormatted = formatter.string(from: NSNumber(value: voteCount)) ?? "\(voteCount)"
         return String(format: "%.1f (%@)", rating, votesFormatted)
+    }
+}
+
+@MainActor
+enum MovieFeedbackPresentationMapper {
+    static func map(state: ViewerMovieState?) -> MovieFeedbackPresentationModel {
+        MovieFeedbackPresentationModel(
+            reaction: state?.reaction,
+            isWatched: state?.watchState.isWatched ?? false,
+            isNotInterested: state?.isNotInterested ?? false,
+            isInWatchlist: state?.watchlistIntent != nil
+        )
     }
 }

@@ -19,8 +19,8 @@ struct MainTabView: View {
                 HomeDecisionView(
                     model: container.homeDecisionViewModel,
                     getMovieDetail: container.getMovieDetail,
-                    setMembership: container.setWatchlistMembership,
-                    setWatched: container.setWatched,
+                    getViewerMovieState: container.getViewerMovieState,
+                    updateViewerMovieState: container.updateViewerMovieState,
                     checkAvailability: container.checkMovieAvailability,
                     preparePlaybackOptions: container.preparePlaybackOptions,
                     imagePipeline: container.imagePipeline
@@ -31,11 +31,12 @@ struct MainTabView: View {
                 SearchView(
                     model: container.searchViewModel,
                     getMovieDetail: container.getMovieDetail,
-                    setMembership: container.setWatchlistMembership,
-                    setWatched: container.setWatched,
+                    getViewerMovieState: container.getViewerMovieState,
+                    updateViewerMovieState: container.updateViewerMovieState,
                     checkAvailability: container.checkMovieAvailability,
                     preparePlaybackOptions: container.preparePlaybackOptions,
                     imagePipeline: container.imagePipeline,
+                    viewerStateDidChange: reconcileHome,
                     eligibilityDidChange: repairHome
                 )
             }
@@ -44,11 +45,12 @@ struct MainTabView: View {
                 DiscoveryView(
                     model: container.discoveryViewModel,
                     getMovieDetail: container.getMovieDetail,
-                    setMembership: container.setWatchlistMembership,
-                    setWatched: container.setWatched,
+                    getViewerMovieState: container.getViewerMovieState,
+                    updateViewerMovieState: container.updateViewerMovieState,
                     checkAvailability: container.checkMovieAvailability,
                     preparePlaybackOptions: container.preparePlaybackOptions,
                     imagePipeline: container.imagePipeline,
+                    viewerStateDidChange: reconcileHome,
                     eligibilityDidChange: repairHome
                 )
             }
@@ -57,11 +59,12 @@ struct MainTabView: View {
                 WatchlistView(
                     model: container.watchlistViewModel,
                     getMovieDetail: container.getMovieDetail,
-                    setMembership: container.setWatchlistMembership,
-                    setWatched: container.setWatched,
+                    getViewerMovieState: container.getViewerMovieState,
+                    updateViewerMovieState: container.updateViewerMovieState,
                     checkAvailability: container.checkMovieAvailability,
                     preparePlaybackOptions: container.preparePlaybackOptions,
                     imagePipeline: container.imagePipeline,
+                    viewerStateDidChange: reconcileHome,
                     eligibilityDidChange: repairHome
                 )
             }
@@ -95,6 +98,10 @@ struct MainTabView: View {
 
     private func repairHome(_ change: DecisionEligibilityChange) {
         container.homeDecisionViewModel.repair(after: change)
+    }
+
+    private func reconcileHome(_ change: DecisionViewerStateChange) {
+        container.homeDecisionViewModel.reconcile(after: change)
     }
 }
 

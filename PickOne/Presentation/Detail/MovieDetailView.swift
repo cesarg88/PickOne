@@ -3,20 +3,22 @@ import SwiftUI
 @MainActor
 struct MovieDetailNavigationDependencies {
     let getMovieDetail: GetMovieDetailUseCase
-    let setMembership: SetWatchlistMembershipUseCase
-    let setWatched: SetWatchedUseCase
+    let getViewerMovieState: GetViewerMovieStateUseCase
+    let updateViewerMovieState: UpdateViewerMovieStateUseCase
     let checkAvailability: CheckMovieAvailabilityUseCase
     let preparePlaybackOptions: PreparePlaybackOptionsUseCase
+    let viewerStateDidChange: @MainActor (DecisionViewerStateChange) -> Void
     let eligibilityDidChange: @MainActor (DecisionEligibilityChange) -> Void
 
     func makeViewModel(movieID: Int) -> MovieDetailViewModel {
         MovieDetailViewModel(
             movieId: movieID,
             getMovieDetail: getMovieDetail,
-            setMembership: setMembership,
-            setWatched: setWatched,
+            getViewerMovieState: getViewerMovieState,
+            updateViewerMovieState: updateViewerMovieState,
             checkAvailability: checkAvailability,
             preparePlaybackOptions: preparePlaybackOptions,
+            viewerStateDidChange: viewerStateDidChange,
             eligibilityDidChange: eligibilityDidChange
         )
     }
@@ -26,6 +28,7 @@ struct MovieDetailNavigationDependencies {
 struct MovieDetailView: View {
     @Environment(\.openURL) private var openURL
     @State private var handoffTask: Task<Void, Never>?
+    @State private var feedbackTask: Task<Void, Never>?
 
     let model: MovieDetailViewModel
     let imagePipeline: ImagePipeline
@@ -54,7 +57,7 @@ struct MovieDetailView: View {
                         )
                         .frame(height: 220)
                         .clipped()
-                        .cornerRadius(12)
+                        .clipShape(.rect(cornerRadius: 12))
 
                         VStack(alignment: .leading, spacing: 8) {
                             Text(data.title)
@@ -85,12 +88,26 @@ struct MovieDetailView: View {
                             }
                         }
 
-                        // Watchlist Actions
-                        WatchlistActionsView(
-                            isInWatchlist: data.isInWatchlist,
-                            isWatched: data.isWatched,
-                            onToggleWatchlist: { Task { await model.toggleWatchlist() } },
-                            onToggleWatched: { Task { await model.toggleWatched() } }
+                        MovieFeedbackSection(
+                            state: model.feedbackState,
+                            retry: { performFeedbackAction(model.retryFeedback) },
+                            setReaction: { reaction in
+                                performFeedbackAction {
+                                    await model.setReaction(reaction)
+                                }
+                            },
+                            removeReaction: {
+                                performFeedbackAction(model.removeReaction)
+                            },
+                            toggleWatched: {
+                                performFeedbackAction(model.toggleWatched)
+                            },
+                            toggleNotInterested: {
+                                performFeedbackAction(model.toggleNotInterested)
+                            },
+                            toggleWatchlist: {
+                                performFeedbackAction(model.toggleWatchlist)
+                            }
                         )
 
                         ExpandableText(
@@ -139,19 +156,30 @@ struct MovieDetailView: View {
         .onDisappear {
             handoffTask?.cancel()
             handoffTask = nil
+            feedbackTask?.cancel()
+            feedbackTask = nil
         }
         .alert(
-            "Watchlist update failed",
+            "Feedback update failed",
             isPresented: Binding(
-                get: { model.actionErrorMessage != nil },
-                set: { if !$0 { model.actionErrorMessage = nil } }
+                get: { model.feedbackActionErrorMessage != nil },
+                set: { if !$0 { model.feedbackActionErrorMessage = nil } }
             )
         ) {
             Button("OK") {
-                model.actionErrorMessage = nil
+                model.feedbackActionErrorMessage = nil
             }
         } message: {
-            Text(model.actionErrorMessage ?? "Please try again.")
+            Text(model.feedbackActionErrorMessage ?? "Please try again.")
+        }
+    }
+
+    private func performFeedbackAction(
+        _ action: @escaping @MainActor () async -> Void
+    ) {
+        feedbackTask?.cancel()
+        feedbackTask = Task {
+            await action()
         }
     }
 }
@@ -275,44 +303,6 @@ private struct ProviderLogoView: View {
     }
 }
 
-// MARK: - Watchlist Actions
-
-@MainActor
-private struct WatchlistActionsView: View {
-    let isInWatchlist: Bool
-    let isWatched: Bool
-    let onToggleWatchlist: () -> Void
-    let onToggleWatched: () -> Void
-
-    var body: some View {
-        HStack(spacing: 12) {
-            Button {
-                onToggleWatchlist()
-            } label: {
-                Label(
-                    isInWatchlist ? "In Watchlist" : "Add to Watchlist",
-                    systemImage: isInWatchlist ? "bookmark.fill" : "bookmark"
-                )
-            }
-            .buttonStyle(.borderedProminent)
-            .tint(isInWatchlist ? .green : .accentColor)
-
-            if isInWatchlist {
-                Button {
-                    onToggleWatched()
-                } label: {
-                    Label(
-                        isWatched ? "Watched" : "Mark Watched",
-                        systemImage: isWatched ? "eye.fill" : "eye"
-                    )
-                }
-                .buttonStyle(.bordered)
-                .tint(isWatched ? .orange : nil)
-            }
-        }
-    }
-}
-
 @MainActor
 private struct CreditsSection: View {
     let directorName: String?
@@ -415,7 +405,7 @@ private struct SimilarMoviesSection: View {
                                 )
                                 .frame(width: 100, height: 150)
                                 .clipped()
-                                .cornerRadius(8)
+                                .clipShape(.rect(cornerRadius: 8))
 
                                 Text(movie.title)
                                     .font(.caption2)
