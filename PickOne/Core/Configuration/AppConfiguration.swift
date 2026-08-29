@@ -53,6 +53,28 @@ struct AppConfiguration {
     static let tmdbBaseURL = "https://api.themoviedb.org/3"
     static let tmdbImageBaseURL = "https://image.tmdb.org/t/p"
 
+    // MARK: - Calibration Catalog Configuration
+
+    static let calibrationCatalogURL = calibrationCatalogURL(
+        from: Bundle.main.object(
+            forInfoDictionaryKey: "CalibrationCatalogURL"
+        ) as? String
+    )
+
+    static func calibrationCatalogURL(from value: String?) -> URL? {
+        guard let rawValue = value?.trimmingCharacters(in: .whitespacesAndNewlines),
+              !rawValue.isEmpty,
+              let url = URL(string: rawValue),
+              url.scheme?.lowercased() == "https",
+              url.host != nil,
+              url.user == nil,
+              url.password == nil
+        else {
+            return nil
+        }
+        return url
+    }
+
     // MARK: - Image Sizes
 
     enum ImageSize: String {

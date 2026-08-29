@@ -1,3 +1,4 @@
+import Foundation
 @testable import PickOne
 import Testing
 
@@ -14,5 +15,26 @@ struct AppConfigurationTests {
             "XCTestConfigurationFilePath": "/tmp/PickOneTests.xctestconfiguration",
         ]))
         #expect(!AppConfiguration.detectsUnitTestHost(in: [:]))
+    }
+
+    @Test("calibration catalog accepts only credential-free HTTPS URLs")
+    func validatesCalibrationCatalogURL() {
+        #expect(
+            AppConfiguration.calibrationCatalogURL(
+                from: " https://catalog.example.com/es-ES.json "
+            ) == URL(string: "https://catalog.example.com/es-ES.json")
+        )
+        #expect(AppConfiguration.calibrationCatalogURL(from: nil) == nil)
+        #expect(AppConfiguration.calibrationCatalogURL(from: "") == nil)
+        #expect(
+            AppConfiguration.calibrationCatalogURL(
+                from: "http://catalog.example.com/es-ES.json"
+            ) == nil
+        )
+        #expect(
+            AppConfiguration.calibrationCatalogURL(
+                from: "https://user:password@catalog.example.com/es-ES.json"
+            ) == nil
+        )
     }
 }

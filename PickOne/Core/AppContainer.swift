@@ -36,6 +36,7 @@ final class AppContainer {
     let manageViewerProfile: ManageViewerProfileUseCase
     let getViewerStateRecoveryNotice: GetViewerStateRecoveryNoticeUseCase
     let resetUnrecoverableViewerState: ResetUnrecoverableViewerStateUseCase
+    let resolveCalibrationCatalog: ResolveCalibrationCatalogUseCase
 
     // MARK: - ViewModels
 
@@ -83,6 +84,7 @@ final class AppContainer {
         manageViewerProfile = useCases.manageViewerProfile
         getViewerStateRecoveryNotice = useCases.getViewerStateRecoveryNotice
         resetUnrecoverableViewerState = useCases.resetUnrecoverableViewerState
+        resolveCalibrationCatalog = useCases.resolveCalibrationCatalog
         imagePipeline = ImagePipeline()
         discoveryViewModel = DiscoveryViewModel(
             getDiscoveryFeed: useCases.getDiscoveryFeed
@@ -128,6 +130,7 @@ private extension AppContainer {
         let recommendation: StubRecommendationRepository
         let decisionCandidate: DefaultDecisionCandidateRepository
         let decisionSet: DefaultDecisionSetRepository
+        let calibrationCatalog: DefaultCalibrationCatalogRepository
         let availabilityClock: SystemAvailabilityClock
     }
 
@@ -149,6 +152,7 @@ private extension AppContainer {
         let getCalibrationMovieMetadata: GetCalibrationMovieMetadata
         let getViewerStateRecoveryNotice: GetViewerStateRecoveryNotice
         let resetUnrecoverableViewerState: ResetUnrecoverableViewerState
+        let resolveCalibrationCatalog: ResolveCalibrationCatalog
     }
 
     static func makeRepositories() -> Repositories {
@@ -213,7 +217,39 @@ private extension AppContainer {
             decisionSet: DefaultDecisionSetRepository(
                 store: UserDefaultsDecisionSetDataStore()
             ),
+            calibrationCatalog: makeCalibrationCatalogRepository(),
             availabilityClock: availabilityClock
+        )
+    }
+
+    static func makeCalibrationCatalogRepository() -> DefaultCalibrationCatalogRepository {
+        let remote: any CalibrationCatalogRemoteSource = if let endpoint = AppConfiguration
+            .calibrationCatalogURL,
+            let client = try? HTTPSCalibrationCatalogClient(endpoint: endpoint)
+        {
+            DefaultCalibrationCatalogRemoteSource(client: client)
+        } else {
+            UnavailableCatalogRemoteSource()
+        }
+        let cache: any CalibrationCatalogCacheStore =
+            (try? CachesCalibrationCatalogStore()) ??
+            UnavailableCalibrationCatalogCacheStore()
+        let bundled: any BundledCalibrationCatalogSource = if let source =
+            try? FileBundledCalibrationCatalogSource(
+                resourceURL: Bundle.main.url(
+                    forResource: "calibration-catalog-es-ES-v1",
+                    withExtension: "json"
+                )
+            )
+        {
+            source
+        } else {
+            UnavailableBundledCatalogSource()
+        }
+        return DefaultCalibrationCatalogRepository(
+            remote: remote,
+            cache: cache,
+            bundled: bundled
         )
     }
 
@@ -282,6 +318,9 @@ private extension AppContainer {
                 repository: ViewerStateDestructiveRecoveryAdapter(
                     repository: repositories.viewerState
                 )
+            ),
+            resolveCalibrationCatalog: ResolveCalibrationCatalog(
+                repository: repositories.calibrationCatalog
             )
         )
     }
