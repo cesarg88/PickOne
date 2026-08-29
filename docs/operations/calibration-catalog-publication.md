@@ -18,6 +18,26 @@ Initial proposed artifact SHA-256:
 Recompute and record a new digest after any approved change; publication must
 use the exact bytes whose digest was approved.
 
+## Accepted pilot publication contract
+
+The pilot publishes the current catalog at the stable object and CloudFront
+path `/catalogs/ES/es-ES/calibration.json`. Publication must not introduce a
+version-specific public path or invalidate a wider CloudFront path.
+
+The approved target response metadata is exactly:
+`Cache-Control: public, max-age=0, s-maxage=300, must-revalidate`. The pilot
+infrastructure has not been deployed yet; publication must configure this value
+rather than treat it as observed evidence. The CloudFront cache policy must use
+`MinimumTTL = 0` and `MaximumTTL >= 300` so it does not override the approved
+origin directive.
+
+Catalog JSON `version` values are strictly monotonic. Every publication must
+use a value higher than every version previously exposed at the stable path.
+A rollback is therefore a roll-forward publication: republish the approved
+content of an earlier object with a new higher `version` and a new `updatedAt`.
+S3 Versioning preserves recovery material, but restoring an older S3 object
+version must never expose its lower catalog `version` at the stable path again.
+
 ## Approval and validation
 
 - [ ] Product Owner approved the complete movie IDs, order, blocks, fallback
@@ -36,16 +56,28 @@ use the exact bytes whose digest was approved.
 - [ ] The endpoint is read-only HTTPS and requires no client credential,
       signature, cookie, Viewer state, or request body.
 - [ ] Redirects remain on the configured HTTPS host and port.
+- [ ] The public object path is exactly
+      `/catalogs/ES/es-ES/calibration.json`.
 - [ ] `GET` returns `200` with `Content-Type: application/json`; a missing
       document returns a definitive `404`.
-- [ ] Cache-Control metadata and any required invalidation are recorded.
+- [ ] The response contains exactly
+      `Cache-Control: public, max-age=0, s-maxage=300, must-revalidate`.
+- [ ] The CloudFront cache policy uses `MinimumTTL = 0` and
+      `MaximumTTL >= 300`.
+- [ ] Any CloudFront invalidation names only
+      `/catalogs/ES/es-ES/calibration.json`; no wildcard or parent path is
+      invalidated.
 - [ ] The endpoint serves the exact approved digest and stays below 64 KiB.
+- [ ] The document `version` is higher than every version previously published
+      at the stable path.
 
 ## Post-publication evidence
 
 - [ ] Download the document from the configured pilot endpoint and record its
       SHA-256 digest.
 - [ ] Confirm the downloaded bytes pass the same schema and invariant tests.
+- [ ] Confirm the downloaded `version` and `updatedAt` match the approved
+      roll-forward artifact, including after rollback.
 - [ ] Confirm remote, cached, and bundled resolution paths on the accepted
       region `ES` and locale `es-ES`.
 - [ ] Record rollback verification and the approver in the Milestone 7 closure

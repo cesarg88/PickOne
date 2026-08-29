@@ -1,4 +1,5 @@
 import Foundation
+import Synchronization
 
 struct CalibrationCatalogHTTPResponse: Equatable, Sendable {
     let data: Data
@@ -21,6 +22,7 @@ protocol CalibrationCatalogHTTPClient: Sendable {
 
 final class HTTPSCalibrationCatalogClient: CalibrationCatalogHTTPClient, Sendable {
     private let endpoint: URL
+    private let redirectPolicy: CalibrationCatalogRedirectPolicy
     private let session: URLSession
     private let maximumResponseBytes: Int
 
@@ -37,6 +39,7 @@ final class HTTPSCalibrationCatalogClient: CalibrationCatalogHTTPClient, Sendabl
             throw CalibrationCatalogHTTPClientError.insecureEndpoint
         }
         self.endpoint = endpoint
+        redirectPolicy = CalibrationCatalogRedirectPolicy(endpoint: endpoint)
         self.session = session
         self.maximumResponseBytes = maximumResponseBytes
     }
@@ -45,13 +48,22 @@ final class HTTPSCalibrationCatalogClient: CalibrationCatalogHTTPClient, Sendabl
         var request = URLRequest(url: endpoint)
         request.httpMethod = "GET"
         request.setValue("application/json", forHTTPHeaderField: "Accept")
+        let redirectDelegate = CalibrationCatalogRedirectDelegate(
+            policy: redirectPolicy
+        )
 
         do {
-            let (bytes, response) = try await session.bytes(for: request)
+            let (bytes, response) = try await session.bytes(
+                for: request,
+                delegate: redirectDelegate
+            )
             guard let httpResponse = response as? HTTPURLResponse,
                   let finalURL = httpResponse.url
             else {
                 throw CalibrationCatalogHTTPClientError.invalidResponse
+            }
+            guard !redirectDelegate.didRejectRedirect else {
+                throw CalibrationCatalogHTTPClientError.untrustedRedirect
             }
             guard isTrusted(finalURL) else {
                 throw CalibrationCatalogHTTPClientError.untrustedRedirect
@@ -81,18 +93,65 @@ final class HTTPSCalibrationCatalogClient: CalibrationCatalogHTTPClient, Sendabl
         } catch is CancellationError {
             throw CancellationError()
         } catch {
+            guard !redirectDelegate.didRejectRedirect else {
+                throw CalibrationCatalogHTTPClientError.untrustedRedirect
+            }
             throw CalibrationCatalogHTTPClientError.unavailable
         }
     }
 
     private func isTrusted(_ url: URL) -> Bool {
-        url.scheme?.lowercased() == "https" &&
-            url.host?.lowercased() == endpoint.host?.lowercased() &&
-            effectivePort(url) == effectivePort(endpoint)
+        redirectPolicy.permits(url)
+    }
+}
+
+private struct CalibrationCatalogRedirectPolicy: Sendable {
+    private let host: String
+    private let port: Int
+
+    init(endpoint: URL) {
+        host = endpoint.host?.lowercased() ?? ""
+        port = Self.effectivePort(endpoint)
     }
 
-    private func effectivePort(_ url: URL) -> Int {
+    func permits(_ url: URL) -> Bool {
+        url.scheme?.lowercased() == "https" &&
+            url.host?.lowercased() == host &&
+            Self.effectivePort(url) == port
+    }
+
+    private static func effectivePort(_ url: URL) -> Int {
         url.port ?? 443
+    }
+}
+
+private final class CalibrationCatalogRedirectDelegate: NSObject, URLSessionTaskDelegate,
+    Sendable
+{
+    private let policy: CalibrationCatalogRedirectPolicy
+    private let rejectedRedirect = Mutex(false)
+
+    var didRejectRedirect: Bool {
+        rejectedRedirect.withLock { $0 }
+    }
+
+    init(policy: CalibrationCatalogRedirectPolicy) {
+        self.policy = policy
+    }
+
+    func urlSession(
+        _: URLSession,
+        task _: URLSessionTask,
+        willPerformHTTPRedirection _: HTTPURLResponse,
+        newRequest request: URLRequest,
+        completionHandler: @escaping @Sendable (URLRequest?) -> Void
+    ) {
+        guard let url = request.url, policy.permits(url) else {
+            rejectedRedirect.withLock { $0 = true }
+            completionHandler(nil)
+            return
+        }
+        completionHandler(request)
     }
 }
 

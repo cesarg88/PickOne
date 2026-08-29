@@ -1,5 +1,6 @@
 import Foundation
 @testable import PickOne
+import Synchronization
 import Testing
 
 @Suite("Calibration catalog remote source")
@@ -185,6 +186,157 @@ struct HTTPSCalibrationCatalogClientTests {
         await #expect(throws: CalibrationCatalogHTTPClientError.untrustedRedirect) {
             try await sut.get()
         }
+    }
+
+    @Test(
+        "an untrusted HTTP redirect is rejected before its request is sent",
+        arguments: [
+            "http://catalog.example/catalog.json",
+            "https://untrusted.example/catalog.json",
+            "https://catalog.example:444/catalog.json",
+        ]
+    )
+    func redirectIsNotFollowed(destination: String) async throws {
+        RedirectingCatalogURLProtocol.reset()
+        let endpoint = try #require(
+            URL(string: "https://catalog.example/catalog.json")
+        )
+        let redirected = try #require(
+            URL(string: destination)
+        )
+        RedirectingCatalogURLProtocol.configure(
+            source: endpoint,
+            destination: redirected
+        )
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.protocolClasses = [RedirectingCatalogURLProtocol.self]
+        let sut = try HTTPSCalibrationCatalogClient(
+            endpoint: endpoint,
+            session: URLSession(configuration: configuration)
+        )
+
+        await #expect(throws: CalibrationCatalogHTTPClientError.untrustedRedirect) {
+            try await sut.get()
+        }
+        #expect(RedirectingCatalogURLProtocol.requests == [endpoint])
+    }
+
+    @Test("a trusted HTTPS redirect on the configured host and port is followed")
+    func trustedRedirectIsFollowed() async throws {
+        RedirectingCatalogURLProtocol.reset()
+        let endpoint = try #require(
+            URL(string: "https://catalog.example/catalog.json")
+        )
+        let redirected = try #require(
+            URL(string: "https://catalog.example/catalog-v2.json")
+        )
+        RedirectingCatalogURLProtocol.configure(
+            source: endpoint,
+            destination: redirected
+        )
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.protocolClasses = [RedirectingCatalogURLProtocol.self]
+        let sut = try HTTPSCalibrationCatalogClient(
+            endpoint: endpoint,
+            session: URLSession(configuration: configuration)
+        )
+
+        let response = try await sut.get()
+
+        #expect(response.statusCode == 200)
+        #expect(response.finalURL == redirected)
+        #expect(RedirectingCatalogURLProtocol.requests == [endpoint, redirected])
+    }
+}
+
+private final class RedirectingCatalogURLProtocol: URLProtocol {
+    private struct State: Sendable {
+        var source: URL?
+        var destination: URL?
+        var requests: [URL] = []
+    }
+
+    private static let state = Mutex(State())
+
+    static var requests: [URL] {
+        state.withLock(\.requests)
+    }
+
+    static func reset() {
+        state.withLock { $0 = State() }
+    }
+
+    static func configure(source: URL, destination: URL) {
+        state.withLock {
+            $0.source = source
+            $0.destination = destination
+        }
+    }
+
+    // swiftlint:disable:next static_over_final_class - URLProtocol requires this class override
+    override class func canInit(with request: URLRequest) -> Bool {
+        true
+    }
+
+    // swiftlint:disable:next static_over_final_class - URLProtocol requires this class override
+    override class func canonicalRequest(for request: URLRequest) -> URLRequest {
+        request
+    }
+
+    override func startLoading() {
+        guard let requestURL = request.url else {
+            client?.urlProtocol(self, didFailWithError: URLError(.badURL))
+            return
+        }
+        let configuration = Self.state.withLock { state in
+            state.requests.append(requestURL)
+            return (state.source, state.destination)
+        }
+        guard let source = configuration.0,
+              let destination = configuration.1
+        else {
+            client?.urlProtocol(self, didFailWithError: URLError(.badURL))
+            return
+        }
+        guard requestURL == source else {
+            finishSuccessfulRequest(url: requestURL, expected: destination)
+            return
+        }
+        guard let response = HTTPURLResponse(
+            url: requestURL,
+            statusCode: 302,
+            httpVersion: nil,
+            headerFields: ["Location": destination.absoluteString]
+        )
+        else {
+            client?.urlProtocol(self, didFailWithError: URLError(.badServerResponse))
+            return
+        }
+        client?.urlProtocol(
+            self,
+            wasRedirectedTo: URLRequest(url: destination),
+            redirectResponse: response
+        )
+        client?.urlProtocolDidFinishLoading(self)
+    }
+
+    override func stopLoading() {}
+
+    private func finishSuccessfulRequest(url: URL, expected: URL) {
+        guard url == expected,
+              let response = HTTPURLResponse(
+                  url: url,
+                  statusCode: 200,
+                  httpVersion: nil,
+                  headerFields: ["Content-Type": "application/json"]
+              )
+        else {
+            client?.urlProtocol(self, didFailWithError: URLError(.cannotConnectToHost))
+            return
+        }
+        client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
+        client?.urlProtocol(self, didLoad: Data("{}".utf8))
+        client?.urlProtocolDidFinishLoading(self)
     }
 }
 
