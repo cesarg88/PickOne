@@ -24,6 +24,7 @@ final class WatchlistViewModel {
     private let getWatchlist: GetWatchlistUseCase
     private let setMembership: SetWatchlistMembershipUseCase
     @ObservationIgnored private let eligibilityDidChange: @MainActor (DecisionEligibilityChange) -> Void
+    @ObservationIgnored private var activeLoadID = UUID()
 
     var state: WatchlistViewState = .idle
     var actionErrorMessage: String?
@@ -41,10 +42,18 @@ final class WatchlistViewModel {
     // MARK: - Actions
 
     func load() async {
+        let loadID = UUID()
+        activeLoadID = loadID
+
         do {
             let snapshot = try await getWatchlist.execute()
+            try Task.checkCancellation()
+            guard activeLoadID == loadID else { return }
             applySnapshot(snapshot)
+        } catch is CancellationError {
+            return
         } catch {
+            guard activeLoadID == loadID else { return }
             actionErrorMessage = error.localizedDescription
         }
     }

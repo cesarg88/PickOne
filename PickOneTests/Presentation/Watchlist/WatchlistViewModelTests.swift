@@ -70,6 +70,49 @@ struct WatchlistViewModelTests {
         #expect(data.items.first?.rating == nil)
     }
 
+    @Test("older load cannot overwrite a newer projection")
+    func olderLoadCannotOverwriteNewerProjection() async {
+        let getWatchlist = ControlledGetWatchlistUseCase()
+        let sut = WatchlistViewModel(
+            getWatchlist: getWatchlist,
+            setMembership: SetWatchlistMembership(repository: MockWatchlistRepository())
+        )
+
+        let olderLoad = Task { await sut.load() }
+        await getWatchlist.waitUntilStarted(call: 1)
+
+        let newerLoad = Task { await sut.load() }
+        await getWatchlist.waitUntilStarted(call: 2)
+
+        await getWatchlist.complete(
+            call: 2,
+            with: .success(
+                WatchlistSnapshot(
+                    toWatch: [WatchlistTestFixtures.anotherUnwatchedItem],
+                    asOf: Date(timeIntervalSince1970: 200)
+                )
+            )
+        )
+        await newerLoad.value
+
+        await getWatchlist.complete(
+            call: 1,
+            with: .success(
+                WatchlistSnapshot(
+                    toWatch: [WatchlistTestFixtures.unwatchedItem],
+                    asOf: Date(timeIntervalSince1970: 100)
+                )
+            )
+        )
+        await olderLoad.value
+
+        guard case let .loaded(data) = sut.state else {
+            Issue.record("Expected the latest projection")
+            return
+        }
+        #expect(data.items.map(\.id) == [WatchlistTestFixtures.anotherUnwatchedItem.id])
+    }
+
     // MARK: - Remove
 
     @Test("remove calls repository remove via use case")
@@ -182,5 +225,38 @@ struct WatchlistViewModelTests {
         )
 
         return (sut, repository)
+    }
+}
+
+private actor ControlledGetWatchlistUseCase: GetWatchlistUseCase {
+    private var continuations: [
+        Int: CheckedContinuation<WatchlistSnapshot, Error>
+    ] = [:]
+    private var startedCalls: Set<Int> = []
+    private var callCount = 0
+
+    func execute() async throws -> WatchlistSnapshot {
+        callCount += 1
+        let call = callCount
+        startedCalls.insert(call)
+        return try await withCheckedThrowingContinuation { continuation in
+            continuations[call] = continuation
+        }
+    }
+
+    func waitUntilStarted(call: Int) async {
+        while !startedCalls.contains(call) {
+            await Task.yield()
+        }
+    }
+
+    func complete(
+        call: Int,
+        with result: Result<WatchlistSnapshot, Error>
+    ) {
+        guard let continuation = continuations.removeValue(forKey: call) else {
+            return
+        }
+        continuation.resume(with: result)
     }
 }
