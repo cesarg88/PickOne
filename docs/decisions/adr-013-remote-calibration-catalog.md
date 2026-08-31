@@ -2,11 +2,16 @@
 
 ## Status
 
-Accepted
+Accepted — implemented; final Milestone 7 approval pending
 
 The Product Owner accepted the two-second fallback, exact-snapshot freeze, and
 AWS-independent client boundary on 2026-08-19. The ADR was accepted with the
 final Milestone 7 D0 specification on 2026-08-24 after Milestone 6 merged.
+
+Milestone 7 PR8 and PR9 implement the remote source, cache, fallback, frozen
+draft, and Presentation integration. PR10 (#43) closes composed relaunch and
+end-to-end evidence; final milestone approval still requires the final-SHA CI
+and Product Owner device gates.
 
 ## Context
 

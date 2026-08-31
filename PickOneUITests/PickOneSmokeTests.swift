@@ -6,7 +6,7 @@ final class PickOneSmokeTests: XCTestCase {
     }
 
     @MainActor
-    func testMainTabsAreReachable() {
+    func testMilestone7EndToEndFlow() {
         let app = XCUIApplication()
         app.launchArguments.append("-ui-testing")
         app.launchArguments.append("-ui-testing-reset-viewer-profile")
@@ -31,6 +31,13 @@ final class PickOneSmokeTests: XCTestCase {
 
         XCTAssertFalse(app.tabBars.buttons["Ask"].exists, "Ask should not be exposed as a tab")
 
+        verifyFeedbackSurfaces(in: app)
+        verifyAttribution(in: app)
+        verifyRecalibration(in: app)
+    }
+
+    @MainActor
+    private func verifyFeedbackSurfaces(in app: XCUIApplication) {
         app.tabBars.buttons["Home"].tap()
         let recommendation = app.buttons["home-recommendation-101"]
         XCTAssertTrue(
@@ -44,6 +51,12 @@ final class PickOneSmokeTests: XCTestCase {
             app.otherElements["movie-feedback-section"].waitForExistence(timeout: 15)
         )
         tapButton("Love it", in: app)
+        app.navigationBars["Details"].buttons["Home"].tap()
+        XCTAssertTrue(
+            app.staticTexts["Recommendations updated."].waitForExistence(timeout: 15)
+        )
+        recommendation.tap()
+        XCTAssertTrue(app.navigationBars["Details"].waitForExistence(timeout: 15))
         tapButton("Mark unwatched", in: app)
         tapButton("Not interested", in: app)
         tapButton("Add to Watchlist", in: app)
@@ -84,6 +97,10 @@ final class PickOneSmokeTests: XCTestCase {
         app.navigationBars["Details"].buttons["My movies"].tap()
         XCTAssertTrue(myMoviesRow.waitForNonExistence(timeout: 15))
         app.navigationBars["My movies"].buttons["Settings"].tap()
+    }
+
+    @MainActor
+    private func verifyAttribution(in app: XCUIApplication) {
         app.buttons["About"].tap()
         XCTAssertTrue(app.navigationBars["About"].waitForExistence(timeout: 15))
         XCTAssertTrue(app.images["The Movie Database"].exists)
@@ -97,6 +114,20 @@ final class PickOneSmokeTests: XCTestCase {
                 "Streaming availability data is provided by JustWatch."
             ].exists
         )
+        app.navigationBars["About"].buttons["Settings"].tap()
+    }
+
+    @MainActor
+    private func verifyRecalibration(in app: XCUIApplication) {
+        tapButton("Repeat calibration", in: app)
+        XCTAssertTrue(app.navigationBars["Repeat calibration"].waitForExistence(timeout: 15))
+        tapButton("Close", in: app)
+        XCTAssertTrue(app.buttons["Continue calibration"].waitForExistence(timeout: 15))
+        tapButton("Continue calibration", in: app)
+        for _ in 0 ..< 8 {
+            tapButton("Love it", in: app)
+        }
+        XCTAssertTrue(app.buttons["Repeat calibration"].waitForExistence(timeout: 15))
     }
 
     @MainActor

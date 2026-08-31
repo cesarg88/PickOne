@@ -12,8 +12,7 @@ It contains only work that remains pending after Milestone 3.3. Completed work
 should remain in this file with its status changed to `Completed` and a link to
 the implementing PR or milestone.
 
-Last reviewed: 2026-08-27, after Milestone 7 PR4 validation and PR4.5/PR5
-engineering clarification.
+Last reviewed: 2026-08-31, during Milestone 7 PR10 integration and closure.
 
 ## Product Direction
 
@@ -230,7 +229,7 @@ Priorities:
 
 ### IMP-004 — Add continuous taste learning and unified movie state
 
-- Status: `In Progress`
+- Status: `Pilot Validation — final approval pending`
 - Priority: `P0`
 - Roadmap relationship: Milestone 7
 - Accepted specification:
@@ -259,10 +258,12 @@ Priorities:
   - hydrate all current reaction metadata with bounded structured concurrency,
     deterministic ordering, cancellation, and no partial Taste Profile
 - Progress:
-  - PR1–PR4 merged as PR #33–#36
+  - PR1–PR9 merged as PRs #33–#42
   - PR4 migration passed physical validation on the Product Owner's iPhone
-  - PR4.5 human-readable recommendation evidence is the next slice; PR5 depends
-    on it
+  - PR10 (#43) adds composed final-M6 upgrade/relaunch coverage and extends the
+    UI smoke across Home feedback and recalibration
+  - final approval requires PR10 CI plus the remaining Product Owner device and
+    enriched household utility confirmation
 - Done when:
   - Detail, Watchlist, calibration, Settings history, and Home agree for every
     movie state
@@ -276,7 +277,7 @@ Priorities:
 
 ### IMP-022 — Deliver a remotely updateable calibration catalog
 
-- Status: `Accepted — Engineering Ready`
+- Status: `Pilot Validation — final approval pending`
 - Priority: `P0`
 - Roadmap relationship: Milestone 7
 - Accepted architecture:
@@ -293,6 +294,13 @@ Priorities:
   - freeze and persist the exact snapshot used by a draft
   - keep transport, hosting, credentials, and cache details outside Domain and
     Presentation
+- Progress:
+  - PR8 and PR9 merged as PRs #41 and #42
+  - the configured read-only pilot endpoint is operational
+  - remote, cache, bundled fallback, cancellation, validation, exact freeze,
+    and relaunch paths have automated coverage
+  - final approval requires PR10 CI and Product Owner confirmation on the final
+    build
 - Done when:
   - a valid remote catalog can update a later flow without an app release
   - cached and bundled flows work offline
@@ -481,22 +489,46 @@ Priorities:
 
 ### IMP-011 — Version and observe local persistence
 
-- Status: `Proposed`
+- Status: `Completed`
 - Priority: `P2`
-- Current baseline: corrupt Watchlist bytes are preserved and mutation errors
-  are surfaced, but reads can still collapse into an empty list.
+- Completed result: Viewer Profile, Movie reaction, watched, and Watchlist state
+  use one versioned Application Support envelope with explicit absent, corrupt,
+  unsupported, recovered, and all-source-failure behavior.
 - Implementation:
   - deliver the Milestone 7 versioned viewer-state envelope, previous-valid
     recovery, exact-byte quarantine, and legacy profile/Watchlist migration
   - distinguish missing, corrupt, unsupported, recovered, and all-source failure
   - define explicit destructive recovery only when no trusted source remains
-  - make Search history writes observable where failure matters
   - add migration and recovery tests
 - Done when:
   - upgrades cannot silently discard or replace recoverable user state
-- Scope note:
-  Milestone 7 resolves viewer profile, Movie reaction, watched, and Watchlist
-  recovery. Search History remains independent follow-up work.
+- Follow-up:
+  Search History remains an independent UserDefaults store. Migration and
+  preference reset preserve it; IMP-024 owns making its writes observable.
+
+### IMP-024 — Make Search History persistence failures observable
+
+- Status: `Proposed`
+- Priority: `P2`
+- Current baseline:
+  Search History remains an independent UserDefaults store whose synchronous
+  write API cannot report a failed add or clear operation. Milestone 7 preserves
+  its bytes through migration and preference reset but does not change that
+  contract.
+- Implementation:
+  - define which Search History add and clear failures require visible recovery
+    or retry
+  - make relevant persistence failures observable through the repository and
+    use-case boundaries
+  - preserve existing ordering, deduplication, ten-item limit, and M7 migration
+    behavior
+  - add focused failure and presentation tests without folding Search History
+    into Unified Viewer Movie State
+- Done when:
+  - a Search History mutation cannot report success after a relevant local
+    persistence failure
+  - accepted failure behavior is covered without weakening M7 migration or
+    reset guarantees
 
 ### IMP-013 — Complete external-distribution readiness
 

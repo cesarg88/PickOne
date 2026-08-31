@@ -36,56 +36,45 @@ Statuses are `Observed`, `Planned`, `Monitoring`, `Resolved`, or `Accepted`.
   violation reaches review, or measured build/test performance justifies a
   physical module.
 - Milestone 7 evaluation:
-  no physical module is justified in D0. Viewer Movie State, persistence, and
-  Decision Engine contracts change across PR1–PR5, there is no reuse
-  requirement, and no measured build/test problem exists. Reevaluate after PR5
-  only if a documented trigger has fired; extraction requires a separate ADR
-  and PR.
+  no trigger fired through PR10. Focused boundaries remain reviewable, the
+  complete verification time has not justified extraction, and no reuse or
+  compiler-enforced isolation need emerged. Keep monitoring; any future module
+  still requires a separate accepted ADR and PR.
 
 ### TD-002 — Viewer-profile orchestration has concentrated files
 
 - Severity: `Low`
-- Status: `Planned`
-- Evidence: `ViewerProfileViewModel.swift` and
-  `DefaultViewerProfileRepository.swift` are current cohesion-review hotspots
-  with extensive focused test coverage.
-- Current mitigation: behavior is isolated by use cases, repository contracts,
-  persistence values, and dedicated tests.
-- Resolution trigger: the next accepted change adds another responsibility to
-  either file, tests require unrelated fixture setup, or a reviewer cannot
-  reason about one state transition without loading unrelated flows.
-- Constraint: do not refactor solely to reduce line count.
-- Milestone 7 plan:
-  PR2 builds the unified persistence owner, PR3 cuts profile/calibration
-  transactions over to it, PR4 migrates Decision Set persistence to the
-  non-reusable state identity, and PR5 extracts trusted-state loading, change
-  classification, and reaction-driven cycle transition instead of adding them
-  to existing coordinator or profile files.
+- Status: `Monitoring`
+- Milestone 7 decomposition: local transactions moved into the actor-owned
+  viewer-state repository and focused extensions; PR5 extracted trusted
+  Decision State loading and reconciliation planning; PR9 extracted catalog
+  wait, cancellation, and retry ownership into
+  `CalibrationCatalogFlowCoordinator`.
+- Remaining evidence: `ViewerProfileViewModel` and the combined
+  `LocalViewerStateRepository` plus `LocalViewerStateRepository+ViewerProfile`
+  responsibility remain cohesion-review hotspots despite their focused tests.
+- Current mitigation: the extracted collaborators, actor isolation, transition
+  reducer, repository boundaries, and focused Domain, Data, concurrency,
+  Presentation, and composed PR10 coverage keep behavior reviewable.
+- Resolution trigger: at the post-Milestone 7 technical checkpoint, confirm
+  whether either hotspot still requires unrelated state-transition context or
+  fixture setup to change safely. Extract only an accepted cohesive
+  responsibility; do not refactor solely to reduce line count.
+- PR10 constraint: documentary monitoring only; no production refactor belongs
+  in the integration-and-closure slice.
+
+## Resolved Items
 
 ### TD-003 — Viewer state is fragmented across profile and Watchlist stores
 
 - Severity: `High`
-- Status: `Planned`
-- Evidence:
-  calibration reactions live in Viewer Profile while Watchlist membership and
-  watched state live in a separate UserDefaults-backed store. Accepted
-  Milestone 7 transitions cross both aggregates and cannot be published
-  atomically through the current contracts.
-- Risk:
-  adding catalog-wide reactions or independent watched changes without a
-  migration would create contradictory state, partial writes, or lost pilot
-  history.
-- Resolution:
-  ADR-012 and Milestone 7 PR1–PR3 introduce one validated transition reducer,
-  a versioned Application Support envelope, active/previous/quarantine
-  recovery, and deterministic legacy migration while Search History remains
-  independent. PR4 preserves trusted M6 recommendation history while moving the
-  Decision Set envelope to the new state identity.
-- Resolution evidence required:
-  migration over the final M6 build preserves profile, reactions, watched,
-  Watchlist, Search History, and trusted Decision Set shown IDs; exhaustive
-  transition, recovery, and physical-device upgrade tests pass.
-
-## Resolved Items
-
-None recorded.
+- Status: `Resolved`
+- Resolution: ADR-012 and Milestone 7 PR1–PR4 replaced independent profile and
+  Watchlist writes with one validated Application Support envelope, atomic
+  transitions, previous-valid recovery, exact-byte quarantine, deterministic
+  legacy migration, and non-reusable snapshot identity shared with Decision
+  Set v2.
+- Evidence: exhaustive transition/recovery suites, PR4 physical migration, and
+  the PR10 composed final-M6 upgrade test preserve profile, reactions, watched,
+  Watchlist, Search History, and every trusted Decision Set shown ID through v2
+  publication and repository relaunch.
