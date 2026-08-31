@@ -144,6 +144,31 @@ actor CancellableCalibrationCatalogResolver: ResolveCalibrationCatalogUseCase {
     }
 }
 
+actor LateSuccessCatalogResolver: ResolveCalibrationCatalogUseCase {
+    private var continuation: CheckedContinuation<CalibrationCatalogResolution, Never>?
+    private(set) var didStartResolving = false
+
+    func prefetch(region _: String, locale _: String) async {}
+
+    func execute(
+        region _: String,
+        locale _: String,
+        deadline _: Date
+    ) async throws -> CalibrationCatalogResolution {
+        didStartResolving = true
+        return await withCheckedContinuation { continuation in
+            self.continuation = continuation
+        }
+    }
+
+    func succeed() {
+        continuation?.resume(
+            returning: CalibrationCatalogTestFixtures.resolution(source: .remote)
+        )
+        continuation = nil
+    }
+}
+
 struct FailingViewerProfileEncoder: ViewerProfileEnvelopeCoding {
     private let decoder = JSONViewerProfileEnvelopeCoder()
 

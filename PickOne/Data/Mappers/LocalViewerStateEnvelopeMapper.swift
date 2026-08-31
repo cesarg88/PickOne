@@ -172,14 +172,14 @@ struct LocalViewerStateEnvelopeMapper: Sendable {
 
     private func map(_ dto: FrozenCalibrationCatalogV2DTO) throws -> CalibrationCatalog {
         try validate(dto.reference)
+        let orders = dto.movies.map(\.order)
+        guard Set(orders).count == orders.count,
+              orders.sorted() == Array(0 ..< dto.movies.count)
+        else {
+            throw LocalViewerStateEnvelopeMappingError.invalidEnvelope
+        }
         let movies = try dto.movies.sorted { $0.order < $1.order }.map { movie in
-            guard movie.movieID > 0,
-                  !movie.titleKnownInSpain.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
-                  !movie.originalOrEnglishTitle.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
-                  (1000 ... 9999).contains(movie.year),
-                  !movie.originalLanguage.isEmpty,
-                  let block = CalibrationCatalogBlock(rawValue: movie.block)
-            else {
+            guard let block = CalibrationCatalogBlock(rawValue: movie.block) else {
                 throw LocalViewerStateEnvelopeMappingError.invalidEnvelope
             }
             return CalibrationMovie(
@@ -191,22 +191,29 @@ struct LocalViewerStateEnvelopeMapper: Sendable {
                 block: block
             )
         }
-        let orders = dto.movies.map(\.order)
-        guard dto.movies.count == 21,
-              Set(orders).count == orders.count,
-              orders.sorted() == Array(0 ..< dto.movies.count),
-              Set(movies.map(\.id)).count == movies.count,
-              movies.count(where: { $0.block == .primary }) == 12,
-              movies.count(where: { $0.block == .reserve }) == 3,
-              movies.count(where: { $0.block == .optionalExtension }) == 6,
-              movies.prefix(8).contains(where: { $0.originalLanguage != "en" })
-        else {
+        let snapshot = CalibrationCatalogSnapshot(
+            reference: CalibrationCatalogReference(
+                schemaVersion: dto.reference.schemaVersion,
+                catalogID: dto.reference.catalogID,
+                version: dto.reference.version,
+                region: dto.reference.regionCode,
+                locale: dto.reference.localeIdentifier
+            ),
+            movies: movies,
+            updatedAt: dto.updatedAt
+        )
+        do {
+            try CalibrationCatalogValidator.validate(
+                snapshot,
+                expectedRegion: ViewingRegion.spain.code,
+                expectedLocale: "es-ES"
+            )
+        } catch CalibrationCatalogValidationError.unsupportedSchema {
+            throw LocalViewerStateEnvelopeMappingError.unsupportedCatalog
+        } catch is CalibrationCatalogValidationError {
             throw LocalViewerStateEnvelopeMappingError.invalidEnvelope
         }
-        return CalibrationCatalog(
-            id: CalibrationCatalogID(rawValue: dto.reference.catalogID),
-            movies: movies
-        )
+        return snapshot.catalog
     }
 
     private func validate(_ reference: CalibrationCatalogReferenceV2DTO) throws {

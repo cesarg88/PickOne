@@ -85,6 +85,7 @@ actor ViewerProfileManageSpy: ManageViewerProfileUseCase {
     private(set) var resetProfileCallCount = 0
     private(set) var firstCalibrationSnapshot: CalibrationCatalogSnapshot?
     private(set) var firstCalibrationCallCount = 0
+    private(set) var recalibrationBeginCallCount = 0
 
     init(
         loadStates: [ViewerProfileLoadState],
@@ -229,7 +230,8 @@ actor ViewerProfileManageSpy: ManageViewerProfileUseCase {
     }
 
     func beginRecalibration(snapshot: CalibrationCatalogSnapshot) async throws -> RecalibrationDraft {
-        .empty(snapshot: snapshot)
+        recalibrationBeginCallCount += 1
+        return .empty(snapshot: snapshot)
     }
 
     func completeRecalibration() async throws -> ViewerProfile {

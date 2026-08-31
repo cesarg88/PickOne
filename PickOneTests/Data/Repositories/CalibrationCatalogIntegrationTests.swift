@@ -73,6 +73,60 @@ struct CalibrationCatalogIntegrationTests {
         #expect(!loaded.isCatalogFrozen)
     }
 
+    @Test("recalibration resumes the exact modified remote snapshot after reconstruction")
+    func recalibrationResumesExactRemoteSnapshot() async throws {
+        let activeID = try LocalViewerStateTestFixtures.uuid(LocalViewerStateTestFixtures.firstID)
+        let recalibrationID = try LocalViewerStateTestFixtures.uuid(
+            LocalViewerStateTestFixtures.secondID
+        )
+        let completed = LocalViewerStateTestFixtures.completedProfile(
+            catalogReference: LocalViewerStateTestFixtures.catalogReference()
+        )
+        let active = try LocalViewerStateTestFixtures.encoded(
+            LocalViewerStateTestFixtures.envelope(
+                id: activeID,
+                completedProfile: completed
+            )
+        )
+        let files = InMemoryLocalViewerStateFileStore(activeData: active)
+        let repository = LocalViewerProfileRepositoryAdapter(
+            repository: repository(files: files, ids: [recalibrationID])
+        )
+        var movies = CalibrationCatalogTestFixtures.snapshot().movies
+        movies.swapAt(0, 1)
+        movies[0] = CalibrationCatalogTestFixtures.replacing(
+            movies[0],
+            localizedTitle: "Remote localized title",
+            fallbackTitle: "Remote fallback title"
+        )
+        let snapshot = CalibrationCatalogTestFixtures.snapshot(
+            catalogID: "remote-household-calibration",
+            version: 3,
+            movies: movies
+        )
+
+        let draft = try await repository.beginRecalibration(snapshot: snapshot)
+
+        let persisted = try #require(activeEnvelope(files).viewerProfileState.profileDraft)
+        #expect(persisted.frozenCatalog.reference.schemaVersion == snapshot.reference.schemaVersion)
+        #expect(persisted.frozenCatalog.reference.catalogID == snapshot.reference.catalogID)
+        #expect(persisted.frozenCatalog.reference.version == snapshot.reference.version)
+        #expect(persisted.frozenCatalog.updatedAt == snapshot.updatedAt)
+        #expect(persisted.frozenCatalog.movies.map(\.movieID) == snapshot.movies.map(\.id))
+        #expect(persisted.frozenCatalog.movies[0].titleKnownInSpain == "Remote localized title")
+        #expect(persisted.frozenCatalog.movies[0].originalOrEnglishTitle == "Remote fallback title")
+
+        let relaunched = LocalViewerProfileRepositoryAdapter(
+            repository: self.repository(files: files, ids: [])
+        )
+        guard case let .completed(_, relaunchedDraft) = await relaunched.loadState() else {
+            Issue.record("Expected the recalibration draft after repository reconstruction")
+            return
+        }
+        #expect(relaunchedDraft == draft)
+        #expect(relaunchedDraft?.catalog.movies == snapshot.movies)
+    }
+
     private func repository(
         files: InMemoryLocalViewerStateFileStore,
         ids: [UUID]

@@ -32,11 +32,13 @@ final class CalibrationCatalogFlowCoordinator {
         let deadline = deadline ?? now()
         let resolver = resolver
         let task = Task { @concurrent in
-            try await resolver.execute(
+            let resolution = try await resolver.execute(
                 region: ViewingRegion.spain.code,
                 locale: "es-ES",
                 deadline: deadline
             )
+            try Task.checkCancellation()
+            return resolution
         }
         resolutionTask = task
         defer { resolutionTask = nil }
