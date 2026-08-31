@@ -9,7 +9,9 @@ struct FirstOnboardingView: View {
     var body: some View {
         NavigationStack {
             Group {
-                if model.firstDraft?.step == .services {
+                if model.isResolvingCalibrationCatalog {
+                    CalibrationCatalogLoadingView()
+                } else if model.firstDraft?.step == .services {
                     StreamingServiceSelectionView(
                         selectedServices: model.firstDraft?.selectedServices ?? [],
                         isSaving: model.isSaving,
@@ -48,6 +50,15 @@ struct FirstOnboardingView: View {
                 Text("This clears only your saved onboarding progress.")
             }
         }
+    }
+}
+
+@MainActor
+struct CalibrationCatalogLoadingView: View {
+    var body: some View {
+        ProgressView("Preparing your calibration…")
+            .foregroundStyle(.secondary)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }
 

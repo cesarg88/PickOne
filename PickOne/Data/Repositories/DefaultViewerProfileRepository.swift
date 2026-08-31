@@ -71,6 +71,33 @@ actor DefaultViewerProfileRepository: ViewerProfileRepository {
         try persist(Envelope(profile: nil, draft: .firstOnboarding(draft)))
     }
 
+    func beginCalibration(
+        from draft: FirstOnboardingDraft,
+        snapshot: CalibrationCatalogSnapshot?
+    ) throws -> FirstOnboardingDraft {
+        let envelope = try loadEnvelopeForMutation()
+        guard envelope?.profile == nil,
+              envelope?.draft == .firstOnboarding(draft),
+              !draft.selectedServices.isEmpty,
+              draft.step == .services,
+              draft.currentCatalogPosition == 0,
+              snapshot == nil ? draft.isCatalogFrozen : !draft.isCatalogFrozen,
+              snapshot == nil || draft.reactions.isEmpty
+        else {
+            throw ViewerProfileRepositoryError.invalidTransition
+        }
+        let updated = FirstOnboardingDraft(
+            catalog: snapshot?.catalog ?? draft.catalog,
+            step: .calibration,
+            selectedServices: draft.selectedServices,
+            reactions: [:],
+            currentCatalogPosition: 0,
+            optionalExtensionAccepted: false
+        )
+        try persist(Envelope(profile: nil, draft: .firstOnboarding(updated)))
+        return updated
+    }
+
     func completeFirstOnboarding() throws -> ViewerProfile {
         guard
             let envelope = try loadEnvelopeForMutation(),
@@ -92,7 +119,7 @@ actor DefaultViewerProfileRepository: ViewerProfileRepository {
         return profile
     }
 
-    func beginRecalibration(catalog: CalibrationCatalog) throws -> RecalibrationDraft {
+    func beginRecalibration(snapshot: CalibrationCatalogSnapshot) throws -> RecalibrationDraft {
         guard
             let envelope = try loadEnvelopeForMutation(),
             envelope.profile != nil,
@@ -100,7 +127,7 @@ actor DefaultViewerProfileRepository: ViewerProfileRepository {
         else {
             throw ViewerProfileRepositoryError.invalidTransition
         }
-        let draft = RecalibrationDraft.empty(catalog: catalog)
+        let draft = RecalibrationDraft.empty(snapshot: snapshot)
         try persist(Envelope(profile: envelope.profile, draft: .recalibration(draft)))
         return draft
     }
@@ -306,7 +333,8 @@ actor DefaultViewerProfileRepository: ViewerProfileRepository {
             selectedServices: services(from: dto.selectedProviderIDs),
             reactions: reactions(from: dto.reactionsByMovieID),
             currentCatalogPosition: dto.currentCatalogPosition,
-            optionalExtensionAccepted: dto.optionalExtensionAccepted
+            optionalExtensionAccepted: dto.optionalExtensionAccepted,
+            isCatalogFrozen: step != .services
         )
         try ViewerProfileValidator.validate(draft: draft, catalog: catalog(for: catalogID))
         return draft

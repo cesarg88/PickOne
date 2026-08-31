@@ -23,14 +23,24 @@ struct LocalViewerProfileRepositoryAdapter: ViewerProfileRepository {
         try await repository.saveFirstOnboardingProfileDraft(draft)
     }
 
+    func beginCalibration(
+        from draft: FirstOnboardingDraft,
+        snapshot: CalibrationCatalogSnapshot?
+    ) async throws -> FirstOnboardingDraft {
+        try await repository.beginCalibrationProfile(
+            from: draft,
+            snapshot: snapshot
+        )
+    }
+
     func completeFirstOnboarding() async throws -> ViewerProfile {
         try await repository.completeFirstOnboardingProfile()
     }
 
     func beginRecalibration(
-        catalog: CalibrationCatalog
+        snapshot: CalibrationCatalogSnapshot
     ) async throws -> RecalibrationDraft {
-        try await repository.beginRecalibrationProfile(catalog: catalog)
+        try await repository.beginRecalibrationProfile(snapshot: snapshot)
     }
 
     func saveRecalibrationDraft(

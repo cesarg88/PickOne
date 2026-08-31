@@ -81,7 +81,8 @@ enum LocalViewerStateTestFixtures {
             selectedProviderIDs: [8],
             reactionsByMovieID: [:],
             currentCatalogPosition: 0,
-            optionalExtensionAccepted: false
+            optionalExtensionAccepted: false,
+            catalogIsFrozen: false
         )
     }
 

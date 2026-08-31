@@ -22,6 +22,9 @@ enum ViewerProfileValidator {
         catalog: CalibrationCatalog
     ) throws {
         try validateCatalog(draft.catalogID, expected: catalog)
+        guard draft.step == .services || draft.isCatalogFrozen else {
+            throw ViewerProfileValidationError.inconsistentProgress
+        }
         try validateServices(draft.selectedServices)
         try validateProgress(
             position: draft.currentCatalogPosition,

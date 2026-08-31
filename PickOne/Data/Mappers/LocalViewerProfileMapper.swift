@@ -40,6 +40,34 @@ struct LocalViewerProfileMapper: Sendable {
         try map(.recalibration(.empty(catalog: catalog)), frozenCatalog: frozen(catalog))
     }
 
+    func beginningCalibration(
+        from draft: FirstOnboardingDraft,
+        snapshot: CalibrationCatalogSnapshot
+    ) throws -> ViewerProfileDraftV2DTO {
+        let updated = FirstOnboardingDraft(
+            catalog: snapshot.catalog,
+            step: .calibration,
+            selectedServices: draft.selectedServices,
+            reactions: [:],
+            currentCatalogPosition: 0,
+            optionalExtensionAccepted: false,
+            isCatalogFrozen: true
+        )
+        return try map(
+            .firstOnboarding(updated),
+            frozenCatalog: frozen(snapshot)
+        )
+    }
+
+    func recalibrationDraft(
+        snapshot: CalibrationCatalogSnapshot
+    ) throws -> ViewerProfileDraftV2DTO {
+        try map(
+            .recalibration(.empty(snapshot: snapshot)),
+            frozenCatalog: frozen(snapshot)
+        )
+    }
+
     func replacing(
         _ dto: ViewerProfileDraftV2DTO,
         with draft: ViewerProfileDraft
@@ -73,12 +101,13 @@ struct LocalViewerProfileMapper: Sendable {
                     throw LocalViewerProfileMappingError.invalidState
                 }
                 let draft = try FirstOnboardingDraft(
-                    catalogID: catalog.id,
+                    catalog: catalog,
                     step: step,
                     selectedServices: services(from: providerIDs),
                     reactions: reactions,
                     currentCatalogPosition: dto.currentCatalogPosition,
-                    optionalExtensionAccepted: dto.optionalExtensionAccepted
+                    optionalExtensionAccepted: dto.optionalExtensionAccepted,
+                    isCatalogFrozen: dto.catalogIsFrozen ?? (step != .services)
                 )
                 try ViewerProfileValidator.validate(draft: draft, catalog: catalog)
                 return .firstOnboarding(draft)
@@ -87,7 +116,7 @@ struct LocalViewerProfileMapper: Sendable {
                     throw LocalViewerProfileMappingError.invalidState
                 }
                 let draft = RecalibrationDraft(
-                    catalogID: catalog.id,
+                    catalog: catalog,
                     reactions: reactions,
                     currentCatalogPosition: dto.currentCatalogPosition,
                     optionalExtensionAccepted: dto.optionalExtensionAccepted
@@ -98,9 +127,7 @@ struct LocalViewerProfileMapper: Sendable {
     }
 
     func catalog(from dto: FrozenCalibrationCatalogV2DTO) throws -> CalibrationCatalog {
-        guard try catalogID(from: dto.reference) == .spainHouseholdV1 else {
-            throw LocalViewerProfileMappingError.unsupportedCatalog
-        }
+        let id = try catalogID(from: dto.reference)
         let movies = dto.movies.sorted { $0.order < $1.order }.compactMap { movie -> CalibrationMovie? in
             guard let block = CalibrationCatalogBlock(rawValue: movie.block) else { return nil }
             return CalibrationMovie(
@@ -115,7 +142,7 @@ struct LocalViewerProfileMapper: Sendable {
         guard movies.count == dto.movies.count else {
             throw LocalViewerProfileMappingError.invalidState
         }
-        return CalibrationCatalog(id: .spainHouseholdV1, movies: movies)
+        return CalibrationCatalog(id: id, movies: movies)
     }
 
     private func map(
@@ -147,7 +174,8 @@ struct LocalViewerProfileMapper: Sendable {
                     selectedProviderIDs: draft.selectedServices.map(\.providerID),
                     reactionsByMovieID: draft.reactions.mapValues(\.rawValue),
                     currentCatalogPosition: draft.currentCatalogPosition,
-                    optionalExtensionAccepted: draft.optionalExtensionAccepted
+                    optionalExtensionAccepted: draft.optionalExtensionAccepted,
+                    catalogIsFrozen: draft.isCatalogFrozen
                 )
             case let .recalibration(draft):
                 try ViewerProfileValidator.validate(draft: draft, catalog: catalog)
@@ -158,7 +186,8 @@ struct LocalViewerProfileMapper: Sendable {
                     selectedProviderIDs: nil,
                     reactionsByMovieID: draft.reactions.mapValues(\.rawValue),
                     currentCatalogPosition: draft.currentCatalogPosition,
-                    optionalExtensionAccepted: draft.optionalExtensionAccepted
+                    optionalExtensionAccepted: draft.optionalExtensionAccepted,
+                    catalogIsFrozen: true
                 )
         }
     }
@@ -192,18 +221,59 @@ struct LocalViewerProfileMapper: Sendable {
         )
     }
 
+    func frozen(
+        _ snapshot: CalibrationCatalogSnapshot
+    ) throws -> FrozenCalibrationCatalogV2DTO {
+        do {
+            try CalibrationCatalogValidator.validate(
+                snapshot,
+                expectedRegion: snapshot.reference.region,
+                expectedLocale: snapshot.reference.locale
+            )
+        } catch {
+            throw LocalViewerProfileMappingError.invalidState
+        }
+        return FrozenCalibrationCatalogV2DTO(
+            reference: CalibrationCatalogReferenceV2DTO(
+                schemaVersion: snapshot.reference.schemaVersion,
+                catalogID: snapshot.reference.catalogID,
+                version: snapshot.reference.version,
+                regionCode: snapshot.reference.region,
+                localeIdentifier: snapshot.reference.locale
+            ),
+            updatedAt: snapshot.updatedAt,
+            movies: snapshot.movies.enumerated().map { order, movie in
+                FrozenCalibrationMovieV2DTO(
+                    order: order,
+                    movieID: movie.id,
+                    titleKnownInSpain: movie.titleKnownInSpain,
+                    originalOrEnglishTitle: movie.originalOrEnglishTitle,
+                    year: movie.year,
+                    originalLanguage: movie.originalLanguage,
+                    block: movie.block.rawValue
+                )
+            }
+        )
+    }
+
     private func catalogID(
         from reference: CalibrationCatalogReferenceV2DTO
     ) throws -> CalibrationCatalogID {
         guard reference.schemaVersion == 1,
-              reference.catalogID == "es-household-calibration",
-              reference.version == 1,
+              !reference.catalogID.isEmpty,
+              reference.version > 0,
               reference.regionCode.uppercased() == "ES",
               reference.localeIdentifier == "es-ES"
         else {
             throw LocalViewerProfileMappingError.unsupportedCatalog
         }
-        return .spainHouseholdV1
+        return CalibrationCatalogReference(
+            schemaVersion: reference.schemaVersion,
+            catalogID: reference.catalogID,
+            version: reference.version,
+            region: reference.regionCode.uppercased(),
+            locale: reference.localeIdentifier
+        ).viewerProfileCatalogID
     }
 
     private func services(from providerIDs: [Int]) throws -> [PilotStreamingService] {

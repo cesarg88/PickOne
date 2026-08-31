@@ -64,6 +64,111 @@ enum TestViewerProfileStoreError: Error {
     case rejected
 }
 
+struct ImmediateCalibrationCatalogResolver: ResolveCalibrationCatalogUseCase {
+    let resolution: CalibrationCatalogResolution
+
+    init(
+        resolution: CalibrationCatalogResolution = CalibrationCatalogTestFixtures.resolution(
+            source: .bundled
+        )
+    ) {
+        self.resolution = resolution
+    }
+
+    func prefetch(region _: String, locale _: String) async {}
+
+    func execute(
+        region _: String,
+        locale _: String,
+        deadline _: Date
+    ) async throws -> CalibrationCatalogResolution {
+        resolution
+    }
+}
+
+actor CalibrationCatalogResolverSpy: ResolveCalibrationCatalogUseCase {
+    private let resolution: CalibrationCatalogResolution
+    private var executeFailures: Int
+    private(set) var prefetchCallCount = 0
+    private(set) var resolveCallCount = 0
+    private(set) var requestedDeadlines: [Date] = []
+
+    init(
+        resolution: CalibrationCatalogResolution = CalibrationCatalogTestFixtures.resolution(
+            source: .bundled
+        ),
+        executeFailures: Int = 0
+    ) {
+        self.resolution = resolution
+        self.executeFailures = executeFailures
+    }
+
+    func prefetch(region _: String, locale _: String) {
+        prefetchCallCount += 1
+    }
+
+    func execute(
+        region _: String,
+        locale _: String,
+        deadline: Date
+    ) throws -> CalibrationCatalogResolution {
+        resolveCallCount += 1
+        requestedDeadlines.append(deadline)
+        if executeFailures > 0 {
+            executeFailures -= 1
+            throw ViewerProfileViewModelTestError.failed
+        }
+        return resolution
+    }
+}
+
+actor CancellableCalibrationCatalogResolver: ResolveCalibrationCatalogUseCase {
+    private(set) var didStartResolving = false
+    private(set) var wasCancelled = false
+
+    func prefetch(region _: String, locale _: String) async {}
+
+    func execute(
+        region _: String,
+        locale _: String,
+        deadline _: Date
+    ) async throws -> CalibrationCatalogResolution {
+        didStartResolving = true
+        do {
+            try await Task.sleep(for: .seconds(60))
+            return CalibrationCatalogTestFixtures.resolution(source: .bundled)
+        } catch is CancellationError {
+            wasCancelled = true
+            throw CancellationError()
+        }
+    }
+}
+
+actor LateSuccessCatalogResolver: ResolveCalibrationCatalogUseCase {
+    private var continuation: CheckedContinuation<CalibrationCatalogResolution, Never>?
+    private(set) var didStartResolving = false
+
+    func prefetch(region _: String, locale _: String) async {}
+
+    func execute(
+        region _: String,
+        locale _: String,
+        deadline _: Date
+    ) async throws -> CalibrationCatalogResolution {
+        didStartResolving = true
+        return await withCheckedContinuation { continuation in
+            self.continuation = continuation
+        }
+    }
+
+    func succeed() {
+        continuation?.resume(
+            returning: CalibrationCatalogTestFixtures.resolution(source: .remote)
+        )
+        continuation = nil
+    }
+}
+
 struct FailingViewerProfileEncoder: ViewerProfileEnvelopeCoding {
     private let decoder = JSONViewerProfileEnvelopeCoder()
 

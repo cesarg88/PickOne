@@ -56,7 +56,7 @@ struct ViewerProfileRepositoryTests {
         _ = try await ViewerProfileTestFixtures.completedProfile(in: repository)
 
         _ = try await repository.beginRecalibration(
-            catalog: ViewerProfileTestFixtures.catalog
+            snapshot: CalibrationCatalogTestFixtures.snapshot()
         )
 
         let data = try #require(store.data)
@@ -79,7 +79,7 @@ struct ViewerProfileRepositoryTests {
             services: [.netflix]
         )
         _ = try await repository.beginRecalibration(
-            catalog: ViewerProfileTestFixtures.catalog
+            snapshot: CalibrationCatalogTestFixtures.snapshot()
         )
         _ = try await repository.updateServices([.disneyPlus])
         try await repository.saveRecalibrationDraft(
@@ -106,7 +106,7 @@ struct ViewerProfileRepositoryTests {
             services: [.netflix]
         )
         _ = try await repository.beginRecalibration(
-            catalog: ViewerProfileTestFixtures.catalog
+            snapshot: CalibrationCatalogTestFixtures.snapshot()
         )
         try await repository.saveRecalibrationDraft(
             ViewerProfileTestFixtures.recalibrationDraft()
@@ -343,7 +343,7 @@ struct ViewerProfileRepositoryTests {
         )
         let profile = try await ViewerProfileTestFixtures.completedProfile(in: repository)
         _ = try await repository.beginRecalibration(
-            catalog: ViewerProfileTestFixtures.catalog
+            snapshot: CalibrationCatalogTestFixtures.snapshot()
         )
 
         try await repository.resetDraft()

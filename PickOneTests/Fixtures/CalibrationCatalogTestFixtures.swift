@@ -28,6 +28,18 @@ enum CalibrationCatalogTestFixtures {
         )
     }
 
+    static func resolution(
+        source: CalibrationCatalogResolutionSource,
+        snapshot: CalibrationCatalogSnapshot = snapshot()
+    ) -> CalibrationCatalogResolution {
+        CalibrationCatalogResolution(
+            snapshot: snapshot,
+            source: source,
+            remoteFailure: source == .remote ? nil : .unavailable,
+            cacheWriteFailed: false
+        )
+    }
+
     static func resourceURL() throws -> URL {
         try #require(
             Bundle.main.url(
