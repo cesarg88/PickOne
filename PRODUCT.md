@@ -3,7 +3,7 @@
 ## Document Status
 
 - Status: `Canonical`
-- Last product review: `2026-08-27`
+- Last product review: `2026-08-31`
 - Product name: `PickOne` is a codename until the decision experience is
   validated.
 
@@ -645,18 +645,33 @@ The current application already provides:
 - discovery
 - search and search history
 - movie detail, similar movies, and credits
-- local watchlist and watched state
+- one recoverable Unified Viewer Movie State for current reactions, watched
+  facts, `Not interested`, and future Watchlist intent
 - a stubbed free-text Ask experience
 - regional subscription-availability evidence in Movie Detail
-- resumable onboarding with streaming-service selection and taste calibration
+- resumable onboarding and recalibration with streaming-service selection and
+  an exact frozen catalog snapshot resolved from validated remote, last-valid
+  cached, or bundled content
 - a persistent editable local viewer profile and Settings surface
+- continuous reaction editing from Movie Detail, complete Taste Profile
+  recalculation, and Home reconciliation that preserves shown history while
+  rejecting obsolete work
+- the `My movies` Settings history for ratings, watched-only movies, and `Not
+  interested`, separate from future Watchlist intent
 - the deterministic Decision Engine and persistent “Three for Tonight” Home
   implementation from PR #31, including structured explanations, refresh,
-  repair, Movie Detail routing, and the accepted positive-anchor boundary
+  repair, Movie Detail routing, and the accepted positive-anchor boundary,
+  extended in Milestone 7 to regenerate or repair from the latest Viewer Movie
+  State
 
-Milestone 6 is complete. Unified Viewer Movie State, continuous taste learning,
-remote calibration catalogs, explicit decision outcomes, and trailer
-presentation remain product work.
+Milestone 6 is complete. The Milestone 7 implementation baseline now includes
+Unified Viewer Movie State, continuous reactions and Taste Profile updates,
+Home reconciliation, `My movies`, and remote/cached/bundled frozen calibration
+catalog resolution. Final Milestone 7 approval remains subject to the recorded
+PR10 CI, physical-device, and household utility gates.
+
+Explicit decision outcomes such as `Watch this` and `Not tonight`, later
+viewing confirmation, and trailer presentation remain future product work.
 
 Technical migration or architecture work may continue without changing current
 behavior, but new product implementation must be specified against this target.

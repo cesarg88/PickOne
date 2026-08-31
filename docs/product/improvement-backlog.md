@@ -489,7 +489,7 @@ Priorities:
 
 ### IMP-011 — Version and observe local persistence
 
-- Status: `Completed — Milestone 7 viewer-state scope`
+- Status: `Completed`
 - Priority: `P2`
 - Completed result: Viewer Profile, Movie reaction, watched, and Watchlist state
   use one versioned Application Support envelope with explicit absent, corrupt,
@@ -499,14 +499,36 @@ Priorities:
     recovery, exact-byte quarantine, and legacy profile/Watchlist migration
   - distinguish missing, corrupt, unsupported, recovered, and all-source failure
   - define explicit destructive recovery only when no trusted source remains
-  - make Search history writes observable where failure matters
   - add migration and recovery tests
 - Done when:
   - upgrades cannot silently discard or replace recoverable user state
-- Scope note:
+- Follow-up:
   Search History remains an independent UserDefaults store. Migration and
-  preference reset preserve it; making its write failures observable remains
-  separate follow-up work and is not silently claimed as part of this closure.
+  preference reset preserve it; IMP-024 owns making its writes observable.
+
+### IMP-024 — Make Search History persistence failures observable
+
+- Status: `Proposed`
+- Priority: `P2`
+- Current baseline:
+  Search History remains an independent UserDefaults store whose synchronous
+  write API cannot report a failed add or clear operation. Milestone 7 preserves
+  its bytes through migration and preference reset but does not change that
+  contract.
+- Implementation:
+  - define which Search History add and clear failures require visible recovery
+    or retry
+  - make relevant persistence failures observable through the repository and
+    use-case boundaries
+  - preserve existing ordering, deduplication, ten-item limit, and M7 migration
+    behavior
+  - add focused failure and presentation tests without folding Search History
+    into Unified Viewer Movie State
+- Done when:
+  - a Search History mutation cannot report success after a relevant local
+    persistence failure
+  - accepted failure behavior is covered without weakening M7 migration or
+    reset guarantees
 
 ### IMP-013 — Complete external-distribution readiness
 

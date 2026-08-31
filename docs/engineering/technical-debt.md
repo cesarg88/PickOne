@@ -41,20 +41,29 @@ Statuses are `Observed`, `Planned`, `Monitoring`, `Resolved`, or `Accepted`.
   compiler-enforced isolation need emerged. Keep monitoring; any future module
   still requires a separate accepted ADR and PR.
 
-## Resolved Items
-
 ### TD-002 — Viewer-profile orchestration has concentrated files
 
 - Severity: `Low`
-- Status: `Resolved`
-- Resolution: Milestone 7 moved local transactions into the actor-owned viewer-
-  state repository and focused profile extension, extracted trusted Decision
-  State loading and reconciliation planning in PR5, and extracted catalog wait,
-  cancellation, and retry ownership into `CalibrationCatalogFlowCoordinator`
-  in PR9.
-- Evidence: the resulting collaborators have focused Domain, Data, concurrency,
-  Presentation, and composed PR10 coverage; no unrelated file-size refactor was
-  required.
+- Status: `Monitoring`
+- Milestone 7 decomposition: local transactions moved into the actor-owned
+  viewer-state repository and focused extensions; PR5 extracted trusted
+  Decision State loading and reconciliation planning; PR9 extracted catalog
+  wait, cancellation, and retry ownership into
+  `CalibrationCatalogFlowCoordinator`.
+- Remaining evidence: `ViewerProfileViewModel` and the combined
+  `LocalViewerStateRepository` plus `LocalViewerStateRepository+ViewerProfile`
+  responsibility remain cohesion-review hotspots despite their focused tests.
+- Current mitigation: the extracted collaborators, actor isolation, transition
+  reducer, repository boundaries, and focused Domain, Data, concurrency,
+  Presentation, and composed PR10 coverage keep behavior reviewable.
+- Resolution trigger: at the post-Milestone 7 technical checkpoint, confirm
+  whether either hotspot still requires unrelated state-transition context or
+  fixture setup to change safely. Extract only an accepted cohesive
+  responsibility; do not refactor solely to reduce line count.
+- PR10 constraint: documentary monitoring only; no production refactor belongs
+  in the integration-and-closure slice.
+
+## Resolved Items
 
 ### TD-003 — Viewer state is fragmented across profile and Watchlist stores
 
