@@ -110,6 +110,7 @@ final class AppContainer {
         viewerProfileViewModel = ViewerProfileViewModel(
             manageProfile: useCases.manageViewerProfile,
             getMovieMetadata: useCases.getCalibrationMovieMetadata,
+            resolveCalibrationCatalog: useCases.resolveCalibrationCatalog,
             getRecoveryNotice: useCases.getViewerStateRecoveryNotice,
             resetUnrecoverableViewerState: useCases.resetUnrecoverableViewerState,
             resetsProfileForUITests: AppConfiguration.resetsViewerProfileForUITests

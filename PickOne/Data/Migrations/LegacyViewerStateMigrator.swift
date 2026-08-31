@@ -260,7 +260,8 @@ struct LegacyViewerStateMigrator: Sendable {
                     selectedProviderIDs: draft.selectedServices.map(\.providerID),
                     reactionsByMovieID: draft.reactions.mapValues(\.rawValue),
                     currentCatalogPosition: draft.currentCatalogPosition,
-                    optionalExtensionAccepted: draft.optionalExtensionAccepted
+                    optionalExtensionAccepted: draft.optionalExtensionAccepted,
+                    catalogIsFrozen: draft.step != .services
                 )
             case let .recalibration(draft):
                 try ViewerProfileDraftV2DTO(
@@ -270,7 +271,8 @@ struct LegacyViewerStateMigrator: Sendable {
                     selectedProviderIDs: nil,
                     reactionsByMovieID: draft.reactions.mapValues(\.rawValue),
                     currentCatalogPosition: draft.currentCatalogPosition,
-                    optionalExtensionAccepted: draft.optionalExtensionAccepted
+                    optionalExtensionAccepted: draft.optionalExtensionAccepted,
+                    catalogIsFrozen: true
                 )
         }
     }

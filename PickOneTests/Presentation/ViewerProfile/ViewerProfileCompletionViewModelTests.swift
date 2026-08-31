@@ -201,7 +201,8 @@ struct ViewerProfileCompletionViewModelTests {
                 repository: repository,
                 catalog: ViewerProfileTestFixtures.catalog
             ),
-            getMovieMetadata: CompletionMetadataStub()
+            getMovieMetadata: CompletionMetadataStub(),
+            resolveCalibrationCatalog: ImmediateCalibrationCatalogResolver()
         )
 
         #expect(await repository.loadState() == .firstOnboarding(draft))
@@ -223,7 +224,8 @@ struct ViewerProfileCompletionViewModelTests {
     ) -> ViewerProfileViewModel {
         ViewerProfileViewModel(
             manageProfile: manage,
-            getMovieMetadata: CompletionMetadataStub()
+            getMovieMetadata: CompletionMetadataStub(),
+            resolveCalibrationCatalog: ImmediateCalibrationCatalogResolver()
         )
     }
 
@@ -349,7 +351,8 @@ private actor CompletionManageSpy: ManageViewerProfileUseCase {
     }
 
     func beginCalibration(
-        from _: FirstOnboardingDraft
+        from _: FirstOnboardingDraft,
+        snapshot _: CalibrationCatalogSnapshot?
     ) async throws -> FirstOnboardingDraft {
         throw CompletionTestError.unexpectedCall
     }
@@ -410,7 +413,9 @@ private actor CompletionManageSpy: ManageViewerProfileUseCase {
         throw CompletionTestError.unexpectedCall
     }
 
-    func beginRecalibration() async throws -> RecalibrationDraft {
+    func beginRecalibration(
+        snapshot _: CalibrationCatalogSnapshot
+    ) async throws -> RecalibrationDraft {
         throw CompletionTestError.unexpectedCall
     }
 

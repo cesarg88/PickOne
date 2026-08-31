@@ -123,6 +123,63 @@ extension LocalViewerStateRepository {
         )
     }
 
+    func beginCalibrationProfile(
+        from draft: FirstOnboardingDraft,
+        snapshot: CalibrationCatalogSnapshot?
+    ) throws -> FirstOnboardingDraft {
+        let current = try resolveForProfileMutation()
+        guard current.envelope.viewerProfileState.completedProfile == nil,
+              let storedDraft = current.envelope.viewerProfileState.profileDraft,
+              storedDraft.kind == .firstOnboarding,
+              case let .firstOnboarding(persistedDraft) = try mappedDraft(storedDraft),
+              persistedDraft == draft,
+              draft.step == .services,
+              draft.currentCatalogPosition == 0,
+              snapshot == nil ? draft.isCatalogFrozen : !draft.isCatalogFrozen,
+              snapshot == nil || draft.reactions.isEmpty
+        else {
+            throw ViewerProfileRepositoryError.invalidTransition
+        }
+        let replacement: ViewerProfileDraftV2DTO
+        do {
+            if let snapshot {
+                replacement = try profileMapper.beginningCalibration(
+                    from: draft,
+                    snapshot: snapshot
+                )
+            } else {
+                let updated = FirstOnboardingDraft(
+                    catalog: draft.catalog,
+                    step: .calibration,
+                    selectedServices: draft.selectedServices,
+                    reactions: draft.reactions,
+                    currentCatalogPosition: draft.currentCatalogPosition,
+                    optionalExtensionAccepted: draft.optionalExtensionAccepted,
+                    isCatalogFrozen: true
+                )
+                replacement = try profileMapper.replacing(
+                    storedDraft,
+                    with: .firstOnboarding(updated)
+                )
+            }
+        } catch {
+            throw profileError(error)
+        }
+        let persisted = try persistProfileState(
+            LocalViewerProfileStateV2DTO(
+                completedProfile: nil,
+                profileDraft: replacement
+            ),
+            states: current.snapshot.states,
+            current: current,
+            recommendationInputsChanged: false
+        )
+        guard case let .firstOnboarding(updated) = try mappedProfileState(persisted) else {
+            throw ViewerProfileRepositoryError.invalidStoredState
+        }
+        return updated
+    }
+
     func completeFirstOnboardingProfile() throws -> ViewerProfile {
         let current = try resolveForProfileMutation()
         guard current.envelope.viewerProfileState.completedProfile == nil,
@@ -154,7 +211,7 @@ extension LocalViewerStateRepository {
     }
 
     func beginRecalibrationProfile(
-        catalog: CalibrationCatalog
+        snapshot: CalibrationCatalogSnapshot
     ) throws -> RecalibrationDraft {
         let current = try resolveForProfileMutation()
         guard let profile = current.envelope.viewerProfileState.completedProfile,
@@ -164,7 +221,7 @@ extension LocalViewerStateRepository {
         }
         let dto: ViewerProfileDraftV2DTO
         do {
-            dto = try profileMapper.recalibrationDraft(catalog: catalog)
+            dto = try profileMapper.recalibrationDraft(snapshot: snapshot)
         } catch {
             throw profileError(error)
         }

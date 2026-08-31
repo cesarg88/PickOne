@@ -9,7 +9,10 @@ struct ManageViewerProfileTests {
         let draft = try await sut.beginFirstOnboarding()
 
         await #expect(throws: ViewerProfileRepositoryError.validation(.emptyServiceSelection)) {
-            _ = try await sut.beginCalibration(from: draft)
+            _ = try await sut.beginCalibration(
+                from: draft,
+                snapshot: CalibrationCatalogTestFixtures.snapshot()
+            )
         }
 
         let unsupported = PilotStreamingService(
@@ -28,7 +31,10 @@ struct ManageViewerProfileTests {
         let (_, sut) = makeSUT()
         var draft = try await sut.beginFirstOnboarding()
         draft = try await sut.selectServices([.netflix], in: draft)
-        draft = try await sut.beginCalibration(from: draft)
+        draft = try await sut.beginCalibration(
+            from: draft,
+            snapshot: CalibrationCatalogTestFixtures.snapshot()
+        )
         draft = try await sut.react(.loveIt, in: draft)
         #expect(draft.currentCatalogPosition == 1)
         #expect(draft.informativeSignalCount == 1)
@@ -48,7 +54,10 @@ struct ManageViewerProfileTests {
         let (_, sut) = makeSUT()
         var draft = try await sut.beginFirstOnboarding()
         draft = try await sut.selectServices([.netflix], in: draft)
-        draft = try await sut.beginCalibration(from: draft)
+        draft = try await sut.beginCalibration(
+            from: draft,
+            snapshot: CalibrationCatalogTestFixtures.snapshot()
+        )
 
         for _ in 0 ..< CalibrationFlow.normalLimit {
             draft = try await sut.react(.doNotKnowIt, in: draft)
@@ -67,7 +76,10 @@ struct ManageViewerProfileTests {
         let (_, sut) = makeSUT()
         var draft = try await sut.beginFirstOnboarding()
         draft = try await sut.selectServices([.netflix], in: draft)
-        draft = try await sut.beginCalibration(from: draft)
+        draft = try await sut.beginCalibration(
+            from: draft,
+            snapshot: CalibrationCatalogTestFixtures.snapshot()
+        )
         for _ in 0 ..< CalibrationFlow.normalLimit {
             draft = try await sut.react(.doNotKnowIt, in: draft)
         }

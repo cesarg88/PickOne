@@ -80,6 +80,7 @@ struct ViewerProfileDraftV2DTO: Codable, Equatable, Sendable {
     let reactionsByMovieID: [Int: String]
     let currentCatalogPosition: Int
     let optionalExtensionAccepted: Bool
+    let catalogIsFrozen: Bool?
 }
 
 struct FrozenCalibrationCatalogV2DTO: Codable, Equatable, Sendable {

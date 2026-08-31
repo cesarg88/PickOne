@@ -9,15 +9,10 @@ struct CalibrationFlowView: View {
 
     var body: some View {
         Group {
-            switch model.currentDestination(for: mode) {
-                case .movie:
-                    movieCard
-                case .lowSignalDecision:
-                    lowSignalDecision
-                case .completion:
-                    completionRetry
-                case nil:
-                    ProgressView()
+            if model.isResolvingCalibrationCatalog {
+                CalibrationCatalogLoadingView()
+            } else {
+                calibrationContent
             }
         }
         .navigationTitle(mode == .firstOnboarding ? "Taste calibration" : "Repeat calibration")
@@ -47,6 +42,20 @@ struct CalibrationFlowView: View {
             Button("Keep calibration", role: .cancel) {}
         } message: {
             Text("Your current saved preferences will stay unchanged.")
+        }
+    }
+
+    @ViewBuilder
+    private var calibrationContent: some View {
+        switch model.currentDestination(for: mode) {
+            case .movie:
+                movieCard
+            case .lowSignalDecision:
+                lowSignalDecision
+            case .completion:
+                completionRetry
+            case nil:
+                ProgressView()
         }
     }
 

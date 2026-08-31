@@ -268,31 +268,90 @@ enum FirstOnboardingStep: String, Equatable, Sendable {
 }
 
 struct FirstOnboardingDraft: Equatable, Sendable {
-    let catalogID: CalibrationCatalogID
+    let catalog: CalibrationCatalog
     let step: FirstOnboardingStep
     let selectedServices: [PilotStreamingService]
     let reactions: [Int: CalibrationReaction]
     let currentCatalogPosition: Int
     let optionalExtensionAccepted: Bool
+    let isCatalogFrozen: Bool
 
     var informativeSignalCount: Int {
         reactions.values.count(where: \.isInformativeSignal)
     }
 
+    var catalogID: CalibrationCatalogID {
+        catalog.id
+    }
+
+    init(
+        catalog: CalibrationCatalog,
+        step: FirstOnboardingStep,
+        selectedServices: [PilotStreamingService],
+        reactions: [Int: CalibrationReaction],
+        currentCatalogPosition: Int,
+        optionalExtensionAccepted: Bool,
+        isCatalogFrozen: Bool? = nil
+    ) {
+        self.catalog = catalog
+        self.step = step
+        self.selectedServices = selectedServices
+        self.reactions = reactions
+        self.currentCatalogPosition = currentCatalogPosition
+        self.optionalExtensionAccepted = optionalExtensionAccepted
+        self.isCatalogFrozen = isCatalogFrozen ?? (step != .services)
+    }
+
+    init(
+        catalogID: CalibrationCatalogID,
+        step: FirstOnboardingStep,
+        selectedServices: [PilotStreamingService],
+        reactions: [Int: CalibrationReaction],
+        currentCatalogPosition: Int,
+        optionalExtensionAccepted: Bool,
+        isCatalogFrozen: Bool? = nil
+    ) {
+        self.init(
+            catalog: CalibrationCatalog(
+                id: catalogID,
+                movies: CalibrationCatalog.spainHouseholdV1.movies
+            ),
+            step: step,
+            selectedServices: selectedServices,
+            reactions: reactions,
+            currentCatalogPosition: currentCatalogPosition,
+            optionalExtensionAccepted: optionalExtensionAccepted,
+            isCatalogFrozen: isCatalogFrozen
+        )
+    }
+
     static func empty(catalog: CalibrationCatalog) -> FirstOnboardingDraft {
         FirstOnboardingDraft(
-            catalogID: catalog.id,
+            catalog: catalog,
             step: .services,
             selectedServices: [],
             reactions: [:],
             currentCatalogPosition: 0,
-            optionalExtensionAccepted: false
+            optionalExtensionAccepted: false,
+            isCatalogFrozen: false
+        )
+    }
+
+    static func empty(snapshot: CalibrationCatalogSnapshot) -> FirstOnboardingDraft {
+        FirstOnboardingDraft(
+            catalog: snapshot.catalog,
+            step: .services,
+            selectedServices: [],
+            reactions: [:],
+            currentCatalogPosition: 0,
+            optionalExtensionAccepted: false,
+            isCatalogFrozen: true
         )
     }
 }
 
 struct RecalibrationDraft: Equatable, Sendable {
-    let catalogID: CalibrationCatalogID
+    let catalog: CalibrationCatalog
     let reactions: [Int: CalibrationReaction]
     let currentCatalogPosition: Int
     let optionalExtensionAccepted: Bool
@@ -301,13 +360,50 @@ struct RecalibrationDraft: Equatable, Sendable {
         reactions.values.count(where: \.isInformativeSignal)
     }
 
+    var catalogID: CalibrationCatalogID {
+        catalog.id
+    }
+
+    init(
+        catalog: CalibrationCatalog,
+        reactions: [Int: CalibrationReaction],
+        currentCatalogPosition: Int,
+        optionalExtensionAccepted: Bool
+    ) {
+        self.catalog = catalog
+        self.reactions = reactions
+        self.currentCatalogPosition = currentCatalogPosition
+        self.optionalExtensionAccepted = optionalExtensionAccepted
+    }
+
+    init(
+        catalogID: CalibrationCatalogID,
+        reactions: [Int: CalibrationReaction],
+        currentCatalogPosition: Int,
+        optionalExtensionAccepted: Bool
+    ) {
+        self.init(
+            catalog: CalibrationCatalog(
+                id: catalogID,
+                movies: CalibrationCatalog.spainHouseholdV1.movies
+            ),
+            reactions: reactions,
+            currentCatalogPosition: currentCatalogPosition,
+            optionalExtensionAccepted: optionalExtensionAccepted
+        )
+    }
+
     static func empty(catalog: CalibrationCatalog) -> RecalibrationDraft {
         RecalibrationDraft(
-            catalogID: catalog.id,
+            catalog: catalog,
             reactions: [:],
             currentCatalogPosition: 0,
             optionalExtensionAccepted: false
         )
+    }
+
+    static func empty(snapshot: CalibrationCatalogSnapshot) -> RecalibrationDraft {
+        .empty(catalog: snapshot.catalog)
     }
 }
 

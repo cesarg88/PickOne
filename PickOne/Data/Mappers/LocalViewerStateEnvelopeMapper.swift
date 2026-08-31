@@ -146,7 +146,8 @@ struct LocalViewerStateEnvelopeMapper: Sendable {
                             selectedServices: services(from: selectedProviderIDs),
                             reactions: reactions,
                             currentCatalogPosition: draft.currentCatalogPosition,
-                            optionalExtensionAccepted: draft.optionalExtensionAccepted
+                            optionalExtensionAccepted: draft.optionalExtensionAccepted,
+                            isCatalogFrozen: draft.catalogIsFrozen ?? (step != .services)
                         ),
                         catalog: catalog
                     )

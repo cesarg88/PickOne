@@ -83,11 +83,18 @@ actor CoordinatorProfileRepository: ViewerProfileRepository {
         throw error
     }
 
+    func beginCalibration(
+        from _: FirstOnboardingDraft,
+        snapshot _: CalibrationCatalogSnapshot?
+    ) throws -> FirstOnboardingDraft {
+        throw error
+    }
+
     func completeFirstOnboarding() throws -> ViewerProfile {
         throw error
     }
 
-    func beginRecalibration(catalog _: CalibrationCatalog) throws -> RecalibrationDraft {
+    func beginRecalibration(snapshot _: CalibrationCatalogSnapshot) throws -> RecalibrationDraft {
         throw error
     }
 

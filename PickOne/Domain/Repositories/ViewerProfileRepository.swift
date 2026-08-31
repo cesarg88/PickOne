@@ -2,8 +2,12 @@ protocol ViewerProfileRepository: Sendable {
     func loadState() async -> ViewerProfileLoadState
     func beginFirstOnboarding(catalog: CalibrationCatalog) async throws -> FirstOnboardingDraft
     func saveFirstOnboardingDraft(_ draft: FirstOnboardingDraft) async throws
+    func beginCalibration(
+        from draft: FirstOnboardingDraft,
+        snapshot: CalibrationCatalogSnapshot?
+    ) async throws -> FirstOnboardingDraft
     func completeFirstOnboarding() async throws -> ViewerProfile
-    func beginRecalibration(catalog: CalibrationCatalog) async throws -> RecalibrationDraft
+    func beginRecalibration(snapshot: CalibrationCatalogSnapshot) async throws -> RecalibrationDraft
     func saveRecalibrationDraft(_ draft: RecalibrationDraft) async throws
     func completeRecalibration() async throws -> ViewerProfile
     func updateServices(_ services: [PilotStreamingService]) async throws -> ViewerProfile

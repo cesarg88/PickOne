@@ -7,7 +7,10 @@ protocol ManageViewerProfileUseCase: Sendable {
         _ services: [PilotStreamingService],
         in draft: FirstOnboardingDraft
     ) async throws -> FirstOnboardingDraft
-    func beginCalibration(from draft: FirstOnboardingDraft) async throws -> FirstOnboardingDraft
+    func beginCalibration(
+        from draft: FirstOnboardingDraft,
+        snapshot: CalibrationCatalogSnapshot?
+    ) async throws -> FirstOnboardingDraft
     func react(
         _ reaction: CalibrationReaction,
         in draft: FirstOnboardingDraft
@@ -22,7 +25,7 @@ protocol ManageViewerProfileUseCase: Sendable {
     func acceptOptionalExtension(in draft: RecalibrationDraft) async throws -> RecalibrationDraft
     func continueWithLowSignals(in draft: FirstOnboardingDraft) async throws -> FirstOnboardingDraft
     func completeFirstOnboarding() async throws -> ViewerProfile
-    func beginRecalibration() async throws -> RecalibrationDraft
+    func beginRecalibration(snapshot: CalibrationCatalogSnapshot) async throws -> RecalibrationDraft
     func completeRecalibration() async throws -> ViewerProfile
     func updateServices(_ services: [PilotStreamingService]) async throws -> ViewerProfile
     func resetDraft() async throws
@@ -54,24 +57,29 @@ struct ManageViewerProfile: ManageViewerProfileUseCase {
         in draft: FirstOnboardingDraft
     ) async throws -> FirstOnboardingDraft {
         let updated = try FirstOnboardingDraft(
-            catalogID: draft.catalogID,
+            catalog: draft.catalog,
             step: draft.step,
             selectedServices: validatedServices(services),
             reactions: draft.reactions,
             currentCatalogPosition: draft.currentCatalogPosition,
-            optionalExtensionAccepted: draft.optionalExtensionAccepted
+            optionalExtensionAccepted: draft.optionalExtensionAccepted,
+            isCatalogFrozen: draft.isCatalogFrozen
         )
         try await repository.saveFirstOnboardingDraft(updated)
         return updated
     }
 
-    func beginCalibration(from draft: FirstOnboardingDraft) async throws -> FirstOnboardingDraft {
+    func beginCalibration(
+        from draft: FirstOnboardingDraft,
+        snapshot: CalibrationCatalogSnapshot?
+    ) async throws -> FirstOnboardingDraft {
         guard !draft.selectedServices.isEmpty else {
             throw ViewerProfileRepositoryError.validation(.emptyServiceSelection)
         }
-        let updated = firstDraft(draft, step: .calibration)
-        try await repository.saveFirstOnboardingDraft(updated)
-        return updated
+        return try await repository.beginCalibration(
+            from: draft,
+            snapshot: snapshot
+        )
     }
 
     func react(
@@ -82,15 +90,17 @@ struct ManageViewerProfile: ManageViewerProfileUseCase {
             reaction: reaction,
             position: draft.currentCatalogPosition,
             reactions: draft.reactions,
-            optionalExtensionAccepted: draft.optionalExtensionAccepted
+            optionalExtensionAccepted: draft.optionalExtensionAccepted,
+            catalog: draft.catalog
         )
         let updated = FirstOnboardingDraft(
-            catalogID: draft.catalogID,
+            catalog: draft.catalog,
             step: firstStep(for: progress.destination),
             selectedServices: draft.selectedServices,
             reactions: progress.reactions,
             currentCatalogPosition: progress.position,
-            optionalExtensionAccepted: draft.optionalExtensionAccepted
+            optionalExtensionAccepted: draft.optionalExtensionAccepted,
+            isCatalogFrozen: draft.isCatalogFrozen
         )
         try await repository.saveFirstOnboardingDraft(updated)
         return updated
@@ -104,10 +114,11 @@ struct ManageViewerProfile: ManageViewerProfileUseCase {
             reaction: reaction,
             position: draft.currentCatalogPosition,
             reactions: draft.reactions,
-            optionalExtensionAccepted: draft.optionalExtensionAccepted
+            optionalExtensionAccepted: draft.optionalExtensionAccepted,
+            catalog: draft.catalog
         )
         let updated = RecalibrationDraft(
-            catalogID: draft.catalogID,
+            catalog: draft.catalog,
             reactions: progress.reactions,
             currentCatalogPosition: progress.position,
             optionalExtensionAccepted: draft.optionalExtensionAccepted
@@ -121,12 +132,13 @@ struct ManageViewerProfile: ManageViewerProfileUseCase {
             firstDraft(draft, step: .services)
         } else {
             FirstOnboardingDraft(
-                catalogID: draft.catalogID,
+                catalog: draft.catalog,
                 step: .calibration,
                 selectedServices: draft.selectedServices,
                 reactions: draft.reactions,
                 currentCatalogPosition: draft.currentCatalogPosition - 1,
-                optionalExtensionAccepted: draft.optionalExtensionAccepted
+                optionalExtensionAccepted: draft.optionalExtensionAccepted,
+                isCatalogFrozen: draft.isCatalogFrozen
             )
         }
         try await repository.saveFirstOnboardingDraft(updated)
@@ -136,7 +148,7 @@ struct ManageViewerProfile: ManageViewerProfileUseCase {
     func goBack(in draft: RecalibrationDraft) async throws -> RecalibrationDraft {
         guard draft.currentCatalogPosition > 0 else { return draft }
         let updated = RecalibrationDraft(
-            catalogID: draft.catalogID,
+            catalog: draft.catalog,
             reactions: draft.reactions,
             currentCatalogPosition: draft.currentCatalogPosition - 1,
             optionalExtensionAccepted: draft.optionalExtensionAccepted
@@ -147,12 +159,13 @@ struct ManageViewerProfile: ManageViewerProfileUseCase {
 
     func acceptOptionalExtension(in draft: FirstOnboardingDraft) async throws -> FirstOnboardingDraft {
         let updated = FirstOnboardingDraft(
-            catalogID: draft.catalogID,
+            catalog: draft.catalog,
             step: .calibration,
             selectedServices: draft.selectedServices,
             reactions: draft.reactions,
             currentCatalogPosition: draft.currentCatalogPosition,
-            optionalExtensionAccepted: true
+            optionalExtensionAccepted: true,
+            isCatalogFrozen: draft.isCatalogFrozen
         )
         try await repository.saveFirstOnboardingDraft(updated)
         return updated
@@ -160,7 +173,7 @@ struct ManageViewerProfile: ManageViewerProfileUseCase {
 
     func acceptOptionalExtension(in draft: RecalibrationDraft) async throws -> RecalibrationDraft {
         let updated = RecalibrationDraft(
-            catalogID: draft.catalogID,
+            catalog: draft.catalog,
             reactions: draft.reactions,
             currentCatalogPosition: draft.currentCatalogPosition,
             optionalExtensionAccepted: true
@@ -179,8 +192,10 @@ struct ManageViewerProfile: ManageViewerProfileUseCase {
         try await repository.completeFirstOnboarding()
     }
 
-    func beginRecalibration() async throws -> RecalibrationDraft {
-        try await repository.beginRecalibration(catalog: catalog)
+    func beginRecalibration(
+        snapshot: CalibrationCatalogSnapshot
+    ) async throws -> RecalibrationDraft {
+        try await repository.beginRecalibration(snapshot: snapshot)
     }
 
     func completeRecalibration() async throws -> ViewerProfile {
@@ -203,7 +218,8 @@ struct ManageViewerProfile: ManageViewerProfileUseCase {
         reaction: CalibrationReaction,
         position: Int,
         reactions: [Int: CalibrationReaction],
-        optionalExtensionAccepted: Bool
+        optionalExtensionAccepted: Bool,
+        catalog: CalibrationCatalog
     ) throws -> (
         position: Int,
         reactions: [Int: CalibrationReaction],
@@ -240,12 +256,13 @@ struct ManageViewerProfile: ManageViewerProfileUseCase {
         step: FirstOnboardingStep
     ) -> FirstOnboardingDraft {
         FirstOnboardingDraft(
-            catalogID: draft.catalogID,
+            catalog: draft.catalog,
             step: step,
             selectedServices: draft.selectedServices,
             reactions: draft.reactions,
             currentCatalogPosition: draft.currentCatalogPosition,
-            optionalExtensionAccepted: draft.optionalExtensionAccepted
+            optionalExtensionAccepted: draft.optionalExtensionAccepted,
+            isCatalogFrozen: draft.isCatalogFrozen
         )
     }
 

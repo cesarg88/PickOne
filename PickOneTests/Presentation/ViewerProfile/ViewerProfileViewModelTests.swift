@@ -56,6 +56,146 @@ struct ViewerProfileViewModelTests {
         }
     }
 
+    @Test("first onboarding prefetches while services are visible and freezes the resolved catalog")
+    func firstOnboardingFreezesResolvedCatalog() async {
+        let resolution = CalibrationCatalogTestFixtures.resolution(source: .remote)
+        let resolver = CalibrationCatalogResolverSpy(resolution: resolution)
+        let manage = ViewerProfileManageSpy(loadStates: [.absent])
+        let now = Date(timeIntervalSince1970: 2000)
+        let sut = makeSUT(manage: manage, resolver: resolver, now: { now })
+
+        await sut.load()
+        await waitUntil { await resolver.prefetchCallCount == 1 }
+        await sut.toggleFirstOnboardingService(.netflix)
+        await sut.continueFromServices()
+
+        #expect(await resolver.requestedDeadlines == [now.addingTimeInterval(2)])
+        #expect(await manage.firstCalibrationSnapshot == resolution.snapshot)
+        #expect(sut.catalog == resolution.snapshot.catalog)
+        #expect(sut.currentMovie?.id == resolution.snapshot.movies[0].id)
+    }
+
+    @Test("resumed calibration keeps its frozen catalog without resolving a newer one")
+    func resumedCalibrationKeepsFrozenCatalog() async {
+        let frozenSnapshot = CalibrationCatalogTestFixtures.snapshot(version: 2)
+        let frozenDraft = FirstOnboardingDraft(
+            catalog: frozenSnapshot.catalog,
+            step: .calibration,
+            selectedServices: [.netflix],
+            reactions: [:],
+            currentCatalogPosition: 0,
+            optionalExtensionAccepted: false,
+            isCatalogFrozen: true
+        )
+        let resolver = CalibrationCatalogResolverSpy(
+            resolution: CalibrationCatalogTestFixtures.resolution(source: .remote)
+        )
+        let sut = makeSUT(
+            manage: ViewerProfileManageSpy(loadStates: [.firstOnboarding(frozenDraft)]),
+            resolver: resolver
+        )
+
+        await sut.load()
+
+        #expect(await resolver.resolveCallCount == 0)
+        #expect(sut.catalog == frozenSnapshot.catalog)
+    }
+
+    @Test("continuing after Back reuses the already frozen snapshot")
+    func backKeepsFrozenSnapshot() async {
+        let frozenSnapshot = CalibrationCatalogTestFixtures.snapshot(version: 2)
+        let draft = FirstOnboardingDraft(
+            catalog: frozenSnapshot.catalog,
+            step: .services,
+            selectedServices: [.netflix],
+            reactions: [:],
+            currentCatalogPosition: 0,
+            optionalExtensionAccepted: false,
+            isCatalogFrozen: true
+        )
+        let resolver = CalibrationCatalogResolverSpy()
+        let manage = ViewerProfileManageSpy(loadStates: [.firstOnboarding(draft)])
+        let sut = makeSUT(manage: manage, resolver: resolver)
+
+        await sut.load()
+        await sut.continueFromServices()
+
+        #expect(await resolver.resolveCallCount == 0)
+        #expect(await manage.firstCalibrationCallCount == 1)
+        #expect(await manage.firstCalibrationSnapshot == nil)
+        #expect(sut.catalog == frozenSnapshot.catalog)
+    }
+
+    @Test("recalibration retry keeps the original visible deadline")
+    func recalibrationRetryKeepsDeadline() async {
+        let now = Date(timeIntervalSince1970: 3000)
+        let resolver = CalibrationCatalogResolverSpy(executeFailures: 1)
+        let sut = makeSUT(
+            manage: ViewerProfileManageSpy(
+                loadStates: [
+                    .completed(profile: makeCompletedProfile(), recalibrationDraft: nil),
+                ]
+            ),
+            resolver: resolver,
+            now: { now }
+        )
+        await sut.load()
+
+        await sut.startRecalibration()
+        await sut.retryLastAction()
+
+        #expect(await resolver.requestedDeadlines == [
+            now.addingTimeInterval(2),
+            now.addingTimeInterval(2),
+        ])
+        #expect(sut.recalibrationDraft != nil)
+    }
+
+    @Test("recalibration shows loading while unresolved and Close cancels only its wait")
+    func recalibrationLoadingCanBeCancelled() async {
+        let resolver = CancellableCalibrationCatalogResolver()
+        let sut = makeSUT(
+            manage: ViewerProfileManageSpy(
+                loadStates: [
+                    .completed(profile: makeCompletedProfile(), recalibrationDraft: nil),
+                ]
+            ),
+            resolver: resolver
+        )
+        await sut.load()
+
+        let start = Task { await sut.startRecalibration() }
+        await waitUntil { await resolver.didStartResolving }
+        #expect(sut.presentedCalibration == .recalibration)
+        #expect(sut.isResolvingCalibrationCatalog)
+
+        sut.dismissRecalibration()
+        await start.value
+
+        #expect(await resolver.wasCancelled)
+        #expect(sut.presentedCalibration == nil)
+        #expect(!sut.isResolvingCalibrationCatalog)
+        #expect(sut.saveErrorMessage == nil)
+    }
+
+    @Test("recalibration displays an existing reaction without counting it as a new response")
+    func recalibrationReusesExistingReaction() async {
+        let movieID = ViewerProfileTestFixtures.catalog.movies[0].id
+        let profile = makeCompletedProfile(reactions: [movieID: .loveIt])
+        let draft = RecalibrationDraft.empty(catalog: ViewerProfileTestFixtures.catalog)
+        let sut = makeSUT(
+            manage: ViewerProfileManageSpy(
+                loadStates: [.completed(profile: profile, recalibrationDraft: draft)]
+            )
+        )
+
+        await sut.load()
+        await sut.startRecalibration()
+
+        #expect(draft.informativeSignalCount == 0)
+        #expect(sut.reactionForCurrentMovie(mode: .recalibration) == .loveIt)
+    }
+
     @Test("detectable load failure can retry into onboarding")
     func loadFailureCanRetry() async {
         let sut = makeSUT(loadStates: [.recovery(.loadFailed), .absent])
@@ -287,12 +427,16 @@ struct ViewerProfileViewModelTests {
     private func makeSUT(
         manage: ViewerProfileManageSpy,
         metadata: GetCalibrationMovieMetadataUseCase = FailingCalibrationMetadata(),
+        resolver: ResolveCalibrationCatalogUseCase = CalibrationCatalogResolverSpy(),
+        now: @escaping @Sendable () -> Date = Date.init,
         getRecoveryNotice: (any GetViewerStateRecoveryNoticeUseCase)? = nil,
         resetUnrecoverableViewerState: (any ResetUnrecoverableViewerStateUseCase)? = nil
     ) -> ViewerProfileViewModel {
         ViewerProfileViewModel(
             manageProfile: manage,
             getMovieMetadata: metadata,
+            resolveCalibrationCatalog: resolver,
+            now: now,
             getRecoveryNotice: getRecoveryNotice,
             resetUnrecoverableViewerState: resetUnrecoverableViewerState
         )
@@ -309,292 +453,4 @@ struct ViewerProfileViewModelTests {
         }
         #expect(await condition())
     }
-}
-
-private actor ControlledCalibrationMetadata: GetCalibrationMovieMetadataUseCase {
-    private let honorsCancellation: Bool
-    private var continuations: [
-        Int: CheckedContinuation<CalibrationMovieMetadata, Error>
-    ] = [:]
-    private var startedMovieIDs: Set<Int> = []
-    private var cancelledMovieIDs: Set<Int> = []
-
-    init(honorsCancellation: Bool) {
-        self.honorsCancellation = honorsCancellation
-    }
-
-    func execute(movieID: Int) async throws -> CalibrationMovieMetadata {
-        startedMovieIDs.insert(movieID)
-        return try await withTaskCancellationHandler {
-            try await withCheckedThrowingContinuation { continuation in
-                continuations[movieID] = continuation
-            }
-        } onCancel: {
-            Task { await self.cancel(movieID: movieID) }
-        }
-    }
-
-    func waitUntilStarted(movieID: Int) async {
-        while !startedMovieIDs.contains(movieID) {
-            await Task.yield()
-        }
-    }
-
-    func wasCancelled(movieID: Int) -> Bool {
-        cancelledMovieIDs.contains(movieID)
-    }
-
-    func complete(
-        movieID: Int,
-        with metadata: CalibrationMovieMetadata
-    ) {
-        guard let continuation = continuations.removeValue(forKey: movieID) else {
-            return
-        }
-        continuation.resume(returning: metadata)
-    }
-
-    private func cancel(movieID: Int) {
-        cancelledMovieIDs.insert(movieID)
-        guard honorsCancellation,
-              let continuation = continuations.removeValue(forKey: movieID)
-        else { return }
-        continuation.resume(throwing: CancellationError())
-    }
-}
-
-actor AsyncViewerProfileGate {
-    private var isOpen = false
-    private var waiters: [CheckedContinuation<Void, Never>] = []
-
-    func wait() async {
-        if isOpen { return }
-        await withCheckedContinuation { continuation in
-            waiters.append(continuation)
-        }
-    }
-
-    func open() {
-        isOpen = true
-        let currentWaiters = waiters
-        waiters.removeAll()
-        for waiter in currentWaiters {
-            waiter.resume()
-        }
-    }
-}
-
-actor ViewerProfileManageSpy: ManageViewerProfileUseCase {
-    nonisolated let catalog = ViewerProfileTestFixtures.catalog
-
-    private let loadStates: [ViewerProfileLoadState]
-    private let firstReactionGate: AsyncViewerProfileGate?
-    private var loadIndex = 0
-    private var beginFirstFailures: Int
-    private var firstReactionFailures: Int
-    private(set) var firstReactionCallCount = 0
-    private(set) var resetProfileCallCount = 0
-
-    init(
-        loadStates: [ViewerProfileLoadState],
-        beginFirstFailures: Int = 0,
-        firstReactionFailures: Int = 0,
-        firstReactionGate: AsyncViewerProfileGate? = nil
-    ) {
-        self.loadStates = loadStates
-        self.beginFirstFailures = beginFirstFailures
-        self.firstReactionFailures = firstReactionFailures
-        self.firstReactionGate = firstReactionGate
-    }
-
-    func loadState() async -> ViewerProfileLoadState {
-        let state = loadStates[min(loadIndex, loadStates.count - 1)]
-        loadIndex += 1
-        return state
-    }
-
-    func beginFirstOnboarding() async throws -> FirstOnboardingDraft {
-        if beginFirstFailures > 0 {
-            beginFirstFailures -= 1
-            throw ViewerProfileViewModelTestError.failed
-        }
-        return .empty(catalog: catalog)
-    }
-
-    func selectServices(
-        _ services: [PilotStreamingService],
-        in draft: FirstOnboardingDraft
-    ) async throws -> FirstOnboardingDraft {
-        FirstOnboardingDraft(
-            catalogID: draft.catalogID,
-            step: draft.step,
-            selectedServices: services,
-            reactions: draft.reactions,
-            currentCatalogPosition: draft.currentCatalogPosition,
-            optionalExtensionAccepted: draft.optionalExtensionAccepted
-        )
-    }
-
-    func beginCalibration(
-        from draft: FirstOnboardingDraft
-    ) async throws -> FirstOnboardingDraft {
-        firstDraft(draft, step: .calibration)
-    }
-
-    func react(
-        _ reaction: CalibrationReaction,
-        in draft: FirstOnboardingDraft
-    ) async throws -> FirstOnboardingDraft {
-        firstReactionCallCount += 1
-        if let firstReactionGate {
-            await firstReactionGate.wait()
-            try Task.checkCancellation()
-        }
-        if firstReactionFailures > 0 {
-            firstReactionFailures -= 1
-            throw ViewerProfileViewModelTestError.failed
-        }
-        var reactions = draft.reactions
-        reactions[catalog.movies[draft.currentCatalogPosition].id] = reaction
-        return FirstOnboardingDraft(
-            catalogID: draft.catalogID,
-            step: .calibration,
-            selectedServices: draft.selectedServices,
-            reactions: reactions,
-            currentCatalogPosition: draft.currentCatalogPosition + 1,
-            optionalExtensionAccepted: draft.optionalExtensionAccepted
-        )
-    }
-
-    func react(
-        _ reaction: CalibrationReaction,
-        in draft: RecalibrationDraft
-    ) async throws -> RecalibrationDraft {
-        var reactions = draft.reactions
-        reactions[catalog.movies[draft.currentCatalogPosition].id] = reaction
-        return RecalibrationDraft(
-            catalogID: draft.catalogID,
-            reactions: reactions,
-            currentCatalogPosition: draft.currentCatalogPosition + 1,
-            optionalExtensionAccepted: draft.optionalExtensionAccepted
-        )
-    }
-
-    func goBack(in draft: FirstOnboardingDraft) async throws -> FirstOnboardingDraft {
-        FirstOnboardingDraft(
-            catalogID: draft.catalogID,
-            step: draft.currentCatalogPosition == 0 ? .services : .calibration,
-            selectedServices: draft.selectedServices,
-            reactions: draft.reactions,
-            currentCatalogPosition: max(0, draft.currentCatalogPosition - 1),
-            optionalExtensionAccepted: draft.optionalExtensionAccepted
-        )
-    }
-
-    func goBack(in draft: RecalibrationDraft) async throws -> RecalibrationDraft {
-        RecalibrationDraft(
-            catalogID: draft.catalogID,
-            reactions: draft.reactions,
-            currentCatalogPosition: max(0, draft.currentCatalogPosition - 1),
-            optionalExtensionAccepted: draft.optionalExtensionAccepted
-        )
-    }
-
-    func acceptOptionalExtension(
-        in draft: FirstOnboardingDraft
-    ) async throws -> FirstOnboardingDraft {
-        FirstOnboardingDraft(
-            catalogID: draft.catalogID,
-            step: .calibration,
-            selectedServices: draft.selectedServices,
-            reactions: draft.reactions,
-            currentCatalogPosition: draft.currentCatalogPosition,
-            optionalExtensionAccepted: true
-        )
-    }
-
-    func acceptOptionalExtension(
-        in draft: RecalibrationDraft
-    ) async throws -> RecalibrationDraft {
-        RecalibrationDraft(
-            catalogID: draft.catalogID,
-            reactions: draft.reactions,
-            currentCatalogPosition: draft.currentCatalogPosition,
-            optionalExtensionAccepted: true
-        )
-    }
-
-    func continueWithLowSignals(
-        in draft: FirstOnboardingDraft
-    ) async throws -> FirstOnboardingDraft {
-        firstDraft(draft, step: .completion)
-    }
-
-    func completeFirstOnboarding() async throws -> ViewerProfile {
-        makeCompletedProfile()
-    }
-
-    func beginRecalibration() async throws -> RecalibrationDraft {
-        .empty(catalog: catalog)
-    }
-
-    func completeRecalibration() async throws -> ViewerProfile {
-        makeCompletedProfile()
-    }
-
-    func updateServices(
-        _ services: [PilotStreamingService]
-    ) async throws -> ViewerProfile {
-        let profile = makeCompletedProfile()
-        return ViewerProfile(
-            profileSchemaVersion: profile.profileSchemaVersion,
-            catalogID: profile.catalogID,
-            region: profile.region,
-            selectedServices: services,
-            reactions: profile.reactions
-        )
-    }
-
-    func resetDraft() async throws {}
-
-    func resetProfileAndDraft() async throws {
-        resetProfileCallCount += 1
-    }
-
-    private func firstDraft(
-        _ draft: FirstOnboardingDraft,
-        step: FirstOnboardingStep
-    ) -> FirstOnboardingDraft {
-        FirstOnboardingDraft(
-            catalogID: draft.catalogID,
-            step: step,
-            selectedServices: draft.selectedServices,
-            reactions: draft.reactions,
-            currentCatalogPosition: draft.currentCatalogPosition,
-            optionalExtensionAccepted: draft.optionalExtensionAccepted
-        )
-    }
-}
-
-private func makeFirstDraft(
-    step: FirstOnboardingStep = .calibration
-) -> FirstOnboardingDraft {
-    FirstOnboardingDraft(
-        catalogID: ViewerProfileTestFixtures.catalog.id,
-        step: step,
-        selectedServices: [.netflix],
-        reactions: [:],
-        currentCatalogPosition: 0,
-        optionalExtensionAccepted: false
-    )
-}
-
-private func makeCompletedProfile() -> ViewerProfile {
-    ViewerProfile(
-        profileSchemaVersion: ViewerProfile.currentSchemaVersion,
-        catalogID: ViewerProfileTestFixtures.catalog.id,
-        region: .spain,
-        selectedServices: [.netflix],
-        reactions: ViewerProfileTestFixtures.reactions(count: 8)
-    )
 }

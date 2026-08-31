@@ -29,6 +29,7 @@ struct ViewerProfileRecoveryAvailabilityTests {
         ViewerProfileViewModel(
             manageProfile: ViewerProfileManageSpy(loadStates: [.recovery(reason)]),
             getMovieMetadata: FailingCalibrationMetadata(),
+            resolveCalibrationCatalog: ImmediateCalibrationCatalogResolver(),
             resetUnrecoverableViewerState: DestructiveViewerStateRecoverySpy(
                 availability: availability
             )

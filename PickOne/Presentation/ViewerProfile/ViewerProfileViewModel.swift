@@ -32,6 +32,7 @@ final class ViewerProfileViewModel {
 
     private let manageProfile: ManageViewerProfileUseCase
     private let getMovieMetadata: GetCalibrationMovieMetadataUseCase
+    @ObservationIgnored private let catalogFlow: CalibrationCatalogFlowCoordinator
     private let getRecoveryNotice: (any GetViewerStateRecoveryNoticeUseCase)?
     private let resetUnrecoverableViewerState: (any ResetUnrecoverableViewerStateUseCase)?
     private let resetsProfileForUITests: Bool
@@ -49,6 +50,7 @@ final class ViewerProfileViewModel {
     var pendingReaction: CalibrationReaction?
     var saveErrorMessage: String?
     var isSaving = false
+    var isResolvingCalibrationCatalog = false
     var recoveryNotice: ViewerStateRecoveryNotice?
     var destructiveRecoveryAvailability: DestructiveRecoveryAvailability = .unavailable
 
@@ -66,18 +68,24 @@ final class ViewerProfileViewModel {
     }
 
     var catalog: CalibrationCatalog {
-        manageProfile.catalog
+        firstDraft?.catalog ?? recalibrationDraft?.catalog ?? manageProfile.catalog
     }
 
     init(
         manageProfile: ManageViewerProfileUseCase,
         getMovieMetadata: GetCalibrationMovieMetadataUseCase,
+        resolveCalibrationCatalog: ResolveCalibrationCatalogUseCase,
+        now: @escaping @Sendable () -> Date = Date.init,
         getRecoveryNotice: (any GetViewerStateRecoveryNoticeUseCase)? = nil,
         resetUnrecoverableViewerState: (any ResetUnrecoverableViewerStateUseCase)? = nil,
         resetsProfileForUITests: Bool = false
     ) {
         self.manageProfile = manageProfile
         self.getMovieMetadata = getMovieMetadata
+        catalogFlow = CalibrationCatalogFlowCoordinator(
+            resolver: resolveCalibrationCatalog,
+            now: now
+        )
         self.getRecoveryNotice = getRecoveryNotice
         self.resetUnrecoverableViewerState = resetUnrecoverableViewerState
         self.resetsProfileForUITests = resetsProfileForUITests
@@ -126,7 +134,22 @@ final class ViewerProfileViewModel {
     func continueFromServices() async {
         guard let draft = firstDraft, !draft.selectedServices.isEmpty else { return }
         await perform(.beginCalibration) {
-            self.firstDraft = try await self.manageProfile.beginCalibration(from: draft)
+            if draft.isCatalogFrozen {
+                self.firstDraft = try await self.manageProfile.beginCalibration(
+                    from: draft,
+                    snapshot: nil
+                )
+                self.presentCurrentMovie(mode: .firstOnboarding)
+                return
+            }
+            self.isResolvingCalibrationCatalog = true
+            defer { self.isResolvingCalibrationCatalog = false }
+            let resolution = try await self.catalogFlow.resolve()
+            self.firstDraft = try await self.manageProfile.beginCalibration(
+                from: draft,
+                snapshot: resolution.snapshot
+            )
+            self.catalogFlow.completeFlow()
             self.presentCurrentMovie(mode: .firstOnboarding)
         }
     }
@@ -231,14 +254,23 @@ final class ViewerProfileViewModel {
             await advanceAfterPersistedCalibration(mode: .recalibration)
             return
         }
+        catalogFlow.prefetch()
+        presentedCalibration = .recalibration
         await perform(.startRecalibration) {
-            self.recalibrationDraft = try await self.manageProfile.beginRecalibration()
-            self.presentedCalibration = .recalibration
+            self.isResolvingCalibrationCatalog = true
+            defer { self.isResolvingCalibrationCatalog = false }
+            let resolution = try await self.catalogFlow.resolve()
+            self.recalibrationDraft = try await self.manageProfile.beginRecalibration(
+                snapshot: resolution.snapshot
+            )
+            self.catalogFlow.completeFlow()
             self.presentCurrentMovie(mode: .recalibration)
         }
     }
 
     func dismissRecalibration() {
+        catalogFlow.cancelWait()
+        isResolvingCalibrationCatalog = false
         presentedCalibration = nil
         clearCurrentMovie()
     }
@@ -264,6 +296,7 @@ final class ViewerProfileViewModel {
             self.clearCurrentMovie()
         }
         if resetsFirstOnboarding, result == .success {
+            catalogFlow.reset()
             firstDraft = nil
             rootState = .loading
             await load()
@@ -276,6 +309,7 @@ final class ViewerProfileViewModel {
         }
         guard result == .success else { return }
         activeProfile = nil
+        catalogFlow.reset()
         recalibrationDraft = nil
         presentedCalibration = nil
         firstDraft = nil
@@ -295,6 +329,7 @@ final class ViewerProfileViewModel {
         recoveryNotice = nil
         destructiveRecoveryAvailability = .unavailable
         activeProfile = nil
+        catalogFlow.reset()
         recalibrationDraft = nil
         presentedCalibration = nil
         firstDraft = nil
@@ -384,7 +419,8 @@ final class ViewerProfileViewModel {
         let movieID = catalog.movies[position].id
         switch mode {
             case .firstOnboarding: return firstDraft?.reactions[movieID]
-            case .recalibration: return recalibrationDraft?.reactions[movieID]
+            case .recalibration:
+                return recalibrationDraft?.reactions[movieID] ?? activeProfile?.reactions[movieID]
         }
     }
 }
@@ -397,12 +433,16 @@ private extension ViewerProfileViewModel {
                 do {
                     firstDraft = try await manageProfile.beginFirstOnboarding()
                     rootState = .onboarding
+                    catalogFlow.prefetch()
                 } catch {
                     showError(for: .load)
                 }
             case let .firstOnboarding(draft):
                 firstDraft = draft
                 rootState = .onboarding
+                if draft.step == .services, !draft.isCatalogFrozen {
+                    catalogFlow.prefetch()
+                }
                 await advanceAfterPersistedCalibration(mode: .firstOnboarding)
             case let .completed(profile, draft):
                 enterMain(profile: profile, recalibrationDraft: draft)
@@ -509,12 +549,13 @@ private extension ViewerProfileViewModel {
         with services: [PilotStreamingService]
     ) -> FirstOnboardingDraft {
         FirstOnboardingDraft(
-            catalogID: draft.catalogID,
+            catalog: draft.catalog,
             step: draft.step,
             selectedServices: services,
             reactions: draft.reactions,
             currentCatalogPosition: draft.currentCatalogPosition,
-            optionalExtensionAccepted: draft.optionalExtensionAccepted
+            optionalExtensionAccepted: draft.optionalExtensionAccepted,
+            isCatalogFrozen: draft.isCatalogFrozen
         )
     }
 

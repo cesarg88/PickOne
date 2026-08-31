@@ -411,7 +411,8 @@ struct LocalViewerStateCutoverTests {
             selectedProviderIDs: selectedProviderIDs,
             reactionsByMovieID: responses,
             currentCatalogPosition: position,
-            optionalExtensionAccepted: false
+            optionalExtensionAccepted: false,
+            catalogIsFrozen: true
         )
     }
 
