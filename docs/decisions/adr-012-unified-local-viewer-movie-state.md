@@ -10,10 +10,10 @@ on 2026-08-19 and accepted `My movies` as the final history label on
 were accepted with the final Milestone 7 D0 specification after Milestone 6
 merged.
 
-Milestone 7 PR1 through PR9 implement this decision. PR10 adds the composed
-M6-to-M7 upgrade and relaunch evidence and closes the remaining documentation;
-final milestone approval still requires the final-SHA CI and Product Owner
-device gates.
+Milestone 7 PR1 through PR9 implement this decision. PR10 (#43) adds the
+composed M6-to-M7 upgrade and relaunch evidence and closes the remaining
+documentation; final milestone approval still requires the final-SHA CI and
+Product Owner device gates.
 
 ## Context
 

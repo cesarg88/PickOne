@@ -260,8 +260,8 @@ Priorities:
 - Progress:
   - PR1–PR9 merged as PRs #33–#42
   - PR4 migration passed physical validation on the Product Owner's iPhone
-  - PR10 adds composed final-M6 upgrade/relaunch coverage and extends the UI
-    smoke across Home feedback and recalibration
+  - PR10 (#43) adds composed final-M6 upgrade/relaunch coverage and extends the
+    UI smoke across Home feedback and recalibration
   - final approval requires PR10 CI plus the remaining Product Owner device and
     enriched household utility confirmation
 - Done when:

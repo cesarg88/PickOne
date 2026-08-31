@@ -198,7 +198,7 @@ repeated after Milestone 7 with the enriched Taste Profile.
 [Continuous Taste Learning](../milestones/milestone-7-continuous-taste-learning.md)
 
 Status:
-Implementation complete; PR10 final approval pending CI, physical-device
+Implementation complete; PR10 (#43) final approval pending CI, physical-device
 confirmation, and the enriched household utility checkpoint
 
 Purpose:
@@ -212,8 +212,9 @@ freezing.
 
 Milestone 7 does not add `Watch this`, `Not tonight`, rewatch intent, AI,
 accounts, analytics, or a physical module. D0 and PR1 through PR9 are merged as
-PRs #32–#42. PR10 supplies the final composed upgrade/E2E coverage and closure
-record; merge remains gated on its final CI and Product Owner validation.
+PRs #32–#42. PR10 (#43) supplies the final composed upgrade/E2E coverage and
+closure record; merge remains gated on its final CI and Product Owner
+validation.
 
 ### Utility Checkpoint after Milestone 7
 

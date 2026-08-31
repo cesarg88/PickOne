@@ -9,7 +9,8 @@
 - Final D0 product and engineering acceptance: `2026-08-24`
 - D0 and PR1 through PR9 merged as PRs #32–#42
 - PR4 physical migration validation passed on the Product Owner's iPhone
-- PR10 contains final composed upgrade/E2E coverage and documentary closure
+- PR10 (#43) contains final composed upgrade/E2E coverage and documentary
+  closure
 - Final approval requires green CI and the remaining Product Owner physical-
   device and enriched household utility confirmation on the final PR10 SHA
 - Dependency satisfied: Milestone 6 and its explanation correction are merged
@@ -37,8 +38,8 @@ migration, catalog, and Decision Engine boundaries.
 
 ## Completion record
 
-- Delivery: D0 and PR1 through PR9 merged as PRs #32–#42; PR10 is the final
-  integration and closure slice.
+- Delivery: D0 and PR1 through PR9 merged as PRs #32–#42; PR10 (#43) is the
+  final integration and closure slice.
 - Product result: one recoverable Viewer Movie State now drives Detail,
   Watchlist, `My movies`, calibration, Taste Profile, and Home reconciliation;
   the calibration catalog resolves remote, cache, then bundled and freezes the
@@ -1106,7 +1107,7 @@ separate ADR and PR.
 
 There are no unresolved Milestone 7 product, architecture, migration,
 concurrency, or test-strategy decisions. D0 and PR1 through PR9 are merged;
-PR10 contains the composed upgrade/E2E coverage and documentary closure.
+PR10 (#43) contains the composed upgrade/E2E coverage and documentary closure.
 
 The configured read-only HTTPS pilot endpoint is operational and the complete
 client/fallback/frozen-snapshot path is implemented without credentials or
