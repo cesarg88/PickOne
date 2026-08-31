@@ -2,13 +2,18 @@
 
 ## Status
 
-Accepted
+Accepted — implemented; final Milestone 7 approval pending
 
 The Product Owner accepted the product transitions and the general architecture
 on 2026-08-19 and accepted `My movies` as the final history label on
 2026-08-24. The persistence identity and Decision Set migration clarifications
 were accepted with the final Milestone 7 D0 specification after Milestone 6
 merged.
+
+Milestone 7 PR1 through PR9 implement this decision. PR10 adds the composed
+M6-to-M7 upgrade and relaunch evidence and closes the remaining documentation;
+final milestone approval still requires the final-SHA CI and Product Owner
+device gates.
 
 ## Context
 

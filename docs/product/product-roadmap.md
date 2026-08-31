@@ -198,7 +198,8 @@ repeated after Milestone 7 with the enriched Taste Profile.
 [Continuous Taste Learning](../milestones/milestone-7-continuous-taste-learning.md)
 
 Status:
-In Progress — PR1 through PR4 merged; PR4.5 is next
+Implementation complete; PR10 final approval pending CI, physical-device
+confirmation, and the enriched household utility checkpoint
 
 Purpose:
 
@@ -210,11 +211,23 @@ calibration catalogs with cached and bundled fallback plus exact-flow snapshot
 freezing.
 
 Milestone 7 does not add `Watch this`, `Not tonight`, rewatch intent, AI,
-accounts, analytics, or a physical module. Delivery is split into D0 plus
-eleven small dependency-ordered implementation and closure PRs. PR1–PR4 are
-merged. PR4.5 corrects human-readable genre evidence before PR5 moves Decision
-Engine input to Viewer Movie State and adds bounded, deterministic,
-all-or-nothing Taste Profile hydration.
+accounts, analytics, or a physical module. D0 and PR1 through PR9 are merged as
+PRs #32–#42. PR10 supplies the final composed upgrade/E2E coverage and closure
+record; merge remains gated on its final CI and Product Owner validation.
+
+### Utility Checkpoint after Milestone 7
+
+Status:
+Pending Product Owner confirmation on the final PR10 build
+
+Purpose:
+
+Repeat real household movie decisions after continuous taste learning is
+active. Confirm that enriched current reactions improve the usefulness of the
+three recommendations, availability remains credible for the household's
+Spanish services, explanations remain readable, and the flow still supports a
+confident choice quickly. This is qualitative product evidence, not analytics,
+and cannot be inferred from automated tests.
 
 ### Milestone 8
 

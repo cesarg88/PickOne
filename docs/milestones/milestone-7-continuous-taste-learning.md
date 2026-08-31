@@ -2,14 +2,16 @@
 
 ## Status
 
-`Accepted — Ready for implementation`
+`Implementation complete — final approval pending`
 
 - Product direction accepted: `2026-08-19`
 - `My movies` label accepted: `2026-08-24`
 - Final D0 product and engineering acceptance: `2026-08-24`
-- PR1 through PR4 merged: `2026-08-27`
+- D0 and PR1 through PR9 merged as PRs #32–#42
 - PR4 physical migration validation passed on the Product Owner's iPhone
-- Next authorized slice: PR4.5, followed by PR5 only after PR4.5 merges
+- PR10 contains final composed upgrade/E2E coverage and documentary closure
+- Final approval requires green CI and the remaining Product Owner physical-
+  device and enriched household utility confirmation on the final PR10 SHA
 - Dependency satisfied: Milestone 6 and its explanation correction are merged
   into `develop`.
 
@@ -32,6 +34,32 @@ If this specification conflicts with `PRODUCT.md` about behavior,
 `PRODUCT.md` wins. If it conflicts with `ENGINEERING.md` about technical
 invariants, `ENGINEERING.md` wins. The accepted ADRs own the persistence,
 migration, catalog, and Decision Engine boundaries.
+
+## Completion record
+
+- Delivery: D0 and PR1 through PR9 merged as PRs #32–#42; PR10 is the final
+  integration and closure slice.
+- Product result: one recoverable Viewer Movie State now drives Detail,
+  Watchlist, `My movies`, calibration, Taste Profile, and Home reconciliation;
+  the calibration catalog resolves remote, cache, then bundled and freezes the
+  exact chosen snapshot.
+- Upgrade evidence: the PR10 composed integration test migrates a final-M6-
+  shaped profile, Watchlist, Search History, and Decision Set v1 together,
+  preserves trusted shown history, publishes v2 against the migrated snapshot,
+  and proves an exact repository relaunch without a second migration.
+- End-to-end evidence: the simulator smoke covers onboarding, every main tab,
+  Detail feedback, Home update copy, Watchlist-to-`My movies` movement, history
+  editing, attribution, and close/resume/complete recalibration.
+- Automated evidence: focused integration and UI validation pass. The final
+  local `make verify` passed on `2026-08-31` with 500 tests in 90 suites, the
+  single milestone UI smoke, static analysis, Release build, and app-bundle
+  inspection all green.
+- Device evidence: PR4 already validated installed-state migration on the
+  Product Owner's iPhone. On `2026-08-31`, the PR10 candidate also built,
+  installed, and launched successfully on that iPhone without resetting its
+  application data. The remaining final-SHA functional checklist and enriched
+  household utility checkpoint are external approval gates and are not
+  inferred from simulator automation.
 
 ## Goal
 
@@ -868,6 +896,12 @@ On the Product Owner's iPhone:
   `My movies` order, Home content, and Home feedback remain unchanged.
 - repeat the household utility checkpoint with the enriched Taste Profile.
 
+The PR4 upgrade passed physical migration validation on the Product Owner's
+iPhone. PR10 final approval still requires the Product Owner to complete or
+confirm the remaining checklist on the reviewed final SHA, including the
+qualitative household utility checkpoint; automated and simulator evidence do
+not substitute for that confirmation.
+
 ## Delivery slices
 
 Each implementation PR branches from current `develop` after its dependency is
@@ -1068,19 +1102,14 @@ separate ADR and PR.
 - **UserDefaults scale and recovery become unsafe:** move bounded viewer state
   to an actor-owned Application Support envelope with previous-valid recovery.
 
-## Engineering Ready record
+## Final approval record
 
-The technical plan has no unresolved architecture, migration, concurrency, or
-test-strategy decisions. The Product Owner accepted `My movies` as the final
-history label and accepted complete rather than degraded Taste Profile
-hydration. PR4.5 records the human-readable genre correction required before
-PR5; PR5 owns the accepted bounded hydration implementation.
+There are no unresolved Milestone 7 product, architecture, migration,
+concurrency, or test-strategy decisions. D0 and PR1 through PR9 are merged;
+PR10 contains the composed upgrade/E2E coverage and documentary closure.
 
-A read-only HTTPS pilot endpoint is an external delivery prerequisite for PR9
-validation and PR10 closure, not an implementation-architecture blocker for
-PR1. Providing it or authorizing its creation is outside D0 and outside an
-agent's implicit repository authority.
-
-Milestone 6 is merged, D0 is rebased onto that `develop` state, `My movies` is
-accepted, and this milestone plus ADR-012/ADR-013 are `Accepted — Ready for
-implementation`. PR1 begins only after D0 merges.
+The configured read-only HTTPS pilot endpoint is operational and the complete
+client/fallback/frozen-snapshot path is implemented without credentials or
+hosting details entering Domain or Presentation. Final milestone approval and
+merge remain gated on PR10's CI plus the Product Owner's remaining physical-
+device and enriched household utility confirmation.
