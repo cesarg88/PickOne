@@ -531,8 +531,9 @@ extracted behind focused Domain collaborators as part of the integration PR.
   deterministic increments. Active cards never repeat.
 - A successful one- or two-title result and a successful zero-title exhausted
   outcome are distinct from failure and are persisted against the exact trusted
-  inputs and search policy. Home never repeats an operation already known to
-  produce the same empty result.
+  inputs, search policy, and completion time. Home never repeats an operation
+  already known to produce the same empty result while that evidence is less
+  than 24 hours old; expiry restores one explicit full-strategy request.
 - Other valid recommendations may remain only when their evidence is rebuilt
   and valid under the new snapshot; stale explanation evidence is never
   retained.
@@ -698,7 +699,8 @@ authorization.
   content and offers Retry;
 - a fully evaluated zero-result outcome is typed exhaustion, not a transient
   failure, and exposes the accepted recovery navigation instead of Retry or an
-  endlessly repeatable refresh;
+  endlessly repeatable refresh; after 24 hours it permits a new explicit full
+  strategy so external catalog and availability changes can be observed;
 - incomplete current-reaction hydration is a retryable input failure and never
   becomes a partial Taste Profile;
 - cancellation is not presented as an error;
@@ -796,7 +798,8 @@ change requires repair or taste regeneration.
 - normal, expanded, and rollover recall execute deterministically in one user
   operation and never relax explicit feedback, availability, or credibility.
 - a partial or zero exhausted outcome is explainable, actionable, and not
-  silently recomputed until relevant inputs or policy change.
+  silently recomputed until relevant inputs, policy, or its 24-hour freshness
+  change.
 - `Reset preferences` permits a new generation without deleting watched,
   Watchlist, Search History, or complete shown history.
 - Home shows `Recommendations updated.` only after a successful publication.
@@ -896,6 +899,8 @@ change requires repair or taste regeneration.
 - recent suppression stays ordered, unique, and within its accepted bound;
 - progressive 6→12→20 recall, never-shown priority, three-ID oldest-first
   rollover, partial results, and typed exhaustion are deterministic;
+- typed exhaustion is fresh before 24 hours, expires exactly at 24 hours, and
+  never advances its timestamp after failure, cancellation, or stale work;
 - the sanitized 93-shown/47-watched blocked-installation fixture migrates and
   recovers without losing any explicit exclusion or complete history;
 - a prolonged mixed-feedback and relaunch sequence cannot enter a repeated
@@ -914,6 +919,8 @@ change requires repair or taste regeneration.
   success, failure, retry, and separate Detail navigation hit target;
 - partial and zero exhausted copy, recovery navigation, and absence of a known
   deterministic no-op refresh;
+- refresh restoration on activation or a one-shot visible deadline at the
+  24-hour exhaustion boundary, without automatic background network work;
 - existing availability, Watchlist, Similar Movies, and nested Detail routes
   remain operational.
 - PR7 moves watched rows from the Watchlist compatibility projection to `My
@@ -962,6 +969,11 @@ On the Product Owner's preserved blocked iPhone installation:
   `Not interested` normally replaces only the affected card;
 - exercise repeated refresh and confirm Home either returns a usable set or one
   accepted actionable exhausted state without looping;
+- confirm exhaustion blocks only immediate unchanged retries and restores
+  `Give me three more` at or after 24 hours;
+- exercise a twenty-page expansion and record the final-SHA device, network and
+  cache conditions, request counts, maximum concurrency, time to first usable
+  set, and total duration without recording movie or Viewer data;
 - verify every recommendation reason uses readable genre names and never shows
   a numeric genre identifier;
 - verify `Recommendations updated.` appears only after success;
@@ -1137,7 +1149,8 @@ Dependencies: P0-1.
 
 Deliver staged recall, never-shown priority, deterministic rollover, stable
 reaction reconciliation, title-local eligibility repair, preference-reset
-epoch handling, terminal Home behavior, and focused tests. Exclude quick
+epoch handling, 24-hour exhaustion freshness, terminal Home behavior, a
+privacy-safe request/latency diagnostics seam, and focused tests. Exclude quick
 feedback controls.
 
 ### P0-3 — Home quick feedback
@@ -1154,8 +1167,10 @@ Dependencies: P0-3.
 
 Deliver the sanitized prolonged-feedback regression, complete upgrade and
 relaunch coverage, documentation closure, repository verification, CI evidence,
-and physical installation over the preserved blocked pilot state. M7 and its
-utility checkpoint can close only in this new PR.
+physical installation over the preserved blocked pilot state, and recorded
+twenty-page device request/latency evidence. M7 and its utility checkpoint can
+close only in this new PR after Technical Lead review and Product Owner
+acceptance of the observed wait.
 
 ## Dependency graph
 
@@ -1239,7 +1254,9 @@ Milestone 7 is formally reopened and Milestone 8 is blocked.
 
 The product direction for recovery is accepted. The exact 30-title window,
 6→12→20 recall stages, three-title rollover increment, terminal copy/actions,
-quick-feedback menu, and v2-to-v3 migration remain the explicit corrective D0
-approval gate. After D0 merges, P0-1 through P0-4 execute sequentially. Final
-approval requires P0-4 validation over the untouched blocked installation and
-the repeated household utility checkpoint.
+24-hour exhaustion freshness, quick-feedback menu, v2-to-v3 migration, and
+twenty-page device evidence contract remain the explicit corrective D0 approval
+gate. After D0 merges, P0-1 through P0-4 execute sequentially. Final approval
+requires P0-4 validation over the untouched blocked installation, Technical
+Lead review and Product Owner acceptance of the recorded latency, and the
+repeated household utility checkpoint.

@@ -64,6 +64,8 @@ structurally equivalent fixture.
 - one refresh cannot repeat a hidden deterministic zero-result operation;
 - honest zero is valid only after the full strategy and must be explainable and
   actionable;
+- exhaustion prevents immediate deterministic retries but expires after 24
+  hours so later TMDB catalog or availability changes can be discovered;
 - availability, credibility, and explicit exclusions never relax;
 - every Home card offers the four reactions, `Already watched`, and `Not
   interested` without requiring Detail navigation.
@@ -75,6 +77,7 @@ ADR-014 defines the executable proposal:
 - 30 most-recent distinct IDs as temporary suppression;
 - pages 1–6 normal, 7–12 first expansion, and 13–20 final expansion;
 - oldest-first rollover in groups of three after full expansion;
+- a 24-hour exhaustion freshness interval, expiring at the exact boundary;
 - complete distinct-ID diagnostic history separated from ordered recent
   suppression;
 - v3 Viewer State suppression epoch and Decision Set v3 history/outcome;
@@ -125,7 +128,9 @@ Generation distinguishes:
 - retryable failure with an optional proven-safe retained set.
 
 An exhausted outcome contains no fabricated recommendation and is invalidated
-only by a relevant trusted-input or search-policy change.
+by a relevant trusted-input or search-policy change or by reaching 24 hours
+from its persisted `exhaustedAt`. Expiry enables a new explicit full strategy;
+it does not cause automatic background retry.
 
 ### Reconciliation
 
@@ -140,7 +145,7 @@ checks the immutable source snapshot before persistence and publication.
   v2 migration through active/previous/quarantine recovery.
 - `DecisionSetEnvelopeV3` replaces permanent shown exclusion with complete
   history, bounded recent suppression, source epoch, search-policy version, and
-  typed exhaustion.
+  typed exhaustion with `exhaustedAt`.
 - exact valid v2 bytes remain the active migration source until v3 replacement
   succeeds;
 - unsupported/corrupt input is quarantined exactly and never partially decoded;
@@ -171,12 +176,14 @@ safe.
 
 Zero-result copy and actions are canonical in ADR-014. A one- or two-title
 exhausted set remains visible with honest secondary copy. `Give me three more`
-is absent once the current policy is exhausted. Transport or persistence
-failure continues to expose Retry and never masquerades as exhaustion.
+is absent while exhaustion is fresh and returns at the 24-hour boundary.
+Transport or persistence failure continues to expose Retry and never
+masquerades as exhaustion.
 
 When refresh exhausts without replacing a still-safe active set, its cards stay
 visible with the accepted `No more picks available right now` explanation and
 the same recovery navigation. It is not presented as a successful new set.
+Its refresh action returns when the exhausted outcome expires.
 
 ## Error, cancellation, and concurrency
 
@@ -189,6 +196,27 @@ the same recovery navigation. It is not presented as a successful new set.
 - an obsolete snapshot cannot publish, advance history, or consume rollover;
 - persistence failure retains the previous valid v2/v3 envelope and feedback;
 - Home never offers destructive recommendation reset.
+- Home checks persisted exhaustion freshness on load, activation/foreground,
+  and one cancellable deadline while visible; it performs no background retry.
+
+## Request and latency diagnostics
+
+P0-2 introduces the injected non-analytics diagnostics contract defined by
+ADR-014. The production default is no-op. Debug/device evidence records counts,
+concurrency, cache condition, stages, time to first usable set, and total
+duration without movie, provider, profile, or feedback data.
+
+The diagnostics snapshot is immutable and `Sendable`, one operation-local
+owner serializes counters, and a nonthrowing injected sink receives the result.
+It is never part of Viewer State or Decision Set persistence and cannot change
+selection, failure, or cancellation behavior.
+
+The search-policy cold-cache ceiling is 20 Discover requests plus at most 400
+candidate availability network requests. Reaction hydration is counted
+separately. P0-4 must record an actual twenty-page physical-device run. If the
+preserved installation succeeds earlier, use a debug-only non-persisting
+injected scenario on the device; never alter the retained application data to
+force exhaustion.
 
 ## Acceptance criteria
 
@@ -208,7 +236,10 @@ the same recovery navigation. It is not presented as a successful new set.
 - released recent-window state advances only with a successfully persisted set
   or exhausted outcome and never after failure, cancellation, or stale work;
 - a typed exhausted outcome survives relaunch and becomes invalid after a
-  relevant input, epoch, or policy change;
+  relevant input, epoch, policy change, or 24-hour expiry;
+- exhaustion remains fresh immediately before 24 hours, expires exactly at 24
+  hours, restores `Give me three more`, and never advances its timestamp after
+  failure, cancellation, or stale work;
 - a reaction normally preserves the two unaffected current titles when their
   recomputed evidence remains valid;
 - watched and `Not interested` preserve unaffected current titles and do not
@@ -232,6 +263,8 @@ the same recovery navigation. It is not presented as a successful new set.
 - reaction retention with rebuilt explanation and roles;
 - watched and `Not interested` title-local repair;
 - typed smaller and zero exhaustion distinct from failure.
+- 24-hour exhaustion freshness at before/equal/after boundaries under an
+  injected clock.
 
 ### Persistence and migration
 
@@ -243,6 +276,8 @@ the same recovery navigation. It is not presented as a successful new set.
 - valid v2 bytes preserved until successful v3 replacement;
 - v3 relaunch, unsupported schema, corruption, quarantine, encoding,
   replacement, and recovery failure;
+- `exhaustedAt` round trip, semantic validation, no fabricated timestamp during
+  non-empty v2 migration, and automatic recovery for empty v2;
 - preference reset atomically changes epoch, removes reactions and `Not
   interested`, and preserves watched, Watchlist, complete history, and Search
   History.
@@ -254,7 +289,12 @@ the same recovery navigation. It is not presented as a successful new set.
 - no explicit exclusion ever selected;
 - no active title returned by replacement refresh;
 - no repeated unchanged empty generation;
+- an expired exhausted outcome permits exactly one new complete strategy and a
+  successful re-exhaustion records its completion time;
 - adaptive paging is deduplicated, cancellable, and bounded;
+- diagnostics report no identity or preference values, never affect outcomes,
+  and prove no more than 20 Discover plus 400 candidate-availability network
+  requests for the search policy;
 - stale work cannot persist history or exhaustion;
 - reaction preserves valid unaffected cards and replaces only invalid/missing
   slots;
@@ -268,8 +308,11 @@ the same recovery navigation. It is not presented as a successful new set.
 - per-card progress without blocking other cards;
 - partial and zero exhausted copy and navigation actions;
 - retained-safe-set exhaustion copy and disabled deterministic refresh;
-- `Give me three more` hidden after exhaustion and Retry shown only for failure;
+- `Give me three more` hidden while exhaustion is fresh, restored at expiry,
+  and Retry shown only for failure;
 - Home → quick feedback → reconciled cards without Detail navigation.
+- foreground and one-shot deadline restore refresh at exhaustion expiry without
+  automatic network work.
 
 ## Physical-device validation
 
@@ -287,6 +330,13 @@ Verify:
 - watched and `Not interested` replace only their card when possible;
 - repeated refresh never loops silently and eventually shows the accepted
   actionable exhaustion state if the full strategy truly exhausts;
+- before expiry, confirm an unchanged exhausted state offers no deterministic
+  refresh; at or after 24 hours, confirm `Give me three more` is restored and
+  launches one complete strategy;
+- exercise a full twenty-page expansion and record device model, final SHA,
+  network and cache conditions, stage and request counts, maximum concurrency,
+  time to first usable set, and total duration; if natural recovery ends sooner,
+  use the specified debug-only non-persisting scenario;
 - relaunch preserves the recovered set, history, and exhaustion semantics;
 - existing Detail, `My movies`, Watchlist, Search, onboarding, recalibration,
   availability, and catalog fallback remain operational;
@@ -318,10 +368,10 @@ exclude adaptive recall, stable reconciliation, and new UI.
 Dependencies: P0-1.
 
 Deliver staged recall, never-shown priority, oldest-first rollover, persisted
-exhaustion, preference-reset epoch handling, stable reaction reconciliation,
-title-local watched/`Not interested` repair, terminal Home copy/actions, stale-
-work protection, and focused Domain/Data/Presentation tests. Exclude quick
-feedback controls.
+exhaustion with 24-hour freshness, preference-reset epoch handling, stable
+reaction reconciliation, title-local watched/`Not interested` repair, terminal
+Home copy/actions, the privacy-safe diagnostic sink, stale-work protection, and
+focused Domain/Data/Presentation tests. Exclude quick feedback controls.
 
 ### P0-3 — Home quick feedback
 
@@ -338,8 +388,10 @@ Dependencies: P0-3.
 
 Deliver the sanitized prolonged-feedback regression, full upgrade/relaunch UI
 journey, documentation closure, `make verify`, green CI, and the Product Owner's
-physical update validation on the preserved blocked installation. This is a new
-PR; merged PR #43 remains historical evidence.
+physical update validation on the preserved blocked installation. Record the
+required twenty-page request and latency evidence and obtain explicit Product
+Owner acceptance of the observed wait. This is a new PR; merged PR #43 remains
+historical evidence.
 
 ## Dependency graph
 

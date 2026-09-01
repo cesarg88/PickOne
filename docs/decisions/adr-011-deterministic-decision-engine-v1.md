@@ -658,7 +658,8 @@ exclusion after its ID ages out of recent suppression.
 4. preserves complete history and records newly selected IDs as recent;
 5. persists the replacement set and updated history atomically;
 6. publishes typed exhaustion rather than offering the same deterministic
-   operation again when no replacement exists.
+   operation again when no replacement exists; that suppression expires after
+   24 hours and then permits one new explicit complete strategy.
 
 The cycle identity changes when the engine model version, active profile or
 reactions, region, selected services, or explicit viewing context changes.
@@ -792,7 +793,9 @@ Failure and honest emptiness are different product states.
 - Exhausting credible eligible candidates only after the accepted progressive
   search and rollover policy produces a successful typed smaller or empty
   outcome, not a transport or system error. It is persisted and actionable and
-  cannot expose another known deterministic no-op refresh.
+  cannot expose another known deterministic no-op refresh while fresh. Its
+  persisted completion time expires after 24 hours so later candidate or
+  availability changes can be checked explicitly.
 
 ## Architecture boundaries
 
@@ -900,7 +903,12 @@ verified:
 - reaction reconciliation retaining every unaffected recommendation whose
   rebuilt evidence remains eligible, credible, and explainable;
 - persisted smaller/zero exhaustion and invalidation after a relevant input,
-  epoch, or search-policy change;
+  epoch, search-policy change, or exact 24-hour expiry;
+- injected-clock exhaustion tests immediately before, at, and after the
+  boundary, including no timestamp advancement after failure or cancellation;
+- physical-device diagnostics for a twenty-page run recording request counts,
+  concurrency, cache condition, time to first usable set, and total duration
+  without movie or Viewer data;
 - Viewer State and Decision Set v2-to-v3 migration, including the sanitized
   blocked-installation fixture;
 - valid v1-to-v2 migration preserves exact legacy bytes and every shown ID,

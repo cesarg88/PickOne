@@ -425,7 +425,10 @@ retain other visible titles that remain eligible, credible, and explainable.
 Watched and `Not interested` normally replace only the affected title. A
 smaller or zero set is honest only after the complete accepted strategy; an
 exhausted state is explained and offers actions that can change the underlying
-inputs instead of another known no-op refresh.
+inputs instead of another known no-op refresh. Exhaustion suppresses that same
+deterministic operation for 24 hours, then restores `Give me three more` so a
+later TMDB catalog or availability change can be discovered. It never becomes
+a permanent lock.
 
 If the stored recommendation envelope is corrupt or incompatible, PickOne
 preserves the unread bytes for diagnosis and attempts to generate and persist a

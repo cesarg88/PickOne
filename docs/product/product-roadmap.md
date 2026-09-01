@@ -220,7 +220,9 @@ The correction is specified in
 [Milestone 7 P0 — Home Exhaustion Recovery](../milestones/milestone-7-p0-home-exhaustion-recovery.md)
 and ADR-014. Corrective D0 plus P0-1 through P0-4 must merge sequentially. The
 last slice installs over the preserved blocked pilot state and owns the new M7
-closure record.
+closure record. Exhaustion suppresses unchanged retries for 24 hours rather
+than permanently, and closure records request count plus observed latency from
+a real twenty-page expansion on the physical iPhone.
 
 ### Utility Checkpoint after Milestone 7
 

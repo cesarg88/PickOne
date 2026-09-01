@@ -210,6 +210,18 @@ The persisted ordered result of zero to three recommendations, with at most one
 Safe, Stretch, and Discovery role. A smaller or empty honest set is valid when
 the engine cannot support all three roles.
 
+### Exhausted outcome
+
+Evidence that PickOne completed the accepted progressive search and rollover
+strategy for one trusted input snapshot without finding a different complete
+set. It is success, not a transport failure, and it never relaxes Eligibility
+or Credibility.
+
+An Exhausted outcome blocks an unchanged deterministic retry for 24 hours from
+its recorded completion time. It expires at that boundary, allowing a new
+explicit strategy so later catalog or availability changes can be observed.
+It is therefore a bounded suppression state, never a permanent result.
+
 ### Recommendation cycle
 
 The sequence of Decision Sets produced under one deterministic cycle identity.

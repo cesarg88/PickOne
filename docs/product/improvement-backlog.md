@@ -307,19 +307,27 @@ Priorities:
   - retain unaffected eligible and credible cards after a reaction and repair
     only the affected card for watched or `Not interested` when possible
   - make honest exhaustion explainable, actionable, and non-repeating
+  - expire unchanged exhaustion after 24 hours so later TMDB catalog or
+    availability changes can be discovered
   - expose the four reactions, `Already watched`, and `Not interested` directly
     from Home cards
 - D0 approval gate:
   - exact 30-title recent window
   - 6→12→20 page expansion and three-ID oldest-first rollover
   - terminal copy plus `Review My movies` and `Review streaming services`
+  - exact 24-hour exhaustion freshness and restored refresh behavior
   - trailing per-card quick-feedback menu
   - Viewer State v3 and Decision Set v3 migration for normal and blocked v2
     installations
+  - privacy-safe physical-device request and latency evidence for the full
+    twenty-page path
 - Done when:
   - D0 and corrective slices P0-1 through P0-4 are merged sequentially
   - a sanitized prolonged-feedback/relaunch regression cannot reproduce the
     deterministic empty loop
+  - P0-4 records exact request counts, maximum concurrency, cache/network
+    conditions, time to first usable set, and total duration for a physical
+    twenty-page run; Technical Lead and Product Owner accept the observed wait
   - the untouched blocked iPhone installation migrates and recovers without
     losing explicit feedback, profile, Watchlist, Search History, or complete
     diagnostic history
