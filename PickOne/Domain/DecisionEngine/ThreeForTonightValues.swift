@@ -139,6 +139,8 @@ enum ThreeForTonightSnapshotFactory {
                 engineModelVersion: envelope.engineModelVersion,
                 cycle: envelope.cycle,
                 sourceViewerStateSnapshotID: envelope.sourceViewerStateSnapshotID,
+                searchPolicyVersion: envelope.searchPolicyVersion,
+                outcome: envelope.outcome,
                 region: envelope.region,
                 selectedProviderIDs: envelope.selectedProviderIDs,
                 recommendations: retained

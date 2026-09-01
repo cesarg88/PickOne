@@ -295,7 +295,9 @@ struct LocalViewerStateCutoverTests {
 
         #expect(states.map(\.movieID) == [newer.movieID, older.movieID])
     }
+}
 
+private extension LocalViewerStateCutoverTests {
     private func repository(
         files: InMemoryLocalViewerStateFileStore,
         ids: [UUID]
@@ -311,8 +313,12 @@ struct LocalViewerStateCutoverTests {
 
     private func activeEnvelope(
         _ files: InMemoryLocalViewerStateFileStore
-    ) throws -> LocalViewerStateEnvelopeV2DTO {
-        try JSONLocalViewerStateEnvelopeCoder().decode(#require(files.activeData))
+    ) throws -> LocalViewerStateEnvelopeV3DTO {
+        let decoded = try JSONLocalViewerStateEnvelopeCoder().decode(#require(files.activeData))
+        guard case let .currentV3(envelope) = decoded else {
+            throw LocalViewerStateTestError.rejected
+        }
+        return envelope
     }
 
     private func envelope(
@@ -320,10 +326,11 @@ struct LocalViewerStateCutoverTests {
         completedProfile: CompletedViewerProfileV2DTO? = nil,
         profileDraft: ViewerProfileDraftV2DTO? = nil,
         states: [ViewerMovieState] = []
-    ) -> LocalViewerStateEnvelopeV2DTO {
-        LocalViewerStateEnvelopeV2DTO(
-            envelopeSchemaVersion: LocalViewerStateEnvelopeV2DTO.schemaVersion,
+    ) -> LocalViewerStateEnvelopeV3DTO {
+        LocalViewerStateEnvelopeV3DTO(
+            envelopeSchemaVersion: LocalViewerStateEnvelopeV3DTO.schemaVersion,
             committedStateSnapshotID: id,
+            recommendationSuppressionEpochID: LocalViewerStateTestFixtures.secondID ?? id,
             viewerProfileState: LocalViewerProfileStateV2DTO(
                 completedProfile: completedProfile,
                 profileDraft: profileDraft

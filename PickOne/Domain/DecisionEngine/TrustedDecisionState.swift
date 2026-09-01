@@ -12,6 +12,10 @@ struct TrustedDecisionState: Equatable, Sendable {
         viewerMovieState.id
     }
 
+    var recommendationSuppressionEpochID: RecommendationSuppressionEpochID {
+        viewerMovieState.recommendationSuppressionEpochID
+    }
+
     var reactions: [Int: MovieReaction] {
         ViewerMovieStateProjections.reactions(from: viewerMovieState)
     }

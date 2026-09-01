@@ -1,6 +1,48 @@
 import Foundation
 
 extension ThreeForTonightCoordinator {
+    func migrateOrRegenerate(
+        source: DecisionSetMigrationSource,
+        currentSignature: DecisionCycleSignature,
+        trusted: TrustedDecisionState,
+        operationID: UUID
+    ) async throws -> ThreeForTonightResult {
+        if let migrated = try source.migratingV2(
+            suppressionEpochID: trusted.recommendationSuppressionEpochID
+        ), !migrated.recommendations.isEmpty,
+        migrated.sourceViewerStateSnapshotID == trusted.snapshotID,
+        migrated.cycle.identitySignature == currentSignature {
+            let unsafeMovieIDs = ThreeForTonightSnapshotFactory.localRepairMovieIDs(
+                envelope: migrated,
+                trustedState: trusted,
+                currentCycleSignature: currentSignature
+            )
+            if unsafeMovieIDs.isEmpty {
+                return try await validatePersistAndPublish(
+                    migrated,
+                    expectedTrustedState: trusted,
+                    sourceCycle: migrated.cycle,
+                    retained: nil,
+                    recovery: true,
+                    operationID: operationID,
+                    staleRetryCount: 0
+                )
+            }
+        }
+
+        let sourceCycle = try source.migratingV2(
+            suppressionEpochID: trusted.recommendationSuppressionEpochID
+        )?.cycle ?? source.cycle
+        return try await regenerate(
+            from: sourceCycle,
+            currentSignature: currentSignature,
+            recovery: true,
+            trusted: trusted,
+            retained: nil,
+            operationID: operationID
+        )
+    }
+
     func regenerate(
         from sourceCycle: DecisionCycle,
         currentSignature: DecisionCycleSignature,
@@ -9,8 +51,18 @@ extension ThreeForTonightCoordinator {
         retained: ThreeForTonightSnapshot?,
         operationID: UUID
     ) async throws -> ThreeForTonightResult {
+        let epochAlignedCycle = sourceCycle.history.suppressionEpochID
+            == trusted.recommendationSuppressionEpochID
+            ? sourceCycle
+            : try DecisionCycle(
+                id: sourceCycle.id,
+                identitySignature: sourceCycle.identitySignature,
+                history: sourceCycle.history.startingEpoch(
+                    trusted.recommendationSuppressionEpochID
+                )
+            )
         let cycle = try migrationPlanner.reconciledCycle(
-            sourceCycle: sourceCycle,
+            sourceCycle: epochAlignedCycle,
             currentSignature: currentSignature,
             makeCycleID: makeUUID
         )

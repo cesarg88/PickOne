@@ -49,6 +49,7 @@ extension LocalViewerStateRepository {
                 profileData: nil,
                 watchlistData: nil,
                 snapshotID: makeSnapshotID(),
+                suppressionEpochID: makeSuppressionEpochID(),
                 at: now(),
                 source: .freshInstall
             )
@@ -411,9 +412,10 @@ extension LocalViewerStateRepository {
         let snapshotID = recommendationInputsChanged
             ? freshSnapshotID(excluding: current.snapshot.id.rawValue)
             : current.snapshot.id.rawValue
-        let envelope = LocalViewerStateEnvelopeV2DTO(
-            envelopeSchemaVersion: LocalViewerStateEnvelopeV2DTO.schemaVersion,
+        let envelope = LocalViewerStateEnvelopeV3DTO(
+            envelopeSchemaVersion: LocalViewerStateEnvelopeV3DTO.schemaVersion,
             committedStateSnapshotID: snapshotID,
+            recommendationSuppressionEpochID: current.envelope.recommendationSuppressionEpochID,
             viewerProfileState: profileState,
             viewerMovieStates: states.sorted { $0.movieID < $1.movieID }.map(mapper.map),
             migrationRecord: current.envelope.migrationRecord

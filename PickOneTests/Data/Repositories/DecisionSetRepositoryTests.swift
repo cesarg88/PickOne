@@ -214,8 +214,8 @@ struct DecisionSetRepositoryTests {
         let decoded = try JSONDecisionSetEnvelopeCoder().decodeEnvelope(
             from: #require(store.activeData)
         )
-        guard case let .currentV2(dto) = decoded else {
-            Issue.record("Expected production persistence to use Decision Set v2")
+        guard case let .currentV3(dto) = decoded else {
+            Issue.record("Expected production persistence to use Decision Set v3")
             return
         }
 
@@ -305,7 +305,7 @@ struct DecisionSetRepositoryTests {
 
     @Test("unsupported schema bytes are quarantined without migration guesses")
     func unsupportedRecovery() async {
-        for version in [0, 3] {
+        for version in [0, 4] {
             let bytes = Data(#"{"envelopeSchemaVersion":\#(version)}"#.utf8)
             let store = InMemoryDecisionSetDataStore(activeData: bytes)
             let repository = DefaultDecisionSetRepository(store: store)
@@ -533,7 +533,7 @@ private struct FailingDecisionSetEncoder: DecisionSetEnvelopeCoding {
         try JSONDecisionSetEnvelopeCoder().decodeEnvelope(from: data)
     }
 
-    func encodeEnvelope(_: DecisionSetEnvelopeV2DTO) throws -> Data {
+    func encodeEnvelope(_: DecisionSetEnvelopeV3DTO) throws -> Data {
         throw TestStoreError.rejected
     }
 }

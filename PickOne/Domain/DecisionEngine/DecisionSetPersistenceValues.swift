@@ -86,19 +86,36 @@ struct DecisionCycleSignature: Equatable, Sendable {
 struct DecisionCycle: Equatable, Sendable {
     let id: UUID
     let identitySignature: DecisionCycleSignature
-    let shownMovieIDs: Set<Int>
+    let history: RecommendationHistory
+
+    var shownMovieIDs: Set<Int> {
+        history.allShownMovieIDs
+    }
+
+    init(
+        id: UUID,
+        identitySignature: DecisionCycleSignature,
+        history: RecommendationHistory
+    ) throws {
+        self.id = id
+        self.identitySignature = identitySignature
+        self.history = history
+    }
 
     init(
         id: UUID,
         identitySignature: DecisionCycleSignature,
         shownMovieIDs: Set<Int> = []
     ) throws {
-        guard shownMovieIDs.allSatisfy({ $0 > 0 }) else {
-            throw DecisionSetValidationError.invalidMovieIdentity
-        }
-        self.id = id
-        self.identitySignature = identitySignature
-        self.shownMovieIDs = shownMovieIDs
+        try self.init(
+            id: id,
+            identitySignature: identitySignature,
+            history: RecommendationHistory(
+                allShownMovieIDs: shownMovieIDs,
+                recentlyShownMovieIDs: [],
+                suppressionEpochID: .legacyCompatibility
+            )
+        )
     }
 
     func presenting(movieIDs: [Int]) throws -> DecisionCycle {
@@ -108,7 +125,7 @@ struct DecisionCycle: Equatable, Sendable {
         return try DecisionCycle(
             id: id,
             identitySignature: identitySignature,
-            shownMovieIDs: shownMovieIDs.union(movieIDs)
+            history: history.recording(movieIDs: movieIDs)
         )
     }
 }
@@ -279,6 +296,8 @@ struct PersistedDecisionSet: Equatable, Sendable {
     let engineModelVersion: DecisionEngineModelVersion
     let cycle: DecisionCycle
     let sourceViewerStateSnapshotID: ViewerStateSnapshotID
+    let searchPolicyVersion: RecommendationSearchPolicyVersion
+    let outcome: PersistedDecisionSetOutcome
     let region: ViewingRegion
     let selectedProviderIDs: [Int]
     let recommendations: [PersistedDecisionRecommendation]
@@ -289,25 +308,43 @@ struct PersistedDecisionSet: Equatable, Sendable {
         engineModelVersion: DecisionEngineModelVersion,
         cycle: DecisionCycle,
         sourceViewerStateSnapshotID: ViewerStateSnapshotID,
+        searchPolicyVersion: RecommendationSearchPolicyVersion = .boundedRecoveryV1,
+        outcome: PersistedDecisionSetOutcome = .recommendations,
         region: ViewingRegion,
         selectedProviderIDs: [Int],
         recommendations: [PersistedDecisionRecommendation]
     ) throws {
+        let recommendationMovieIDs = recommendations.map(\.display.movieID)
+        let activeIDs = Set(recommendationMovieIDs)
+        let normalizedCycle = activeIDs.isSubset(of: cycle.shownMovieIDs)
+            && !activeIDs.isSubset(of: Set(cycle.history.recentlyShownMovieIDs))
+            ? try cycle.presenting(movieIDs: recommendationMovieIDs)
+            : cycle
         let normalizedProviderIDs = try Self.validateContents(
-            cycle: cycle,
+            cycle: normalizedCycle,
             region: region,
             selectedProviderIDs: selectedProviderIDs,
             recommendations: recommendations
         )
+        if case .exhausted = outcome, recommendations.count == 3 {
+            throw DecisionSetValidationError.invalidOutcome
+        }
 
         self.id = id
         self.generatedAt = generatedAt
         self.engineModelVersion = engineModelVersion
-        self.cycle = cycle
+        self.cycle = normalizedCycle
         self.sourceViewerStateSnapshotID = sourceViewerStateSnapshotID
+        self.searchPolicyVersion = searchPolicyVersion
+        self.outcome = outcome
         self.region = region
         self.selectedProviderIDs = normalizedProviderIDs
         self.recommendations = recommendations
+    }
+
+    var exhaustedAt: Date? {
+        guard case let .exhausted(exhaustedAt) = outcome else { return nil }
+        return exhaustedAt
     }
 
     fileprivate static func validateContents(
@@ -367,6 +404,7 @@ struct PersistedDecisionSet: Equatable, Sendable {
 
 struct DecisionSetMigrationSource: Equatable, Sendable {
     let cycle: DecisionCycle
+    private let legacyV2: DecisionSetV2MigrationSource?
 
     init(
         cycle: DecisionCycle,
@@ -381,6 +419,81 @@ struct DecisionSetMigrationSource: Equatable, Sendable {
             recommendations: recommendations
         )
         self.cycle = cycle
+        legacyV2 = nil
+    }
+
+    init(legacyV2: DecisionSetV2MigrationSource) {
+        cycle = legacyV2.cycle
+        self.legacyV2 = legacyV2
+    }
+
+    func migratingV2(
+        suppressionEpochID: RecommendationSuppressionEpochID
+    ) throws -> PersistedDecisionSet? {
+        try legacyV2?.migrating(suppressionEpochID: suppressionEpochID)
+    }
+}
+
+struct DecisionSetV2MigrationSource: Equatable, Sendable {
+    let id: UUID
+    let generatedAt: Date
+    let engineModelVersion: DecisionEngineModelVersion
+    let cycle: DecisionCycle
+    let sourceViewerStateSnapshotID: ViewerStateSnapshotID
+    let region: ViewingRegion
+    let selectedProviderIDs: [Int]
+    let recommendations: [PersistedDecisionRecommendation]
+
+    init(
+        id: UUID,
+        generatedAt: Date,
+        engineModelVersion: DecisionEngineModelVersion,
+        cycle: DecisionCycle,
+        sourceViewerStateSnapshotID: ViewerStateSnapshotID,
+        region: ViewingRegion,
+        selectedProviderIDs: [Int],
+        recommendations: [PersistedDecisionRecommendation]
+    ) throws {
+        _ = try PersistedDecisionSet.validateContents(
+            cycle: cycle,
+            region: region,
+            selectedProviderIDs: selectedProviderIDs,
+            recommendations: recommendations
+        )
+        self.id = id
+        self.generatedAt = generatedAt
+        self.engineModelVersion = engineModelVersion
+        self.cycle = cycle
+        self.sourceViewerStateSnapshotID = sourceViewerStateSnapshotID
+        self.region = region
+        self.selectedProviderIDs = selectedProviderIDs
+        self.recommendations = recommendations
+    }
+
+    func migrating(
+        suppressionEpochID: RecommendationSuppressionEpochID
+    ) throws -> PersistedDecisionSet {
+        let history = try RecommendationHistory(
+            allShownMovieIDs: cycle.shownMovieIDs,
+            recentlyShownMovieIDs: recommendations.map(\.display.movieID),
+            suppressionEpochID: suppressionEpochID
+        )
+        return try PersistedDecisionSet(
+            id: id,
+            generatedAt: generatedAt,
+            engineModelVersion: engineModelVersion,
+            cycle: DecisionCycle(
+                id: cycle.id,
+                identitySignature: cycle.identitySignature,
+                history: history
+            ),
+            sourceViewerStateSnapshotID: sourceViewerStateSnapshotID,
+            searchPolicyVersion: .boundedRecoveryV1,
+            outcome: .recommendations,
+            region: region,
+            selectedProviderIDs: selectedProviderIDs,
+            recommendations: recommendations
+        )
     }
 }
 
@@ -391,144 +504,5 @@ enum DecisionSetValidationError: Error, Equatable, Sendable {
     case invalidRoleOrder
     case invalidShownHistory
     case invalidEvidence
-}
-
-private extension RecommendationEvidence {
-    func validateForPersistence(
-        role: DecisionRole,
-        display: DecisionDisplaySnapshot,
-        requiresReadableGenreEvidence: Bool
-    ) throws {
-        guard role != .safeChoice || diversity == nil else {
-            throw DecisionSetValidationError.invalidEvidence
-        }
-
-        switch primary {
-            case let .watchlistIntent(match):
-                switch match {
-                    case let .positiveAnchor(anchor):
-                        try anchor.validateForPersistence(
-                            display: display,
-                            requiresReadableGenreEvidence: requiresReadableGenreEvidence
-                        )
-                    case let .positiveAffinity(affinity):
-                        try affinity.validateForPersistence(
-                            requiresGenre: false,
-                            display: display,
-                            requiresReadableGenreEvidence: requiresReadableGenreEvidence
-                        )
-                }
-            case let .positiveAnchor(anchor):
-                try anchor.validateForPersistence(
-                    display: display,
-                    requiresReadableGenreEvidence: requiresReadableGenreEvidence
-                )
-            case let .positiveGenreAffinity(affinity):
-                try affinity.validateForPersistence(
-                    requiresGenre: true,
-                    display: display,
-                    requiresReadableGenreEvidence: requiresReadableGenreEvidence
-                )
-            case .sparseQuality:
-                break
-        }
-    }
-}
-
-private extension PositiveAnchorEvidence {
-    func validateForPersistence(
-        display: DecisionDisplaySnapshot,
-        requiresReadableGenreEvidence: Bool
-    ) throws {
-        let title = movieTitle.trimmingCharacters(in: .whitespacesAndNewlines)
-        let displayGenreIDs = Set(display.genres.map(\.id))
-        let evidenceGenreIDs = Set(sharedGenres.map(\.id))
-        guard
-            movieID > 0,
-            movieID != display.movieID,
-            !title.isEmpty,
-            sharedGenres.allSatisfy({ $0.id > 0 }),
-            !requiresReadableGenreEvidence || sharedGenres.allSatisfy({ $0.name != nil }),
-            evidenceGenreIDs.count == sharedGenres.count,
-            evidenceGenreIDs.isSubset(of: displayGenreIDs),
-            !sharedGenres.isEmpty || eraMatch != nil
-        else {
-            throw DecisionSetValidationError.invalidEvidence
-        }
-
-        if let anchorGenres {
-            let anchorGenreIDs = Set(anchorGenres.map(\.id))
-            let actualSharedGenreIDs = displayGenreIDs.intersection(anchorGenreIDs)
-            let unionGenreIDs = displayGenreIDs.union(anchorGenreIDs)
-            guard
-                !anchorGenres.isEmpty,
-                anchorGenres.allSatisfy({ $0.id > 0 }),
-                anchorGenreIDs.count == anchorGenres.count,
-                !actualSharedGenreIDs.isEmpty,
-                actualSharedGenreIDs == evidenceGenreIDs,
-                Double(actualSharedGenreIDs.count) / Double(unionGenreIDs.count)
-                >= 1.0 / 3.0
-            else {
-                throw DecisionSetValidationError.invalidEvidence
-            }
-        }
-
-        switch eraMatch {
-            case let .sameDecade(decade):
-                try decade.validateForPersistence()
-                guard decade == display.releaseDecade else {
-                    throw DecisionSetValidationError.invalidEvidence
-                }
-            case let .adjacentDecade(candidate, anchor):
-                try candidate.validateForPersistence()
-                try anchor.validateForPersistence()
-                let difference = candidate.startingYear > anchor.startingYear
-                    ? candidate.startingYear - anchor.startingYear
-                    : anchor.startingYear - candidate.startingYear
-                guard difference == 10, candidate == display.releaseDecade else {
-                    throw DecisionSetValidationError.invalidEvidence
-                }
-            case nil:
-                break
-        }
-    }
-}
-
-private extension PositiveAffinityEvidence {
-    func validateForPersistence(
-        requiresGenre: Bool,
-        display: DecisionDisplaySnapshot,
-        requiresReadableGenreEvidence: Bool
-    ) throws {
-        let displayGenreIDs = Set(display.genres.map(\.id))
-        let evidenceGenreIDs = Set(genres.map(\.id))
-        guard
-            genres.allSatisfy({ $0.id > 0 }),
-            !requiresReadableGenreEvidence || genres.allSatisfy({ $0.name != nil }),
-            evidenceGenreIDs.count == genres.count,
-            evidenceGenreIDs.isSubset(of: displayGenreIDs),
-            !genres.isEmpty || era != nil,
-            !requiresGenre || !genres.isEmpty
-        else {
-            throw DecisionSetValidationError.invalidEvidence
-        }
-        try era?.validateForPersistence()
-        guard era == nil || era == display.releaseDecade else {
-            throw DecisionSetValidationError.invalidEvidence
-        }
-    }
-}
-
-private extension DecisionDisplaySnapshot {
-    var releaseDecade: DecisionDecade? {
-        DecisionDecade(releaseYear: releaseYear)
-    }
-}
-
-private extension DecisionDecade {
-    func validateForPersistence() throws {
-        guard startingYear > 0, startingYear.isMultiple(of: 10) else {
-            throw DecisionSetValidationError.invalidEvidence
-        }
-    }
+    case invalidOutcome
 }

@@ -11,10 +11,11 @@ enum LocalViewerStateTestFixtures {
     static func emptyEnvelope(
         id: UUID,
         source: LocalViewerStateMigrationRecordV2DTO.Source = .freshInstall
-    ) -> LocalViewerStateEnvelopeV2DTO {
-        LocalViewerStateEnvelopeV2DTO(
-            envelopeSchemaVersion: LocalViewerStateEnvelopeV2DTO.schemaVersion,
+    ) -> LocalViewerStateEnvelopeV3DTO {
+        LocalViewerStateEnvelopeV3DTO(
+            envelopeSchemaVersion: LocalViewerStateEnvelopeV3DTO.schemaVersion,
             committedStateSnapshotID: id,
+            recommendationSuppressionEpochID: secondID ?? id,
             viewerProfileState: LocalViewerProfileStateV2DTO(
                 completedProfile: nil,
                 profileDraft: nil
@@ -31,11 +32,12 @@ enum LocalViewerStateTestFixtures {
         id: UUID,
         completedProfile: CompletedViewerProfileV2DTO? = nil,
         profileDraft: ViewerProfileDraftV2DTO? = nil
-    ) -> LocalViewerStateEnvelopeV2DTO {
+    ) -> LocalViewerStateEnvelopeV3DTO {
         let base = emptyEnvelope(id: id)
-        return LocalViewerStateEnvelopeV2DTO(
+        return LocalViewerStateEnvelopeV3DTO(
             envelopeSchemaVersion: base.envelopeSchemaVersion,
             committedStateSnapshotID: base.committedStateSnapshotID,
+            recommendationSuppressionEpochID: base.recommendationSuppressionEpochID,
             viewerProfileState: LocalViewerProfileStateV2DTO(
                 completedProfile: completedProfile,
                 profileDraft: profileDraft
@@ -99,8 +101,31 @@ enum LocalViewerStateTestFixtures {
         )
     }
 
-    static func encoded(_ envelope: LocalViewerStateEnvelopeV2DTO) throws -> Data {
+    static func emptyV2Envelope(
+        id: UUID,
+        source: LocalViewerStateMigrationRecordV2DTO.Source = .freshInstall
+    ) -> LocalViewerStateEnvelopeV2DTO {
+        LocalViewerStateEnvelopeV2DTO(
+            envelopeSchemaVersion: LocalViewerStateEnvelopeV2DTO.schemaVersion,
+            committedStateSnapshotID: id,
+            viewerProfileState: LocalViewerProfileStateV2DTO(
+                completedProfile: nil,
+                profileDraft: nil
+            ),
+            viewerMovieStates: [],
+            migrationRecord: LocalViewerStateMigrationRecordV2DTO(
+                source: source,
+                resolvedAt: date
+            )
+        )
+    }
+
+    static func encoded(_ envelope: LocalViewerStateEnvelopeV3DTO) throws -> Data {
         try JSONLocalViewerStateEnvelopeCoder().encode(envelope)
+    }
+
+    static func encodedV2(_ envelope: LocalViewerStateEnvelopeV2DTO) throws -> Data {
+        try JSONLocalViewerStateEnvelopeCoder().encodeLegacyV2(envelope)
     }
 
     static func metadata(title: String = "Arrival") throws -> MovieFeedbackMetadata {

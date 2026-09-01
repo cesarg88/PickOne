@@ -35,7 +35,7 @@ struct DecisionStateReconciliationPlanner: Sendable {
                 try .successorCycle(DecisionCycle(
                     id: makeCycleID(),
                     identitySignature: currentSignature,
-                    shownMovieIDs: sourceCycle.shownMovieIDs
+                    history: sourceCycle.history
                 ))
             case .eligibilityChanged, .watchlistIntentChanged:
                 .repair(movieID: change.movieID)

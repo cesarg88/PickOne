@@ -13,7 +13,7 @@ struct DecisionSetMigrationPlanner: Sendable {
         return try DecisionCycle(
             id: makeCycleID(),
             identitySignature: currentSignature,
-            shownMovieIDs: sourceCycle.shownMovieIDs
+            history: sourceCycle.history
         )
     }
 }

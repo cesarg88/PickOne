@@ -4,6 +4,49 @@ import Testing
 
 @Suite("Decision Set migration coordination")
 struct DecisionSetMigrationCoordinatorTests {
+    @Test("current non-empty v2 set migrates without candidate regeneration")
+    func nonEmptyV2PreservesCurrentSet() async throws {
+        let profile = CoordinatorTestFixtures.sparseProfile()
+        let envelope = try CoordinatorTestFixtures.envelope(
+            currentMovieIDs: [10, 20],
+            shownMovieIDs: [1, 10, 20, 99],
+            profile: profile
+        )
+        let source = try DecisionSetMigrationSource(legacyV2: DecisionSetV2MigrationSource(
+            id: envelope.id,
+            generatedAt: envelope.generatedAt,
+            engineModelVersion: envelope.engineModelVersion,
+            cycle: envelope.cycle,
+            sourceViewerStateSnapshotID: envelope.sourceViewerStateSnapshotID,
+            region: envelope.region,
+            selectedProviderIDs: envelope.selectedProviderIDs,
+            recommendations: envelope.recommendations
+        ))
+        let decisionSets = CoordinatorDecisionSetRepository(
+            loadResult: .migrationRequired(source)
+        )
+        let candidates = CoordinatorCandidateRepository()
+        let sut = CoordinatorTestFixtures.makeCoordinator(
+            profile: profile,
+            candidateRepository: candidates,
+            availabilityRepository: CoordinatorAvailabilityRepository(),
+            decisionSetRepository: decisionSets,
+            snapshotID: envelope.sourceViewerStateSnapshotID
+        )
+
+        let result = try await sut.load()
+
+        guard case let .usable(snapshot) = result else {
+            Issue.record("Expected the current v2 recommendations to migrate in place")
+            return
+        }
+        #expect(snapshot.decisionSet.recommendations == envelope.recommendations)
+        #expect(snapshot.decisionSet.cycle.history.allShownMovieIDs == [1, 10, 20, 99])
+        #expect(snapshot.decisionSet.cycle.history.recentlyShownMovieIDs == [10, 20])
+        #expect(await candidates.requestedPages.isEmpty)
+        #expect(await decisionSets.replacements == [snapshot.decisionSet])
+    }
+
     @Test("matching v1 signature retains its cycle and complete shown history")
     func matchingSignature() async throws {
         let profile = CoordinatorTestFixtures.sparseProfile()

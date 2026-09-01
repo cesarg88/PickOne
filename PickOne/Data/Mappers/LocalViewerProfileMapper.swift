@@ -9,13 +9,27 @@ struct LocalViewerProfileMapper: Sendable {
     private static let bundledUpdatedAt = Date(timeIntervalSince1970: 1_787_097_600)
 
     func loadState(
+        from envelope: LocalViewerStateEnvelopeV3DTO,
+        snapshot: ViewerMovieStateSnapshot
+    ) throws -> ViewerProfileLoadState {
+        try loadState(from: envelope.viewerProfileState, snapshot: snapshot)
+    }
+
+    func loadState(
         from envelope: LocalViewerStateEnvelopeV2DTO,
         snapshot: ViewerMovieStateSnapshot
     ) throws -> ViewerProfileLoadState {
-        let profile = try envelope.viewerProfileState.completedProfile.map {
+        try loadState(from: envelope.viewerProfileState, snapshot: snapshot)
+    }
+
+    private func loadState(
+        from profileState: LocalViewerProfileStateV2DTO,
+        snapshot: ViewerMovieStateSnapshot
+    ) throws -> ViewerProfileLoadState {
+        let profile = try profileState.completedProfile.map {
             try map($0, snapshot: snapshot)
         }
-        let draft = try envelope.viewerProfileState.profileDraft.map(map)
+        let draft = try profileState.profileDraft.map(map)
 
         return switch (profile, draft) {
             case (nil, nil): .absent
