@@ -140,12 +140,13 @@ does not mean the movie is watchable, credible, or selected.
 
 The complete set of non-negotiable gates a Candidate must pass before it may
 continue toward a Decision Set. In the pilot this includes Watch state, `Not
-interested`, Recommendation-cycle history, and verified selected-provider
-availability.
+interested`, valid identity, and verified selected-provider availability.
 
 Eligibility is separate from score. A high score cannot override a failed or
 unknown eligibility gate. Credibility is a separate post-scoring admission
-rule, not part of Eligibility.
+rule, not part of Eligibility. Recent recommendation suppression is also
+separate: it controls temporary repetition but never turns an older shown title
+into permanently ineligible content.
 
 ### Availability evidence
 
@@ -209,15 +210,48 @@ The persisted ordered result of zero to three recommendations, with at most one
 Safe, Stretch, and Discovery role. A smaller or empty honest set is valid when
 the engine cannot support all three roles.
 
+### Exhausted outcome
+
+Evidence that PickOne completed the accepted progressive search and rollover
+strategy for one trusted input snapshot without finding a different complete
+set. It is success, not a transport failure, and it never relaxes Eligibility
+or Credibility.
+
+An Exhausted outcome blocks an unchanged deterministic retry for 24 hours from
+its recorded completion time. It expires at that boundary, allowing a new
+explicit strategy so later catalog or availability changes can be observed.
+It is therefore a bounded suppression state, never a permanent result.
+
 ### Recommendation cycle
 
 The sequence of Decision Sets produced under one deterministic cycle identity.
-It records every movie already shown so refresh or repair cannot repeat it.
+It preserves complete shown history for diagnosis and applies only the accepted
+bounded recent window to normal repeat suppression.
 
 In Milestone 7, a Movie-reaction change creates a new identity because Taste
-evidence changed, while inheriting all IDs already shown by the preceding cycle.
-Watch state, Watchlist intent, and `Not interested` change mutable eligibility
-and repair the current cycle without erasing its history.
+evidence changed while complete history survives. Watch state, Watchlist intent,
+and `Not interested` change mutable eligibility and repair the current cycle
+without erasing that history.
+
+### Complete shown history
+
+Every distinct movie ID PickOne has presented on Home. It is preserved for
+diagnosis and never cleared by refresh, rollover, feedback, or preference reset.
+It is not a permanent exclusion and is not an analytics impression log.
+
+### Recent suppression window
+
+The bounded, ordered subset of recently presented movie IDs temporarily
+withheld to avoid near-term repetition. Active cards remain separately excluded
+from a replacement request. Preference reset starts a new suppression epoch but
+does not delete Complete shown history.
+
+### Rollover
+
+The deterministic recovery step that releases the oldest non-active IDs from
+the Recent suppression window after normal and expanded recall cannot fill the
+Decision Set. Rollover never relaxes watched, Movie reactions, `Not interested`,
+availability, or credibility.
 
 ### Safe, Stretch, and Discovery
 

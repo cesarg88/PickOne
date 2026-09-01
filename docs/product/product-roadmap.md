@@ -198,28 +198,36 @@ repeated after Milestone 7 with the enriched Taste Profile.
 [Continuous Taste Learning](../milestones/milestone-7-continuous-taste-learning.md)
 
 Status:
-Implementation complete; PR10 (#43) final approval pending CI, physical-device
-confirmation, and the enriched household utility checkpoint
+Reopened — corrective D0 accepted; implementation pending; Milestone 8 blocked
 
 Purpose:
 
 Unify watched facts, Movie reactions, `Not interested`, and future Watchlist
-intent in one recoverable local state. Allow feedback from Movie Detail and the
-accepted `My movies` history, recalculate Taste Profile and Home safely after
-changes, preserve recommendation-cycle history, and load versioned remote
-calibration catalogs with cached and bundled fallback plus exact-flow snapshot
-freezing.
+intent in one recoverable local state. Allow feedback from Movie Detail,
+recommendation cards, and the accepted `My movies` history; recalculate Taste
+Profile while retaining unaffected credible cards; separate complete diagnostic
+history from bounded recent suppression; recover deterministically through
+progressive recall; and load versioned remote calibration catalogs with cached
+and bundled fallback plus exact-flow snapshot freezing.
 
 Milestone 7 does not add `Watch this`, `Not tonight`, rewatch intent, AI,
-accounts, analytics, or a physical module. D0 and PR1 through PR9 are merged as
-PRs #32–#42. PR10 (#43) supplies the final composed upgrade/E2E coverage and
-closure record; merge remains gated on its final CI and Product Owner
-validation.
+accounts, analytics, or a physical module. The original implementation merged
+through PR #43 on `2026-08-31`. Final device validation then exposed a P0 state
+where permanent shown-history exclusion exhausted Home and neither refresh nor
+preference reset recovered it.
+
+The correction is specified in
+[Milestone 7 P0 — Home Exhaustion Recovery](../milestones/milestone-7-p0-home-exhaustion-recovery.md)
+and ADR-014. Corrective D0 plus P0-1 through P0-4 must merge sequentially. The
+last slice installs over the preserved blocked pilot state and owns the new M7
+closure record. Exhaustion suppresses unchanged retries for 24 hours rather
+than permanently, and closure records request count plus observed latency from
+a real twenty-page expansion on the physical iPhone.
 
 ### Utility Checkpoint after Milestone 7
 
 Status:
-Pending Product Owner confirmation on the final PR10 build
+Blocked — corrective P0 implementation and repeat physical validation pending
 
 Purpose:
 
@@ -233,6 +241,9 @@ and cannot be inferred from automated tests.
 ### Milestone 8
 
 Trailers & Pilot Measurement
+
+Status:
+Blocked until Milestone 7 receives final approval after P0-4
 
 Purpose:
 

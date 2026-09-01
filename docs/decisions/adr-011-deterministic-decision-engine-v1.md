@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted — Milestone 6 complete; amended by accepted Milestone 7 D0
+Accepted baseline — amended by accepted ADR-014
 
 The Product Owner accepted this product and architecture decision on
 2026-08-11. The Lead Engineer should treat the formula, eligibility rules,
@@ -22,6 +22,14 @@ human-readable genre evidence and complete Taste Profile hydration. Internal
 genre IDs remain valid scoring identity but may never appear in copy. Reaction
 metadata hydration becomes bounded and parallel while remaining deterministic,
 cancellable, and all-or-nothing. P1 scoring remains unchanged.
+
+On 2026-09-01, final physical validation reopened Milestone 7 after permanent
+shown-history exclusion exhausted the pilot recall pool. The Product Owner
+accepted bounded recent suppression, progressive recall, old-title rollover,
+stable card reconciliation, and preservation of every explicit exclusion.
+ADR-014 defines the accepted exact window, paging, persistence, migration,
+exhaustion, and quick-feedback policy. Implementation begins after D0 merges;
+P1 scoring remains unchanged.
 
 ## Context
 
@@ -128,12 +136,13 @@ to each product role: Safe, Stretch and Discovery.
 The sequence of Decision Sets produced by explicit `Give me three more`
 actions under one immutable cycle identity. The identity is a deterministic
 signature of engine model version, profile and reactions, region, selected
-providers, and explicit viewing context. Movies already presented in the active
-cycle are temporarily excluded.
+providers, and explicit viewing context. Complete shown history is diagnostic;
+the active set and a bounded recent subset are temporarily suppressed.
 
 Watchlist save and watched state is mutable eligibility and intent evidence,
 not part of cycle identity. A Watchlist change may invalidate or repair the
-current set, but it does not clear the IDs already shown in the cycle.
+current set, but it clears neither complete diagnostic history nor bounded
+recent suppression.
 
 ## Inputs
 
@@ -170,7 +179,8 @@ Decision Engine v1 does not score using:
 
 The pilot candidate source is TMDB Discover.
 
-1. Request six pages, yielding up to 120 recall candidates before exclusions.
+1. Request six pages for normal generation, yielding up to 120 recall
+   candidates before exclusions.
 2. Use the active Viewer Profile region and Spanish localization for display
    metadata.
 3. Set `include_adult = false` and `include_video = false`.
@@ -179,9 +189,12 @@ The pilot candidate source is TMDB Discover.
    popularity never contributes to P1 score, explanation or role assignment.
 6. Enrich candidates with the metadata and movie-level availability evidence
    required by this ADR.
+7. Under the accepted ADR-014 recovery policy, expand cumulatively to page 12
+   and then page 20 only when the accepted normal pool cannot fill the set.
 
-The six-page boundary is a pilot parameter, not a claim that titles outside the
-pool are ineligible or unsuitable.
+The six-page normal boundary and accepted twenty-page recovery boundary are
+pilot search-policy parameters, not claims that titles outside either pool are
+ineligible or unsuitable.
 
 Discover provider filters may reduce network work, but they are never final
 availability proof. A movie can enter the Decision Set only after movie-level
@@ -214,7 +227,7 @@ Exclude a movie when any of the following is true:
 - an informative calibration reaction proves it was watched;
 - Watchlist marks it watched;
 - another accepted viewing-history source marks it watched;
-- its ID is present in the active recommendation-cycle history;
+- its ID is in the current active set during a replacement request;
 - movie-level availability is `ineligible`;
 - movie-level availability is `unknown`.
 
@@ -229,6 +242,11 @@ failed, invalid or unverifiable regional evidence is `unknown` and fails closed.
 If only two candidates pass every gate and the credibility rule, return two. If
 none pass, return an honest empty Decision Set. Never relax watched,
 availability or credibility rules merely to reach three.
+
+Recent shown suppression is evaluated separately from permanent eligibility.
+ADR-014 permits an older shown title without explicit feedback to return only
+after never-shown candidates and progressive recall cannot fill the set. It
+never permits an active, watched, reacted, or `Not interested` title to return.
 
 ## P1 scoring model
 
@@ -442,11 +460,11 @@ Missing data must have deterministic, conservative behavior:
 The logical pipeline is:
 
 ```text
-Generate up to 120 recall candidates
+Generate the normal six-page recall pool
 ↓
 Deduplicate and enrich accepted metadata
 ↓
-Exclude known watched and current-cycle movies
+Exclude hard-ineligible, active, and recently suppressed movies
 ↓
 Compute P1 score and Watchlist intent
 ↓
@@ -465,7 +483,9 @@ Persist the Decision Set and cycle state
 
 An implementation may interleave enrichment and availability requests for
 efficiency, but observable results must match this logical pipeline for the same
-complete snapshot.
+complete snapshot. ADR-014 repeats this pipeline over cumulative expanded pages
+and progressively released recent suppression only when the prior stage cannot
+fill the set.
 
 ## Diversity and product roles
 
@@ -618,31 +638,38 @@ explain the current product state:
 - the reaction value and anchor identity required to validate named anchor
   evidence against the current trusted reaction snapshot;
 - provider verification time and verified matching providers;
-- recommendation-cycle identifier and shown movie IDs.
+- recommendation-cycle identifier, complete shown history, bounded ordered
+  recent suppression, suppression epoch, and typed exhaustion compatibility.
 
 Persist product evidence and identifiers, not framework-specific repository or
 TMDB response types.
 
-Every successfully persisted set appends its newly presented movie IDs to the
-cycle's shown history before Presentation publishes it. Replacing one movie
-after an eligibility change follows the same rule. An item removed by repair
-therefore cannot reappear later in the same cycle.
+Every successfully persisted set records its newly presented movie IDs in
+complete diagnostic history and moves them to the newest end of bounded recent
+suppression before Presentation publishes it. Replacing one movie after an
+eligibility change follows the same rule. Explicit feedback remains a hard
+exclusion after its ID ages out of recent suppression.
 
 `Give me three more`:
 
 1. regenerates under the same cycle identity and current mutable eligibility;
-2. excludes all movie IDs already shown in that cycle;
-3. appends newly selected IDs to the preserved history;
-4. persists the replacement set and updated cycle atomically.
+2. excludes the active set and full bounded recent window;
+3. executes normal recall, progressive expansion, and rollover in one action;
+4. preserves complete history and records newly selected IDs as recent;
+5. persists the replacement set and updated history atomically;
+6. publishes typed exhaustion rather than offering the same deterministic
+   operation again when no replacement exists; that suppression expires after
+   24 hours and then permits one new explicit complete strategy.
 
-The cycle resets when the engine model version, active profile or reactions,
-region, selected services, or explicit viewing context changes. A later
-explicit product action may also reset it; an app relaunch alone does not.
+The cycle identity changes when the engine model version, active profile or
+reactions, region, selected services, or explicit viewing context changes.
+Complete diagnostic history survives. `Reset preferences` starts a new recent-
+suppression epoch; an app relaunch alone does neither.
 
-Watchlist changes never reset the cycle. A newly watched movie invalidates its
-current recommendation and triggers deterministic repair. Saved or unsaved
+Watchlist changes never reset suppression. A newly watched movie invalidates
+its current recommendation and triggers deterministic repair. Saved or unsaved
 changes reevaluate the Watchlist bonus and explanation evidence and may repair
-or replace the current set. In every case the existing shown-ID history is
+or replace the current set. In every case complete shown-ID history is
 preserved.
 
 ### Accepted Milestone 7 input and cycle evolution
@@ -654,10 +681,10 @@ ADR-012 changes the owner and lifecycle of inputs without changing P1:
 - watched and `Not interested` are title eligibility exclusions;
 - `Not interested` never contributes affinity or similarity;
 - Watchlist intent remains the accepted saved-unwatched `+2` bonus;
-- a Movie-reaction change creates a new cycle identity but inherits every ID
-  shown by the preceding cycle;
+- a Movie-reaction change creates a new cycle identity, preserves complete
+  history and recent suppression, and reevaluates unaffected visible cards;
 - Watchlist, watched, and `Not interested` changes repair mutable eligibility
-  under the current cycle without clearing shown history;
+  under the current cycle without clearing complete or recent history;
 - when one atomic action changes reaction plus watched or Watchlist, the reaction
   change has precedence and produces one successor cycle rather than an
   eligibility repair followed by regeneration;
@@ -665,8 +692,9 @@ ADR-012 changes the owner and lifecycle of inputs without changing P1:
   coordinator rejects a result that is stale before publication.
 
 This scoped evolution supersedes the M6 implication that every reaction-
-signature change begins with empty shown history. Formula, thresholds,
-credibility, diversity, roles, and deterministic tie-breaking remain unchanged.
+signature change begins with empty shown history. ADR-014 further bounds which
+part of that history suppresses selection. Formula, thresholds, credibility,
+diversity, roles, and deterministic tie-breaking remain unchanged.
 
 ### Milestone 7 Decision Set envelope migration
 
@@ -762,8 +790,12 @@ Failure and honest emptiness are different product states.
   recommendations action.
 - Recommendation recovery must not mutate or delete Viewer Profile, Watchlist,
   or Search History state.
-- Exhausting credible eligible candidates produces a successful smaller or
-  empty Decision Set, not a transport or system error.
+- Exhausting credible eligible candidates only after the accepted progressive
+  search and rollover policy produces a successful typed smaller or empty
+  outcome, not a transport or system error. It is persisted and actionable and
+  cannot expose another known deterministic no-op refresh while fresh. Its
+  persisted completion time expires after 24 hours so later candidate or
+  availability changes can be checked explicitly.
 
 ## Architecture boundaries
 
@@ -855,15 +887,30 @@ verified:
 
 ### Repository and orchestration tests
 
-- exactly six Discover pages requested for a normal generation;
+- exactly six Discover pages requested when normal generation fills the set;
+- cumulative 6→12→20 recovery staging, deduplication, early empty-page stop,
+  cancellation, and no unnecessary later-stage requests;
 - deduplication by TMDB ID;
 - popularity absent from scoring and explanation inputs;
 - calibration and Watchlist watched exclusion;
 - `unknown` and `ineligible` availability excluded;
 - exact selected-provider `flatrate` verification;
-- current-cycle exclusion across repeated refresh and app relaunch;
+- active-set and 30-ID recent suppression across refresh and app relaunch;
+- complete shown history preservation with deterministic oldest-first rollover;
 - input-change invalidation and cycle reset;
-- Watchlist save/watched repair preserving cycle identity and shown history;
+- Watchlist save/watched repair preserving cycle identity and both history
+  representations;
+- reaction reconciliation retaining every unaffected recommendation whose
+  rebuilt evidence remains eligible, credible, and explainable;
+- persisted smaller/zero exhaustion and invalidation after a relevant input,
+  epoch, search-policy change, or exact 24-hour expiry;
+- injected-clock exhaustion tests immediately before, at, and after the
+  boundary, including no timestamp advancement after failure or cancellation;
+- physical-device diagnostics for a twenty-page run recording request counts,
+  concurrency, cache condition, time to first usable set, and total duration
+  without movie or Viewer data;
+- Viewer State and Decision Set v2-to-v3 migration, including the sanitized
+  blocked-installation fixture;
 - valid v1-to-v2 migration preserves exact legacy bytes and every shown ID,
   never publishes a v1 recommendation as current, and persists the current
   Viewer State snapshot identity only after regeneration;

@@ -12,7 +12,7 @@ It contains only work that remains pending after Milestone 3.3. Completed work
 should remain in this file with its status changed to `Completed` and a link to
 the implementing PR or milestone.
 
-Last reviewed: 2026-08-31, during Milestone 7 PR10 integration and closure.
+Last reviewed: 2026-09-01, during Milestone 7 P0 reopening and corrective D0.
 
 ## Product Direction
 
@@ -35,6 +35,8 @@ Statuses:
 - `Accepted — Engineering Ready`: executable milestone and architecture are
   approved; implementation may start after its documentation gate merges
 - `In Progress`: implementation has started
+- `Reopened`: merged work failed an acceptance gate and requires an approved
+  correction before completion
 - `Pilot Validation`: implemented but awaiting real-user validation
 - `Completed`: merged and validated
 - `Deferred`: intentionally outside the current product stage
@@ -229,7 +231,7 @@ Priorities:
 
 ### IMP-004 — Add continuous taste learning and unified movie state
 
-- Status: `Pilot Validation — final approval pending`
+- Status: `Reopened — P0 correction accepted; implementation pending`
 - Priority: `P0`
 - Roadmap relationship: Milestone 7
 - Accepted specification:
@@ -247,8 +249,8 @@ Priorities:
   - add rating, watched, Watchlist, and `Not interested` controls to Detail
   - expose ratings, watched-only movies, and `Not interested` through the
     accepted `My movies` Settings history
-  - regenerate Home after reaction changes, inherit shown IDs, repair mutable
-    eligibility, and reject stale snapshot identities
+  - regenerate Home after reaction changes, preserve complete shown history,
+    repair mutable eligibility, and reject stale snapshot identities
   - migrate and recover profile and Watchlist state without fabricating empty
     data or losing Search History
   - migrate valid Decision Set v1 data to v2 without publishing legacy
@@ -260,10 +262,13 @@ Priorities:
 - Progress:
   - PR1–PR9 merged as PRs #33–#42
   - PR4 migration passed physical validation on the Product Owner's iPhone
-  - PR10 (#43) adds composed final-M6 upgrade/relaunch coverage and extends the
-    UI smoke across Home feedback and recalibration
-  - final approval requires PR10 CI plus the remaining Product Owner device and
-    enriched household utility confirmation
+  - PR10 (#43) merged on `2026-08-31` with composed final-M6 upgrade/relaunch
+    coverage and an extended UI smoke
+  - final physical validation then exposed permanent Home exhaustion after
+    prolonged normal feedback: 93 shown IDs, 47 watched IDs, an empty Decision
+    Set, deterministic empty refresh, and no recovery after preference reset
+  - Milestone 7 is reopened; IMP-025 and a new integration/closure PR are
+    required before final approval
 - Done when:
   - Detail, Watchlist, calibration, Settings history, and Home agree for every
     movie state
@@ -274,10 +279,63 @@ Priorities:
     personalized set
   - installed pilot state survives migration and all-source failure requires
     explicit destructive recovery
+  - bounded recent suppression and progressive recovery prevent normal feedback
+    from trapping Home permanently
+  - quick feedback is available directly from every Home recommendation card
+
+### IMP-025 — Recover exhausted Home and add direct feedback
+
+- Status: `Accepted — Engineering Ready after D0 merges`
+- Priority: `P0`
+- Roadmap relationship: reopened Milestone 7
+- Correction specification:
+  [`Milestone 7 P0 — Home Exhaustion Recovery`](../milestones/milestone-7-p0-home-exhaustion-recovery.md)
+- Accepted architecture:
+  [`ADR-014 — Bounded Recommendation Suppression and Exhaustion Recovery`](../decisions/adr-014-bounded-recommendation-suppression-and-recovery.md)
+- Why:
+  final physical validation proved that treating every shown title as a
+  permanent exclusion can exhaust the finite recall pool. The same policy makes
+  `Give me three more` a deterministic no-op and survives preference reset.
+  Requiring Detail navigation for every correction also creates excessive
+  feedback friction.
+- Accepted product direction:
+  - preserve watched, reactions, and `Not interested` as permanent exclusions
+  - preserve complete shown history for diagnosis while only recent history
+    temporarily suppresses otherwise eligible titles
+  - prioritize never-shown titles, expand recall, then roll over older shown
+    titles without explicit feedback
+  - retain unaffected eligible and credible cards after a reaction and repair
+    only the affected card for watched or `Not interested` when possible
+  - make honest exhaustion explainable, actionable, and non-repeating
+  - expire unchanged exhaustion after 24 hours so later TMDB catalog or
+    availability changes can be discovered
+  - expose the four reactions, `Already watched`, and `Not interested` directly
+    from Home cards
+- Accepted D0 contract:
+  - exact 30-title recent window
+  - 6→12→20 page expansion and three-ID oldest-first rollover
+  - terminal copy plus `Review My movies` and `Review streaming services`
+  - exact 24-hour exhaustion freshness and restored refresh behavior
+  - trailing per-card quick-feedback menu
+  - Viewer State v3 and Decision Set v3 migration for normal and blocked v2
+    installations
+  - privacy-safe physical-device request and latency evidence for the full
+    twenty-page path
+- Done when:
+  - D0 and corrective slices P0-1 through P0-4 are merged sequentially
+  - a sanitized prolonged-feedback/relaunch regression cannot reproduce the
+    deterministic empty loop
+  - P0-4 records exact request counts, maximum concurrency, cache/network
+    conditions, time to first usable set, and total duration for a physical
+    twenty-page run; Technical Lead and Product Owner accept the observed wait
+  - the untouched blocked iPhone installation migrates and recovers without
+    losing explicit feedback, profile, Watchlist, Search History, or complete
+    diagnostic history
+  - the repeated household utility checkpoint approves M7
 
 ### IMP-022 — Deliver a remotely updateable calibration catalog
 
-- Status: `Pilot Validation — final approval pending`
+- Status: `Pilot Validation — remote capability passed; M7 P0 closure pending`
 - Priority: `P0`
 - Roadmap relationship: Milestone 7
 - Accepted architecture:
@@ -299,8 +357,10 @@ Priorities:
   - the configured read-only pilot endpoint is operational
   - remote, cache, bundled fallback, cancellation, validation, exact freeze,
     and relaunch paths have automated coverage
-  - final approval requires PR10 CI and Product Owner confirmation on the final
-    build
+  - online/offline physical validation passed before the unrelated Home
+    exhaustion defect reopened M7
+  - final milestone approval now requires P0-4 regression and preserved-device
+    validation; the catalog capability itself is not being redesigned
 - Done when:
   - a valid remote catalog can update a later flow without an app release
   - cached and bundled flows work offline
@@ -637,18 +697,20 @@ the added complexity.
 
 ## Suggested Sequence
 
-1. Merge the accepted Milestone 7 D0 specification, glossary, ADR-012, and
-   ADR-013.
-2. Implement Milestone 7 through its eleven small, sequential PR slices for
-   pure state, storage/migration, production cutover, Decision Set v2 migration,
-   human-readable recommendation evidence, Home, Detail, `My movies`, remote
-   catalog, calibration integration, and closure.
-3. Repeat the household utility checkpoint with continuous taste learning.
-4. Define explicit decision outcomes, trailers, and the minimum pilot
+1. Review and merge the Milestone 7 corrective D0, including ADR-014 and the
+   exact suppression, progressive recall, rollover, terminal-state,
+   quick-feedback, and v2-to-v3 migration policy.
+2. Implement corrective slices P0-1 through P0-3 sequentially from current
+   `develop`.
+3. Deliver P0-4 as a new integration and closure PR, install it over the
+   preserved blocked iPhone state, and repeat the full M7 physical validation.
+4. Repeat the household utility checkpoint with continuous taste learning and
+   approve M7 before beginning M8.
+5. Define explicit decision outcomes, trailers, and the minimum pilot
    measurement contract from observed use.
-5. Introduce a backend or AI provider only if product validation demonstrates
+6. Introduce a backend or AI provider only if product validation demonstrates
    a need that deterministic recommendation cannot meet.
-6. Complete distribution, accessibility, and persistence hardening as the
+7. Complete distribution, accessibility, and persistence hardening as the
    audience expands.
 
 ## Update Rules

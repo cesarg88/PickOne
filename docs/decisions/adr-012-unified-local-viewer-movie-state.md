@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted — implemented; final Milestone 7 approval pending
+Accepted baseline — implemented; ADR-014 reset-epoch amendment accepted
 
 The Product Owner accepted the product transitions and the general architecture
 on 2026-08-19 and accepted `My movies` as the final history label on
@@ -10,10 +10,11 @@ on 2026-08-19 and accepted `My movies` as the final history label on
 were accepted with the final Milestone 7 D0 specification after Milestone 6
 merged.
 
-Milestone 7 PR1 through PR9 implement this decision. PR10 (#43) adds the
-composed M6-to-M7 upgrade and relaunch evidence and closes the remaining
-documentation; final milestone approval still requires the final-SHA CI and
-Product Owner device gates.
+Milestone 7 PR1 through PR10 implement the original decision. Final physical
+validation reopened the milestone on 2026-09-01. ADR-014 proposes a v3
+`recommendationSuppressionEpochID` owned by this aggregate so `Reset
+preferences` can clear recent recommendation suppression atomically without
+deleting watched, Watchlist, Search History, or complete shown history.
 
 ## Context
 
@@ -167,9 +168,11 @@ Impact precedence is:
 
 Therefore assigning a rating to a saved unwatched movie is `tasteChanged`, even
 though the same transition also marks it watched and removes Watchlist intent.
-It starts a successor recommendation cycle and inherits every shown movie ID.
-The lower-priority effects are still persisted atomically; they do not trigger a
-second repair or permit the old cycle to publish.
+It starts a successor recommendation cycle, preserves complete diagnostic
+history and the bounded recent-suppression window, and reevaluates the other
+visible cards under the new Taste Profile. The lower-priority effects are still
+persisted atomically; they do not trigger a second repair or permit the old
+cycle to publish.
 
 ### Calibration semantics
 
@@ -204,7 +207,10 @@ Normal `Reset preferences`:
 - preserves watched facts;
 - preserves Watchlist intent;
 - removes the Viewer Profile and draft under its existing confirmed flow;
-- does not delete Search History.
+- does not delete Search History;
+- under accepted ADR-014, assigns a fresh recommendation-suppression epoch in
+  the same Viewer State transaction so recent suppression resets while complete
+  shown history remains in Decision Set storage.
 
 Removing reactions does not make their movies unwatched.
 
