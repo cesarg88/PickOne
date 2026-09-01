@@ -45,12 +45,18 @@ jobs:
       - name: Format and lint
         run: pre-commit run --all-files --show-diff-on-failure
 
+      - name: Prepare iOS simulator
+        id: simulator
+        run: |
+          simulator_udid="$(Scripts/prepare-ci-simulator.sh)"
+          echo "udid=$simulator_udid" >> "$GITHUB_OUTPUT"
+
       - name: Test
         run: |
           xcodebuild test \
             -project PickOne.xcodeproj \
             -scheme PickOne \
-            -destination 'platform=iOS Simulator,name=iPhone 17 Pro,OS=latest' \
+            -destination 'platform=iOS Simulator,id=${{ steps.simulator.outputs.udid }}' \
             -parallel-testing-enabled NO \
             -derivedDataPath "$RUNNER_TEMP/PickOneTests" \
             CODE_SIGNING_ALLOWED=NO
