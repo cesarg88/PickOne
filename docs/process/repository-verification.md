@@ -31,6 +31,11 @@ SwiftFormat and SwiftLint environments declared in `.pre-commit-config.yaml`.
 - `make build-release` builds and inspects the unsigned Release application.
 - `make verify` runs the complete local delivery gate.
 
+GitHub Actions initializes CoreSimulator with
+`Scripts/prepare-ci-simulator.sh`, resolves the iOS runtime matching the active
+Xcode SDK, and targets the resulting booted device by identifier. This avoids
+depending on an intermittently missing hosted-runner device registration.
+
 PickOne deliberately checks the complete repository rather than only changed
 Swift files. The codebase is small enough that full checks are fast and avoid
 different local, branch, and CI scopes.
