@@ -2,17 +2,20 @@
 
 ## Status
 
-`Implementation complete — final approval pending`
+`Reopened — P0 Home exhaustion correction proposed; final approval blocked`
 
 - Product direction accepted: `2026-08-19`
 - `My movies` label accepted: `2026-08-24`
 - Final D0 product and engineering acceptance: `2026-08-24`
 - D0 and PR1 through PR9 merged as PRs #32–#42
 - PR4 physical migration validation passed on the Product Owner's iPhone
-- PR10 (#43) contains final composed upgrade/E2E coverage and documentary
-  closure
-- Final approval requires green CI and the remaining Product Owner physical-
-  device and enriched household utility confirmation on the final PR10 SHA
+- PR10 (#43) merged on `2026-08-31` as merge commit `546c24e`
+- Final physical validation on `2026-09-01` found a reproducible P0 exhaustion
+  defect; M7 is formally reopened and M8 must not begin
+- Corrective D0 and three implementation slices are specified in
+  [Milestone 7 P0 — Home Exhaustion Recovery](milestone-7-p0-home-exhaustion-recovery.md)
+- A new integration-and-closure PR plus physical validation on the preserved
+  blocked installation are required for final approval
 - Dependency satisfied: Milestone 6 and its explanation correction are merged
   into `develop`.
 
@@ -26,6 +29,8 @@
   [ADR-013 — Remote Calibration Catalog with Frozen Local Fallback](../decisions/adr-013-remote-calibration-catalog.md)
 - Decision Engine architecture:
   [ADR-011 — Deterministic Decision Engine v1](../decisions/adr-011-deterministic-decision-engine-v1.md)
+- P0 history and recovery architecture proposal:
+  [ADR-014 — Bounded Recommendation Suppression and Exhaustion Recovery](../decisions/adr-014-bounded-recommendation-suppression-and-recovery.md)
 - Product language:
   [Product Language Glossary](../product/product-language-glossary.md)
 - Product authority: [`PRODUCT.md`](../../PRODUCT.md)
@@ -38,8 +43,7 @@ migration, catalog, and Decision Engine boundaries.
 
 ## Completion record
 
-- Delivery: D0 and PR1 through PR9 merged as PRs #32–#42; PR10 (#43) is the
-  final integration and closure slice.
+- Delivery: original D0 and PR1 through PR10 merged as PRs #32–#43.
 - Product result: one recoverable Viewer Movie State now drives Detail,
   Watchlist, `My movies`, calibration, Taste Profile, and Home reconciliation;
   the calibration catalog resolves remote, cache, then bundled and freezes the
@@ -61,6 +65,13 @@ migration, catalog, and Decision Engine boundaries.
   application data. The remaining final-SHA functional checklist and enriched
   household utility checkpoint are external approval gates and are not
   inferred from simulator automation.
+- Reopening evidence: the retained pilot installation reached a persisted
+  zero-result Home after normal feedback. Read-only inspection found 93 shown
+  IDs, 47 watched IDs, 113 IDs in their union, and an empty current Decision
+  Set. Repeated refresh and preference reset could not recover because every
+  cycle inherited permanent shown exclusion inside a six-page recall boundary.
+  This invalidates the original closure claim without invalidating the prior
+  migration, feedback, catalog, or automated evidence.
 
 ## Goal
 
@@ -88,8 +99,10 @@ After Milestone 7:
   disliked its genres;
 - Settings exposes one history of ratings, watched-only movies, and `Not
   interested` titles, with Movie Detail as the single editing surface;
-- Home reflects successful changes immediately and does not repeat previously
-  shown titles after a Taste Profile regeneration;
+- Home reflects successful changes immediately, suppresses recent repetition,
+  and can deliberately recover older shown titles that have no explicit
+  feedback after never-shown and expanded recall are insufficient;
+- Home offers quick explicit feedback from each recommendation card;
 - onboarding and recalibration use a remotely manageable catalog when valid,
   with at most two visible seconds before cached or bundled fallback;
 - existing household pilot data survives installation and migration.
@@ -112,7 +125,7 @@ This changes explanation admission and validation, not the P1 scoring formula.
 The correction was implemented and merged with Milestone 6. Milestone 7 does
 not modify it.
 
-### D0 gate — satisfied
+### Original D0 gate — satisfied
 
 Milestone 6 is merged, the documentation branch is rebased onto its resulting
 `develop`, completion records preserve the explanation correction, and this
@@ -134,7 +147,10 @@ the merge of this documentation-only D0 branch.
 - deterministic, cancellable, all-or-nothing Taste Profile hydration;
 - stable title exclusion for `Not interested`;
 - immediate Home repair or regeneration after state changes;
-- shown-history inheritance across reaction-driven cycle changes;
+- complete shown-history preservation plus bounded recent suppression across
+  reaction-driven cycle changes;
+- progressive recall, deterministic rollover, and typed exhausted outcomes;
+- quick explicit feedback from every Home recommendation card;
 - remote calibration catalog, explicit cache, bundled fallback, and frozen
   drafts;
 - full automated, CI, upgrade, and physical-device validation;
@@ -229,6 +245,8 @@ The existing confirmed `Reset preferences` action:
 - preserves Watchlist intent;
 - removes active profile and calibration draft;
 - preserves Search History;
+- starts a fresh recommendation-suppression epoch while preserving complete
+  diagnostic shown history;
 - returns the application to first onboarding.
 
 The destructive recovery reset is a different action with broader copy and is
@@ -493,21 +511,37 @@ existing coordinator must not gain another large responsibility: trusted-state
 loading, change classification, and reaction-driven cycle transition are
 extracted behind focused Domain collaborators as part of the integration PR.
 
-### Repair and regeneration
+### Repair, regeneration, and exhaustion recovery
 
 - Watchlist, watched, and `Not interested` changes repair current eligibility
-  without changing cycle identity and without erasing shown IDs.
-- A Movie-reaction change regenerates under a new cycle identity because the
-  Taste Profile changed.
+  without changing cycle identity and without erasing complete shown history.
+- A Movie-reaction change derives a new Taste Profile and cycle identity.
 - If one atomic action changes a Movie reaction plus watched or Watchlist, the
   taste change has precedence and produces only the new-cycle path; it never
   first publishes an eligibility repair.
-- The new cycle inherits every TMDB movie ID shown by its predecessor.
-- A reaction or `Not interested` applied to a current recommendation removes it
-  and obtains a replacement when a credible eligible title exists.
-- Other valid recommendations may remain only when their evidence is still
-  valid under the new snapshot; stale explanation evidence is never retained.
+- The new cycle preserves complete diagnostic history and carries the bounded
+  recent-suppression policy defined by ADR-014.
+- A reaction applied to a current recommendation removes that title, rebuilds
+  the other visible titles against the new Taste Profile, retains those that
+  remain eligible, credible, and explainable, and fills only missing slots.
+- Watched and `Not interested` are title-local repairs that normally replace
+  only the affected card. `Not interested` never changes Taste Profile.
+- Every replacement first prioritizes never-shown titles, then expands recall,
+  then releases the oldest non-active recent suppression in the accepted
+  deterministic increments. Active cards never repeat.
+- A successful one- or two-title result and a successful zero-title exhausted
+  outcome are distinct from failure and are persisted against the exact trusted
+  inputs and search policy. Home never repeats an operation already known to
+  produce the same empty result.
+- Other valid recommendations may remain only when their evidence is rebuilt
+  and valid under the new snapshot; stale explanation evidence is never
+  retained.
 - Failure retains only a snapshot Domain still proves safe and exposes Retry.
+
+The exact recent window, recall stages, rollover, v2-to-v3 migration, terminal
+copy, and quick-feedback interaction are proposed together in ADR-014 and the
+P0 correction specification. They are not implementation-ready until D0 is
+accepted and merged.
 
 ### Presentation feedback
 
@@ -519,6 +553,12 @@ copy:
 It must not block interaction, claim that every recommendation changed, or
 appear before the new Decision Set has been safely persisted and published.
 No animation system or progress redesign is introduced.
+
+Every Home recommendation also exposes the accepted P0 quick-feedback menu as
+a separate trailing control. It offers the four reactions, `Already watched`,
+and `Not interested` without requiring Detail navigation. Mutation progress is
+local to that card; failure preserves the card and offers retry. Movie Detail
+and `My movies` remain the surfaces for undo and full editing.
 
 ## Movie Detail
 
@@ -656,6 +696,9 @@ authorization.
 - feedback mutation failure never triggers Home reconciliation;
 - Home generation failure after a feedback change retains only proven-safe
   content and offers Retry;
+- a fully evaluated zero-result outcome is typed exhaustion, not a transient
+  failure, and exposes the accepted recovery navigation instead of Retry or an
+  endlessly repeatable refresh;
 - incomplete current-reaction hydration is a retryable input failure and never
   becomes a partial Taste Profile;
 - cancellation is not presented as an error;
@@ -707,6 +750,9 @@ change requires repair or taste regeneration.
 - no failure becomes a fabricated empty collection.
 - destructive reset appears only after every recovery source fails.
 - normal `Reset preferences` preserves watched and Watchlist.
+- normal `Reset preferences` starts a new suppression epoch, clears recent
+  suppression and compatible exhausted state, and preserves complete shown
+  history.
 - successful older-snapshot recovery shows the accepted non-blocking Settings
   review notice.
 - successful previous-copy recovery receives a new snapshot identity that has
@@ -740,9 +786,19 @@ change requires repair or taste regeneration.
 - a result built from a stale snapshot identity cannot be accepted as current or
   published; a write raced by newer state is semantically unusable and triggers
   regeneration.
-- reaction changes inherit prior shown IDs under the new signature.
-- eligibility changes repair without clearing cycle history.
-- current feedback removes and replaces a recommendation when possible.
+- reaction changes preserve complete history, retain only recomputed valid
+  unaffected cards, and fill missing slots under the new signature.
+- eligibility changes repair the affected card without clearing diagnostic or
+  recent history.
+- active cards never repeat; recent suppression is bounded and older shown
+  titles without explicit feedback become eligible only through accepted
+  rollover.
+- normal, expanded, and rollover recall execute deterministically in one user
+  operation and never relax explicit feedback, availability, or credibility.
+- a partial or zero exhausted outcome is explainable, actionable, and not
+  silently recomputed until relevant inputs or policy change.
+- `Reset preferences` permits a new generation without deleting watched,
+  Watchlist, Search History, or complete shown history.
 - Home shows `Recommendations updated.` only after a successful publication.
 
 ### Catalog
@@ -817,7 +873,8 @@ change requires repair or taste regeneration.
   proven-safe prior set;
 - all four reactions retain P1 values;
 - `Not interested` is absent from Taste evidence;
-- reaction-driven signature transition inherits shown history;
+- reaction-driven signature transition preserves complete and recent history
+  while retaining only recomputed valid visible cards;
 - Watchlist/watched/`Not interested` repairs preserve cycle identity;
 - multi-field reaction transitions take the new-cycle path exactly once;
 - semantic no-op transitions never invoke repair, regeneration, persistence, or
@@ -836,6 +893,13 @@ change requires repair or taste regeneration.
   anchor and affinity copy from named Taste Profile metadata;
 - restored or generated explanations never render `genre <id>` or another
   internal numeric fallback.
+- recent suppression stays ordered, unique, and within its accepted bound;
+- progressive 6→12→20 recall, never-shown priority, three-ID oldest-first
+  rollover, partial results, and typed exhaustion are deterministic;
+- the sanitized 93-shown/47-watched blocked-installation fixture migrates and
+  recovers without losing any explicit exclusion or complete history;
+- a prolonged mixed-feedback and relaunch sequence cannot enter a repeated
+  deterministic empty loop.
 
 ### Presentation
 
@@ -846,6 +910,10 @@ change requires repair or taste regeneration.
 - navigation Settings → My movies → Detail;
 - one successful change triggers one Home update;
 - `Recommendations updated.` timing and dismissal;
+- Home quick-feedback menu content, accessibility, per-card progress, mutation
+  success, failure, retry, and separate Detail navigation hit target;
+- partial and zero exhausted copy, recovery navigation, and absence of a known
+  deterministic no-op refresh;
 - existing availability, Watchlist, Similar Movies, and nested Detail routes
   remain operational.
 - PR7 moves watched rows from the Watchlist compatibility projection to `My
@@ -868,9 +936,13 @@ Every implementation PR runs focused tests and `make verify` before handoff.
 
 ## Required physical-device validation
 
-On the Product Owner's iPhone:
+On the Product Owner's preserved blocked iPhone installation:
 
-- install over the final M6 build;
+- install the final correction over the existing PR #43 build without
+  reinstalling or clearing application data;
+- verify the v2-to-v3 migration recovers Home automatically while preserving
+  profile, services, Watchlist, Search History, watched, reactions, `Not
+  interested`, and complete shown history;
 - verify profile, services, Watchlist, watched, and Search History survive
   migration, and Home completes v2 reconciliation without publishing a legacy
   v1 recommendation or repeating a trusted shown title;
@@ -882,8 +954,14 @@ On the Product Owner's iPhone:
 - mark it unwatched and confirm Watchlist is not restored;
 - confirm Watchlist shows future intent only and migrated watched rows appear
   in `My movies`;
-- verify current Home recommendations repair or regenerate and do not repeat a
-  previously shown title;
+- verify current Home recommendations prioritize never-shown titles, never
+  repeat an active card, and reuse only older shown titles without explicit
+  feedback after the accepted rollover boundary;
+- use every quick-feedback action directly from Home;
+- verify a reaction normally preserves the other valid cards and watched or
+  `Not interested` normally replaces only the affected card;
+- exercise repeated refresh and confirm Home either returns a usable set or one
+  accepted actionable exhausted state without looping;
 - verify every recommendation reason uses readable genre names and never shows
   a numeric genre identifier;
 - verify `Recommendations updated.` appears only after success;
@@ -897,11 +975,11 @@ On the Product Owner's iPhone:
   `My movies` order, Home content, and Home feedback remain unchanged.
 - repeat the household utility checkpoint with the enriched Taste Profile.
 
-The PR4 upgrade passed physical migration validation on the Product Owner's
-iPhone. PR10 final approval still requires the Product Owner to complete or
-confirm the remaining checklist on the reviewed final SHA, including the
-qualitative household utility checkpoint; automated and simulator evidence do
-not substitute for that confirmation.
+PR4 and PR10 supplied valid historical migration evidence. PR10's later final
+physical run exposed the P0 exhaustion, so M7 approval now requires the new
+P0-4 integration build to pass this entire checklist on the preserved blocked
+installation plus the qualitative household utility checkpoint. Automated and
+simulator evidence do not substitute for that confirmation.
 
 ## Delivery slices
 
@@ -1032,29 +1110,74 @@ Deliver final upgrade and end-to-end coverage, documentation completion record,
 roadmap/backlog/debt closure, `make verify`, green CI, physical-device evidence,
 and enriched household utility checkpoint. Exclude deferred product features.
 
+PR10 merged as PR #43 on `2026-08-31`. Its final device validation exposed the
+P0 Home exhaustion defect and invalidated milestone closure. It remains useful
+historical evidence and is not reverted.
+
+### Corrective D0 — P0 exhaustion recovery
+
+Dependencies: current `develop` at merge commit `546c24e`.
+
+Deliver ADR-014, the executable P0 correction specification, and reconciliation
+of this milestone, PRODUCT, ADR-011, ADR-012, glossary, roadmap, and backlog.
+Documentation only. Acceptance and merge authorize corrective P0-1.
+
+### P0-1 — v3 history, epoch, and migration
+
+Dependencies: accepted corrective D0.
+
+Deliver bounded recent history, complete diagnostic history, the suppression
+epoch, typed exhausted outcome, Viewer State and Decision Set v3 schemas,
+v2-to-v3 migrations, exact-byte preservation, and focused tests. Do not change
+visible Home behavior yet.
+
+### P0-2 — Progressive recovery and stable reconciliation
+
+Dependencies: P0-1.
+
+Deliver staged recall, never-shown priority, deterministic rollover, stable
+reaction reconciliation, title-local eligibility repair, preference-reset
+epoch handling, terminal Home behavior, and focused tests. Exclude quick
+feedback controls.
+
+### P0-3 — Home quick feedback
+
+Dependencies: P0-2.
+
+Deliver the accessible per-card feedback menu, local mutation progress,
+retryable failure, the existing Viewer Movie State transition handoff, and UI
+coverage. Do not introduce another feedback model.
+
+### P0-4 — New integration and final closure
+
+Dependencies: P0-3.
+
+Deliver the sanitized prolonged-feedback regression, complete upgrade and
+relaunch coverage, documentation closure, repository verification, CI evidence,
+and physical installation over the preserved blocked pilot state. M7 and its
+utility checkpoint can close only in this new PR.
+
 ## Dependency graph
 
 ```text
-M6 closure
+Original M7 PR1–PR10 merged, ending at PR #43 / 546c24e
   ↓
-D0 specification
+Corrective D0 specification
   ↓
-PR1 pure state
+P0-1 v3 history, epoch, and migration
   ↓
-PR2 persistence and migration
+P0-2 progressive recovery and stable reconciliation
   ↓
-PR3 local-state cutover
-  ├──→ PR4 Decision Set v2 → PR4.5 readable evidence → PR5 Decision Engine
-  │                                                    ↓
-  │                                             PR6 Detail → PR7 My movies
-  └──→ PR8 remote catalog ────────────────────────────────────────┐
-PR7 + PR8 ───────────────────────────────────────────────────→ PR9 calibration
-PR9 ─────────────────────────────────────────────────────────→ PR10 closure
+P0-3 Home quick feedback
+  ↓
+P0-4 integration, preserved-device validation, and final M7 closure
+  ↓
+M8 may begin
 ```
 
-The documented delivery order remains PR1 through PR10 sequentially even where
-the dependency graph admits parallel work. This minimizes conflicts in
-composition, profile persistence, and shared test fixtures.
+Corrective slices are sequential and each branches from current `develop` only
+after its dependency merges. The narrower order protects shared persistence,
+coordinator, Home, and migration fixtures.
 
 ## Physical-module decision
 
@@ -1084,9 +1207,14 @@ separate ADR and PR.
   non-reusable state snapshot identity before persistence and publication.
 - **Recovered numeric revision revives old recommendations:** use an opaque fresh
   identity for every recovery publication and compare only for equality.
-- **Decision Set migration repeats titles:** preserve every trusted v1 shown ID,
-  regenerate before v2 publication, and never partially recover invalid bytes.
-- **Reaction change allows repeats:** inherit every shown ID into the new cycle.
+- **Decision Set migration repeats active or recent titles:** preserve complete
+  history, seed only trustworthy v2 recency, and exclude the active set plus
+  bounded recent window.
+- **Permanent shown exclusion exhausts recall:** separate diagnostic history
+  from bounded suppression, expand recall, and deterministically roll over only
+  older shown titles without explicit feedback.
+- **Reaction refresh destabilizes every card:** rebuild evidence but retain
+  unaffected titles that remain eligible, credible, and explainable.
 - **Async hydration changes deterministic output:** bound work to four child
   tasks, retain sorted indices, and assemble only the complete ordered result.
 - **Missing genre labels expose TMDB internals:** resolve names from trusted
@@ -1105,12 +1233,13 @@ separate ADR and PR.
 
 ## Final approval record
 
-There are no unresolved Milestone 7 product, architecture, migration,
-concurrency, or test-strategy decisions. D0 and PR1 through PR9 are merged;
-PR10 (#43) contains the composed upgrade/E2E coverage and documentary closure.
+The original Milestone 7 implementation merged through PR #43, but the final
+physical run invalidated its approval by reproducing the P0 Home exhaustion.
+Milestone 7 is formally reopened and Milestone 8 is blocked.
 
-The configured read-only HTTPS pilot endpoint is operational and the complete
-client/fallback/frozen-snapshot path is implemented without credentials or
-hosting details entering Domain or Presentation. Final milestone approval and
-merge remain gated on PR10's CI plus the Product Owner's remaining physical-
-device and enriched household utility confirmation.
+The product direction for recovery is accepted. The exact 30-title window,
+6→12→20 recall stages, three-title rollover increment, terminal copy/actions,
+quick-feedback menu, and v2-to-v3 migration remain the explicit corrective D0
+approval gate. After D0 merges, P0-1 through P0-4 execute sequentially. Final
+approval requires P0-4 validation over the untouched blocked installation and
+the repeated household utility checkpoint.

@@ -3,7 +3,7 @@
 ## Document Status
 
 - Status: `Canonical`
-- Last product review: `2026-08-31`
+- Last product review: `2026-09-01`
 - Product name: `PickOne` is a codename until the decision experience is
   validated.
 
@@ -401,17 +401,31 @@ The set changes when:
 Provide a visible action such as `Give me three more`. Pull to refresh may exist
 as a secondary shortcut, but it must not be the only way to request a new set.
 
-Avoid immediate repeats from the active set, dismissed movies, and already
-watched movies unless the user explicitly asks for them.
+The active set cannot repeat as the result of a replacement request. Watched,
+Movie reactions, and `Not interested` are permanent title exclusions unless the
+Viewer explicitly edits that state. Exact availability and credibility remain
+non-negotiable.
 
 The recommendation cycle is identified by the engine version, current Movie
 reactions, region, selected services, and explicit viewing context. A Movie-
 reaction change creates a new cycle identity because it changes the derived
-Taste Profile, but the new cycle inherits every movie ID already shown by the
-preceding cycle. Watchlist, watched, and `Not interested` changes update mutable
-eligibility and repair the set without clearing its history. Therefore neither
-a taste update nor an eligibility correction can make an earlier
-recommendation repeat.
+Taste Profile. Complete shown history is retained for diagnosis, but previously
+shown without feedback is not a permanent exclusion. Only a bounded recent
+window suppresses otherwise valid titles; older titles outside that window may
+return after never-shown candidates and progressive recall are exhausted.
+
+Watchlist, watched, and `Not interested` changes update mutable eligibility and
+repair the set without deleting complete history. Watched, reactions, and `Not
+interested` never become rollover candidates. `Give me three more` must execute
+one real progressive recovery strategy rather than repeat an unchanged
+deterministic empty operation.
+
+A reaction recalculates Taste Profile and rebuilds evidence, but it should
+retain other visible titles that remain eligible, credible, and explainable.
+Watched and `Not interested` normally replace only the affected title. A
+smaller or zero set is honest only after the complete accepted strategy; an
+exhausted state is explained and offers actions that can change the underlying
+inputs instead of another known no-op refresh.
 
 If the stored recommendation envelope is corrupt or incompatible, PickOne
 preserves the unread bytes for diagnosis and attempts to generate and persist a
@@ -460,9 +474,17 @@ silently restored later. PickOne must not interpret a detail open, trailer
 play, or passive impression as watched or as feedback.
 
 Changing a Movie reaction recalculates the Taste Profile and regenerates Home
-from the latest state snapshot identity while inheriting prior cycle history. Home
+from the latest state snapshot identity while preserving complete diagnostic
+history. Other visible recommendations remain when their evidence can be
+rebuilt as eligible, credible, and explainable under the new snapshot. Home
 communicates a successful update discreetly. A stale generation can never
 replace a result built from newer Viewer Movie State.
+
+Every Home recommendation exposes lightweight explicit feedback without
+requiring navigation to Movie Detail: the four Movie reactions, `Already
+watched` without a reaction, and `Not interested`. Movie Detail and `My movies`
+remain the full editing surfaces. Passive card impressions and navigation never
+become feedback.
 
 Explicit decision-outcome actions such as `Watch this`, `Not tonight`, and a
 later viewing confirmation remain future work. They are not prerequisites for
@@ -667,8 +689,12 @@ The current application already provides:
 Milestone 6 is complete. The Milestone 7 implementation baseline now includes
 Unified Viewer Movie State, continuous reactions and Taste Profile updates,
 Home reconciliation, `My movies`, and remote/cached/bundled frozen calibration
-catalog resolution. Final Milestone 7 approval remains subject to the recorded
-PR10 CI, physical-device, and household utility gates.
+catalog resolution. Final physical validation found a P0 exhaustion defect, so
+Milestone 7 is reopened and Milestone 8 remains blocked. The accepted product
+correction preserves explicit feedback and complete shown history while making
+recent repeat suppression bounded, recoverable, and directly operable from
+Home. Its exact D0 policy is proposed in
+[Milestone 7 P0 — Home Exhaustion Recovery](docs/milestones/milestone-7-p0-home-exhaustion-recovery.md).
 
 Explicit decision outcomes such as `Watch this` and `Not tonight`, later
 viewing confirmation, and trailer presentation remain future product work.
@@ -829,15 +855,18 @@ As of the last review:
 - Viewer Movie State transitions clear conflicting intent according to
   Milestone 7 without restoring it later: rating or watched removes Watchlist,
   unwatching removes a rating, and saving to Watchlist clears `Not interested`.
-- A reaction change regenerates Home from a recalculated Taste Profile under a
-  new non-reusable state-snapshot identity and inherits every ID previously
-  shown by the cycle.
-  Watchlist, watched, and `Not interested` changes repair mutable eligibility
-  without clearing cycle history; obsolete work cannot publish.
+- A reaction change recalculates Taste Profile under a new non-reusable state-
+  snapshot identity, preserves complete diagnostic history and bounded recent
+  suppression, and keeps other visible titles only when their rebuilt evidence
+  remains eligible, credible, and explainable.
+  Watchlist, watched, and `Not interested` changes normally repair only the
+  affected title without clearing complete or recent history; obsolete work
+  cannot publish.
 - Normal preference reset removes reactions and `Not interested` while
-  preserving watched and Watchlist. Recalibration upserts only informative
-  reactions; `Haven't seen it`, `Don't know it`, and omitted movies never erase
-  existing movie feedback.
+  preserving watched, Watchlist, Search History, and complete shown history. It
+  starts a fresh recent-suppression epoch so Home can generate again.
+  Recalibration upserts only informative reactions; `Haven't seen it`, `Don't
+  know it`, and omitted movies never erase existing movie feedback.
 - Calibration catalog resolution prefers a validated remote snapshot, then a
   last valid cache, then bundled content after at most two visible seconds. A
   flow freezes its exact snapshot through completion and relaunch.
