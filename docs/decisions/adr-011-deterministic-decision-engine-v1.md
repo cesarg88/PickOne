@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted baseline — Milestone 7 P0 amendment proposed in ADR-014
+Accepted baseline — amended by accepted ADR-014
 
 The Product Owner accepted this product and architecture decision on
 2026-08-11. The Lead Engineer should treat the formula, eligibility rules,
@@ -27,9 +27,9 @@ On 2026-09-01, final physical validation reopened Milestone 7 after permanent
 shown-history exclusion exhausted the pilot recall pool. The Product Owner
 accepted bounded recent suppression, progressive recall, old-title rollover,
 stable card reconciliation, and preservation of every explicit exclusion.
-ADR-014 proposes the exact window, paging, persistence, migration, exhaustion,
-and quick-feedback policy. Those values require D0 approval before
-implementation; P1 scoring remains unchanged.
+ADR-014 defines the accepted exact window, paging, persistence, migration,
+exhaustion, and quick-feedback policy. Implementation begins after D0 merges;
+P1 scoring remains unchanged.
 
 ## Context
 
@@ -189,10 +189,10 @@ The pilot candidate source is TMDB Discover.
    popularity never contributes to P1 score, explanation or role assignment.
 6. Enrich candidates with the metadata and movie-level availability evidence
    required by this ADR.
-7. Under the proposed ADR-014 recovery policy, expand cumulatively to page 12
+7. Under the accepted ADR-014 recovery policy, expand cumulatively to page 12
    and then page 20 only when the accepted normal pool cannot fill the set.
 
-The six-page normal boundary and proposed twenty-page recovery boundary are
+The six-page normal boundary and accepted twenty-page recovery boundary are
 pilot search-policy parameters, not claims that titles outside either pool are
 ineligible or unsuitable.
 

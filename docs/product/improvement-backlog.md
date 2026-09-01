@@ -231,7 +231,7 @@ Priorities:
 
 ### IMP-004 — Add continuous taste learning and unified movie state
 
-- Status: `Reopened — P0 Home exhaustion correction proposed`
+- Status: `Reopened — P0 correction accepted; implementation pending`
 - Priority: `P0`
 - Roadmap relationship: Milestone 7
 - Accepted specification:
@@ -285,12 +285,12 @@ Priorities:
 
 ### IMP-025 — Recover exhausted Home and add direct feedback
 
-- Status: `Proposed — exact corrective D0 policy awaiting approval`
+- Status: `Accepted — Engineering Ready after D0 merges`
 - Priority: `P0`
 - Roadmap relationship: reopened Milestone 7
 - Correction specification:
   [`Milestone 7 P0 — Home Exhaustion Recovery`](../milestones/milestone-7-p0-home-exhaustion-recovery.md)
-- Proposed architecture:
+- Accepted architecture:
   [`ADR-014 — Bounded Recommendation Suppression and Exhaustion Recovery`](../decisions/adr-014-bounded-recommendation-suppression-and-recovery.md)
 - Why:
   final physical validation proved that treating every shown title as a
@@ -311,7 +311,7 @@ Priorities:
     availability changes can be discovered
   - expose the four reactions, `Already watched`, and `Not interested` directly
     from Home cards
-- D0 approval gate:
+- Accepted D0 contract:
   - exact 30-title recent window
   - 6→12→20 page expansion and three-ID oldest-first rollover
   - terminal copy plus `Review My movies` and `Review streaming services`

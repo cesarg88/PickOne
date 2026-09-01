@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted baseline — implemented; ADR-014 reset-epoch amendment proposed
+Accepted baseline — implemented; ADR-014 reset-epoch amendment accepted
 
 The Product Owner accepted the product transitions and the general architecture
 on 2026-08-19 and accepted `My movies` as the final history label on
@@ -208,7 +208,7 @@ Normal `Reset preferences`:
 - preserves Watchlist intent;
 - removes the Viewer Profile and draft under its existing confirmed flow;
 - does not delete Search History;
-- under proposed ADR-014, assigns a fresh recommendation-suppression epoch in
+- under accepted ADR-014, assigns a fresh recommendation-suppression epoch in
   the same Viewer State transaction so recent suppression resets while complete
   shown history remains in Decision Set storage.
 

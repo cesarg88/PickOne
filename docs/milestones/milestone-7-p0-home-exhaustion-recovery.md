@@ -2,7 +2,7 @@
 
 ## Status
 
-`Proposed — product direction accepted; D0 details awaiting final approval`
+`Accepted — Engineering Ready; implementation begins after D0 merges`
 
 - Milestone 7 reopened: `2026-09-01`
 - Trigger: final physical-device validation on the Product Owner's retained
@@ -70,9 +70,9 @@ structurally equivalent fixture.
 - every Home card offers the four reactions, `Already watched`, and `Not
   interested` without requiring Detail navigation.
 
-## D0 decisions proposed for acceptance
+## Accepted D0 decisions
 
-ADR-014 defines the executable proposal:
+ADR-014 defines the accepted executable contract:
 
 - 30 most-recent distinct IDs as temporary suppression;
 - pages 1–6 normal, 7–12 first expansion, and 13–20 final expansion;
@@ -84,8 +84,8 @@ ADR-014 defines the executable proposal:
 - direct `Review My movies` and `Review streaming services` terminal actions;
 - a trailing per-card ellipsis menu for quick feedback.
 
-These values remain Proposed until the Product Owner approves D0. No
-implementation slice is Engineering Ready before that approval and merge.
+The Product Owner accepted these values on `2026-09-01`. P0-1 may begin after
+the D0 pull request merges; later slices remain dependency-ordered.
 
 ## Domain contracts
 
@@ -352,7 +352,7 @@ opens ready for review. The existing merged PR #43 is not reverted.
 Documentation only. Deliver this specification, ADR-014, and reconciliation of
 PRODUCT, ADR-011, ADR-012, glossary, roadmap, backlog, and parent M7 status.
 
-Approval and merge make the correction Engineering Ready.
+Product Owner approval is recorded. Merging D0 authorizes P0-1.
 
 ### P0-1 — v3 history, epoch, and migration
 

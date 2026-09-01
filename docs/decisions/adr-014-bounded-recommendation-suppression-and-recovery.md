@@ -2,12 +2,16 @@
 
 ## Status
 
-Proposed — accepted product direction; exact D0 policy awaiting Product Owner
-approval
+Accepted — Milestone 7 P0 correction Engineering Ready after D0 merges
+
+Accepted by the Product Owner on `2026-09-01`, including the 30-title recent
+window, 6→12→20 recall expansion, three-title rollover, 24-hour exhaustion
+freshness, terminal recovery actions, quick-feedback menu, v2-to-v3 migrations,
+and physical-device request and latency evidence contract.
 
 Milestone 7 was reopened after final physical-device validation found that
 normal explicit feedback could exhaust the bounded recall pool permanently.
-This ADR proposes the persistence and orchestration correction. It changes no
+This ADR defines the persistence and orchestration correction. It changes no
 P1 score, credibility threshold, availability rule, reaction meaning, or
 explicit Viewer Movie State exclusion.
 

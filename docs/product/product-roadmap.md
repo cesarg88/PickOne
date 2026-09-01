@@ -198,7 +198,7 @@ repeated after Milestone 7 with the enriched Taste Profile.
 [Continuous Taste Learning](../milestones/milestone-7-continuous-taste-learning.md)
 
 Status:
-Reopened — P0 Home exhaustion correction proposed; Milestone 8 blocked
+Reopened — corrective D0 accepted; implementation pending; Milestone 8 blocked
 
 Purpose:
 

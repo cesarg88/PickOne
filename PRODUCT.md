@@ -696,7 +696,7 @@ catalog resolution. Final physical validation found a P0 exhaustion defect, so
 Milestone 7 is reopened and Milestone 8 remains blocked. The accepted product
 correction preserves explicit feedback and complete shown history while making
 recent repeat suppression bounded, recoverable, and directly operable from
-Home. Its exact D0 policy is proposed in
+Home. Its exact D0 policy is accepted in
 [Milestone 7 P0 — Home Exhaustion Recovery](docs/milestones/milestone-7-p0-home-exhaustion-recovery.md).
 
 Explicit decision outcomes such as `Watch this` and `Not tonight`, later

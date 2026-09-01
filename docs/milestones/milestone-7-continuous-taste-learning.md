@@ -2,7 +2,8 @@
 
 ## Status
 
-`Reopened — P0 Home exhaustion correction proposed; final approval blocked`
+`Reopened — P0 correction accepted; implementation pending; final approval
+blocked`
 
 - Product direction accepted: `2026-08-19`
 - `My movies` label accepted: `2026-08-24`
@@ -540,9 +541,8 @@ extracted behind focused Domain collaborators as part of the integration PR.
 - Failure retains only a snapshot Domain still proves safe and exposes Retry.
 
 The exact recent window, recall stages, rollover, v2-to-v3 migration, terminal
-copy, and quick-feedback interaction are proposed together in ADR-014 and the
-P0 correction specification. They are not implementation-ready until D0 is
-accepted and merged.
+copy, and quick-feedback interaction are accepted together in ADR-014 and the
+P0 correction specification. P0-1 becomes implementation-ready when D0 merges.
 
 ### Presentation feedback
 
@@ -1252,11 +1252,11 @@ The original Milestone 7 implementation merged through PR #43, but the final
 physical run invalidated its approval by reproducing the P0 Home exhaustion.
 Milestone 7 is formally reopened and Milestone 8 is blocked.
 
-The product direction for recovery is accepted. The exact 30-title window,
-6→12→20 recall stages, three-title rollover increment, terminal copy/actions,
-24-hour exhaustion freshness, quick-feedback menu, v2-to-v3 migration, and
-twenty-page device evidence contract remain the explicit corrective D0 approval
-gate. After D0 merges, P0-1 through P0-4 execute sequentially. Final approval
-requires P0-4 validation over the untouched blocked installation, Technical
-Lead review and Product Owner acceptance of the recorded latency, and the
-repeated household utility checkpoint.
+The product direction and corrective D0 contract are accepted. The exact
+30-title window, 6→12→20 recall stages, three-title rollover increment,
+terminal copy/actions, 24-hour exhaustion freshness, quick-feedback menu,
+v2-to-v3 migration, and twenty-page device evidence contract were accepted by
+the Product Owner on `2026-09-01`. After D0 merges, P0-1 through P0-4 execute
+sequentially. Final approval requires P0-4 validation over the untouched
+blocked installation, Technical Lead review and Product Owner acceptance of
+the recorded latency, and the repeated household utility checkpoint.
