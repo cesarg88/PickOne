@@ -140,7 +140,7 @@ struct DecisionSetMigrationRepositoryTests {
         let decoded = try JSONDecisionSetEnvelopeCoder().decodeEnvelope(
             from: #require(temporaryStore.activeData)
         )
-        guard case let .currentV2(current) = decoded else {
+        guard case let .currentV3(current) = decoded else {
             throw DecisionSetCodingError.corruptData
         }
         return DecisionSetEnvelopeV1DTO(
@@ -148,7 +148,11 @@ struct DecisionSetMigrationRepositoryTests {
             decisionSetID: current.decisionSetID,
             generatedAt: current.generatedAt,
             engineModelVersion: current.engineModelVersion,
-            cycle: current.cycle,
+            cycle: DecisionCycleV1DTO(
+                id: current.cycle.id,
+                identitySignature: current.cycle.identitySignature,
+                shownMovieIDs: current.history.allShownMovieIDs
+            ),
             regionCode: current.regionCode,
             selectedProviderIDs: current.selectedProviderIDs,
             recommendations: current.recommendations

@@ -33,7 +33,10 @@ struct LocalViewerStateDestructiveRecoveryTests {
         #expect(legacy.profileData == nil)
         #expect(legacy.watchlistData == nil)
         let active = try #require(files.activeData)
-        let envelope = try JSONLocalViewerStateEnvelopeCoder().decode(active)
+        guard case let .currentV3(envelope) = try JSONLocalViewerStateEnvelopeCoder().decode(active) else {
+            Issue.record("Expected reset v3 Viewer State")
+            return
+        }
         #expect(envelope.committedStateSnapshotID == resetID)
         #expect(envelope.viewerProfileState.completedProfile == nil)
         #expect(envelope.viewerProfileState.profileDraft == nil)

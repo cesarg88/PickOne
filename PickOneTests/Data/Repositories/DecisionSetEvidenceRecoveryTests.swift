@@ -125,13 +125,13 @@ struct DecisionSetEvidenceRecoveryTests {
     }
 
     private func compositeContradictions(
-        in envelope: DecisionSetEnvelopeV2DTO,
+        in envelope: DecisionSetEnvelopeV3DTO,
         safe: PersistedDecisionRecommendationV1DTO,
         stretch: PersistedDecisionRecommendationV1DTO,
         anchor: PositiveAnchorEvidenceV1DTO,
         safeGenre: DecisionGenreV1DTO,
         stretchGenre: DecisionGenreV1DTO
-    ) throws -> [DecisionSetEnvelopeV2DTO] {
+    ) throws -> [DecisionSetEnvelopeV3DTO] {
         let safeProvider = try #require(safe.availability.matchingProviders.first)
         return [
             replacingRecommendation(
@@ -212,9 +212,9 @@ struct DecisionSetEvidenceRecoveryTests {
     }
 
     private func replacingEvidence(
-        in envelope: DecisionSetEnvelopeV2DTO,
+        in envelope: DecisionSetEnvelopeV3DTO,
         with evidence: RecommendationEvidenceV1DTO
-    ) -> DecisionSetEnvelopeV2DTO {
+    ) -> DecisionSetEnvelopeV3DTO {
         let recommendations = envelope.recommendations.enumerated().map { index, recommendation in
             guard index == 0 else { return recommendation }
             return PersistedDecisionRecommendationV1DTO(
@@ -224,13 +224,16 @@ struct DecisionSetEvidenceRecoveryTests {
                 availability: recommendation.availability
             )
         }
-        return DecisionSetEnvelopeV2DTO(
+        return DecisionSetEnvelopeV3DTO(
             envelopeSchemaVersion: envelope.envelopeSchemaVersion,
             decisionSetID: envelope.decisionSetID,
             generatedAt: envelope.generatedAt,
             engineModelVersion: envelope.engineModelVersion,
             cycle: envelope.cycle,
+            history: envelope.history,
             sourceViewerStateSnapshotID: envelope.sourceViewerStateSnapshotID,
+            searchPolicyVersion: envelope.searchPolicyVersion,
+            outcome: envelope.outcome,
             regionCode: envelope.regionCode,
             selectedProviderIDs: envelope.selectedProviderIDs,
             recommendations: recommendations
@@ -280,20 +283,23 @@ struct DecisionSetEvidenceRecoveryTests {
     }
 
     private func replacingRecommendation(
-        in envelope: DecisionSetEnvelopeV2DTO,
+        in envelope: DecisionSetEnvelopeV3DTO,
         at index: Int,
         with replacement: PersistedDecisionRecommendationV1DTO
-    ) -> DecisionSetEnvelopeV2DTO {
+    ) -> DecisionSetEnvelopeV3DTO {
         let recommendations = envelope.recommendations.enumerated().map {
             $0.offset == index ? replacement : $0.element
         }
-        return DecisionSetEnvelopeV2DTO(
+        return DecisionSetEnvelopeV3DTO(
             envelopeSchemaVersion: envelope.envelopeSchemaVersion,
             decisionSetID: envelope.decisionSetID,
             generatedAt: envelope.generatedAt,
             engineModelVersion: envelope.engineModelVersion,
             cycle: envelope.cycle,
+            history: envelope.history,
             sourceViewerStateSnapshotID: envelope.sourceViewerStateSnapshotID,
+            searchPolicyVersion: envelope.searchPolicyVersion,
+            outcome: envelope.outcome,
             regionCode: envelope.regionCode,
             selectedProviderIDs: envelope.selectedProviderIDs,
             recommendations: recommendations
@@ -446,7 +452,7 @@ extension DecisionSetEvidenceRecoveryTests {
 }
 
 private extension DecisionSetEvidenceRecoveryTests {
-    func validEnvelope() async throws -> DecisionSetEnvelopeV2DTO {
+    func validEnvelope() async throws -> DecisionSetEnvelopeV3DTO {
         let store = InMemoryDecisionSetDataStore()
         let signature = try #require(
             DecisionCycleSignature(rawValue: String(repeating: "a", count: 64))
@@ -470,7 +476,7 @@ private extension DecisionSetEvidenceRecoveryTests {
         let decoded = try JSONDecisionSetEnvelopeCoder().decodeEnvelope(
             from: #require(store.activeData)
         )
-        guard case let .currentV2(envelope) = decoded else {
+        guard case let .currentV3(envelope) = decoded else {
             throw DecisionSetCodingError.corruptData
         }
         return envelope

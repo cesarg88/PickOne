@@ -26,9 +26,10 @@ struct LegacyViewerStateMigrator: Sendable {
         profileData: Data?,
         watchlistData: Data?,
         snapshotID: UUID,
+        suppressionEpochID: UUID,
         at date: Date,
         source: LocalViewerStateMigrationRecordV2DTO.Source
-    ) throws -> LocalViewerStateEnvelopeV2DTO {
+    ) throws -> LocalViewerStateEnvelopeV3DTO {
         let profileState = try profileData.map(decodeProfile) ?? ProfileState(
             completedProfile: nil,
             draft: nil
@@ -46,9 +47,10 @@ struct LegacyViewerStateMigrator: Sendable {
         } else {
             nil
         }
-        let envelope = try LocalViewerStateEnvelopeV2DTO(
-            envelopeSchemaVersion: LocalViewerStateEnvelopeV2DTO.schemaVersion,
+        let envelope = try LocalViewerStateEnvelopeV3DTO(
+            envelopeSchemaVersion: LocalViewerStateEnvelopeV3DTO.schemaVersion,
             committedStateSnapshotID: snapshotID,
+            recommendationSuppressionEpochID: suppressionEpochID,
             viewerProfileState: LocalViewerProfileStateV2DTO(
                 completedProfile: completedProfileDTO,
                 profileDraft: profileState.draft.map(map)

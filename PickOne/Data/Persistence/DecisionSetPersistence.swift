@@ -104,7 +104,7 @@ final class UserDefaultsDecisionSetDataStore: DecisionSetDataStore {
 
 protocol DecisionSetEnvelopeCoding: Sendable {
     func decodeEnvelope(from data: Data) throws -> DecodedDecisionSetEnvelopeDTO
-    func encodeEnvelope(_ envelope: DecisionSetEnvelopeV2DTO) throws -> Data
+    func encodeEnvelope(_ envelope: DecisionSetEnvelopeV3DTO) throws -> Data
 }
 
 enum DecisionSetCodingError: Error, Equatable, Sendable {
@@ -128,7 +128,9 @@ struct JSONDecisionSetEnvelopeCoder: DecisionSetEnvelopeCoding {
                 case DecisionSetEnvelopeV1DTO.schemaVersion:
                     try .legacyV1(decoder.decode(DecisionSetEnvelopeV1DTO.self, from: data))
                 case DecisionSetEnvelopeV2DTO.schemaVersion:
-                    try .currentV2(decoder.decode(DecisionSetEnvelopeV2DTO.self, from: data))
+                    try .legacyV2(decoder.decode(DecisionSetEnvelopeV2DTO.self, from: data))
+                case DecisionSetEnvelopeV3DTO.schemaVersion:
+                    try .currentV3(decoder.decode(DecisionSetEnvelopeV3DTO.self, from: data))
                 default:
                     throw DecisionSetCodingError.unsupportedVersion
             }
@@ -139,7 +141,7 @@ struct JSONDecisionSetEnvelopeCoder: DecisionSetEnvelopeCoding {
         }
     }
 
-    func encodeEnvelope(_ envelope: DecisionSetEnvelopeV2DTO) throws -> Data {
+    func encodeEnvelope(_ envelope: DecisionSetEnvelopeV3DTO) throws -> Data {
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.sortedKeys]
         encoder.dateEncodingStrategy = .millisecondsSince1970
@@ -153,7 +155,8 @@ private struct DecisionSetEnvelopeHeaderDTO: Decodable {
 
 enum DecodedDecisionSetEnvelopeDTO: Equatable, Sendable {
     case legacyV1(DecisionSetEnvelopeV1DTO)
-    case currentV2(DecisionSetEnvelopeV2DTO)
+    case legacyV2(DecisionSetEnvelopeV2DTO)
+    case currentV3(DecisionSetEnvelopeV3DTO)
 }
 
 struct DecisionSetEnvelopeV1DTO: Codable, Equatable, Sendable {
@@ -181,6 +184,39 @@ struct DecisionSetEnvelopeV2DTO: Codable, Equatable, Sendable {
     let regionCode: String
     let selectedProviderIDs: [Int]
     let recommendations: [PersistedDecisionRecommendationV1DTO]
+}
+
+struct DecisionSetEnvelopeV3DTO: Codable, Equatable, Sendable {
+    static let schemaVersion = 3
+
+    let envelopeSchemaVersion: Int
+    let decisionSetID: UUID
+    let generatedAt: Date
+    let engineModelVersion: String
+    let cycle: DecisionCycleV3DTO
+    let history: RecommendationHistoryV3DTO
+    let sourceViewerStateSnapshotID: UUID
+    let searchPolicyVersion: String
+    let outcome: DecisionSetOutcomeV3DTO
+    let regionCode: String
+    let selectedProviderIDs: [Int]
+    let recommendations: [PersistedDecisionRecommendationV1DTO]
+}
+
+struct DecisionCycleV3DTO: Codable, Equatable, Sendable {
+    let id: UUID
+    let identitySignature: String
+}
+
+struct RecommendationHistoryV3DTO: Codable, Equatable, Sendable {
+    let allShownMovieIDs: [Int]
+    let recentlyShownMovieIDs: [Int]
+    let suppressionEpochID: UUID
+}
+
+struct DecisionSetOutcomeV3DTO: Codable, Equatable, Sendable {
+    let kind: String
+    let exhaustedAt: Date?
 }
 
 struct DecisionCycleV1DTO: Codable, Equatable, Sendable {

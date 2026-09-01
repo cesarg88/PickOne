@@ -210,11 +210,11 @@ enum LocalViewerStateTestError: Error {
 }
 
 struct FailingLocalViewerStateEncoder: LocalViewerStateEnvelopeCoding {
-    func decode(_ data: Data) throws -> LocalViewerStateEnvelopeV2DTO {
+    func decode(_ data: Data) throws -> DecodedLocalViewerStateEnvelopeDTO {
         try JSONLocalViewerStateEnvelopeCoder().decode(data)
     }
 
-    func encode(_ envelope: LocalViewerStateEnvelopeV2DTO) throws -> Data {
+    func encode(_: LocalViewerStateEnvelopeV3DTO) throws -> Data {
         throw LocalViewerStateTestError.rejected
     }
 }

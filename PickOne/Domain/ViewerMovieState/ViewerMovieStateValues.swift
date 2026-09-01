@@ -120,10 +120,12 @@ enum ViewerMovieStateSnapshotValidationError: Error, Equatable, Sendable {
 
 struct ViewerMovieStateSnapshot: Equatable, Sendable {
     let id: ViewerStateSnapshotID
+    let recommendationSuppressionEpochID: RecommendationSuppressionEpochID
     let states: [ViewerMovieState]
 
     init(
         id: ViewerStateSnapshotID,
+        recommendationSuppressionEpochID: RecommendationSuppressionEpochID = .legacyCompatibility,
         states: [ViewerMovieState]
     ) throws {
         var movieIDs = Set<Int>()
@@ -132,6 +134,7 @@ struct ViewerMovieStateSnapshot: Equatable, Sendable {
         }
 
         self.id = id
+        self.recommendationSuppressionEpochID = recommendationSuppressionEpochID
         self.states = states.sorted { $0.movieID < $1.movieID }
     }
 

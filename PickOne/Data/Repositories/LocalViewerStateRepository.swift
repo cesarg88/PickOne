@@ -2,7 +2,7 @@ import Foundation
 
 actor LocalViewerStateRepository: ViewerMovieStateRepository {
     struct ResolvedState: Sendable {
-        let envelope: LocalViewerStateEnvelopeV2DTO
+        let envelope: LocalViewerStateEnvelopeV3DTO
         let snapshot: ViewerMovieStateSnapshot
         let activeBytes: Data
     }
@@ -25,6 +25,7 @@ actor LocalViewerStateRepository: ViewerMovieStateRepository {
     let profileMapper: LocalViewerProfileMapper
     let migrator: LegacyViewerStateMigrator
     let makeSnapshotID: @Sendable () -> UUID
+    let makeSuppressionEpochID: @Sendable () -> UUID
     let now: @Sendable () -> Date
     var resolvedState: ResolvedState?
     var destructiveResetAvailability: DestructiveRecoveryAvailability = .unavailable
@@ -38,6 +39,7 @@ actor LocalViewerStateRepository: ViewerMovieStateRepository {
         profileMapper: LocalViewerProfileMapper = LocalViewerProfileMapper(),
         migrator: LegacyViewerStateMigrator = LegacyViewerStateMigrator(),
         snapshotID: @escaping @Sendable () -> UUID = UUID.init,
+        suppressionEpochID: @escaping @Sendable () -> UUID = UUID.init,
         now: @escaping @Sendable () -> Date = Date.init
     ) {
         self.fileStore = fileStore
@@ -48,6 +50,7 @@ actor LocalViewerStateRepository: ViewerMovieStateRepository {
         self.profileMapper = profileMapper
         self.migrator = migrator
         makeSnapshotID = snapshotID
+        makeSuppressionEpochID = suppressionEpochID
         self.now = now
     }
 
@@ -112,7 +115,7 @@ actor LocalViewerStateRepository: ViewerMovieStateRepository {
         }
         if let activeData {
             do {
-                let resolved = try decode(activeData)
+                let resolved = try resolveActiveData(activeData)
                 resolvedState = resolved
                 return resolved
             } catch let codingError as LocalViewerStateCodingError {
@@ -127,6 +130,8 @@ actor LocalViewerStateRepository: ViewerMovieStateRepository {
                     reason: repositoryError(for: mappingError),
                     recoveryReason: recoveryReason(for: mappingError)
                 )
+            } catch let failure as ResolutionFailure {
+                throw failure
             } catch {
                 try quarantine(activeData, source: .active)
                 return try recoverAfterCurrentFailure(
@@ -138,7 +143,9 @@ actor LocalViewerStateRepository: ViewerMovieStateRepository {
 
         return try recoverAfterCurrentFailure(reason: nil, recoveryReason: nil)
     }
+}
 
+extension LocalViewerStateRepository {
     private func recoverAfterCurrentFailure(
         reason: ViewerMovieStateRepositoryError?,
         recoveryReason: ViewerMovieStateRecoveryReason?
@@ -151,11 +158,7 @@ actor LocalViewerStateRepository: ViewerMovieStateRepository {
         }
         if let previousData {
             do {
-                let previous = try decode(previousData)
-                let recovered = try republish(
-                    previous.envelope,
-                    source: .previousRecovery
-                )
+                let recovered = try recoverPreviousData(previousData)
                 resolvedState = recovered
                 return recovered
             } catch let codingError as LocalViewerStateCodingError {
@@ -223,12 +226,13 @@ actor LocalViewerStateRepository: ViewerMovieStateRepository {
         } else {
             .freshInstall
         }
-        let envelope: LocalViewerStateEnvelopeV2DTO
+        let envelope: LocalViewerStateEnvelopeV3DTO
         do {
             envelope = try migrator.migrate(
                 profileData: profileData,
                 watchlistData: watchlistData,
                 snapshotID: makeSnapshotID(),
+                suppressionEpochID: makeSuppressionEpochID(),
                 at: now(),
                 source: source
             )
@@ -246,21 +250,88 @@ actor LocalViewerStateRepository: ViewerMovieStateRepository {
         return persisted
     }
 
-    private func decode(_ data: Data) throws -> ResolvedState {
-        let envelope = try coder.decode(data)
+    private func decodeCurrent(_ data: Data) throws -> ResolvedState {
+        guard case let .currentV3(envelope) = try coder.decode(data) else {
+            throw LocalViewerStateCodingError.unsupportedSchema
+        }
         let snapshot = try mapper.snapshot(from: envelope)
         return ResolvedState(envelope: envelope, snapshot: snapshot, activeBytes: data)
     }
 
+    private func resolveActiveData(_ data: Data) throws -> ResolvedState {
+        switch try coder.decode(data) {
+            case let .currentV3(envelope):
+                let snapshot = try mapper.snapshot(from: envelope)
+                return ResolvedState(envelope: envelope, snapshot: snapshot, activeBytes: data)
+            case let .legacyV2(envelope):
+                _ = try mapper.snapshot(from: envelope)
+                let replacement = migrateV2(envelope)
+                let encoded: Data
+                do {
+                    encoded = try encodeValidated(replacement)
+                } catch let error as ViewerMovieStateRepositoryError {
+                    throw failure(error, .replacementFailure)
+                }
+                do {
+                    try fileStore.replacePrevious(with: data)
+                } catch {
+                    throw failure(.previousCopyFailure, .replacementFailure)
+                }
+                do {
+                    try fileStore.replaceActive(with: encoded)
+                } catch {
+                    throw failure(.replacementFailure, .replacementFailure)
+                }
+                return try decodeCurrent(encoded)
+        }
+    }
+
+    private func recoverPreviousData(_ data: Data) throws -> ResolvedState {
+        switch try coder.decode(data) {
+            case let .currentV3(envelope):
+                return try republish(envelope, source: .previousRecovery)
+            case let .legacyV2(envelope):
+                _ = try mapper.snapshot(from: envelope)
+                let replacement = LocalViewerStateEnvelopeV3DTO(
+                    envelopeSchemaVersion: LocalViewerStateEnvelopeV3DTO.schemaVersion,
+                    committedStateSnapshotID: freshSnapshotID(
+                        excluding: envelope.committedStateSnapshotID
+                    ),
+                    recommendationSuppressionEpochID: makeSuppressionEpochID(),
+                    viewerProfileState: envelope.viewerProfileState,
+                    viewerMovieStates: envelope.viewerMovieStates,
+                    migrationRecord: LocalViewerStateMigrationRecordV2DTO(
+                        source: .previousRecovery,
+                        resolvedAt: now()
+                    )
+                )
+                return try publishInitial(replacement)
+        }
+    }
+
+    private func migrateV2(
+        _ envelope: LocalViewerStateEnvelopeV2DTO
+    ) -> LocalViewerStateEnvelopeV3DTO {
+        LocalViewerStateEnvelopeV3DTO(
+            envelopeSchemaVersion: LocalViewerStateEnvelopeV3DTO.schemaVersion,
+            committedStateSnapshotID: envelope.committedStateSnapshotID,
+            recommendationSuppressionEpochID: makeSuppressionEpochID(),
+            viewerProfileState: envelope.viewerProfileState,
+            viewerMovieStates: envelope.viewerMovieStates,
+            migrationRecord: envelope.migrationRecord
+        )
+    }
+
     private func republish(
-        _ envelope: LocalViewerStateEnvelopeV2DTO,
+        _ envelope: LocalViewerStateEnvelopeV3DTO,
         source: LocalViewerStateMigrationRecordV2DTO.Source
     ) throws -> ResolvedState {
-        let replacement = LocalViewerStateEnvelopeV2DTO(
-            envelopeSchemaVersion: LocalViewerStateEnvelopeV2DTO.schemaVersion,
+        let replacement = LocalViewerStateEnvelopeV3DTO(
+            envelopeSchemaVersion: LocalViewerStateEnvelopeV3DTO.schemaVersion,
             committedStateSnapshotID: freshSnapshotID(
                 excluding: envelope.committedStateSnapshotID
             ),
+            recommendationSuppressionEpochID: envelope.recommendationSuppressionEpochID,
             viewerProfileState: envelope.viewerProfileState,
             viewerMovieStates: envelope.viewerMovieStates,
             migrationRecord: LocalViewerStateMigrationRecordV2DTO(
@@ -272,7 +343,7 @@ actor LocalViewerStateRepository: ViewerMovieStateRepository {
     }
 
     func publishInitial(
-        _ envelope: LocalViewerStateEnvelopeV2DTO,
+        _ envelope: LocalViewerStateEnvelopeV3DTO,
         clearPrevious: Bool = false
     ) throws -> ResolvedState {
         let data: Data
@@ -293,11 +364,11 @@ actor LocalViewerStateRepository: ViewerMovieStateRepository {
         } catch {
             throw failure(.replacementFailure, .replacementFailure)
         }
-        return try decode(data)
+        return try decodeCurrent(data)
     }
 
     func persistMutation(
-        _ envelope: LocalViewerStateEnvelopeV2DTO,
+        _ envelope: LocalViewerStateEnvelopeV3DTO,
         replacing current: ResolvedState
     ) throws -> ResolvedState {
         let data = try encodeValidated(envelope)
@@ -311,10 +382,10 @@ actor LocalViewerStateRepository: ViewerMovieStateRepository {
         } catch {
             throw ViewerMovieStateRepositoryError.replacementFailure
         }
-        return try decode(data)
+        return try decodeCurrent(data)
     }
 
-    private func encodeValidated(_ envelope: LocalViewerStateEnvelopeV2DTO) throws -> Data {
+    private func encodeValidated(_ envelope: LocalViewerStateEnvelopeV3DTO) throws -> Data {
         do {
             _ = try mapper.snapshot(from: envelope)
         } catch {
@@ -328,7 +399,7 @@ actor LocalViewerStateRepository: ViewerMovieStateRepository {
             throw ViewerMovieStateRepositoryError.encodingFailure
         }
         do {
-            _ = try decode(data)
+            _ = try decodeCurrent(data)
         } catch {
             throw ViewerMovieStateRepositoryError.encodingFailure
         }

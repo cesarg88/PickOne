@@ -56,7 +56,10 @@ struct LocalViewerStateRecoveryTests {
         ])
         #expect(files.previousData == previous)
         let active = try #require(files.activeData)
-        let envelope = try JSONLocalViewerStateEnvelopeCoder().decode(active)
+        guard case let .currentV3(envelope) = try JSONLocalViewerStateEnvelopeCoder().decode(active) else {
+            Issue.record("Expected recovered v3 Viewer State")
+            return
+        }
         #expect(envelope.migrationRecord.source == .previousRecovery)
         #expect(await repository.successfulRecoveryNotice() == .olderSnapshot)
     }
@@ -99,9 +102,12 @@ struct LocalViewerStateRecoveryTests {
             LocalViewerStateQuarantineItem(source: .previous, data: invalid),
         ])
         #expect(files.previousData == nil)
-        let envelope = try JSONLocalViewerStateEnvelopeCoder().decode(
+        guard case let .currentV3(envelope) = try JSONLocalViewerStateEnvelopeCoder().decode(
             #require(files.activeData)
-        )
+        ) else {
+            Issue.record("Expected recovered v3 Viewer State")
+            return
+        }
         #expect(envelope.migrationRecord.source == .legacyRecovery)
 
         legacy.rejectReads = true
@@ -166,9 +172,10 @@ struct LocalViewerStateRecoveryTests {
     func unsupportedProfileSchema() async throws {
         let id = try LocalViewerStateTestFixtures.uuid(LocalViewerStateTestFixtures.firstID)
         let base = LocalViewerStateTestFixtures.emptyEnvelope(id: id)
-        let envelope = LocalViewerStateEnvelopeV2DTO(
+        let envelope = LocalViewerStateEnvelopeV3DTO(
             envelopeSchemaVersion: base.envelopeSchemaVersion,
             committedStateSnapshotID: base.committedStateSnapshotID,
+            recommendationSuppressionEpochID: base.recommendationSuppressionEpochID,
             viewerProfileState: LocalViewerProfileStateV2DTO(
                 completedProfile: CompletedViewerProfileV2DTO(
                     profileSchemaVersion: 99,

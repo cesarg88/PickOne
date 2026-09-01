@@ -7,6 +7,21 @@ enum LocalViewerStateEnvelopeMappingError: Error, Equatable, Sendable {
 }
 
 struct LocalViewerStateEnvelopeMapper: Sendable {
+    func snapshot(from envelope: LocalViewerStateEnvelopeV3DTO) throws -> ViewerMovieStateSnapshot {
+        guard envelope.envelopeSchemaVersion == LocalViewerStateEnvelopeV3DTO.schemaVersion else {
+            throw LocalViewerStateEnvelopeMappingError.invalidEnvelope
+        }
+        try validateProfileState(envelope.viewerProfileState)
+        let states = try envelope.viewerMovieStates.map(map)
+        return try ViewerMovieStateSnapshot(
+            id: ViewerStateSnapshotID(rawValue: envelope.committedStateSnapshotID),
+            recommendationSuppressionEpochID: RecommendationSuppressionEpochID(
+                rawValue: envelope.recommendationSuppressionEpochID
+            ),
+            states: states
+        )
+    }
+
     func snapshot(from envelope: LocalViewerStateEnvelopeV2DTO) throws -> ViewerMovieStateSnapshot {
         guard envelope.envelopeSchemaVersion == LocalViewerStateEnvelopeV2DTO.schemaVersion else {
             throw LocalViewerStateEnvelopeMappingError.invalidEnvelope
@@ -16,6 +31,21 @@ struct LocalViewerStateEnvelopeMapper: Sendable {
         return try ViewerMovieStateSnapshot(
             id: ViewerStateSnapshotID(rawValue: envelope.committedStateSnapshotID),
             states: states
+        )
+    }
+
+    func replacingStates(
+        in envelope: LocalViewerStateEnvelopeV3DTO,
+        snapshotID: UUID,
+        states: [ViewerMovieState]
+    ) -> LocalViewerStateEnvelopeV3DTO {
+        LocalViewerStateEnvelopeV3DTO(
+            envelopeSchemaVersion: LocalViewerStateEnvelopeV3DTO.schemaVersion,
+            committedStateSnapshotID: snapshotID,
+            recommendationSuppressionEpochID: envelope.recommendationSuppressionEpochID,
+            viewerProfileState: envelope.viewerProfileState,
+            viewerMovieStates: states.sorted { $0.movieID < $1.movieID }.map(map),
+            migrationRecord: envelope.migrationRecord
         )
     }
 

@@ -6,32 +6,44 @@ enum LocalViewerStateCodingError: Error, Equatable, Sendable {
 }
 
 protocol LocalViewerStateEnvelopeCoding: Sendable {
-    func decode(_ data: Data) throws -> LocalViewerStateEnvelopeV2DTO
-    func encode(_ envelope: LocalViewerStateEnvelopeV2DTO) throws -> Data
+    func decode(_ data: Data) throws -> DecodedLocalViewerStateEnvelopeDTO
+    func encode(_ envelope: LocalViewerStateEnvelopeV3DTO) throws -> Data
 }
 
 struct JSONLocalViewerStateEnvelopeCoder: LocalViewerStateEnvelopeCoding {
-    func decode(_ data: Data) throws -> LocalViewerStateEnvelopeV2DTO {
+    func decode(_ data: Data) throws -> DecodedLocalViewerStateEnvelopeDTO {
         let header: LocalViewerStateEnvelopeHeaderDTO
         do {
             header = try JSONDecoder().decode(LocalViewerStateEnvelopeHeaderDTO.self, from: data)
         } catch {
             throw LocalViewerStateCodingError.corruptData
         }
-        guard header.envelopeSchemaVersion == LocalViewerStateEnvelopeV2DTO.schemaVersion else {
-            throw LocalViewerStateCodingError.unsupportedSchema
-        }
-
         do {
             let decoder = JSONDecoder()
             decoder.dateDecodingStrategy = .millisecondsSince1970
-            return try decoder.decode(LocalViewerStateEnvelopeV2DTO.self, from: data)
+            return switch header.envelopeSchemaVersion {
+                case LocalViewerStateEnvelopeV2DTO.schemaVersion:
+                    try .legacyV2(decoder.decode(LocalViewerStateEnvelopeV2DTO.self, from: data))
+                case LocalViewerStateEnvelopeV3DTO.schemaVersion:
+                    try .currentV3(decoder.decode(LocalViewerStateEnvelopeV3DTO.self, from: data))
+                default:
+                    throw LocalViewerStateCodingError.unsupportedSchema
+            }
+        } catch let error as LocalViewerStateCodingError {
+            throw error
         } catch {
             throw LocalViewerStateCodingError.corruptData
         }
     }
 
-    func encode(_ envelope: LocalViewerStateEnvelopeV2DTO) throws -> Data {
+    func encode(_ envelope: LocalViewerStateEnvelopeV3DTO) throws -> Data {
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .millisecondsSince1970
+        encoder.outputFormatting = [.sortedKeys]
+        return try encoder.encode(envelope)
+    }
+
+    func encodeLegacyV2(_ envelope: LocalViewerStateEnvelopeV2DTO) throws -> Data {
         let encoder = JSONEncoder()
         encoder.dateEncodingStrategy = .millisecondsSince1970
         encoder.outputFormatting = [.sortedKeys]
@@ -43,11 +55,27 @@ private struct LocalViewerStateEnvelopeHeaderDTO: Decodable {
     let envelopeSchemaVersion: Int
 }
 
+enum DecodedLocalViewerStateEnvelopeDTO: Equatable, Sendable {
+    case legacyV2(LocalViewerStateEnvelopeV2DTO)
+    case currentV3(LocalViewerStateEnvelopeV3DTO)
+}
+
 struct LocalViewerStateEnvelopeV2DTO: Codable, Equatable, Sendable {
     static let schemaVersion = 2
 
     let envelopeSchemaVersion: Int
     let committedStateSnapshotID: UUID
+    let viewerProfileState: LocalViewerProfileStateV2DTO
+    let viewerMovieStates: [ViewerMovieStateV2DTO]
+    let migrationRecord: LocalViewerStateMigrationRecordV2DTO
+}
+
+struct LocalViewerStateEnvelopeV3DTO: Codable, Equatable, Sendable {
+    static let schemaVersion = 3
+
+    let envelopeSchemaVersion: Int
+    let committedStateSnapshotID: UUID
+    let recommendationSuppressionEpochID: UUID
     let viewerProfileState: LocalViewerProfileStateV2DTO
     let viewerMovieStates: [ViewerMovieStateV2DTO]
     let migrationRecord: LocalViewerStateMigrationRecordV2DTO

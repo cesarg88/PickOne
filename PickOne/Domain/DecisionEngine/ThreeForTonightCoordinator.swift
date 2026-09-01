@@ -161,19 +161,17 @@ private extension ThreeForTonightCoordinator {
         switch await decisionSetRepository.load() {
             case .absent:
                 return try await generate(
-                    cycle: newCycle(signature: signature),
+                    cycle: newCycle(signature: signature, trusted: trusted),
                     trusted: trusted,
                     retained: nil,
                     recovery: false,
                     operationID: operationID
                 )
             case let .migrationRequired(source):
-                return try await regenerate(
-                    from: source.cycle,
+                return try await migrateOrRegenerate(
+                    source: source,
                     currentSignature: signature,
-                    recovery: true,
                     trusted: trusted,
-                    retained: nil,
                     operationID: operationID
                 )
             case let .recovery(reason):
@@ -181,7 +179,7 @@ private extension ThreeForTonightCoordinator {
                     return .retryableFailure(reason: .recoveryFailed, retained: nil)
                 }
                 return try await generate(
-                    cycle: newCycle(signature: signature),
+                    cycle: newCycle(signature: signature, trusted: trusted),
                     trusted: trusted,
                     retained: nil,
                     recovery: true,
@@ -274,7 +272,7 @@ private extension ThreeForTonightCoordinator {
                     return .retryableFailure(reason: .recoveryFailed, retained: nil)
                 }
                 return try await generate(
-                    cycle: newCycle(signature: signature),
+                    cycle: newCycle(signature: signature, trusted: trusted),
                     trusted: trusted,
                     retained: nil,
                     recovery: true,
@@ -282,7 +280,7 @@ private extension ThreeForTonightCoordinator {
                 )
             case .absent:
                 return try await generate(
-                    cycle: newCycle(signature: signature),
+                    cycle: newCycle(signature: signature, trusted: trusted),
                     trusted: trusted,
                     retained: nil,
                     recovery: false,
@@ -335,7 +333,7 @@ private extension ThreeForTonightCoordinator {
                 )
             case .absent, .recovery:
                 return try await generate(
-                    cycle: newCycle(signature: signature),
+                    cycle: newCycle(signature: signature, trusted: trusted),
                     trusted: trusted,
                     retained: nil,
                     recovery: false,
@@ -429,7 +427,7 @@ private extension ThreeForTonightCoordinator {
                     return .retryableFailure(reason: .trustedInputsChanged, retained: nil)
                 }
                 return try await generate(
-                    cycle: newCycle(signature: signature),
+                    cycle: newCycle(signature: signature, trusted: trusted),
                     trusted: trusted,
                     retained: nil,
                     recovery: false,
@@ -486,8 +484,17 @@ extension ThreeForTonightCoordinator {
         ))
     }
 
-    func newCycle(signature: DecisionCycleSignature) throws -> DecisionCycle {
-        try DecisionCycle(id: makeUUID(), identitySignature: signature)
+    func newCycle(
+        signature: DecisionCycleSignature,
+        trusted: TrustedDecisionState
+    ) throws -> DecisionCycle {
+        try DecisionCycle(
+            id: makeUUID(),
+            identitySignature: signature,
+            history: RecommendationHistory(
+                suppressionEpochID: trusted.recommendationSuppressionEpochID
+            )
+        )
     }
 
     func ensureCurrent(_ operationID: UUID) throws {
