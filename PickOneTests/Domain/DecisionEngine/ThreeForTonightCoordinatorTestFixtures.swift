@@ -9,7 +9,10 @@ enum CoordinatorTestFixtures {
         decisionSetRepository: CoordinatorDecisionSetRepository,
         movieRepository: CoordinatorMovieRepository = CoordinatorMovieRepository(),
         snapshotID: ViewerStateSnapshotID = CoordinatorViewerMovieStateRepository.defaultSnapshotID,
-        viewerMovieStates: [ViewerMovieState] = []
+        viewerMovieStates: [ViewerMovieState] = [],
+        clock: any DecisionSetClock = SystemDecisionSetClock(),
+        diagnosticsSink: any RecommendationGenerationDiagnosticsSink =
+            NoOpRecommendationDiagnosticsSink()
     ) -> ThreeForTonightCoordinator {
         let profileRepository = CoordinatorProfileRepository(profile: profile)
         let viewerMovieStateRepository = CoordinatorViewerMovieStateRepository(
@@ -27,7 +30,9 @@ enum CoordinatorTestFixtures {
             ),
             movieRepository: movieRepository,
             availabilityRepository: availabilityRepository,
-            signer: StableDecisionCycleSigner()
+            signer: StableDecisionCycleSigner(),
+            clock: clock,
+            diagnosticsSink: diagnosticsSink
         )
     }
 

@@ -178,9 +178,10 @@ struct ThreeForTonightCoordinatorRepairTests {
 
 private extension ThreeForTonightResult {
     var usableSnapshot: ThreeForTonightSnapshot? {
-        guard case let .usable(snapshot) = self else {
-            return nil
+        switch self {
+            case let .usable(snapshot): snapshot
+            case let .exhausted(exhaustion): exhaustion.snapshot
+            case .retryableFailure: nil
         }
-        return snapshot
     }
 }

@@ -36,7 +36,7 @@ struct DecisionSetMigrationCoordinatorTests {
 
         let result = try await sut.load()
 
-        guard case let .usable(snapshot) = result else {
+        guard let snapshot = result.snapshot else {
             Issue.record("Expected the current v2 recommendations to migrate in place")
             return
         }
@@ -77,7 +77,7 @@ struct DecisionSetMigrationCoordinatorTests {
         )
 
         let result = try await sut.load()
-        guard case let .usable(snapshot) = result else {
+        guard let snapshot = result.snapshot else {
             Issue.record("Expected a persisted v2 migration result")
             return
         }
@@ -113,7 +113,7 @@ struct DecisionSetMigrationCoordinatorTests {
         )
 
         let result = try await sut.load()
-        guard case let .usable(snapshot) = result else {
+        guard let snapshot = result.snapshot else {
             Issue.record("Expected a persisted successor cycle")
             return
         }
@@ -151,7 +151,7 @@ struct DecisionSetMigrationCoordinatorTests {
         )
 
         let result = try await sut.load()
-        guard case let .usable(snapshot) = result else {
+        guard let snapshot = result.snapshot else {
             Issue.record("Expected a regenerated current v2 set")
             return
         }
@@ -236,5 +236,15 @@ struct DecisionSetMigrationCoordinatorTests {
             selectedProviderIDs: [PilotStreamingService.netflix.providerID],
             recommendations: []
         )
+    }
+}
+
+private extension ThreeForTonightResult {
+    var snapshot: ThreeForTonightSnapshot? {
+        switch self {
+            case let .usable(snapshot): snapshot
+            case let .exhausted(exhaustion): exhaustion.snapshot
+            case .retryableFailure: nil
+        }
     }
 }

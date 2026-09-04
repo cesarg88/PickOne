@@ -9,6 +9,8 @@ struct HomeDecisionView: View {
     let checkAvailability: CheckMovieAvailabilityUseCase
     let preparePlaybackOptions: PreparePlaybackOptionsUseCase
     let imagePipeline: ImagePipeline
+    let reviewMyMovies: () -> Void
+    let reviewStreamingServices: () -> Void
 
     @State private var navigationPath: [HomeDecisionRoute] = []
 
@@ -16,10 +18,13 @@ struct HomeDecisionView: View {
         NavigationStack(path: $navigationPath) {
             HomeDecisionContent(
                 state: model.state,
+                exhaustion: model.exhaustion,
                 updateFeedback: model.updateFeedback,
                 imagePipeline: imagePipeline,
                 refresh: model.refresh,
-                retry: model.load
+                retry: model.load,
+                reviewMyMovies: reviewMyMovies,
+                reviewStreamingServices: reviewStreamingServices
             )
             .onAppear {
                 model.homeDidAppear()
@@ -59,10 +64,13 @@ struct HomeDecisionView: View {
 @MainActor
 private struct HomeDecisionContent: View {
     let state: HomeDecisionViewState
+    let exhaustion: HomeDecisionExhaustionPresentation?
     let updateFeedback: String?
     let imagePipeline: ImagePipeline
     let refresh: () -> Void
     let retry: () -> Void
+    let reviewMyMovies: () -> Void
+    let reviewStreamingServices: () -> Void
 
     var body: some View {
         content
@@ -91,14 +99,20 @@ private struct HomeDecisionContent: View {
                     set: set,
                     isRefreshing: isRefreshing,
                     refreshError: refreshError,
+                    exhaustion: exhaustion,
                     imagePipeline: imagePipeline,
-                    refresh: refresh
+                    refresh: refresh,
+                    reviewMyMovies: reviewMyMovies,
+                    reviewStreamingServices: reviewStreamingServices
                 )
             case let .empty(isRefreshing, refreshError):
                 HomeDecisionEmptyView(
                     isRefreshing: isRefreshing,
                     refreshError: refreshError,
-                    refresh: refresh
+                    exhaustion: exhaustion,
+                    refresh: refresh,
+                    reviewMyMovies: reviewMyMovies,
+                    reviewStreamingServices: reviewStreamingServices
                 )
             case let .failure(message):
                 EmptyStateView(
@@ -116,8 +130,11 @@ private struct HomeDecisionLoadedView: View {
     let set: HomeDecisionSetPresentationModel
     let isRefreshing: Bool
     let refreshError: String?
+    let exhaustion: HomeDecisionExhaustionPresentation?
     let imagePipeline: ImagePipeline
     let refresh: () -> Void
+    let reviewMyMovies: () -> Void
+    let reviewStreamingServices: () -> Void
 
     var body: some View {
         ScrollView {
@@ -138,11 +155,21 @@ private struct HomeDecisionLoadedView: View {
                     .accessibilityIdentifier("home-recommendation-\(item.id)")
                 }
 
-                HomeDecisionRefreshControls(
-                    isRefreshing: isRefreshing,
-                    refreshError: refreshError,
-                    refresh: refresh
-                )
+                if let exhaustion {
+                    HomeDecisionExhaustionControls(
+                        exhaustion: exhaustion,
+                        isRefreshing: isRefreshing,
+                        refresh: refresh,
+                        reviewMyMovies: reviewMyMovies,
+                        reviewStreamingServices: reviewStreamingServices
+                    )
+                } else {
+                    HomeDecisionRefreshControls(
+                        isRefreshing: isRefreshing,
+                        refreshError: refreshError,
+                        refresh: refresh
+                    )
+                }
             }
             .padding()
         }
@@ -153,24 +180,93 @@ private struct HomeDecisionLoadedView: View {
 private struct HomeDecisionEmptyView: View {
     let isRefreshing: Bool
     let refreshError: String?
+    let exhaustion: HomeDecisionExhaustionPresentation?
     let refresh: () -> Void
+    let reviewMyMovies: () -> Void
+    let reviewStreamingServices: () -> Void
 
     var body: some View {
         VStack(spacing: 20) {
-            ContentUnavailableView(
-                "No picks available tonight",
-                systemImage: "film.stack",
-                description: Text(
-                    "No unseen movie currently meets every taste and availability rule."
+            if let exhaustion {
+                ContentUnavailableView(
+                    "No picks available right now",
+                    systemImage: "film.stack",
+                    description: Text(
+                        "We've checked more movies and revisited older suggestions, but " +
+                            "couldn't find an unseen match we can confidently recommend " +
+                            "from your services."
+                    )
                 )
-            )
-            HomeDecisionRefreshControls(
-                isRefreshing: isRefreshing,
-                refreshError: refreshError,
-                refresh: refresh
-            )
-            .padding(.horizontal)
+                HomeDecisionExhaustionControls(
+                    exhaustion: exhaustion,
+                    isRefreshing: isRefreshing,
+                    refresh: refresh,
+                    reviewMyMovies: reviewMyMovies,
+                    reviewStreamingServices: reviewStreamingServices
+                )
+            } else {
+                ContentUnavailableView(
+                    "No picks available tonight",
+                    systemImage: "film.stack",
+                    description: Text(
+                        "No unseen movie currently meets every taste and availability rule."
+                    )
+                )
+                HomeDecisionRefreshControls(
+                    isRefreshing: isRefreshing,
+                    refreshError: refreshError,
+                    refresh: refresh
+                )
+            }
         }
+        .padding(.horizontal)
+    }
+}
+
+@MainActor
+private struct HomeDecisionExhaustionControls: View {
+    let exhaustion: HomeDecisionExhaustionPresentation
+    let isRefreshing: Bool
+    let refresh: () -> Void
+    let reviewMyMovies: () -> Void
+    let reviewStreamingServices: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            if exhaustion.recommendationCount == 3 {
+                Text("No more picks available right now")
+                    .font(.headline)
+                Text(
+                    "We couldn't find a different unseen match we can confidently recommend " +
+                        "from your services. Your current picks are still available."
+                )
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+            } else if exhaustion.recommendationCount > 0 {
+                Text(
+                    "We found only \(exhaustion.recommendationCount) strong " +
+                        "\(exhaustion.recommendationCount == 1 ? "match" : "matches") right now."
+                )
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+            }
+
+            if exhaustion.canRefresh {
+                Button("Give me three more", action: refresh)
+                    .buttonStyle(.borderedProminent)
+                    .disabled(isRefreshing)
+            }
+            if exhaustion.canRefresh {
+                Button("Review My movies", action: reviewMyMovies)
+                    .buttonStyle(.bordered)
+            } else {
+                Button("Review My movies", action: reviewMyMovies)
+                    .buttonStyle(.borderedProminent)
+            }
+            Button("Review streaming services", action: reviewStreamingServices)
+                .buttonStyle(.bordered)
+        }
+        .frame(maxWidth: .infinity)
     }
 }
 

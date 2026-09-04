@@ -13,6 +13,16 @@ protocol AvailabilityRepository: Sendable {
     ) async throws -> VerifiedAvailabilityEvidence?
 }
 
+struct AvailabilityDiagnosticsCounters: Equatable, Sendable {
+    let cacheHits: Int
+    let networkRequests: Int
+    let maximumSimultaneousNetworkRequests: Int
+}
+
+protocol AvailabilityDiagnosticsProviding: Sendable {
+    func availabilityDiagnosticsCounters() async -> AvailabilityDiagnosticsCounters
+}
+
 protocol AvailabilityClock: Sendable {
     func now() -> Date
 }

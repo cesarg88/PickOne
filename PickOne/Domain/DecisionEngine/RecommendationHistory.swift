@@ -75,6 +75,33 @@ struct RecommendationHistory: Equatable, Sendable {
         )
     }
 
+    func releasingOldestSuppression(
+        count: Int,
+        excluding excludedMovieIDs: Set<Int>
+    ) -> Self {
+        guard count > 0 else { return self }
+        let released = Set(
+            recentlyShownMovieIDs
+                .filter { !excludedMovieIDs.contains($0) }
+                .prefix(count)
+        )
+        return Self(
+            validatedAllShownMovieIDs: allShownMovieIDs,
+            recentlyShownMovieIDs: recentlyShownMovieIDs.filter { !released.contains($0) },
+            suppressionEpochID: suppressionEpochID
+        )
+    }
+
+    private init(
+        validatedAllShownMovieIDs: Set<Int>,
+        recentlyShownMovieIDs: [Int],
+        suppressionEpochID: RecommendationSuppressionEpochID
+    ) {
+        allShownMovieIDs = validatedAllShownMovieIDs
+        self.recentlyShownMovieIDs = recentlyShownMovieIDs
+        self.suppressionEpochID = suppressionEpochID
+    }
+
     private init(
         validatedAllShownMovieIDs: Set<Int>,
         suppressionEpochID: RecommendationSuppressionEpochID
@@ -117,6 +144,46 @@ struct RecommendationSearchPolicy: Equatable, Sendable {
     let finalExpansionPageRange: ClosedRange<Int>
     let recentWindowSize: Int
     let rolloverStep: Int
+
+    var stages: [RecommendationRecallStage] {
+        [
+            RecommendationRecallStage(kind: .normal, pageRange: normalPageRange),
+            RecommendationRecallStage(
+                kind: .firstExpansion,
+                pageRange: firstExpansionPageRange
+            ),
+            RecommendationRecallStage(
+                kind: .finalExpansion,
+                pageRange: finalExpansionPageRange
+            ),
+        ]
+    }
+}
+
+enum RecommendationRecallStageKind: Int, Equatable, Sendable {
+    case normal
+    case firstExpansion
+    case finalExpansion
+    case rollover
+}
+
+struct RecommendationRecallStage: Equatable, Sendable {
+    let kind: RecommendationRecallStageKind
+    let pageRange: ClosedRange<Int>
+}
+
+struct RecommendationExhaustionPolicy: Equatable, Sendable {
+    static let accepted = Self(freshnessInterval: 24 * 60 * 60)
+
+    let freshnessInterval: TimeInterval
+
+    func isFresh(exhaustedAt: Date, now: Date) -> Bool {
+        now < expiresAt(exhaustedAt: exhaustedAt)
+    }
+
+    func expiresAt(exhaustedAt: Date) -> Date {
+        exhaustedAt.addingTimeInterval(freshnessInterval)
+    }
 }
 
 enum PersistedDecisionSetOutcome: Equatable, Sendable {

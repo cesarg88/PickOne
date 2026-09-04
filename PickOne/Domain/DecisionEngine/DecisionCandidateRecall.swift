@@ -75,8 +75,7 @@ protocol DecisionCandidateRepository: Sendable {
 }
 
 struct RecallDecisionCandidates: Sendable {
-    private static let normalPages = 1 ... 6
-
+    private static let candidatesPerPageLimit = 20
     private let repository: any DecisionCandidateRepository
 
     init(repository: any DecisionCandidateRepository) {
@@ -84,22 +83,60 @@ struct RecallDecisionCandidates: Sendable {
     }
 
     func execute(context: DecisionCandidateContext) async throws -> [DecisionCandidateSeed] {
+        try await execute(
+            pages: RecommendationSearchPolicy.accepted.normalPageRange,
+            context: context
+        )
+    }
+
+    func execute(
+        pages: ClosedRange<Int>,
+        context: DecisionCandidateContext
+    ) async throws -> [DecisionCandidateSeed] {
+        try await executeBatch(pages: pages, context: context).candidates
+    }
+
+    func executeBatch(
+        pages: ClosedRange<Int>,
+        context: DecisionCandidateContext
+    ) async throws -> RecalledDecisionCandidateBatch {
         var seenMovieIDs = Set<Int>()
         var candidates: [DecisionCandidateSeed] = []
+        var requestedPageCount = 0
 
-        for page in Self.normalPages {
+        for page in pages {
             try Task.checkCancellation()
             let pageCandidates = try await repository.discoverPage(
                 page,
                 context: context
             )
+            requestedPageCount += 1
             try Task.checkCancellation()
+            guard !pageCandidates.isEmpty else {
+                return RecalledDecisionCandidateBatch(
+                    candidates: candidates,
+                    requestedPageCount: requestedPageCount,
+                    reachedEmptyPage: true
+                )
+            }
 
-            for candidate in pageCandidates where seenMovieIDs.insert(candidate.movieID).inserted {
+            for candidate in pageCandidates.prefix(Self.candidatesPerPageLimit)
+                where seenMovieIDs.insert(candidate.movieID).inserted
+            {
                 candidates.append(candidate)
             }
         }
 
-        return candidates
+        return RecalledDecisionCandidateBatch(
+            candidates: candidates,
+            requestedPageCount: requestedPageCount,
+            reachedEmptyPage: false
+        )
     }
+}
+
+struct RecalledDecisionCandidateBatch: Equatable, Sendable {
+    let candidates: [DecisionCandidateSeed]
+    let requestedPageCount: Int
+    let reachedEmptyPage: Bool
 }

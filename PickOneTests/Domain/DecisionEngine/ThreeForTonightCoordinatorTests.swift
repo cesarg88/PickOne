@@ -30,7 +30,7 @@ struct ThreeForTonightCoordinatorTests {
         #expect(await decisionSetRepository.replacements.isEmpty)
     }
 
-    @Test("initial generation recalls six pages and publishes only the persisted winner")
+    @Test("initial generation stops at an empty page and persists partial exhaustion")
     func initialGenerationPersistsWinner() async throws {
         let profile = sparseProfile()
         let candidate = try #require(DecisionCandidateSeed(
@@ -63,12 +63,13 @@ struct ThreeForTonightCoordinatorTests {
         )
 
         let result = try await sut.load()
-        guard case let .usable(snapshot) = result else {
-            Issue.record("Expected a usable generated snapshot")
+        guard let snapshot = result.snapshot else {
+            Issue.record("Expected a generated snapshot")
             return
         }
 
-        #expect(await candidateRepository.requestedPages == Array(1 ... 6))
+        #expect(await candidateRepository.requestedPages == [1, 2])
+        #expect(snapshot.decisionSet.outcome.isExhausted)
         #expect(await decisionSetRepository.replacements == [snapshot.decisionSet])
         #expect(snapshot.decisionSet.recommendations.map(\.display.movieID) == [10])
         #expect(snapshot.decisionSet.recommendations.first?.display.localizedTitle == "Winner")
@@ -114,10 +115,11 @@ struct ThreeForTonightCoordinatorTests {
 
         let result = try await sut.load()
 
-        guard case let .usable(snapshot) = result else {
+        guard let snapshot = result.snapshot else {
             Issue.record("Expected successful empty recovery")
             return
         }
+        #expect(snapshot.decisionSet.outcome.isExhausted)
         #expect(snapshot.decisionSet.recommendations.isEmpty)
         #expect(await decisionSetRepository.replacements == [snapshot.decisionSet])
     }
@@ -158,15 +160,15 @@ struct ThreeForTonightCoordinatorTests {
         )
 
         let result = try await sut.refresh()
-        guard case let .usable(snapshot) = result else {
-            Issue.record("Expected a usable refreshed snapshot")
+        guard let snapshot = result.snapshot else {
+            Issue.record("Expected a refreshed snapshot")
             return
         }
 
         #expect(snapshot.decisionSet.recommendations.map(\.display.movieID) == [20])
         #expect(snapshot.decisionSet.cycle.id == envelope.cycle.id)
         #expect(snapshot.decisionSet.cycle.shownMovieIDs == [10, 20])
-        #expect(await availabilityRepository.requestedMovieIDs == [20])
+        #expect(await Set(availabilityRepository.requestedMovieIDs) == [10, 20])
     }
 
     @Test("persistence failure retains the previous set without advancing storage")
@@ -252,7 +254,7 @@ struct ThreeForTonightCoordinatorTests {
         await #expect(throws: CancellationError.self) {
             _ = try await first.value
         }
-        guard case .usable = second else {
+        guard second.snapshot != nil else {
             Issue.record("Expected the newer operation to publish")
             return
         }
@@ -296,7 +298,7 @@ struct ThreeForTonightCoordinatorTests {
         )
 
         let result = try await sut.load()
-        guard case let .usable(snapshot) = result else {
+        guard let snapshot = result.snapshot else {
             Issue.record("Expected a repaired snapshot")
             return
         }
@@ -305,6 +307,23 @@ struct ThreeForTonightCoordinatorTests {
         #expect(snapshot.decisionSet.cycle.id == envelope.cycle.id)
         #expect(snapshot.decisionSet.cycle.shownMovieIDs == [10, 20])
         #expect(await decisionSets.replacements == [snapshot.decisionSet])
+    }
+}
+
+private extension ThreeForTonightResult {
+    var snapshot: ThreeForTonightSnapshot? {
+        switch self {
+            case let .usable(snapshot): snapshot
+            case let .exhausted(exhaustion): exhaustion.snapshot
+            case .retryableFailure: nil
+        }
+    }
+}
+
+private extension PersistedDecisionSetOutcome {
+    var isExhausted: Bool {
+        if case .exhausted = self { return true }
+        return false
     }
 }
 

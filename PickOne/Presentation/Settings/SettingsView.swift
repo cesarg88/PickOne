@@ -6,23 +6,19 @@ struct SettingsView: View {
     let myMoviesModel: MyMoviesViewModel
     let imagePipeline: ImagePipeline
     let movieDetailDependencies: MovieDetailNavigationDependencies
+    @Binding var navigationPath: [SettingsRoute]
     @State private var confirmsResetProfile = false
 
     var body: some View {
-        NavigationStack {
+        NavigationStack(path: $navigationPath) {
             List {
                 Section("Preferences") {
-                    NavigationLink("My movies") {
-                        MyMoviesView(
-                            model: myMoviesModel,
-                            imagePipeline: imagePipeline,
-                            movieDetailDependencies: myMoviesDetailDependencies
-                        )
-                    }
+                    NavigationLink("My movies", value: SettingsRoute.myMovies)
 
-                    NavigationLink("Streaming services") {
-                        EditStreamingServicesView(model: model)
-                    }
+                    NavigationLink(
+                        "Streaming services",
+                        value: SettingsRoute.streamingServices
+                    )
 
                     Button(
                         model.recalibrationDraft == nil
@@ -44,6 +40,18 @@ struct SettingsView: View {
                 }
             }
             .navigationTitle("Settings")
+            .navigationDestination(for: SettingsRoute.self) { route in
+                switch route {
+                    case .myMovies:
+                        MyMoviesView(
+                            model: myMoviesModel,
+                            imagePipeline: imagePipeline,
+                            movieDetailDependencies: myMoviesDetailDependencies
+                        )
+                    case .streamingServices:
+                        EditStreamingServicesView(model: model)
+                }
+            }
             .confirmationDialog(
                 ViewerProfileCopy.resetTitle,
                 isPresented: $confirmsResetProfile,
@@ -64,6 +72,11 @@ struct SettingsView: View {
             await myMoviesModel.load()
         }
     }
+}
+
+enum SettingsRoute: Hashable {
+    case myMovies
+    case streamingServices
 }
 
 @MainActor

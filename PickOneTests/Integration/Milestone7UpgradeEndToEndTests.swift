@@ -256,8 +256,13 @@ struct Milestone7UpgradeEndToEndTests {
     private func usableSnapshot(
         _ result: ThreeForTonightResult
     ) throws -> ThreeForTonightSnapshot {
-        guard case let .usable(snapshot) = result else {
-            Issue.record("Expected a usable snapshot, got \(result)")
+        let snapshot: ThreeForTonightSnapshot? = switch result {
+            case let .usable(snapshot): snapshot
+            case let .exhausted(exhaustion): exhaustion.snapshot
+            case .retryableFailure: nil
+        }
+        guard let snapshot else {
+            Issue.record("Expected a persisted snapshot, got \(result)")
             throw Milestone7UpgradeTestError.expectedUsableSnapshot
         }
         return snapshot

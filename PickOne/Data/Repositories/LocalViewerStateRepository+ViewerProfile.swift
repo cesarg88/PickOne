@@ -394,7 +394,8 @@ extension LocalViewerStateRepository {
             profileState,
             states: states,
             current: current,
-            recommendationInputsChanged: inputsChanged
+            recommendationInputsChanged: inputsChanged,
+            suppressionEpochID: makeSuppressionEpochID()
         )
     }
 
@@ -402,10 +403,11 @@ extension LocalViewerStateRepository {
         _ profileState: LocalViewerProfileStateV2DTO,
         states: [ViewerMovieState],
         current: ResolvedState,
-        recommendationInputsChanged: Bool
+        recommendationInputsChanged: Bool,
+        suppressionEpochID: UUID? = nil
     ) throws -> ResolvedState {
         let unchanged = profileState == current.envelope.viewerProfileState &&
-            states == current.snapshot.states
+            states == current.snapshot.states && suppressionEpochID == nil
         if unchanged {
             return current
         }
@@ -415,7 +417,8 @@ extension LocalViewerStateRepository {
         let envelope = LocalViewerStateEnvelopeV3DTO(
             envelopeSchemaVersion: LocalViewerStateEnvelopeV3DTO.schemaVersion,
             committedStateSnapshotID: snapshotID,
-            recommendationSuppressionEpochID: current.envelope.recommendationSuppressionEpochID,
+            recommendationSuppressionEpochID: suppressionEpochID
+                ?? current.envelope.recommendationSuppressionEpochID,
             viewerProfileState: profileState,
             viewerMovieStates: states.sorted { $0.movieID < $1.movieID }.map(mapper.map),
             migrationRecord: current.envelope.migrationRecord

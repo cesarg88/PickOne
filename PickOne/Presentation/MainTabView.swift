@@ -9,9 +9,11 @@ import SwiftUI
 
 @MainActor
 struct MainTabView: View {
+    @Environment(\.scenePhase) private var scenePhase
     let container: AppContainer
     @Bindable var profileModel: ViewerProfileViewModel
     @State private var selectedTab = MainTab.home
+    @State private var settingsPath: [SettingsRoute] = []
 
     var body: some View {
         TabView(selection: $selectedTab) {
@@ -23,7 +25,9 @@ struct MainTabView: View {
                     updateViewerMovieState: container.updateViewerMovieState,
                     checkAvailability: container.checkMovieAvailability,
                     preparePlaybackOptions: container.preparePlaybackOptions,
-                    imagePipeline: container.imagePipeline
+                    imagePipeline: container.imagePipeline,
+                    reviewMyMovies: { showSettings(.myMovies) },
+                    reviewStreamingServices: { showSettings(.streamingServices) }
                 )
             }
 
@@ -82,7 +86,8 @@ struct MainTabView: View {
                         preparePlaybackOptions: container.preparePlaybackOptions,
                         viewerStateDidChange: reconcileHome,
                         eligibilityDidChange: repairHome
-                    )
+                    ),
+                    navigationPath: $settingsPath
                 )
             }
         }
@@ -92,6 +97,10 @@ struct MainTabView: View {
         .onChange(of: selectedTab) {
             guard selectedTab == .home else { return }
             container.homeDecisionViewModel.load()
+        }
+        .onChange(of: scenePhase) {
+            guard scenePhase == .active else { return }
+            container.homeDecisionViewModel.appDidBecomeActive()
         }
         .fullScreenCover(
             isPresented: Binding(
@@ -115,6 +124,11 @@ struct MainTabView: View {
 
     private func reconcileHome(_ change: DecisionViewerStateChange) {
         container.homeDecisionViewModel.reconcile(after: change)
+    }
+
+    private func showSettings(_ route: SettingsRoute) {
+        settingsPath = [route]
+        selectedTab = .settings
     }
 }
 

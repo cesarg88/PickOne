@@ -4,7 +4,9 @@ enum AvailabilityDataError: Error {
     case invalidMovieIdentity
 }
 
-actor DefaultAvailabilityRepository: AvailabilityRepository {
+actor DefaultAvailabilityRepository: AvailabilityRepository,
+    AvailabilityDiagnosticsProviding
+{
     private struct CacheKey: Hashable, Sendable {
         let movieID: Int
         let region: ViewingRegion
@@ -21,6 +23,9 @@ actor DefaultAvailabilityRepository: AvailabilityRepository {
     private let freshnessInterval: TimeInterval
     private var cache: [CacheKey: VerifiedAvailabilityEvidence] = [:]
     private var inFlight: [CacheKey: InFlightRequest] = [:]
+    private var diagnosticCacheHits = 0
+    private var diagnosticNetworkRequests = 0
+    private var diagnosticMaxNetworkRequests = 0
 
     init(
         client: MovieAvailabilityClient,
@@ -46,6 +51,7 @@ actor DefaultAvailabilityRepository: AvailabilityRepository {
                 freshnessInterval: freshnessInterval
             )
         {
+            diagnosticCacheHits += 1
             return cached
         }
 
@@ -80,6 +86,11 @@ actor DefaultAvailabilityRepository: AvailabilityRepository {
                     verifiedAt: clock.now()
                 )
             }
+            diagnosticNetworkRequests += 1
+            diagnosticMaxNetworkRequests = max(
+                diagnosticMaxNetworkRequests,
+                inFlight.count + 1
+            )
             inFlight[key] = InFlightRequest(
                 id: requestID,
                 task: request,
@@ -122,6 +133,15 @@ actor DefaultAvailabilityRepository: AvailabilityRepository {
                 )
             }
         }
+    }
+
+    func availabilityDiagnosticsCounters() -> AvailabilityDiagnosticsCounters {
+        AvailabilityDiagnosticsCounters(
+            cacheHits: diagnosticCacheHits,
+            networkRequests: diagnosticNetworkRequests,
+            maximumSimultaneousNetworkRequests:
+            diagnosticMaxNetworkRequests
+        )
     }
 
     private func finishWaiter(

@@ -13,6 +13,12 @@ enum HomeDecisionViewState: Equatable {
     case failure(String)
 }
 
+struct HomeDecisionExhaustionPresentation: Equatable {
+    let recommendationCount: Int
+    let expiresAt: Date
+    var canRefresh: Bool
+}
+
 @MainActor
 @Observable
 final class HomeDecisionViewModel {
@@ -23,35 +29,48 @@ final class HomeDecisionViewModel {
     @ObservationIgnored private var pendingReconciliations: [Operation] = []
     @ObservationIgnored private var isReconciliationPending = false
     @ObservationIgnored private var feedbackTask: Task<Void, Never>?
+    @ObservationIgnored private var exhaustionTask: Task<Void, Never>?
     @ObservationIgnored private let feedbackDuration: Duration
     @ObservationIgnored private let feedbackSleep: @Sendable (Duration) async throws -> Void
+    @ObservationIgnored private let now: @Sendable () -> Date
+    @ObservationIgnored private let exhaustionSleep: @Sendable (Duration) async throws -> Void
     @ObservationIgnored private var isHomeVisible = false
     @ObservationIgnored private var isUpdateFeedbackPending = false
 
     var state: HomeDecisionViewState = .idle
     var updateFeedback: String?
+    var exhaustion: HomeDecisionExhaustionPresentation?
 
     init(
         threeForTonight: any ThreeForTonightUseCase,
         feedbackDuration: Duration = .seconds(3),
         feedbackSleep: @escaping @Sendable (Duration) async throws -> Void = {
             try await Task.sleep(for: $0)
+        },
+        now: @escaping @Sendable () -> Date = Date.init,
+        exhaustionSleep: @escaping @Sendable (Duration) async throws -> Void = {
+            try await Task.sleep(for: $0)
         }
     ) {
         self.threeForTonight = threeForTonight
         self.feedbackDuration = feedbackDuration
         self.feedbackSleep = feedbackSleep
+        self.now = now
+        self.exhaustionSleep = exhaustionSleep
     }
 
     func homeDidAppear() {
         guard !isHomeVisible else { return }
         isHomeVisible = true
         presentPendingUpdateFeedback()
+        refreshExhaustionFreshness()
     }
 
     func homeDidDisappear() {
         guard isHomeVisible else { return }
         isHomeVisible = false
+        exhaustionTask?.cancel()
+        exhaustionTask = nil
         guard updateFeedback != nil else { return }
         feedbackTask?.cancel()
         feedbackTask = nil
@@ -68,12 +87,18 @@ final class HomeDecisionViewModel {
     }
 
     func refresh() {
+        guard exhaustion?.canRefresh != false else { return }
         guard activeOperation?.isReconciliation != true,
               pendingReconciliations.isEmpty
         else {
             return
         }
         start(.refresh)
+    }
+
+    func appDidBecomeActive() {
+        guard isHomeVisible else { return }
+        refreshExhaustionFreshness()
     }
 
     func repair(after change: DecisionEligibilityChange) {
@@ -151,6 +176,9 @@ final class HomeDecisionViewModel {
     ) {
         switch result {
             case let .usable(snapshot):
+                exhaustionTask?.cancel()
+                exhaustionTask = nil
+                exhaustion = nil
                 apply(snapshot: snapshot, refreshError: nil)
                 if operation.isReconciliation {
                     coalesceViewerStateChanges(
@@ -158,15 +186,69 @@ final class HomeDecisionViewModel {
                     )
                     enqueueUpdateFeedback()
                 }
+            case let .exhausted(exhausted):
+                apply(snapshot: exhausted.snapshot, refreshError: nil)
+                exhaustion = HomeDecisionExhaustionPresentation(
+                    recommendationCount: exhausted.snapshot.decisionSet.recommendations.count,
+                    expiresAt: exhausted.expiresAt,
+                    canRefresh: exhausted.canRefresh
+                )
+                scheduleExhaustionDeadlineIfNeeded()
+                if operation.isReconciliation {
+                    coalesceViewerStateChanges(
+                        through: exhausted.snapshot.decisionSet
+                            .sourceViewerStateSnapshotID
+                    )
+                    enqueueUpdateFeedback()
+                }
             case let .retryableFailure(reason, retained):
                 guard let retained else {
+                    clearExhaustion()
                     state = .failure(blockingMessage(for: reason))
                     return
                 }
+                clearExhaustion()
                 apply(
                     snapshot: retained,
                     refreshError: "Couldn't update tonight's picks. Please try again."
                 )
+        }
+    }
+
+    private func clearExhaustion() {
+        exhaustionTask?.cancel()
+        exhaustionTask = nil
+        exhaustion = nil
+    }
+
+    private func refreshExhaustionFreshness() {
+        guard var exhaustion else { return }
+        exhaustion.canRefresh = now() >= exhaustion.expiresAt
+        self.exhaustion = exhaustion
+        scheduleExhaustionDeadlineIfNeeded()
+    }
+
+    private func scheduleExhaustionDeadlineIfNeeded() {
+        exhaustionTask?.cancel()
+        exhaustionTask = nil
+        guard isHomeVisible, let exhaustion, !exhaustion.canRefresh else { return }
+        let interval = max(0, exhaustion.expiresAt.timeIntervalSince(now()))
+        let sleep = exhaustionSleep
+        exhaustionTask = Task { [weak self] in
+            do {
+                try await sleep(.seconds(interval))
+                try Task.checkCancellation()
+                guard var current = self?.exhaustion,
+                      current.expiresAt == exhaustion.expiresAt
+                else {
+                    return
+                }
+                current.canRefresh = true
+                self?.exhaustion = current
+                self?.exhaustionTask = nil
+            } catch {
+                return
+            }
         }
     }
 

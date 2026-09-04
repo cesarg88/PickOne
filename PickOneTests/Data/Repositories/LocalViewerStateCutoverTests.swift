@@ -137,6 +137,7 @@ struct LocalViewerStateCutoverTests {
     func preferenceResetScope() async throws {
         let firstID = try LocalViewerStateTestFixtures.uuid(LocalViewerStateTestFixtures.firstID)
         let secondID = try LocalViewerStateTestFixtures.uuid(LocalViewerStateTestFixtures.secondID)
+        let resetEpochID = try #require(UUID(uuidString: "30000000-0000-0000-0000-000000000003"))
         let catalog = CalibrationCatalog.spainHouseholdV1
         let rated = try viewerState(
             movie: catalog.movies[0],
@@ -167,7 +168,11 @@ struct LocalViewerStateCutoverTests {
             )
         )
         let files = InMemoryLocalViewerStateFileStore(activeData: active)
-        let stateRepository = repository(files: files, ids: [secondID])
+        let stateRepository = repository(
+            files: files,
+            ids: [secondID],
+            suppressionEpochIDs: [resetEpochID]
+        )
         let repository = LocalViewerProfileRepositoryAdapter(repository: stateRepository)
 
         try await repository.resetProfileAndDraft()
@@ -179,6 +184,7 @@ struct LocalViewerStateCutoverTests {
         #expect(snapshot.state(for: rated.movieID)?.preference == nil)
         #expect(snapshot.state(for: rejected.movieID) == nil)
         #expect(snapshot.state(for: saved.movieID)?.watchlistIntent != nil)
+        #expect(snapshot.recommendationSuppressionEpochID.rawValue == resetEpochID)
     }
 
     @Test("Watchlist adapter derives future-intent rows only from v2")
@@ -300,13 +306,16 @@ struct LocalViewerStateCutoverTests {
 private extension LocalViewerStateCutoverTests {
     private func repository(
         files: InMemoryLocalViewerStateFileStore,
-        ids: [UUID]
+        ids: [UUID],
+        suppressionEpochIDs: [UUID] = []
     ) -> LocalViewerStateRepository {
         let sequence = SequenceUUIDGenerator(ids)
+        let epochSequence = SequenceUUIDGenerator(suppressionEpochIDs)
         return LocalViewerStateRepository(
             fileStore: files,
             legacySource: InMemoryLegacyViewerStateSource(),
             snapshotID: { sequence.next() },
+            suppressionEpochID: { epochSequence.next() },
             now: { LocalViewerStateTestFixtures.laterDate }
         )
     }

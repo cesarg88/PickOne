@@ -326,10 +326,6 @@ struct PersistedDecisionSet: Equatable, Sendable {
             selectedProviderIDs: selectedProviderIDs,
             recommendations: recommendations
         )
-        if case .exhausted = outcome, recommendations.count == 3 {
-            throw DecisionSetValidationError.invalidOutcome
-        }
-
         self.id = id
         self.generatedAt = generatedAt
         self.engineModelVersion = engineModelVersion
