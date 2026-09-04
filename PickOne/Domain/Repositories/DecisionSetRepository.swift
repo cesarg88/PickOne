@@ -26,6 +26,10 @@ protocol DecisionSetRepository: Sendable {
     func load() async -> DecisionSetLoadResult
     func makePersistenceCheckpoint() async throws -> DecisionSetPersistenceCheckpoint
     func replace(_ envelope: PersistedDecisionSet) async throws
+    func replace(
+        _ envelope: PersistedDecisionSet,
+        using checkpoint: DecisionSetPersistenceCheckpoint
+    ) async throws
     func restorePersistenceCheckpoint(
         _ checkpoint: DecisionSetPersistenceCheckpoint
     ) async throws

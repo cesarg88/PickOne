@@ -25,20 +25,17 @@ extension ThreeForTonightCoordinator {
         mandatoryRetainedMovieIDs: Set<Int> = [],
         additionallyExcludedMovieIDs: Set<Int> = []
     ) async throws -> ProgressiveRecommendationSearchResult {
-        let diagnostics = AvailabilityOperationDiagnostics()
-        return try await AvailabilityDiagnosticsContext.$operation.withValue(
-            diagnostics
-        ) {
-            try await performProgressiveSearch(
-                cycle: cycle,
-                trusted: trusted,
-                activeMovieIDs: activeMovieIDs,
-                retainedCandidates: retainedCandidates,
-                mandatoryRetainedMovieIDs: mandatoryRetainedMovieIDs,
-                additionallyExcludedMovieIDs: additionallyExcludedMovieIDs,
-                diagnostics: diagnostics
-            )
-        }
+        let diagnostics = AvailabilityDiagnosticsContext.operation
+            ?? AvailabilityOperationDiagnostics()
+        return try await performProgressiveSearch(
+            cycle: cycle,
+            trusted: trusted,
+            activeMovieIDs: activeMovieIDs,
+            retainedCandidates: retainedCandidates,
+            mandatoryRetainedMovieIDs: mandatoryRetainedMovieIDs,
+            additionallyExcludedMovieIDs: additionallyExcludedMovieIDs,
+            diagnostics: diagnostics
+        )
     }
 
     private func performProgressiveSearch(
@@ -68,18 +65,19 @@ extension ThreeForTonightCoordinator {
         var maxAvailabilityConcurrency = 0
         var recallStageDurations: [RecommendationRecallStageDuration] = []
 
-        if selection.recommendations.count == 3 {
-            return successfulRetainedSearchResult(
-                selection: selection,
-                candidates: candidates,
-                history: history,
-                searchStartedAt: searchStartedAt,
-                availabilityDiagnostics: diagnostics
-            )
+        if let completed = completedRetainedSearchResult(
+            selection: selection,
+            candidates: candidates,
+            history: history,
+            searchStartedAt: searchStartedAt,
+            availabilityDiagnostics: diagnostics
+        ) {
+            return completed
         }
 
         for stage in searchPolicy.stages {
             let stageStartedAt = clock.now()
+            RecommendationDiagnosticsContext.operation?.beginRecallStage(stage.kind)
             let batch = try await inputAssembler.recallAndEnrich(
                 pages: stage.pageRange,
                 prepared: prepared,
@@ -94,10 +92,11 @@ extension ThreeForTonightCoordinator {
             uniqueRecalledCandidateCount = recalledMovieIDs.count
             maxAvailabilityConcurrency = updatedAvailabilityConcurrency(maxAvailabilityConcurrency, batch)
             highestStage = stage.kind
-            recallStageDurations.append(RecommendationRecallStageDuration(
-                stage: stage.kind,
-                duration: max(0, clock.now().timeIntervalSince(stageStartedAt))
-            ))
+            recordCompletedRecallStage(
+                stage.kind,
+                startedAt: stageStartedAt,
+                durations: &recallStageDurations
+            )
             selection = prioritizedSelection(
                 prepared: prepared,
                 candidates: candidates,
@@ -143,11 +142,47 @@ extension ThreeForTonightCoordinator {
         )
     }
 
+    private func completedRetainedSearchResult(
+        selection: DecisionSelection,
+        candidates: [DecisionInputCandidate],
+        history: RecommendationHistory,
+        searchStartedAt: Date,
+        availabilityDiagnostics: AvailabilityOperationDiagnostics
+    ) -> ProgressiveRecommendationSearchResult? {
+        guard selection.recommendations.count == 3 else { return nil }
+        RecommendationDiagnosticsContext.operation?.recordFirstUsableSet(
+            after: max(0, clock.now().timeIntervalSince(searchStartedAt))
+        )
+        return successfulRetainedSearchResult(
+            selection: selection,
+            candidates: candidates,
+            history: history,
+            searchStartedAt: searchStartedAt,
+            availabilityDiagnostics: availabilityDiagnostics
+        )
+    }
+
     private func updatedAvailabilityConcurrency(
         _ current: Int,
         _ batch: DecisionInputCandidateBatch
     ) -> Int {
         max(current, batch.maximumSimultaneousAvailabilityChecks)
+    }
+
+    private func recordCompletedRecallStage(
+        _ stage: RecommendationRecallStageKind,
+        startedAt: Date,
+        durations: inout [RecommendationRecallStageDuration]
+    ) {
+        let duration = max(0, clock.now().timeIntervalSince(startedAt))
+        durations.append(RecommendationRecallStageDuration(
+            stage: stage,
+            duration: duration
+        ))
+        RecommendationDiagnosticsContext.operation?.completeRecallStage(
+            stage,
+            duration: duration
+        )
     }
 
     private func successfulRetainedSearchResult(
@@ -197,12 +232,19 @@ extension ThreeForTonightCoordinator {
             guard released != history else { break }
             history = released
             highestStage = .rollover
+            RecommendationDiagnosticsContext.operation?.beginRecallStage(.rollover)
             selection = prioritizedSelection(
                 prepared: prepared,
                 candidates: candidates,
                 history: history,
                 activeMovieIDs: activeMovieIDs,
                 mandatoryRetainedMovieIDs: mandatoryRetainedMovieIDs
+            )
+        }
+
+        if selection.recommendations.count == 3 {
+            RecommendationDiagnosticsContext.operation?.recordFirstUsableSet(
+                after: max(0, clock.now().timeIntervalSince(searchStartedAt))
             )
         }
 
@@ -239,6 +281,9 @@ extension ThreeForTonightCoordinator {
         searchStartedAt: Date,
         availabilityDiagnostics: AvailabilityOperationDiagnostics
     ) -> ProgressiveRecommendationSearchResult {
+        RecommendationDiagnosticsContext.operation?.recordFirstUsableSet(
+            after: max(0, clock.now().timeIntervalSince(searchStartedAt))
+        )
         let availabilityCounters = availabilityDiagnostics.counters
         return ProgressiveRecommendationSearchResult(
             selection: selection,

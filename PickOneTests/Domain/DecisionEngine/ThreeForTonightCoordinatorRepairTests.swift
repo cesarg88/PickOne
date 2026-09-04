@@ -154,13 +154,15 @@ struct ThreeForTonightCoordinatorRepairTests {
     func rehydrationFailureExcludesEarlierUnsafeMember() async throws {
         let envelope = try CoordinatorTestFixtures.envelope(currentMovieIDs: [10, 11])
         let decisionSets = CoordinatorDecisionSetRepository(loadResult: .available(envelope))
+        let diagnostics = RecordingRecommendationDiagnosticsSink()
         let sut = CoordinatorTestFixtures.makeCoordinator(
             candidateRepository: CoordinatorCandidateRepository(),
             availabilityRepository: CoordinatorAvailabilityRepository(),
             decisionSetRepository: decisionSets,
             movieRepository: CoordinatorMovieRepository(movies: [
                 10: CoordinatorTestFixtures.movie(10),
-            ])
+            ]),
+            diagnosticsSink: diagnostics
         )
         let change = try #require(DecisionEligibilityChange(movieID: 11, cause: .availability))
 
@@ -173,6 +175,10 @@ struct ThreeForTonightCoordinatorRepairTests {
         #expect(reason == .repairFailed)
         #expect(retained?.decisionSet.recommendations.isEmpty == true)
         #expect(await decisionSets.replacements.isEmpty)
+        let recorded = try #require(await diagnostics.firstSnapshot())
+        #expect(recorded.outcome == .retryableFailure)
+        #expect(recorded.candidateAvailabilityCheckCount == 1)
+        #expect(recorded.availabilityNetworkRequestCount == 1)
     }
 }
 

@@ -240,6 +240,7 @@ struct AssembleDecisionEngineInput: Sendable {
         for seed: DecisionCandidateSeed,
         context: AvailabilityViewingContext
     ) async throws -> AvailabilityResolution {
+        AvailabilityDiagnosticsContext.operation?.recordCheck()
         do {
             guard let evidence = try await availabilityRepository.getVerifiedEvidence(
                 movieID: seed.movieID,

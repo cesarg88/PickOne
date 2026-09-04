@@ -274,11 +274,15 @@ extension DecisionEngineInputAssemblyError {
 
 enum CoordinatorError: Error {
     case invariantViolation
+    case persistenceRollbackFailed
 
     func failureReason(recovery: Bool) -> ThreeForTonightFailureReason {
         if recovery {
             return .recoveryFailed
         }
-        return .invariantViolation
+        return switch self {
+            case .invariantViolation: .invariantViolation
+            case .persistenceRollbackFailed: .persistenceFailed
+        }
     }
 }

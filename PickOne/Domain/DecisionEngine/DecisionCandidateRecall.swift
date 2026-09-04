@@ -106,9 +106,13 @@ struct RecallDecisionCandidates: Sendable {
 
         for page in pages {
             try Task.checkCancellation()
+            RecommendationDiagnosticsContext.operation?.recordDiscoverRequest()
             let pageCandidates = try await repository.discoverPage(
                 page,
                 context: context
+            )
+            RecommendationDiagnosticsContext.operation?.recordRecalledCandidates(
+                pageCandidates.map(\.movieID)
             )
             requestedPageCount += 1
             try Task.checkCancellation()

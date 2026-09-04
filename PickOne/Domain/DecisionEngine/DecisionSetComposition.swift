@@ -177,6 +177,7 @@ struct DecisionMemberRehydrator: Sendable {
         profile: ViewerProfile,
         forceReload: Bool
     ) async throws -> AvailabilityOutcome {
+        AvailabilityDiagnosticsContext.operation?.recordCheck()
         let evidence = try await availabilityRepository.getVerifiedEvidence(
             movieID: movieID,
             region: profile.region,

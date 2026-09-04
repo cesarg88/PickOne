@@ -139,6 +139,9 @@ actor ThreeForTonightCoordinator: ThreeForTonightUseCase {
         }
         return try await withTaskCancellationHandler {
             let result = try await task.value
+            if case .retryableFailure(reason: .persistenceFailed, retained: _) = result {
+                return result
+            }
             try Task.checkCancellation()
             return result
         } onCancel: {

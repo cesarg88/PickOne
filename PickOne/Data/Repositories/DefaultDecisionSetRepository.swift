@@ -1,15 +1,25 @@
 import Foundation
 
-actor DefaultDecisionSetRepository: DecisionSetRepository {
-    private struct StoredPersistenceCheckpoint {
-        let data: Data?
-    }
+enum StoredPersistenceCheckpointStatus: Equatable {
+    case open
+    case cancelled
+}
 
-    private let store: any DecisionSetDataStore
+struct StoredPersistenceCheckpoint {
+    let previousData: Data?
+    let previousOwner: DecisionSetPersistenceCheckpoint?
+    let sequence: UInt64
+    var status = StoredPersistenceCheckpointStatus.open
+}
+
+actor DefaultDecisionSetRepository: DecisionSetRepository {
+    let store: any DecisionSetDataStore
     private let coder: any DecisionSetEnvelopeCoding
-    private var persistenceCheckpoints: [
+    var persistenceCheckpoints: [
         DecisionSetPersistenceCheckpoint: StoredPersistenceCheckpoint
     ] = [:]
+    var activeCheckpoint: DecisionSetPersistenceCheckpoint?
+    var checkpointSequence: UInt64 = 0
 
     init(
         store: any DecisionSetDataStore,
@@ -54,6 +64,31 @@ actor DefaultDecisionSetRepository: DecisionSetRepository {
     }
 
     func replace(_ envelope: PersistedDecisionSet) throws {
+        try persist(envelope)
+        activeCheckpoint = nil
+    }
+
+    func replace(
+        _ envelope: PersistedDecisionSet,
+        using checkpoint: DecisionSetPersistenceCheckpoint
+    ) async throws {
+        guard let stored = persistenceCheckpoints[checkpoint],
+              stored.status == .open,
+              !hasNewerOpenCheckpoint(than: stored.sequence)
+        else {
+            throw DecisionSetRepositoryError.storageFailed
+        }
+        try persist(envelope)
+        activeCheckpoint = checkpoint
+    }
+
+    private func hasNewerOpenCheckpoint(than sequence: UInt64) -> Bool {
+        persistenceCheckpoints.values.contains {
+            $0.sequence > sequence && $0.status == .open
+        }
+    }
+
+    private func persist(_ envelope: PersistedDecisionSet) throws {
         let data: Data
         do {
             data = try coder.encodeEnvelope(map(envelope))
@@ -62,36 +97,6 @@ actor DefaultDecisionSetRepository: DecisionSetRepository {
         }
         do {
             try store.replaceActive(with: data)
-        } catch {
-            throw DecisionSetRepositoryError.storageFailed
-        }
-    }
-
-    func makePersistenceCheckpoint() throws -> DecisionSetPersistenceCheckpoint {
-        let checkpoint = DecisionSetPersistenceCheckpoint()
-        do {
-            persistenceCheckpoints.removeAll(keepingCapacity: true)
-            persistenceCheckpoints[checkpoint] = try StoredPersistenceCheckpoint(
-                data: store.readActive()
-            )
-            return checkpoint
-        } catch {
-            throw DecisionSetRepositoryError.storageFailed
-        }
-    }
-
-    func restorePersistenceCheckpoint(
-        _ checkpoint: DecisionSetPersistenceCheckpoint
-    ) throws {
-        guard let stored = persistenceCheckpoints.removeValue(forKey: checkpoint) else {
-            throw DecisionSetRepositoryError.storageFailed
-        }
-        do {
-            if let data = stored.data {
-                try store.replaceActive(with: data)
-            } else {
-                try store.removeActive()
-            }
         } catch {
             throw DecisionSetRepositoryError.storageFailed
         }

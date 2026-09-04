@@ -200,6 +200,7 @@ actor CoordinatorCandidateRepository: DecisionCandidateRepository {
 actor CoordinatorAvailabilityRepository: AvailabilityRepository {
     private let evidenceByMovieID: [Int: VerifiedAvailabilityEvidence]
     private let failingMovieIDs: Set<Int>
+    private let cacheHitMovieIDs: Set<Int>
     private(set) var requests: [CoordinatorAvailabilityRequest] = []
 
     var requestedMovieIDs: [Int] {
@@ -208,10 +209,12 @@ actor CoordinatorAvailabilityRepository: AvailabilityRepository {
 
     init(
         evidenceByMovieID: [Int: VerifiedAvailabilityEvidence] = [:],
-        failingMovieIDs: Set<Int> = []
+        failingMovieIDs: Set<Int> = [],
+        cacheHitMovieIDs: Set<Int> = []
     ) {
         self.evidenceByMovieID = evidenceByMovieID
         self.failingMovieIDs = failingMovieIDs
+        self.cacheHitMovieIDs = cacheHitMovieIDs
     }
 
     func getVerifiedEvidence(
@@ -223,6 +226,16 @@ actor CoordinatorAvailabilityRepository: AvailabilityRepository {
             movieID: movieID,
             policy: policy
         ))
+        let diagnostics = AvailabilityDiagnosticsContext.operation
+        let isCacheHit = cacheHitMovieIDs.contains(movieID)
+        if isCacheHit {
+            diagnostics?.recordCacheHit()
+        } else {
+            diagnostics?.networkRequestStarted()
+        }
+        defer {
+            if !isCacheHit { diagnostics?.networkRequestFinished() }
+        }
         if failingMovieIDs.contains(movieID) {
             throw CoordinatorTestError.unavailable
         }
@@ -238,17 +251,26 @@ struct CoordinatorAvailabilityRequest: Equatable, Sendable {
 actor CoordinatorDecisionSetRepository: DecisionSetRepository {
     private var loadResult: DecisionSetLoadResult
     let replaceError: CoordinatorTestError?
+    let restoreError: CoordinatorTestError?
+    let delayAfterReplace: Duration?
     let onReplace: @Sendable () -> Void
     private(set) var replacements: [PersistedDecisionSet] = []
-    private var checkpoints: [DecisionSetPersistenceCheckpoint: DecisionSetLoadResult] = [:]
+    private var checkpoints: [
+        DecisionSetPersistenceCheckpoint: CoordinatorPersistenceCheckpoint
+    ] = [:]
+    private var activeCheckpoint: DecisionSetPersistenceCheckpoint?
 
     init(
         loadResult: DecisionSetLoadResult,
         replaceError: CoordinatorTestError? = nil,
+        restoreError: CoordinatorTestError? = nil,
+        delayAfterReplace: Duration? = nil,
         onReplace: @escaping @Sendable () -> Void = {}
     ) {
         self.loadResult = loadResult
         self.replaceError = replaceError
+        self.restoreError = restoreError
+        self.delayAfterReplace = delayAfterReplace
         self.onReplace = onReplace
     }
 
@@ -260,23 +282,93 @@ actor CoordinatorDecisionSetRepository: DecisionSetRepository {
         if let replaceError { throw replaceError }
         replacements.append(envelope)
         loadResult = .available(envelope)
+        activeCheckpoint = nil
         onReplace()
+    }
+
+    func replace(
+        _ envelope: PersistedDecisionSet,
+        using checkpoint: DecisionSetPersistenceCheckpoint
+    ) async throws {
+        if let replaceError { throw replaceError }
+        guard checkpoints[checkpoint]?.cancelled == false else {
+            throw CoordinatorTestError.unavailable
+        }
+        replacements.append(envelope)
+        loadResult = .available(envelope)
+        activeCheckpoint = checkpoint
+        onReplace()
+        if let delayAfterReplace {
+            try await Task.sleep(for: delayAfterReplace)
+        }
     }
 
     func makePersistenceCheckpoint() -> DecisionSetPersistenceCheckpoint {
         let checkpoint = DecisionSetPersistenceCheckpoint()
-        checkpoints.removeAll(keepingCapacity: true)
-        checkpoints[checkpoint] = loadResult
+        checkpoints[checkpoint] = CoordinatorPersistenceCheckpoint(
+            previous: loadResult,
+            previousOwner: activeCheckpoint
+        )
         return checkpoint
     }
 
     func restorePersistenceCheckpoint(
         _ checkpoint: DecisionSetPersistenceCheckpoint
     ) throws {
-        guard let saved = checkpoints.removeValue(forKey: checkpoint) else {
+        if let restoreError { throw restoreError }
+        guard var saved = checkpoints[checkpoint], !saved.cancelled else {
             throw CoordinatorTestError.unavailable
         }
-        loadResult = saved
+        guard activeCheckpoint == checkpoint else {
+            saved.cancelled = true
+            checkpoints[checkpoint] = saved
+            return
+        }
+        let restoration = resolvedRestoration(saved)
+        loadResult = restoration.result
+        activeCheckpoint = restoration.owner
+        saved.cancelled = true
+        checkpoints[checkpoint] = saved
+    }
+
+    private func resolvedRestoration(
+        _ checkpoint: CoordinatorPersistenceCheckpoint
+    ) -> (result: DecisionSetLoadResult, owner: DecisionSetPersistenceCheckpoint?) {
+        guard let owner = checkpoint.previousOwner,
+              let previous = checkpoints[owner]
+        else {
+            return (checkpoint.previous, nil)
+        }
+        if previous.cancelled {
+            return resolvedRestoration(previous)
+        }
+        return (checkpoint.previous, owner)
+    }
+}
+
+private struct CoordinatorPersistenceCheckpoint: Sendable {
+    let previous: DecisionSetLoadResult
+    let previousOwner: DecisionSetPersistenceCheckpoint?
+    var cancelled = false
+}
+
+actor RecordingRecommendationDiagnosticsSink:
+    RecommendationGenerationDiagnosticsSink
+{
+    private(set) var snapshots: [RecommendationGenerationDiagnostics] = []
+
+    func record(_ diagnostics: RecommendationGenerationDiagnostics) {
+        snapshots.append(diagnostics)
+    }
+
+    func firstSnapshot() async -> RecommendationGenerationDiagnostics? {
+        for _ in 0 ..< 100 {
+            if let first = snapshots.first {
+                return first
+            }
+            try? await Task.sleep(for: .milliseconds(10))
+        }
+        return nil
     }
 }
 

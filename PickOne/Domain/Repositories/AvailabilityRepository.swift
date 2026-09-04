@@ -15,6 +15,7 @@ protocol AvailabilityRepository: Sendable {
 }
 
 struct AvailabilityDiagnosticsCounters: Equatable, Sendable {
+    let checks: Int
     let cacheHits: Int
     let networkRequests: Int
     let maximumSimultaneousNetworkRequests: Int
@@ -22,6 +23,7 @@ struct AvailabilityDiagnosticsCounters: Equatable, Sendable {
 
 final class AvailabilityOperationDiagnostics: Sendable {
     private struct State: Sendable {
+        var checks = 0
         var cacheHits = 0
         var networkRequests = 0
         var activeNetworkRequests = 0
@@ -29,6 +31,10 @@ final class AvailabilityOperationDiagnostics: Sendable {
     }
 
     private let state = Mutex(State())
+
+    func recordCheck() {
+        state.withLock { $0.checks += 1 }
+    }
 
     func recordCacheHit() {
         state.withLock { $0.cacheHits += 1 }
@@ -52,6 +58,7 @@ final class AvailabilityOperationDiagnostics: Sendable {
     var counters: AvailabilityDiagnosticsCounters {
         state.withLock {
             AvailabilityDiagnosticsCounters(
+                checks: $0.checks,
                 cacheHits: $0.cacheHits,
                 networkRequests: $0.networkRequests,
                 maximumSimultaneousNetworkRequests:

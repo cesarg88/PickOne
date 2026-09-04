@@ -3,6 +3,67 @@ import Testing
 
 @Suite("Three for Tonight caller cancellation")
 struct ThreeForTonightCallerCancellationTests {
+    @Test("cancellation after replacement restores the previous decision set")
+    func cancellationAfterReplaceRollsBack() async throws {
+        let candidate = try CoordinatorTestFixtures.candidate(10)
+        let decisionSets = CoordinatorDecisionSetRepository(
+            loadResult: .absent,
+            delayAfterReplace: .seconds(30)
+        )
+        let sut = CoordinatorTestFixtures.makeCoordinator(
+            candidateRepository: CoordinatorCandidateRepository(
+                candidatesByPage: [1: [candidate]]
+            ),
+            availabilityRepository: CoordinatorAvailabilityRepository(
+                evidenceByMovieID: [10: CoordinatorTestFixtures.evidence(10)]
+            ),
+            decisionSetRepository: decisionSets,
+            movieRepository: CoordinatorMovieRepository(
+                movies: [10: CoordinatorTestFixtures.movie(10)]
+            )
+        )
+        let caller = Task { try await sut.load() }
+        try await waitForReplacement(in: decisionSets)
+
+        caller.cancel()
+
+        await #expect(throws: CancellationError.self) {
+            _ = try await caller.value
+        }
+        #expect(await decisionSets.load() == .absent)
+    }
+
+    @Test("cancellation surfaces a failed persistence restoration")
+    func cancellationSurfacesRestorationFailure() async throws {
+        let candidate = try CoordinatorTestFixtures.candidate(10)
+        let decisionSets = CoordinatorDecisionSetRepository(
+            loadResult: .absent,
+            restoreError: .unavailable,
+            delayAfterReplace: .seconds(30)
+        )
+        let sut = CoordinatorTestFixtures.makeCoordinator(
+            candidateRepository: CoordinatorCandidateRepository(
+                candidatesByPage: [1: [candidate]]
+            ),
+            availabilityRepository: CoordinatorAvailabilityRepository(
+                evidenceByMovieID: [10: CoordinatorTestFixtures.evidence(10)]
+            ),
+            decisionSetRepository: decisionSets,
+            movieRepository: CoordinatorMovieRepository(
+                movies: [10: CoordinatorTestFixtures.movie(10)]
+            )
+        )
+        let caller = Task { try await sut.load() }
+        try await waitForReplacement(in: decisionSets)
+
+        caller.cancel()
+
+        #expect(try await caller.value == .retryableFailure(
+            reason: .persistenceFailed,
+            retained: nil
+        ))
+    }
+
     @Test(
         "caller cancellation stops the owned operation",
         arguments: CoordinatorInvocation.allCases
@@ -30,6 +91,18 @@ struct ThreeForTonightCallerCancellationTests {
             _ = try await caller.value
         }
         #expect(await decisionSets.replacements.isEmpty)
+    }
+
+    private func waitForReplacement(
+        in repository: CoordinatorDecisionSetRepository
+    ) async throws {
+        for _ in 0 ..< 100 {
+            if await !repository.replacements.isEmpty {
+                return
+            }
+            try await Task.sleep(for: .milliseconds(10))
+        }
+        Issue.record("Timed out waiting for persisted replacement")
     }
 }
 

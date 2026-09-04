@@ -8,59 +8,37 @@ extension ThreeForTonightCoordinator {
         }
     }
 
-    func failedDiagnostics(
+    func withOperationDiagnostics(
         startedAt: Date,
-        trusted: TrustedDecisionState
-    ) -> RecommendationGenerationDiagnostics {
-        RecommendationGenerationDiagnostics(
-            outcome: .retryableFailure,
-            highestRecallStage: .normal,
-            totalDuration: max(0, clock.now().timeIntervalSince(startedAt)),
-            timeToFirstUsableSet: nil,
-            recallStageDurations: [],
-            discoverPageRequestCount: 0,
-            uniqueRecalledCandidateCount: 0,
-            candidateAvailabilityCheckCount: 0,
-            availabilityNetworkRequestCount: 0,
-            availabilityCacheHitCount: 0,
-            reactionMetadataHydrationRequestCount: trusted.reactions.count,
-            maximumSimultaneousDiscoverRequests: 0,
-            maximumSimultaneousAvailabilityRequests: 0,
-            maximumTasteHydrationConcurrency: min(4, trusted.reactions.count)
-        )
+        operation: () async throws -> ThreeForTonightResult
+    ) async throws -> ThreeForTonightResult {
+        if RecommendationDiagnosticsContext.operation != nil {
+            return try await operation()
+        }
+        let diagnostics = RecommendationOperationDiagnostics()
+        return try await RecommendationDiagnosticsContext.$operation.withValue(
+            diagnostics
+        ) {
+            try await AvailabilityDiagnosticsContext.$operation.withValue(
+                diagnostics.availability
+            ) {
+                let result = try await operation()
+                recordDiagnostics(diagnostics.snapshot(
+                    outcome: diagnosticOutcome(for: result),
+                    totalDuration: max(0, clock.now().timeIntervalSince(startedAt))
+                ))
+                return result
+            }
+        }
     }
 
-    func makeDiagnostics(
-        search: ProgressiveRecommendationSearchResult,
-        result: ThreeForTonightResult,
-        trusted: TrustedDecisionState,
-        startedAt: Date
-    ) -> RecommendationGenerationDiagnostics {
-        let outcome: RecommendationDiagnosticOutcome = switch result {
+    private func diagnosticOutcome(
+        for result: ThreeForTonightResult
+    ) -> RecommendationDiagnosticOutcome {
+        switch result {
             case .usable: .usable
             case .exhausted: .exhausted
             case .retryableFailure: .retryableFailure
         }
-        return RecommendationGenerationDiagnostics(
-            outcome: outcome,
-            highestRecallStage: search.highestStage,
-            totalDuration: max(0, clock.now().timeIntervalSince(startedAt)),
-            timeToFirstUsableSet: search.timeToFirstUsableSet,
-            recallStageDurations: search.recallStageDurations,
-            discoverPageRequestCount: search.discoverRequestCount,
-            uniqueRecalledCandidateCount: search.uniqueRecalledCandidateCount,
-            candidateAvailabilityCheckCount: search.availabilityCheckCount,
-            availabilityNetworkRequestCount: search.availabilityNetworkRequestCount,
-            availabilityCacheHitCount: search.availabilityCacheHitCount,
-            reactionMetadataHydrationRequestCount: trusted.reactions.count,
-            maximumSimultaneousDiscoverRequests:
-            search.discoverRequestCount == 0 ? 0 : 1,
-            maximumSimultaneousAvailabilityRequests:
-            search.maximumSimultaneousAvailabilityRequests,
-            maximumTasteHydrationConcurrency: min(
-                4,
-                trusted.reactions.count
-            )
-        )
     }
 }
