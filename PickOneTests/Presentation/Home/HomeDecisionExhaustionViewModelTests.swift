@@ -103,7 +103,7 @@ struct HomeDecisionExhaustionViewModelTests {
     }
 }
 
-private final class HomeExhaustionTestClock: @unchecked Sendable {
+private final class HomeExhaustionTestClock: Sendable {
     private let value: Mutex<Date>
 
     init(now: Date) {

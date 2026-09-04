@@ -1,5 +1,16 @@
 import Foundation
 
+private struct RetainedDecisionSetValidation: Sendable {
+    let snapshot: ThreeForTonightSnapshot
+    let selection: DecisionSelection
+    let candidates: [DecisionInputCandidate]
+}
+
+private struct RecommendationGenerationExecution: Sendable {
+    let result: ThreeForTonightResult
+    let search: ProgressiveRecommendationSearchResult
+}
+
 extension ThreeForTonightCoordinator {
     func migrateOrRegenerate(
         source: DecisionSetMigrationSource,
@@ -84,124 +95,208 @@ extension ThreeForTonightCoordinator {
         staleRetryCount: Int = 0
     ) async throws -> ThreeForTonightResult {
         let diagnosticsStartedAt = clock.now()
+        var provenRetained: RetainedDecisionSetValidation?
         do {
-            let activeMovieIDs = Set(
-                retained?.decisionSet.recommendations.map(\.display.movieID) ?? []
-            )
-            let search = try await progressiveSearch(
+            if let retained {
+                provenRetained = try await validateRetainedDecisionSet(
+                    retained,
+                    trusted: trusted,
+                    operationID: operationID
+                )
+            }
+            let execution = try await performGeneration(
                 cycle: cycle,
                 trusted: trusted,
-                activeMovieIDs: activeMovieIDs
-            )
-            try ensureCurrent(operationID)
-            let signature = try cycleSignature(for: trusted)
-            guard signature == cycle.identitySignature else {
-                return .retryableFailure(
-                    reason: .trustedInputsChanged,
-                    retained: retained
-                )
-            }
-            let searchCycle = try DecisionCycle(
-                id: cycle.id,
-                identitySignature: cycle.identitySignature,
-                history: search.history
-            )
-            let exhaustedAt = search.exhausted ? clock.now() : nil
-            let envelope: PersistedDecisionSet = if search.exhausted,
-                                                    let retained,
-                                                    !retained.decisionSet.recommendations.isEmpty
-            {
-                try PersistedDecisionSet(
-                    id: makeUUID(),
-                    generatedAt: clock.now(),
-                    engineModelVersion: .p1Model,
-                    cycle: searchCycle,
-                    sourceViewerStateSnapshotID: trusted.snapshotID,
-                    searchPolicyVersion: searchPolicy.version,
-                    outcome: .exhausted(exhaustedAt: required(exhaustedAt)),
-                    region: trusted.profile.region,
-                    selectedProviderIDs: trusted.profile.selectedServices.map(\.providerID),
-                    recommendations: retained.decisionSet.recommendations
-                )
-            } else {
-                try await envelopeComposer.makeEnvelope(
-                    selection: search.selection,
-                    candidates: search.candidates,
-                    profile: trusted.profile,
-                    cycle: searchCycle,
-                    sourceViewerStateSnapshotID: trusted.snapshotID,
-                    outcome: exhaustedAt.map {
-                        .exhausted(exhaustedAt: $0)
-                    } ?? .recommendations
-                )
-            }
-            let result = try await validatePersistAndPublish(
-                envelope,
-                expectedTrustedState: trusted,
-                sourceCycle: cycle,
                 retained: retained,
+                provenRetained: provenRetained,
                 recovery: recovery,
                 operationID: operationID,
                 staleRetryCount: staleRetryCount
             )
-            await diagnosticsSink.record(makeDiagnostics(
-                search: search,
-                result: result,
+            recordDiagnostics(makeDiagnostics(
+                search: execution.search,
+                result: execution.result,
                 trusted: trusted,
                 startedAt: diagnosticsStartedAt
             ))
-            return result
+            return execution.result
         } catch is CancellationError {
             throw CancellationError()
         } catch let error as DecisionEngineInputAssemblyError {
-            return .retryableFailure(
+            let result = ThreeForTonightResult.retryableFailure(
                 reason: error.failureReason(recovery: recovery),
-                retained: retained
+                retained: provenRetained?.snapshot
             )
+            recordDiagnostics(failedDiagnostics(
+                startedAt: diagnosticsStartedAt,
+                trusted: trusted
+            ))
+            return result
         } catch let error as CoordinatorError {
-            return .retryableFailure(
+            let result = ThreeForTonightResult.retryableFailure(
                 reason: error.failureReason(recovery: recovery),
-                retained: retained
+                retained: provenRetained?.snapshot
             )
+            recordDiagnostics(failedDiagnostics(
+                startedAt: diagnosticsStartedAt,
+                trusted: trusted
+            ))
+            return result
         } catch {
-            return .retryableFailure(
+            let result = ThreeForTonightResult.retryableFailure(
                 reason: recovery ? .recoveryFailed : .generationUnavailable,
-                retained: retained
+                retained: provenRetained?.snapshot
             )
+            recordDiagnostics(failedDiagnostics(
+                startedAt: diagnosticsStartedAt,
+                trusted: trusted
+            ))
+            return result
         }
     }
 
-    private func makeDiagnostics(
-        search: ProgressiveRecommendationSearchResult,
-        result: ThreeForTonightResult,
+    private func performGeneration(
+        cycle: DecisionCycle,
         trusted: TrustedDecisionState,
-        startedAt: Date
-    ) -> RecommendationGenerationDiagnostics {
-        let outcome: RecommendationDiagnosticOutcome = switch result {
-            case .usable: .usable
-            case .exhausted: .exhausted
-            case .retryableFailure: .retryableFailure
-        }
-        return RecommendationGenerationDiagnostics(
-            outcome: outcome,
-            highestRecallStage: search.highestStage,
-            totalDuration: max(0, clock.now().timeIntervalSince(startedAt)),
-            timeToFirstUsableSet: search.timeToFirstUsableSet,
-            recallStageDurations: search.recallStageDurations,
-            discoverPageRequestCount: search.discoverRequestCount,
-            uniqueRecalledCandidateCount: search.uniqueRecalledCandidateCount,
-            candidateAvailabilityCheckCount: search.availabilityCheckCount,
-            availabilityNetworkRequestCount: search.availabilityNetworkRequestCount,
-            availabilityCacheHitCount: search.availabilityCacheHitCount,
-            reactionMetadataHydrationRequestCount: trusted.reactions.count,
-            maximumSimultaneousDiscoverRequests:
-            search.discoverRequestCount == 0 ? 0 : 1,
-            maximumSimultaneousAvailabilityRequests:
-            search.maximumSimultaneousAvailabilityRequests,
-            maximumTasteHydrationConcurrency: min(
-                4,
-                trusted.reactions.count
+        retained: ThreeForTonightSnapshot?,
+        provenRetained: RetainedDecisionSetValidation?,
+        recovery: Bool,
+        operationID: UUID,
+        staleRetryCount: Int
+    ) async throws -> RecommendationGenerationExecution {
+        let activeMovieIDs = Set(
+            retained?.decisionSet.recommendations.map(\.display.movieID) ?? []
+        )
+        let search = try await progressiveSearch(
+            cycle: cycle,
+            trusted: trusted,
+            activeMovieIDs: activeMovieIDs
+        )
+        try ensureCurrent(operationID)
+        guard try cycleSignature(for: trusted) == cycle.identitySignature else {
+            return RecommendationGenerationExecution(
+                result: .retryableFailure(
+                    reason: .trustedInputsChanged,
+                    retained: provenRetained?.snapshot
+                ),
+                search: search
             )
+        }
+        let searchCycle = try DecisionCycle(
+            id: cycle.id,
+            identitySignature: cycle.identitySignature,
+            history: search.history
+        )
+        let exhaustedAt = search.exhausted ? clock.now() : nil
+        let envelope = try await generationEnvelope(
+            search: search,
+            searchCycle: searchCycle,
+            exhaustedAt: exhaustedAt,
+            provenRetained: provenRetained,
+            trusted: trusted
+        )
+        let result = try await validatePersistAndPublish(
+            envelope,
+            expectedTrustedState: trusted,
+            sourceCycle: cycle,
+            retained: provenRetained?.snapshot,
+            staleRetained: retained,
+            recovery: recovery,
+            operationID: operationID,
+            staleRetryCount: staleRetryCount
+        )
+        return RecommendationGenerationExecution(result: result, search: search)
+    }
+
+    private func generationEnvelope(
+        search: ProgressiveRecommendationSearchResult,
+        searchCycle: DecisionCycle,
+        exhaustedAt: Date?,
+        provenRetained: RetainedDecisionSetValidation?,
+        trusted: TrustedDecisionState
+    ) async throws -> PersistedDecisionSet {
+        if search.exhausted,
+           search.selection.recommendations.isEmpty,
+           let provenRetained
+        {
+            return try await envelopeComposer.makeEnvelope(
+                selection: provenRetained.selection,
+                candidates: provenRetained.candidates,
+                profile: trusted.profile,
+                cycle: searchCycle,
+                sourceViewerStateSnapshotID: trusted.snapshotID,
+                outcome: .exhausted(exhaustedAt: required(exhaustedAt))
+            )
+        }
+        return try await envelopeComposer.makeEnvelope(
+            selection: search.selection,
+            candidates: search.candidates,
+            profile: trusted.profile,
+            cycle: searchCycle,
+            sourceViewerStateSnapshotID: trusted.snapshotID,
+            outcome: exhaustedAt.map {
+                .exhausted(exhaustedAt: $0)
+            } ?? .recommendations
+        )
+    }
+
+    private func validateRetainedDecisionSet(
+        _ retained: ThreeForTonightSnapshot,
+        trusted: TrustedDecisionState,
+        operationID: UUID
+    ) async throws -> RetainedDecisionSetValidation? {
+        if retained.decisionSet.recommendations.isEmpty {
+            return RetainedDecisionSetValidation(
+                snapshot: retained,
+                selection: DecisionSelection(recommendations: []),
+                candidates: []
+            )
+        }
+        var candidates: [DecisionInputCandidate] = []
+        for recommendation in retained.decisionSet.recommendations {
+            try ensureCurrent(operationID)
+            do {
+                let candidate = try await memberRehydrator.rehydrate(
+                    recommendation,
+                    profile: trusted.profile,
+                    forceAvailabilityReload: false
+                )
+                if candidate.decisionCandidate.availability == .eligible {
+                    candidates.append(candidate)
+                }
+            } catch is CancellationError {
+                throw CancellationError()
+            } catch {
+                continue
+            }
+        }
+        guard !candidates.isEmpty else { return nil }
+        let prepared = try await inputAssembler.prepare(trustedState: trusted)
+        let retainedIDs = Set(candidates.map(\.seed.movieID))
+        let input = inputAssembler.snapshot(
+            prepared: prepared,
+            candidates: candidates,
+            currentCycleShownMovieIDs: []
+        ).input
+        let selection = repairComposer.compose(
+            input: input,
+            mandatoryRetainedMovieIDs: retainedIDs
+        )
+        guard !selection.recommendations.isEmpty else { return nil }
+        let envelope = try await envelopeComposer.makeEnvelope(
+            selection: selection,
+            candidates: candidates,
+            profile: trusted.profile,
+            cycle: retained.decisionSet.cycle,
+            sourceViewerStateSnapshotID: trusted.snapshotID
+        )
+        return RetainedDecisionSetValidation(
+            snapshot: ThreeForTonightSnapshotFactory.snapshot(
+                envelope,
+                trustedState: trusted
+            ),
+            selection: selection,
+            candidates: candidates
         )
     }
 
@@ -220,46 +315,36 @@ extension ThreeForTonightCoordinator {
         operationID: UUID
     ) async throws -> ThreeForTonightResult {
         let diagnosticsStartedAt = clock.now()
-        var retained = safeRetainedSnapshot(
-            envelope,
-            trusted: trusted,
-            currentSignature: currentSignature,
-            additionallyUnsafeMovieIDs: reevaluatedMovieIDs
-        )
-
         do {
-            var currentCandidates: [DecisionInputCandidate] = []
-            var pendingReevaluatedMovieIDs = reevaluatedMovieIDs
-            var rehydratedUnsafeMovieIDs: Set<Int> = []
-            for recommendation in envelope.recommendations {
-                try ensureCurrent(operationID)
-                let candidate = try await memberRehydrator.rehydrate(
-                    recommendation,
-                    profile: trusted.profile,
-                    forceAvailabilityReload: recommendation.display.movieID
-                        == forceAvailabilityReloadMovieID
-                )
-                currentCandidates.append(candidate)
-                pendingReevaluatedMovieIDs.remove(candidate.seed.movieID)
-                if candidate.decisionCandidate.availability != .eligible {
-                    rehydratedUnsafeMovieIDs.insert(candidate.seed.movieID)
+            let rehydrationResult = try await rehydrateForRepair(
+                envelope: envelope,
+                trusted: trusted,
+                currentSignature: currentSignature,
+                reevaluatedMovieIDs: reevaluatedMovieIDs,
+                forceAvailabilityReloadMovieID: forceAvailabilityReloadMovieID,
+                operationID: operationID
+            )
+            guard case let .success(rehydration) = rehydrationResult else {
+                guard case let .failure(retained) = rehydrationResult else {
+                    throw CoordinatorError.invariantViolation
                 }
-                retained = safeRetainedSnapshot(
-                    envelope,
-                    trusted: trusted,
-                    currentSignature: currentSignature,
-                    additionallyUnsafeMovieIDs: pendingReevaluatedMovieIDs
-                        .union(rehydratedUnsafeMovieIDs)
+                let result = ThreeForTonightResult.retryableFailure(
+                    reason: .repairFailed,
+                    retained: retained
                 )
+                recordDiagnostics(failedDiagnostics(
+                    startedAt: diagnosticsStartedAt,
+                    trusted: trusted
+                ))
+                return result
             }
-
             let currentMovieIDs = Set(envelope.recommendations.map(\.display.movieID))
             let cycle = targetCycle ?? envelope.cycle
             let search = try await progressiveSearch(
                 cycle: cycle,
                 trusted: trusted,
                 activeMovieIDs: currentMovieIDs,
-                retainedCandidates: currentCandidates,
+                retainedCandidates: rehydration.candidates,
                 mandatoryRetainedMovieIDs: currentMovieIDs,
                 additionallyExcludedMovieIDs: reevaluatedMovieIDs
                     .subtracting(currentMovieIDs)
@@ -284,12 +369,12 @@ extension ThreeForTonightCoordinator {
                 repairedEnvelope,
                 expectedTrustedState: trusted,
                 sourceCycle: cycle,
-                retained: retained,
+                retained: rehydration.retained,
                 recovery: false,
                 operationID: operationID,
                 staleRetryCount: 0
             )
-            await diagnosticsSink.record(makeDiagnostics(
+            recordDiagnostics(makeDiagnostics(
                 search: search,
                 result: result,
                 trusted: trusted,
@@ -299,12 +384,25 @@ extension ThreeForTonightCoordinator {
         } catch is CancellationError {
             throw CancellationError()
         } catch let error as DecisionEngineInputAssemblyError {
-            return .retryableFailure(
+            let result = ThreeForTonightResult.retryableFailure(
                 reason: error.failureReason(recovery: false),
-                retained: retained
+                retained: nil
             )
+            recordDiagnostics(failedDiagnostics(
+                startedAt: diagnosticsStartedAt,
+                trusted: trusted
+            ))
+            return result
         } catch {
-            return .retryableFailure(reason: .repairFailed, retained: retained)
+            let result = ThreeForTonightResult.retryableFailure(
+                reason: .repairFailed,
+                retained: nil
+            )
+            recordDiagnostics(failedDiagnostics(
+                startedAt: diagnosticsStartedAt,
+                trusted: trusted
+            ))
+            return result
         }
     }
 
@@ -313,6 +411,7 @@ extension ThreeForTonightCoordinator {
         expectedTrustedState: TrustedDecisionState,
         sourceCycle: DecisionCycle,
         retained: ThreeForTonightSnapshot?,
+        staleRetained: ThreeForTonightSnapshot? = nil,
         recovery: Bool,
         operationID: UUID,
         staleRetryCount: Int
@@ -323,33 +422,63 @@ extension ThreeForTonightCoordinator {
         ) else {
             return try await regenerateAfterStaleWork(
                 sourceCycle: sourceCycle,
-                retained: retained,
+                retained: staleRetained ?? retained,
                 recovery: recovery,
                 operationID: operationID,
                 staleRetryCount: staleRetryCount
             )
         }
+        let checkpoint: DecisionSetPersistenceCheckpoint
         do {
-            try await decisionSetRepository.replace(envelope)
-        } catch is CancellationError {
-            throw CancellationError()
+            checkpoint = try await decisionSetRepository.makePersistenceCheckpoint()
         } catch {
             return .retryableFailure(
                 reason: recovery ? .recoveryFailed : .persistenceFailed,
                 retained: retained
             )
         }
-        try ensureCurrent(operationID)
+        do {
+            try await decisionSetRepository.replace(envelope)
+        } catch is CancellationError {
+            try? await decisionSetRepository.restorePersistenceCheckpoint(checkpoint)
+            throw CancellationError()
+        } catch {
+            try? await decisionSetRepository.restorePersistenceCheckpoint(checkpoint)
+            return .retryableFailure(
+                reason: recovery ? .recoveryFailed : .persistenceFailed,
+                retained: retained
+            )
+        }
+        do {
+            try ensureCurrent(operationID)
+        } catch {
+            try? await decisionSetRepository.restorePersistenceCheckpoint(checkpoint)
+            throw error
+        }
         guard await trustedStateLoader.matches(
             snapshotID: expectedTrustedState.snapshotID
         ) else {
+            do {
+                try await decisionSetRepository.restorePersistenceCheckpoint(checkpoint)
+            } catch {
+                return .retryableFailure(
+                    reason: recovery ? .recoveryFailed : .persistenceFailed,
+                    retained: retained
+                )
+            }
             return try await regenerateAfterStaleWork(
                 sourceCycle: sourceCycle,
-                retained: retained,
+                retained: staleRetained ?? retained,
                 recovery: recovery,
                 operationID: operationID,
                 staleRetryCount: staleRetryCount
             )
+        }
+        do {
+            try ensureCurrent(operationID)
+        } catch {
+            try? await decisionSetRepository.restorePersistenceCheckpoint(checkpoint)
+            throw error
         }
         return result(for: envelope, trusted: expectedTrustedState)
     }
@@ -400,7 +529,9 @@ extension ThreeForTonightCoordinator {
         guard staleRetryCount == 0 else {
             return .retryableFailure(
                 reason: .trustedInputsChanged,
-                retained: latestRetained
+                retained: latestRetained.flatMap { snapshot in
+                    snapshot.decisionSet.recommendations.isEmpty ? snapshot : nil
+                }
             )
         }
         let epochAlignedCycle = sourceCycle.history.suppressionEpochID

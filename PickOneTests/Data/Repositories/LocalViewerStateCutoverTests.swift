@@ -187,6 +187,41 @@ struct LocalViewerStateCutoverTests {
         #expect(snapshot.recommendationSuppressionEpochID.rawValue == resetEpochID)
     }
 
+    @Test("preference reset retries repeated suppression epoch values")
+    func preferenceResetAlwaysChangesSuppressionEpoch() async throws {
+        let currentSnapshotID = try LocalViewerStateTestFixtures.uuid(
+            LocalViewerStateTestFixtures.firstID
+        )
+        let replacementSnapshotID = try LocalViewerStateTestFixtures.uuid(
+            LocalViewerStateTestFixtures.thirdID
+        )
+        let currentEpochID = try LocalViewerStateTestFixtures.uuid(
+            LocalViewerStateTestFixtures.secondID
+        )
+        let replacementEpochID = UUID()
+        let active = try LocalViewerStateTestFixtures.encoded(envelope(
+            id: currentSnapshotID,
+            completedProfile: completedProfile(providerIDs: [8])
+        ))
+        let files = InMemoryLocalViewerStateFileStore(activeData: active)
+        let stateRepository = repository(
+            files: files,
+            ids: [replacementSnapshotID],
+            suppressionEpochIDs: [
+                currentEpochID,
+                currentEpochID,
+                replacementEpochID,
+            ]
+        )
+        let repository = LocalViewerProfileRepositoryAdapter(repository: stateRepository)
+
+        try await repository.resetProfileAndDraft()
+
+        let snapshot = try await stateRepository.snapshot()
+        #expect(snapshot.recommendationSuppressionEpochID.rawValue == replacementEpochID)
+        #expect(snapshot.recommendationSuppressionEpochID.rawValue != currentEpochID)
+    }
+
     @Test("Watchlist adapter derives future-intent rows only from v2")
     func finalWatchlistProjection() async throws {
         let firstID = try LocalViewerStateTestFixtures.uuid(LocalViewerStateTestFixtures.firstID)

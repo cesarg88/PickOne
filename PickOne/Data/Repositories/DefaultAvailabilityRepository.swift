@@ -4,9 +4,7 @@ enum AvailabilityDataError: Error {
     case invalidMovieIdentity
 }
 
-actor DefaultAvailabilityRepository: AvailabilityRepository,
-    AvailabilityDiagnosticsProviding
-{
+actor DefaultAvailabilityRepository: AvailabilityRepository {
     private struct CacheKey: Hashable, Sendable {
         let movieID: Int
         let region: ViewingRegion
@@ -23,9 +21,6 @@ actor DefaultAvailabilityRepository: AvailabilityRepository,
     private let freshnessInterval: TimeInterval
     private var cache: [CacheKey: VerifiedAvailabilityEvidence] = [:]
     private var inFlight: [CacheKey: InFlightRequest] = [:]
-    private var diagnosticCacheHits = 0
-    private var diagnosticNetworkRequests = 0
-    private var diagnosticMaxNetworkRequests = 0
 
     init(
         client: MovieAvailabilityClient,
@@ -51,7 +46,7 @@ actor DefaultAvailabilityRepository: AvailabilityRepository,
                 freshnessInterval: freshnessInterval
             )
         {
-            diagnosticCacheHits += 1
+            AvailabilityDiagnosticsContext.operation?.recordCacheHit()
             return cached
         }
 
@@ -67,8 +62,11 @@ actor DefaultAvailabilityRepository: AvailabilityRepository,
         } else {
             let client = client
             let clock = clock
+            let diagnostics = AvailabilityDiagnosticsContext.operation
             requestID = UUID()
+            diagnostics?.networkRequestStarted()
             request = Task<VerifiedAvailabilityEvidence?, Error> {
+                defer { diagnostics?.networkRequestFinished() }
                 let response = try await client.getWatchProviders(
                     movieID: movieID
                 )
@@ -86,11 +84,6 @@ actor DefaultAvailabilityRepository: AvailabilityRepository,
                     verifiedAt: clock.now()
                 )
             }
-            diagnosticNetworkRequests += 1
-            diagnosticMaxNetworkRequests = max(
-                diagnosticMaxNetworkRequests,
-                inFlight.count + 1
-            )
             inFlight[key] = InFlightRequest(
                 id: requestID,
                 task: request,
@@ -133,15 +126,6 @@ actor DefaultAvailabilityRepository: AvailabilityRepository,
                 )
             }
         }
-    }
-
-    func availabilityDiagnosticsCounters() -> AvailabilityDiagnosticsCounters {
-        AvailabilityDiagnosticsCounters(
-            cacheHits: diagnosticCacheHits,
-            networkRequests: diagnosticNetworkRequests,
-            maximumSimultaneousNetworkRequests:
-            diagnosticMaxNetworkRequests
-        )
     }
 
     private func finishWaiter(

@@ -163,16 +163,19 @@ actor CoordinatorCandidateRepository: DecisionCandidateRepository {
     private let candidatesByPage: [Int: [DecisionCandidateSeed]]
     private let error: CoordinatorTestError?
     private let delay: Duration?
+    private let failureStartingAtRequest: Int?
     private(set) var requestedPages: [Int] = []
 
     init(
         candidatesByPage: [Int: [DecisionCandidateSeed]] = [:],
         error: CoordinatorTestError? = nil,
-        delay: Duration? = nil
+        delay: Duration? = nil,
+        failureStartingAtRequest: Int? = nil
     ) {
         self.candidatesByPage = candidatesByPage
         self.error = error
         self.delay = delay
+        self.failureStartingAtRequest = failureStartingAtRequest
     }
 
     func discoverPage(
@@ -181,32 +184,48 @@ actor CoordinatorCandidateRepository: DecisionCandidateRepository {
     ) async throws -> [DecisionCandidateSeed] {
         requestedPages.append(page)
         if let delay { try await Task.sleep(for: delay) }
-        if let error { throw error }
+        if let error {
+            if let failureStartingAtRequest {
+                if requestedPages.count >= failureStartingAtRequest {
+                    throw error
+                }
+            } else {
+                throw error
+            }
+        }
         return candidatesByPage[page] ?? []
     }
 }
 
 actor CoordinatorAvailabilityRepository: AvailabilityRepository {
     private let evidenceByMovieID: [Int: VerifiedAvailabilityEvidence]
+    private let failingMovieIDs: Set<Int>
     private(set) var requests: [CoordinatorAvailabilityRequest] = []
 
     var requestedMovieIDs: [Int] {
         requests.map(\.movieID)
     }
 
-    init(evidenceByMovieID: [Int: VerifiedAvailabilityEvidence] = [:]) {
+    init(
+        evidenceByMovieID: [Int: VerifiedAvailabilityEvidence] = [:],
+        failingMovieIDs: Set<Int> = []
+    ) {
         self.evidenceByMovieID = evidenceByMovieID
+        self.failingMovieIDs = failingMovieIDs
     }
 
     func getVerifiedEvidence(
         movieID: Int,
         region _: ViewingRegion,
         policy: AvailabilityFetchPolicy
-    ) -> VerifiedAvailabilityEvidence? {
+    ) throws -> VerifiedAvailabilityEvidence? {
         requests.append(CoordinatorAvailabilityRequest(
             movieID: movieID,
             policy: policy
         ))
+        if failingMovieIDs.contains(movieID) {
+            throw CoordinatorTestError.unavailable
+        }
         return evidenceByMovieID[movieID]
     }
 }
@@ -221,6 +240,7 @@ actor CoordinatorDecisionSetRepository: DecisionSetRepository {
     let replaceError: CoordinatorTestError?
     let onReplace: @Sendable () -> Void
     private(set) var replacements: [PersistedDecisionSet] = []
+    private var checkpoints: [DecisionSetPersistenceCheckpoint: DecisionSetLoadResult] = [:]
 
     init(
         loadResult: DecisionSetLoadResult,
@@ -241,6 +261,22 @@ actor CoordinatorDecisionSetRepository: DecisionSetRepository {
         replacements.append(envelope)
         loadResult = .available(envelope)
         onReplace()
+    }
+
+    func makePersistenceCheckpoint() -> DecisionSetPersistenceCheckpoint {
+        let checkpoint = DecisionSetPersistenceCheckpoint()
+        checkpoints.removeAll(keepingCapacity: true)
+        checkpoints[checkpoint] = loadResult
+        return checkpoint
+    }
+
+    func restorePersistenceCheckpoint(
+        _ checkpoint: DecisionSetPersistenceCheckpoint
+    ) throws {
+        guard let saved = checkpoints.removeValue(forKey: checkpoint) else {
+            throw CoordinatorTestError.unavailable
+        }
+        loadResult = saved
     }
 }
 

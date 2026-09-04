@@ -1,4 +1,5 @@
 import Foundation
+import Synchronization
 
 enum AvailabilityFetchPolicy: Equatable, Sendable {
     case useFreshCache
@@ -19,8 +20,49 @@ struct AvailabilityDiagnosticsCounters: Equatable, Sendable {
     let maximumSimultaneousNetworkRequests: Int
 }
 
-protocol AvailabilityDiagnosticsProviding: Sendable {
-    func availabilityDiagnosticsCounters() async -> AvailabilityDiagnosticsCounters
+final class AvailabilityOperationDiagnostics: Sendable {
+    private struct State: Sendable {
+        var cacheHits = 0
+        var networkRequests = 0
+        var activeNetworkRequests = 0
+        var maximumSimultaneousNetworkRequests = 0
+    }
+
+    private let state = Mutex(State())
+
+    func recordCacheHit() {
+        state.withLock { $0.cacheHits += 1 }
+    }
+
+    func networkRequestStarted() {
+        state.withLock { state in
+            state.networkRequests += 1
+            state.activeNetworkRequests += 1
+            state.maximumSimultaneousNetworkRequests = max(
+                state.maximumSimultaneousNetworkRequests,
+                state.activeNetworkRequests
+            )
+        }
+    }
+
+    func networkRequestFinished() {
+        state.withLock { $0.activeNetworkRequests -= 1 }
+    }
+
+    var counters: AvailabilityDiagnosticsCounters {
+        state.withLock {
+            AvailabilityDiagnosticsCounters(
+                cacheHits: $0.cacheHits,
+                networkRequests: $0.networkRequests,
+                maximumSimultaneousNetworkRequests:
+                $0.maximumSimultaneousNetworkRequests
+            )
+        }
+    }
+}
+
+enum AvailabilityDiagnosticsContext {
+    @TaskLocal static var operation: AvailabilityOperationDiagnostics?
 }
 
 protocol AvailabilityClock: Sendable {

@@ -43,7 +43,7 @@ struct ThreeForTonightProgressiveRecoveryTests {
 
         #expect(await candidates.requestedPages == Array(1 ... 8))
         #expect(Set(snapshot.decisionSet.recommendations.map(\.display.movieID)) == [100, 101, 102])
-        let recorded = try #require(await diagnostics.snapshots.first)
+        let recorded = await diagnostics.firstSnapshot()
         #expect(recorded.highestRecallStage == .firstExpansion)
         #expect(recorded.discoverPageRequestCount == 8)
         #expect(recorded.uniqueRecalledCandidateCount == 4)
@@ -85,10 +85,21 @@ struct ThreeForTonightProgressiveRecoveryTests {
         )
         let sut = CoordinatorTestFixtures.makeCoordinator(
             candidateRepository: CoordinatorCandidateRepository(),
-            availabilityRepository: CoordinatorAvailabilityRepository(),
+            availabilityRepository: CoordinatorAvailabilityRepository(
+                evidenceByMovieID: Dictionary(
+                    uniqueKeysWithValues: [10, 11, 12].map {
+                        ($0, CoordinatorTestFixtures.evidence($0))
+                    }
+                )
+            ),
             decisionSetRepository: CoordinatorDecisionSetRepository(
                 loadResult: .available(source)
-            )
+            ),
+            movieRepository: CoordinatorMovieRepository(movies: Dictionary(
+                uniqueKeysWithValues: [10, 11, 12].map {
+                    ($0, CoordinatorTestFixtures.movie($0))
+                }
+            ))
         )
 
         guard case let .exhausted(exhaustion) = try await sut.refresh() else {
@@ -98,6 +109,134 @@ struct ThreeForTonightProgressiveRecoveryTests {
 
         #expect(exhaustion.snapshot.decisionSet.recommendations.map(\.display.movieID) == [10, 11, 12])
         #expect(exhaustion.snapshot.decisionSet.outcome.isExhausted)
+    }
+
+    @Test(
+        "one or two newly found titles replace the retained active set",
+        arguments: [1, 2]
+    )
+    func partialNewSetReplacesRetainedSet(count: Int) async throws {
+        let source = try exhaustedEnvelope(
+            CoordinatorTestFixtures.envelope(currentMovieIDs: [10, 11, 12]),
+            exhaustedAt: Date(timeIntervalSince1970: 1000)
+        )
+        let newIDs = Array(20 ..< 20 + count)
+        let candidates = try newIDs.map(CoordinatorTestFixtures.candidate)
+        let allIDs = [10, 11, 12] + newIDs
+        let sut = CoordinatorTestFixtures.makeCoordinator(
+            candidateRepository: CoordinatorCandidateRepository(
+                candidatesByPage: [1: candidates]
+            ),
+            availabilityRepository: CoordinatorAvailabilityRepository(
+                evidenceByMovieID: Dictionary(uniqueKeysWithValues: allIDs.map {
+                    ($0, CoordinatorTestFixtures.evidence($0))
+                })
+            ),
+            decisionSetRepository: CoordinatorDecisionSetRepository(
+                loadResult: .available(source)
+            ),
+            movieRepository: CoordinatorMovieRepository(movies: Dictionary(
+                uniqueKeysWithValues: allIDs.map {
+                    ($0, CoordinatorTestFixtures.movie($0))
+                }
+            ))
+        )
+
+        guard case let .exhausted(exhaustion) = try await sut.refresh() else {
+            Issue.record("Expected partial exhausted replacement")
+            return
+        }
+
+        #expect(exhaustion.snapshot.decisionSet.recommendations.map(\.display.movieID) == newIDs)
+    }
+
+    @Test("retention removes members with missing or failed current availability")
+    func retainedSetRequiresCurrentAvailability() async throws {
+        let source = try exhaustedEnvelope(
+            CoordinatorTestFixtures.envelope(currentMovieIDs: [10, 11, 12]),
+            exhaustedAt: Date(timeIntervalSince1970: 1000)
+        )
+        let refreshedAt = Date(timeIntervalSince1970: 9000)
+        let availability = CoordinatorAvailabilityRepository(
+            evidenceByMovieID: [10: refreshedEvidence(movieID: 10, at: refreshedAt)],
+            failingMovieIDs: [12]
+        )
+        let sut = CoordinatorTestFixtures.makeCoordinator(
+            candidateRepository: CoordinatorCandidateRepository(),
+            availabilityRepository: availability,
+            decisionSetRepository: CoordinatorDecisionSetRepository(
+                loadResult: .available(source)
+            ),
+            movieRepository: CoordinatorMovieRepository(movies: Dictionary(
+                uniqueKeysWithValues: [10, 11, 12].map {
+                    ($0, CoordinatorTestFixtures.movie($0))
+                }
+            ))
+        )
+
+        guard case let .exhausted(exhaustion) = try await sut.refresh() else {
+            Issue.record("Expected retained partial exhaustion")
+            return
+        }
+
+        #expect(exhaustion.snapshot.decisionSet.recommendations.map(\.display.movieID) == [10])
+        #expect(
+            exhaustion.snapshot.decisionSet.recommendations.first?.availability.verifiedAt
+                == refreshedAt
+        )
+        #expect(await Set(availability.requestedMovieIDs) == [10, 11, 12])
+    }
+
+    @Test("stale post-persistence work is rolled back when regeneration fails")
+    func stalePersistenceIsRolledBackBeforeFailedRegeneration() async throws {
+        let current = try trustedState(snapshotID: ViewerStateSnapshotID(rawValue: UUID()))
+        let latest = try trustedState(snapshotID: ViewerStateSnapshotID(rawValue: UUID()))
+        let loader = MutableTrustedDecisionStateLoader(current: current, next: latest)
+        let candidate = try CoordinatorTestFixtures.candidate(20)
+        let candidates = CoordinatorCandidateRepository(
+            candidatesByPage: [1: [candidate]],
+            error: .unavailable,
+            failureStartingAtRequest: 3
+        )
+        let decisionSets = CoordinatorDecisionSetRepository(
+            loadResult: .absent,
+            onReplace: loader.publishNext
+        )
+        let sut = coordinator(
+            loader: loader,
+            candidates: candidates,
+            decisionSets: decisionSets,
+            movieIDs: [20]
+        )
+
+        guard case let .retryableFailure(reason, _) = try await sut.load() else {
+            Issue.record("Expected failed stale regeneration")
+            return
+        }
+
+        #expect(reason == .generationUnavailable)
+        #expect(await decisionSets.load() == .absent)
+        let attempted = try #require(await decisionSets.replacements.first)
+        #expect(attempted.outcome.isExhausted)
+        #expect(attempted.cycle.history.allShownMovieIDs == [20])
+    }
+
+    @Test("failed generation records retryable diagnostics")
+    func failedGenerationRecordsDiagnostics() async throws {
+        let diagnostics = RecordingRecommendationDiagnosticsSink()
+        let sut = CoordinatorTestFixtures.makeCoordinator(
+            candidateRepository: CoordinatorCandidateRepository(error: .unavailable),
+            availabilityRepository: CoordinatorAvailabilityRepository(),
+            decisionSetRepository: CoordinatorDecisionSetRepository(loadResult: .absent),
+            diagnosticsSink: diagnostics
+        )
+
+        guard case .retryableFailure = try await sut.load() else {
+            Issue.record("Expected retryable failure")
+            return
+        }
+
+        #expect(await diagnostics.firstSnapshot().outcome == .retryableFailure)
     }
 
     @Test("fresh zero exhaustion survives relaunch and expires at exactly 24 hours")
@@ -308,9 +447,71 @@ private extension ThreeForTonightProgressiveRecoveryTests {
             stateChangedAt: .distantPast
         )
     }
+
+    func trustedState(snapshotID: ViewerStateSnapshotID) throws -> TrustedDecisionState {
+        try TrustedDecisionState(
+            profile: CoordinatorTestFixtures.sparseProfile(),
+            viewerMovieState: ViewerMovieStateSnapshot(id: snapshotID, states: [])
+        )
+    }
+
+    func refreshedEvidence(movieID: Int, at date: Date) -> VerifiedAvailabilityEvidence {
+        VerifiedAvailabilityEvidence(
+            regionalEvidence: CoordinatorTestFixtures.evidence(movieID).regionalEvidence,
+            verifiedAt: date
+        )
+    }
+
+    func exhaustedEnvelope(
+        _ envelope: PersistedDecisionSet,
+        exhaustedAt: Date
+    ) throws -> PersistedDecisionSet {
+        try PersistedDecisionSet(
+            id: envelope.id,
+            generatedAt: envelope.generatedAt,
+            engineModelVersion: envelope.engineModelVersion,
+            cycle: envelope.cycle,
+            sourceViewerStateSnapshotID: envelope.sourceViewerStateSnapshotID,
+            searchPolicyVersion: envelope.searchPolicyVersion,
+            outcome: .exhausted(exhaustedAt: exhaustedAt),
+            region: envelope.region,
+            selectedProviderIDs: envelope.selectedProviderIDs,
+            recommendations: envelope.recommendations
+        )
+    }
+
+    func coordinator(
+        loader: MutableTrustedDecisionStateLoader,
+        candidates: CoordinatorCandidateRepository,
+        decisionSets: CoordinatorDecisionSetRepository,
+        movieIDs: [Int]
+    ) -> ThreeForTonightCoordinator {
+        let movies = CoordinatorMovieRepository(movies: Dictionary(
+            uniqueKeysWithValues: movieIDs.map {
+                ($0, CoordinatorTestFixtures.movie($0))
+            }
+        ))
+        let availability = CoordinatorAvailabilityRepository(
+            evidenceByMovieID: Dictionary(uniqueKeysWithValues: movieIDs.map {
+                ($0, CoordinatorTestFixtures.evidence($0))
+            })
+        )
+        return ThreeForTonightCoordinator(
+            trustedStateLoader: loader,
+            decisionSetRepository: decisionSets,
+            inputAssembler: AssembleDecisionEngineInput(
+                candidateRepository: candidates,
+                movieRepository: movies,
+                availabilityRepository: availability
+            ),
+            movieRepository: movies,
+            availabilityRepository: availability,
+            signer: StableDecisionCycleSigner()
+        )
+    }
 }
 
-private final class MutableDecisionSetClock: DecisionSetClock, @unchecked Sendable {
+private final class MutableDecisionSetClock: DecisionSetClock, Sendable {
     private let value: Mutex<Date>
 
     init(now: Date) {
@@ -333,5 +534,12 @@ private actor RecordingRecommendationDiagnosticsSink:
 
     func record(_ diagnostics: RecommendationGenerationDiagnostics) {
         snapshots.append(diagnostics)
+    }
+
+    func firstSnapshot() async -> RecommendationGenerationDiagnostics {
+        while snapshots.isEmpty {
+            await Task.yield()
+        }
+        return snapshots[0]
     }
 }

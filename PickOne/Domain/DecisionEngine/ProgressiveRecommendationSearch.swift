@@ -25,8 +25,32 @@ extension ThreeForTonightCoordinator {
         mandatoryRetainedMovieIDs: Set<Int> = [],
         additionallyExcludedMovieIDs: Set<Int> = []
     ) async throws -> ProgressiveRecommendationSearchResult {
+        let diagnostics = AvailabilityOperationDiagnostics()
+        return try await AvailabilityDiagnosticsContext.$operation.withValue(
+            diagnostics
+        ) {
+            try await performProgressiveSearch(
+                cycle: cycle,
+                trusted: trusted,
+                activeMovieIDs: activeMovieIDs,
+                retainedCandidates: retainedCandidates,
+                mandatoryRetainedMovieIDs: mandatoryRetainedMovieIDs,
+                additionallyExcludedMovieIDs: additionallyExcludedMovieIDs,
+                diagnostics: diagnostics
+            )
+        }
+    }
+
+    private func performProgressiveSearch(
+        cycle: DecisionCycle,
+        trusted: TrustedDecisionState,
+        activeMovieIDs: Set<Int>,
+        retainedCandidates: [DecisionInputCandidate],
+        mandatoryRetainedMovieIDs: Set<Int>,
+        additionallyExcludedMovieIDs: Set<Int>,
+        diagnostics: AvailabilityOperationDiagnostics
+    ) async throws -> ProgressiveRecommendationSearchResult {
         let searchStartedAt = clock.now()
-        let availabilityBaseline = await inputAssembler.availabilityDiagnosticsCounters()
         let prepared = try await inputAssembler.prepare(trustedState: trusted)
         var candidates = retainedCandidates
         var recalledMovieIDs = Set<Int>()
@@ -45,12 +69,12 @@ extension ThreeForTonightCoordinator {
         var recallStageDurations: [RecommendationRecallStageDuration] = []
 
         if selection.recommendations.count == 3 {
-            return await successfulRetainedSearchResult(
+            return successfulRetainedSearchResult(
                 selection: selection,
                 candidates: candidates,
                 history: history,
                 searchStartedAt: searchStartedAt,
-                initialAvailabilityCounters: availabilityBaseline
+                availabilityDiagnostics: diagnostics
             )
         }
 
@@ -82,7 +106,7 @@ extension ThreeForTonightCoordinator {
                 mandatoryRetainedMovieIDs: mandatoryRetainedMovieIDs
             )
             if selection.recommendations.count == 3 {
-                return await successfulSearchResult(
+                return successfulSearchResult(
                     selection: selection,
                     candidates: candidates,
                     history: history,
@@ -93,7 +117,7 @@ extension ThreeForTonightCoordinator {
                     maxAvailabilityConcurrency,
                     recallStageDurations: recallStageDurations,
                     searchStartedAt: searchStartedAt,
-                    initialAvailabilityCounters: availabilityBaseline
+                    availabilityDiagnostics: diagnostics
                 )
             }
             if batch.reachedEmptyPage {
@@ -101,7 +125,7 @@ extension ThreeForTonightCoordinator {
             }
         }
 
-        return await searchResultAfterRollover(
+        return searchResultAfterRollover(
             prepared: prepared,
             selection: selection,
             candidates: candidates,
@@ -115,7 +139,7 @@ extension ThreeForTonightCoordinator {
             activeMovieIDs: activeMovieIDs,
             mandatoryRetainedMovieIDs: mandatoryRetainedMovieIDs,
             searchStartedAt: searchStartedAt,
-            initialAvailabilityCounters: availabilityBaseline
+            availabilityDiagnostics: diagnostics
         )
     }
 
@@ -131,9 +155,9 @@ extension ThreeForTonightCoordinator {
         candidates: [DecisionInputCandidate],
         history: RecommendationHistory,
         searchStartedAt: Date,
-        initialAvailabilityCounters: AvailabilityDiagnosticsCounters?
-    ) async -> ProgressiveRecommendationSearchResult {
-        await successfulSearchResult(
+        availabilityDiagnostics: AvailabilityOperationDiagnostics
+    ) -> ProgressiveRecommendationSearchResult {
+        successfulSearchResult(
             selection: selection,
             candidates: candidates,
             history: history,
@@ -143,7 +167,7 @@ extension ThreeForTonightCoordinator {
             maximumSimultaneousAvailabilityRequests: 0,
             recallStageDurations: [],
             searchStartedAt: searchStartedAt,
-            initialAvailabilityCounters: initialAvailabilityCounters
+            availabilityDiagnostics: availabilityDiagnostics
         )
     }
 
@@ -160,8 +184,8 @@ extension ThreeForTonightCoordinator {
         activeMovieIDs: Set<Int>,
         mandatoryRetainedMovieIDs: Set<Int>,
         searchStartedAt: Date,
-        initialAvailabilityCounters: AvailabilityDiagnosticsCounters?
-    ) async -> ProgressiveRecommendationSearchResult {
+        availabilityDiagnostics: AvailabilityOperationDiagnostics
+    ) -> ProgressiveRecommendationSearchResult {
         var selection = initialSelection
         var history = initialHistory
         var highestStage = initialHighestStage
@@ -182,9 +206,7 @@ extension ThreeForTonightCoordinator {
             )
         }
 
-        let availabilityCounters = await availabilityCounterDelta(
-            from: initialAvailabilityCounters
-        )
+        let availabilityCounters = availabilityDiagnostics.counters
         return ProgressiveRecommendationSearchResult(
             selection: selection,
             candidates: candidates,
@@ -197,7 +219,7 @@ extension ThreeForTonightCoordinator {
             availabilityNetworkRequestCount: availabilityCounters.networkRequests,
             availabilityCacheHitCount: availabilityCounters.cacheHits,
             maximumSimultaneousAvailabilityRequests:
-            maximumSimultaneousAvailabilityRequests,
+            availabilityCounters.maximumSimultaneousNetworkRequests,
             recallStageDurations: recallStageDurations,
             timeToFirstUsableSet: selection.recommendations.count == 3
                 ? max(0, clock.now().timeIntervalSince(searchStartedAt))
@@ -215,11 +237,9 @@ extension ThreeForTonightCoordinator {
         maximumSimultaneousAvailabilityRequests: Int,
         recallStageDurations: [RecommendationRecallStageDuration],
         searchStartedAt: Date,
-        initialAvailabilityCounters: AvailabilityDiagnosticsCounters?
-    ) async -> ProgressiveRecommendationSearchResult {
-        let availabilityCounters = await availabilityCounterDelta(
-            from: initialAvailabilityCounters
-        )
+        availabilityDiagnostics: AvailabilityOperationDiagnostics
+    ) -> ProgressiveRecommendationSearchResult {
+        let availabilityCounters = availabilityDiagnostics.counters
         return ProgressiveRecommendationSearchResult(
             selection: selection,
             candidates: candidates,
@@ -232,33 +252,12 @@ extension ThreeForTonightCoordinator {
             availabilityNetworkRequestCount: availabilityCounters.networkRequests,
             availabilityCacheHitCount: availabilityCounters.cacheHits,
             maximumSimultaneousAvailabilityRequests:
-            maximumSimultaneousAvailabilityRequests,
+            availabilityCounters.maximumSimultaneousNetworkRequests,
             recallStageDurations: recallStageDurations,
             timeToFirstUsableSet: max(
                 0,
                 clock.now().timeIntervalSince(searchStartedAt)
             )
-        )
-    }
-
-    private func availabilityCounterDelta(
-        from initial: AvailabilityDiagnosticsCounters?
-    ) async -> AvailabilityDiagnosticsCounters {
-        guard let current = await inputAssembler.availabilityDiagnosticsCounters() else {
-            return AvailabilityDiagnosticsCounters(
-                cacheHits: 0,
-                networkRequests: 0,
-                maximumSimultaneousNetworkRequests: 0
-            )
-        }
-        return AvailabilityDiagnosticsCounters(
-            cacheHits: max(0, current.cacheHits - (initial?.cacheHits ?? 0)),
-            networkRequests: max(
-                0,
-                current.networkRequests - (initial?.networkRequests ?? 0)
-            ),
-            maximumSimultaneousNetworkRequests:
-            current.maximumSimultaneousNetworkRequests
         )
     }
 

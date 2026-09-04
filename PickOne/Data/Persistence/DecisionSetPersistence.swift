@@ -50,6 +50,7 @@ private struct DecisionIdentityReactionV1DTO: Encodable {
 protocol DecisionSetDataStore: Sendable {
     func readActive() throws -> Data?
     func replaceActive(with data: Data) throws
+    func removeActive() throws
     func readQuarantine() throws -> Data?
     func replaceQuarantine(with data: Data) throws
 }
@@ -91,6 +92,10 @@ final class UserDefaultsDecisionSetDataStore: DecisionSetDataStore {
 
     func replaceActive(with data: Data) throws {
         backend.withLock { $0.makeUserDefaults().set(data, forKey: Self.activeStorageKey) }
+    }
+
+    func removeActive() throws {
+        backend.withLock { $0.makeUserDefaults().removeObject(forKey: Self.activeStorageKey) }
     }
 
     func readQuarantine() throws -> Data? {

@@ -390,13 +390,27 @@ extension LocalViewerStateRepository {
         )
         let inputsChanged = profileState != current.envelope.viewerProfileState ||
             states != current.snapshot.states
+        let currentEpochID = current.envelope.recommendationSuppressionEpochID
+        let replacementEpochID = freshSuppressionEpochID(excluding: currentEpochID)
         _ = try persistProfileState(
             profileState,
             states: states,
             current: current,
             recommendationInputsChanged: inputsChanged,
-            suppressionEpochID: makeSuppressionEpochID()
+            suppressionEpochID: replacementEpochID
         )
+    }
+
+    private func freshSuppressionEpochID(excluding current: UUID) -> UUID {
+        for _ in 0 ..< 8 {
+            let candidate = makeSuppressionEpochID()
+            if candidate != current {
+                return candidate
+            }
+        }
+        var bytes = current.uuid
+        bytes.0 ^= 1
+        return UUID(uuid: bytes)
     }
 
     private func persistProfileState(

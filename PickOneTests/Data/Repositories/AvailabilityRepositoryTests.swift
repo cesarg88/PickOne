@@ -309,6 +309,39 @@ struct AvailabilityRepositoryTests {
         #expect(await client.callCount == 2)
     }
 
+    @Test("operation diagnostics exclude concurrent unrelated requests")
+    func operationDiagnosticsAreIsolated() async throws {
+        let client = MockMovieAvailabilityClient(yieldsBeforeResponse: 100) {
+            movieID,
+                _ in
+            Self.response(movieID: movieID, providerID: 8)
+        }
+        let sut = DefaultAvailabilityRepository(
+            client: client,
+            clock: LockedAvailabilityClock(now: AvailabilityTestFixtures.now)
+        )
+        let diagnostics = AvailabilityOperationDiagnostics()
+
+        async let tracked: VerifiedAvailabilityEvidence? =
+            AvailabilityDiagnosticsContext.$operation.withValue(diagnostics) {
+                try await sut.getVerifiedEvidence(
+                    movieID: 41,
+                    region: .spain,
+                    policy: .useFreshCache
+                )
+            }
+        async let unrelated = sut.getVerifiedEvidence(
+            movieID: 42,
+            region: .spain,
+            policy: .useFreshCache
+        )
+        _ = try await (tracked, unrelated)
+
+        #expect(await client.callCount == 2)
+        #expect(diagnostics.counters.networkRequests == 1)
+        #expect(diagnostics.counters.maximumSimultaneousNetworkRequests == 1)
+    }
+
     private static func response(
         movieID: Int,
         providerID: Int

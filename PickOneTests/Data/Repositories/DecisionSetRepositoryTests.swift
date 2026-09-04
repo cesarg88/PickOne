@@ -269,6 +269,19 @@ struct DecisionSetRepositoryTests {
         #expect(store.activeData == previous)
     }
 
+    @Test("persistence checkpoint restores the exact previous active bytes")
+    func persistenceCheckpointRestoresExactBytes() async throws {
+        let original = Data("exact-previous-bytes".utf8)
+        let store = InMemoryDecisionSetDataStore(activeData: original)
+        let repository = DefaultDecisionSetRepository(store: store)
+        let checkpoint = try await repository.makePersistenceCheckpoint()
+
+        try await repository.replace(decisionSet())
+        try await repository.restorePersistenceCheckpoint(checkpoint)
+
+        #expect(store.activeData == original)
+    }
+
     @Test("corrupt bytes are quarantined and retained after recovery replacement")
     func corruptRecovery() async throws {
         let corrupt = Data("not-json".utf8)
@@ -512,6 +525,14 @@ final class InMemoryDecisionSetDataStore: DecisionSetDataStore {
         try state.withLock {
             if $0.rejectActiveReplacements { throw TestStoreError.rejected }
             $0.activeData = data
+            $0.activeReplacementCount += 1
+        }
+    }
+
+    func removeActive() throws {
+        try state.withLock {
+            if $0.rejectActiveReplacements { throw TestStoreError.rejected }
+            $0.activeData = nil
             $0.activeReplacementCount += 1
         }
     }

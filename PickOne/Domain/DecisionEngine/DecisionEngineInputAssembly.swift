@@ -149,15 +149,6 @@ struct AssembleDecisionEngineInput: Sendable {
         )
     }
 
-    func availabilityDiagnosticsCounters() async -> AvailabilityDiagnosticsCounters? {
-        guard let provider = availabilityRepository
-            as? any AvailabilityDiagnosticsProviding
-        else {
-            return nil
-        }
-        return await provider.availabilityDiagnosticsCounters()
-    }
-
     func snapshot(
         prepared: PreparedDecisionEngineInput,
         candidates: [DecisionInputCandidate],

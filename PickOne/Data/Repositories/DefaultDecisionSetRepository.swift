@@ -1,8 +1,15 @@
 import Foundation
 
 actor DefaultDecisionSetRepository: DecisionSetRepository {
+    private struct StoredPersistenceCheckpoint {
+        let data: Data?
+    }
+
     private let store: any DecisionSetDataStore
     private let coder: any DecisionSetEnvelopeCoding
+    private var persistenceCheckpoints: [
+        DecisionSetPersistenceCheckpoint: StoredPersistenceCheckpoint
+    ] = [:]
 
     init(
         store: any DecisionSetDataStore,
@@ -55,6 +62,36 @@ actor DefaultDecisionSetRepository: DecisionSetRepository {
         }
         do {
             try store.replaceActive(with: data)
+        } catch {
+            throw DecisionSetRepositoryError.storageFailed
+        }
+    }
+
+    func makePersistenceCheckpoint() throws -> DecisionSetPersistenceCheckpoint {
+        let checkpoint = DecisionSetPersistenceCheckpoint()
+        do {
+            persistenceCheckpoints.removeAll(keepingCapacity: true)
+            persistenceCheckpoints[checkpoint] = try StoredPersistenceCheckpoint(
+                data: store.readActive()
+            )
+            return checkpoint
+        } catch {
+            throw DecisionSetRepositoryError.storageFailed
+        }
+    }
+
+    func restorePersistenceCheckpoint(
+        _ checkpoint: DecisionSetPersistenceCheckpoint
+    ) throws {
+        guard let stored = persistenceCheckpoints.removeValue(forKey: checkpoint) else {
+            throw DecisionSetRepositoryError.storageFailed
+        }
+        do {
+            if let data = stored.data {
+                try store.replaceActive(with: data)
+            } else {
+                try store.removeActive()
+            }
         } catch {
             throw DecisionSetRepositoryError.storageFailed
         }
