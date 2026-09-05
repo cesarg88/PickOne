@@ -27,7 +27,7 @@ actor UITestingThreeForTonightUseCase: ThreeForTonightUseCase {
         return try .usable(Self.snapshot(movieID: currentMovieID))
     }
 
-    private static func snapshot(movieID: Int) throws -> ThreeForTonightSnapshot {
+    static func snapshot(movieID: Int) throws -> ThreeForTonightSnapshot {
         guard
             let signature = DecisionCycleSignature(
                 rawValue: String(repeating: "a", count: 64)

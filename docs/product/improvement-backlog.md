@@ -12,7 +12,7 @@ It contains only work that remains pending after Milestone 3.3. Completed work
 should remain in this file with its status changed to `Completed` and a link to
 the implementing PR or milestone.
 
-Last reviewed: 2026-09-01, during Milestone 7 P0 reopening and corrective D0.
+Last reviewed: 2026-09-05, during Milestone 7 P0-4 integration and closure.
 
 ## Product Direction
 
@@ -231,7 +231,7 @@ Priorities:
 
 ### IMP-004 — Add continuous taste learning and unified movie state
 
-- Status: `Reopened — P0 correction accepted; implementation pending`
+- Status: `Reopened — P0-4 final validation pending`
 - Priority: `P0`
 - Roadmap relationship: Milestone 7
 - Accepted specification:
@@ -269,6 +269,10 @@ Priorities:
     Set, deterministic empty refresh, and no recovery after preference reset
   - Milestone 7 is reopened; IMP-025 and a new integration/closure PR are
     required before final approval
+  - corrective D0 and P0-1 through P0-3 merged as PRs #44 and #46–#48
+  - P0-4 composes the sanitized prolonged regression, upgrade/relaunch UI
+    journey, and non-persisting twenty-page device diagnostics path; final CI,
+    physical validation, and Product Owner acceptance remain closure gates
 - Done when:
   - Detail, Watchlist, calibration, Settings history, and Home agree for every
     movie state
@@ -285,7 +289,7 @@ Priorities:
 
 ### IMP-025 — Recover exhausted Home and add direct feedback
 
-- Status: `Accepted — Engineering Ready after D0 merges`
+- Status: `In Progress — P0-4 integration candidate; final validation pending`
 - Priority: `P0`
 - Roadmap relationship: reopened Milestone 7
 - Correction specification:
@@ -321,6 +325,19 @@ Priorities:
     installations
   - privacy-safe physical-device request and latency evidence for the full
     twenty-page path
+- Progress:
+  - D0 and P0-1 through P0-3 merged as PRs #44 and #46–#48
+  - the P0-4 sanitized regression exercises the 93-shown/47-watched/113-union
+    shape through 42 feedback mutations, six refreshes, four relaunches, and
+    persisted exhaustion without an identical retry loop
+  - the P0-4 UI journey verifies v2 upgrade, Home quick feedback, preserved
+    Watchlist and Search History, `My movies`, and process relaunch together
+  - the DEBUG-only device scenario forces production orchestration through page
+    20 without writing Viewer State or Decision Set data and reports only the
+    accepted privacy-safe diagnostics
+  - final CI, preserved-device validation, measured request/latency evidence,
+    Technical Lead review, Product Owner acceptance, and household utility
+    approval remain required before completion
 - Done when:
   - D0 and corrective slices P0-1 through P0-4 are merged sequentially
   - a sanitized prolonged-feedback/relaunch regression cannot reproduce the

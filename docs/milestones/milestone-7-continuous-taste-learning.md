@@ -2,8 +2,7 @@
 
 ## Status
 
-`Reopened — P0 correction accepted; implementation pending; final approval
-blocked`
+`Reopened — P0-4 integration candidate; final approval blocked on validation`
 
 - Product direction accepted: `2026-08-19`
 - `My movies` label accepted: `2026-08-24`
@@ -17,6 +16,9 @@ blocked`
   [Milestone 7 P0 — Home Exhaustion Recovery](milestone-7-p0-home-exhaustion-recovery.md)
 - A new integration-and-closure PR plus physical validation on the preserved
   blocked installation are required for final approval
+- Corrective D0 and P0-1 through P0-3 merged as PRs #44 and #46–#48; P0-4 adds
+  the sanitized prolonged regression, upgrade/relaunch UI journey, and
+  non-persisting twenty-page device evidence path.
 - Dependency satisfied: Milestone 6 and its explanation correction are merged
   into `develop`.
 
@@ -73,6 +75,15 @@ migration, catalog, and Decision Engine boundaries.
   cycle inherited permanent shown exclusion inside a six-page recall boundary.
   This invalidates the original closure claim without invalidating the prior
   migration, feedback, catalog, or automated evidence.
+- Corrective integration evidence: the P0-4 sanitized fixture composes v2-to-v3
+  recovery with 42 feedback mutations, six replacement refreshes, four
+  repository relaunches, and persisted exhaustion without losing explicit or
+  diagnostic history. Its UI journey verifies migration, Home quick feedback,
+  Watchlist, Search History, `My movies`, and process relaunch together.
+- Final approval remains external to automation: the final-SHA CI result,
+  preserved-device checklist, measured twenty-page run, Technical Lead review,
+  Product Owner latency acceptance, and repeated household utility checkpoint
+  are recorded in the P0-4 PR before merge.
 
 ## Goal
 
@@ -1171,6 +1182,11 @@ physical installation over the preserved blocked pilot state, and recorded
 twenty-page device request/latency evidence. M7 and its utility checkpoint can
 close only in this new PR after Technical Lead review and Product Owner
 acceptance of the observed wait.
+
+The P0-4 candidate is implemented as integration, UI, DEBUG-only diagnostic,
+and documentary coverage. It does not change P1 scoring, availability,
+credibility, feedback semantics, or any later milestone. M7 remains reopened
+until the final-SHA external gates above pass and this closure slice merges.
 
 ## Dependency graph
 

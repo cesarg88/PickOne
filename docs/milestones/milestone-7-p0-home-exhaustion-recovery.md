@@ -2,7 +2,7 @@
 
 ## Status
 
-`Accepted — Engineering Ready; implementation begins after D0 merges`
+`P0-4 integration candidate — final CI and physical acceptance pending`
 
 - Milestone 7 reopened: `2026-09-01`
 - Trigger: final physical-device validation on the Product Owner's retained
@@ -11,6 +11,9 @@
 - Architecture proposal:
   [ADR-014 — Bounded Recommendation Suppression and Exhaustion Recovery](../decisions/adr-014-bounded-recommendation-suppression-and-recovery.md)
 - Backlog: IMP-025
+- Corrective D0 and P0-1 through P0-3 merged as PRs #44 and #46–#48.
+- P0-4 owns the final automated, CI, preserved-device, latency, and Product
+  Owner acceptance record; completion is not inferred before those gates pass.
 - Milestone 8 remains blocked.
 
 ## Goal
@@ -461,6 +464,34 @@ physical update validation on the preserved blocked installation. Record the
 required twenty-page request and latency evidence and obtain explicit Product
 Owner acceptance of the observed wait. This is a new PR; merged PR #43 remains
 historical evidence.
+
+## P0-4 closure record
+
+The P0-4 candidate adds only integration and validation support over the merged
+P0-1 through P0-3 behavior:
+
+- a sanitized structurally equivalent regression begins with 93 shown IDs, 47
+  watched IDs, and 113 IDs in their union, migrates Viewer State and an empty
+  Decision Set from v2 to v3, then exercises 42 direct feedback mutations, six
+  replacement refreshes, four repository relaunches, persisted exhaustion, and
+  a blocked identical retry;
+- the same regression proves that profile, reactions, watched facts, Watchlist,
+  Search History, complete shown history, the 30-ID recent bound, and every new
+  explicit exclusion survive the composed sequence;
+- a simulator UI journey launches from a deterministic v2 Viewer State, recovers
+  Home, applies quick feedback without opening Detail, and verifies Home,
+  Watchlist, Search History, and `My movies` again after process relaunch;
+- a DEBUG-only, non-persisting device scenario sends synthetic trusted state
+  through the production coordinator and real TMDB repositories, deliberately
+  withholds otherwise eligible results until page 20, disables Home feedback
+  writes, and emits only the accepted privacy-safe diagnostics fields. Normal
+  production composition retains the no-op sink.
+
+The final P0-4 PR records `make verify`, CI, the exact physical-device SHA and
+twenty-page diagnostic values, the preserved-installation checklist, Technical
+Lead review, Product Owner acceptance of the observed wait, and the repeated
+household utility checkpoint. Milestone 7 and IMP-025 remain open until those
+external gates pass and the closure PR merges; Milestone 8 remains blocked.
 
 ## Dependency graph
 
