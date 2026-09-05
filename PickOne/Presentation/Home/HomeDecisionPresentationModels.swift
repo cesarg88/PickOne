@@ -4,7 +4,7 @@ struct HomeDecisionSetPresentationModel: Equatable {
     let items: [HomeDecisionMovieItem]
 }
 
-struct HomeDecisionMovieItem: Identifiable, Equatable, Hashable {
+struct HomeDecisionMovieItem: Identifiable, Equatable {
     let id: Int
     let title: String
     let posterURL: URL?
@@ -13,6 +13,7 @@ struct HomeDecisionMovieItem: Identifiable, Equatable, Hashable {
     let details: String
     let providers: [HomeDecisionProviderItem]
     let isSaved: Bool
+    let feedbackMetadata: MovieFeedbackMetadata
 }
 
 struct HomeDecisionProviderItem: Identifiable, Equatable, Hashable {
@@ -38,7 +39,14 @@ enum HomeDecisionPresentationMapper {
         recommendation: PersistedDecisionRecommendation,
         isSaved: Bool
     ) -> HomeDecisionMovieItem? {
-        guard let reason = reason(recommendation.evidence.primary) else {
+        guard
+            let reason = reason(recommendation.evidence.primary),
+            let feedbackMetadata = try? MovieFeedbackMetadata(
+                title: recommendation.display.localizedTitle,
+                releaseYear: recommendation.display.releaseYear,
+                posterPath: recommendation.display.posterPath
+            )
+        else {
             return nil
         }
         return HomeDecisionMovieItem(
@@ -58,7 +66,8 @@ enum HomeDecisionPresentationMapper {
                     logoURL: ImageURLBuilder.providerLogoURL(path: provider.logoPath)
                 )
             },
-            isSaved: isSaved
+            isSaved: isSaved,
+            feedbackMetadata: feedbackMetadata
         )
     }
 

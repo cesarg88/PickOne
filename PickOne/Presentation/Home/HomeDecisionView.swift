@@ -21,6 +21,8 @@ struct HomeDecisionView: View {
                 exhaustion: model.exhaustion,
                 updateFeedback: model.updateFeedback,
                 imagePipeline: imagePipeline,
+                updateViewerMovieState: updateViewerMovieState,
+                viewerStateDidChange: model.reconcile,
                 refresh: model.refresh,
                 retry: model.load,
                 reviewMyMovies: reviewMyMovies,
@@ -67,6 +69,8 @@ private struct HomeDecisionContent: View {
     let exhaustion: HomeDecisionExhaustionPresentation?
     let updateFeedback: String?
     let imagePipeline: ImagePipeline
+    let updateViewerMovieState: any UpdateViewerMovieStateUseCase
+    let viewerStateDidChange: @MainActor (DecisionViewerStateChange) -> Void
     let refresh: () -> Void
     let retry: () -> Void
     let reviewMyMovies: () -> Void
@@ -101,6 +105,8 @@ private struct HomeDecisionContent: View {
                     refreshError: refreshError,
                     exhaustion: exhaustion,
                     imagePipeline: imagePipeline,
+                    updateViewerMovieState: updateViewerMovieState,
+                    viewerStateDidChange: viewerStateDidChange,
                     refresh: refresh,
                     reviewMyMovies: reviewMyMovies,
                     reviewStreamingServices: reviewStreamingServices
@@ -132,6 +138,8 @@ private struct HomeDecisionLoadedView: View {
     let refreshError: String?
     let exhaustion: HomeDecisionExhaustionPresentation?
     let imagePipeline: ImagePipeline
+    let updateViewerMovieState: any UpdateViewerMovieStateUseCase
+    let viewerStateDidChange: @MainActor (DecisionViewerStateChange) -> Void
     let refresh: () -> Void
     let reviewMyMovies: () -> Void
     let reviewStreamingServices: () -> Void
@@ -148,11 +156,12 @@ private struct HomeDecisionLoadedView: View {
                 }
 
                 ForEach(set.items) { item in
-                    NavigationLink(value: HomeDecisionRoute(movieID: item.id)) {
-                        HomeDecisionCard(item: item, imagePipeline: imagePipeline)
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityIdentifier("home-recommendation-\(item.id)")
+                    HomeDecisionCard(
+                        item: item,
+                        imagePipeline: imagePipeline,
+                        updateViewerMovieState: updateViewerMovieState,
+                        viewerStateDidChange: viewerStateDidChange
+                    )
                 }
 
                 if let exhaustion {
@@ -301,137 +310,6 @@ private struct HomeDecisionRefreshControls: View {
     }
 }
 
-@MainActor
-private struct HomeDecisionCard: View {
-    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
-    @ScaledMetric(relativeTo: .body) private var scaledPosterWidth = 112.0
-
-    let item: HomeDecisionMovieItem
-    let imagePipeline: ImagePipeline
-
-    var body: some View {
-        cardLayout {
-            RemoteImageView(
-                url: item.posterURL,
-                loader: imagePipeline,
-                contentMode: .fill,
-                accessibilityLabel: item.title
-            )
-            .frame(width: posterWidth, height: posterWidth * 1.5)
-            .clipped()
-            .clipShape(.rect(cornerRadius: 10))
-            .accessibilityHidden(true)
-
-            content
-        }
-        .padding(14)
-        .background(Color(.secondarySystemBackground))
-        .clipShape(.rect(cornerRadius: 14))
-        .accessibilityElement(children: .combine)
-        .accessibilityHint("Open movie details")
-    }
-
-    private var cardLayout: AnyLayout {
-        if dynamicTypeSize.isAccessibilitySize {
-            AnyLayout(VStackLayout(alignment: .leading, spacing: 14))
-        } else {
-            AnyLayout(HStackLayout(alignment: .top, spacing: 14))
-        }
-    }
-
-    private var posterWidth: CGFloat {
-        min(scaledPosterWidth, 180)
-    }
-
-    private var content: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text(item.role)
-                .font(.caption.bold())
-                .foregroundStyle(.tint)
-
-            Text(item.title)
-                .font(.headline)
-                .foregroundStyle(.primary)
-
-            if !item.details.isEmpty {
-                Text(item.details)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-
-            Text(item.reason)
-                .font(.subheadline)
-                .foregroundStyle(.primary)
-
-            HomeDecisionProviderRow(
-                providers: item.providers,
-                imagePipeline: imagePipeline
-            )
-
-            if item.isSaved {
-                Label("Saved", systemImage: "bookmark.fill")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-    }
-}
-
-@MainActor
-private struct HomeDecisionProviderRow: View {
-    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
-
-    let providers: [HomeDecisionProviderItem]
-    let imagePipeline: ImagePipeline
-
-    var body: some View {
-        providerLayout {
-            ForEach(providers) { provider in
-                HomeDecisionProviderLogo(
-                    provider: provider,
-                    imagePipeline: imagePipeline
-                )
-            }
-        }
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel("Included with \(providers.map(\.name).formatted())")
-    }
-
-    private var providerLayout: AnyLayout {
-        if dynamicTypeSize.isAccessibilitySize {
-            AnyLayout(VStackLayout(alignment: .leading, spacing: 8))
-        } else {
-            AnyLayout(HStackLayout(spacing: 8))
-        }
-    }
-}
-
-@MainActor
-private struct HomeDecisionProviderLogo: View {
-    @ScaledMetric(relativeTo: .caption) private var logoSize = 32.0
-
-    let provider: HomeDecisionProviderItem
-    let imagePipeline: ImagePipeline
-
-    var body: some View {
-        if let logoURL = provider.logoURL {
-            RemoteImageView(
-                url: logoURL,
-                loader: imagePipeline,
-                contentMode: .fit,
-                accessibilityLabel: provider.name
-            )
-            .frame(width: min(logoSize, 48), height: min(logoSize, 48))
-            .clipShape(.rect(cornerRadius: 6))
-        } else {
-            Text(provider.name)
-                .font(.caption2)
-                .lineLimit(1)
-        }
-    }
-}
-
-private struct HomeDecisionRoute: Hashable {
+struct HomeDecisionRoute: Hashable {
     let movieID: Int
 }

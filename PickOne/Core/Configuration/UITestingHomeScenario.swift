@@ -1,27 +1,33 @@
 import Foundation
+import Synchronization
 
-struct UITestingThreeForTonightUseCase: ThreeForTonightUseCase {
+actor UITestingThreeForTonightUseCase: ThreeForTonightUseCase {
+    private var currentMovieID = 101
+
     func load() async throws -> ThreeForTonightResult {
-        try .usable(Self.snapshot())
+        try .usable(Self.snapshot(movieID: currentMovieID))
     }
 
     func refresh() async throws -> ThreeForTonightResult {
-        try .usable(Self.snapshot())
+        try .usable(Self.snapshot(movieID: currentMovieID))
     }
 
     func repairAfterEligibilityChange(
         _ change: DecisionEligibilityChange
     ) async throws -> ThreeForTonightResult {
-        try .usable(Self.snapshot())
+        try .usable(Self.snapshot(movieID: currentMovieID))
     }
 
     func reconcileAfterViewerStateChange(
         _ change: DecisionViewerStateChange
     ) async throws -> ThreeForTonightResult {
-        try .usable(Self.snapshot())
+        if change.impact != .none, change.movieID == currentMovieID {
+            currentMovieID = currentMovieID == 101 ? 202 : 101
+        }
+        return try .usable(Self.snapshot(movieID: currentMovieID))
     }
 
-    private static func snapshot() throws -> ThreeForTonightSnapshot {
+    private static func snapshot(movieID: Int) throws -> ThreeForTonightSnapshot {
         guard
             let signature = DecisionCycleSignature(
                 rawValue: String(repeating: "a", count: 64)
@@ -39,8 +45,8 @@ struct UITestingThreeForTonightUseCase: ThreeForTonightUseCase {
                 diversity: nil
             ),
             display: DecisionDisplaySnapshot(
-                movieID: 101,
-                localizedTitle: "Tonight's Movie",
+                movieID: movieID,
+                localizedTitle: movieID == 101 ? "Tonight's Movie" : "Replacement Movie",
                 posterPath: nil,
                 backdropPath: nil,
                 runtimeMinutes: 112,
@@ -86,8 +92,8 @@ struct UITestingMovieDetailUseCase: GetMovieDetailUseCase {
     ) async throws -> CacheResult<MovieDetailSnapshot> {
         let movie = Movie(
             id: id,
-            title: id == 101 ? "Tonight's Movie" : "Similar Movie",
-            originalTitle: id == 101 ? "Tonight's Movie" : "Similar Movie",
+            title: title(for: id),
+            originalTitle: title(for: id),
             overview: "A deterministic movie-detail fixture for UI coverage.",
             releaseDate: nil,
             runtime: 112,
@@ -121,6 +127,89 @@ struct UITestingMovieDetailUseCase: GetMovieDetailUseCase {
             isStale: false
         )
     }
+
+    private func title(for movieID: Int) -> String {
+        switch movieID {
+            case 101: "Tonight's Movie"
+            case 202: "Replacement Movie"
+            default: "Similar Movie"
+        }
+    }
+}
+
+actor UITestingHomeFeedbackUpdate: UpdateViewerMovieStateUseCase {
+    private let base: any UpdateViewerMovieStateUseCase
+    private var shouldFailNextUpdate: Bool
+
+    init(
+        base: any UpdateViewerMovieStateUseCase,
+        failsFirstUpdate: Bool
+    ) {
+        self.base = base
+        shouldFailNextUpdate = failsFirstUpdate
+    }
+
+    func execute(
+        transition: ViewerMovieStateTransition,
+        metadata: MovieFeedbackMetadata
+    ) async throws -> ViewerMovieStateChange {
+        if shouldFailNextUpdate {
+            shouldFailNextUpdate = false
+            throw UITestingHomeScenarioError.feedbackWriteFailed
+        }
+        return try await base.execute(
+            transition: transition,
+            metadata: metadata
+        )
+    }
+}
+
+final class UITestingViewerStateFileStore: LocalViewerStateFileStore {
+    private struct State: Sendable {
+        var active: Data?
+        var previous: Data?
+    }
+
+    private let state = Mutex(State())
+
+    func readActive() throws -> Data? {
+        state.withLock { $0.active }
+    }
+
+    func readPrevious() throws -> Data? {
+        state.withLock { $0.previous }
+    }
+
+    func replaceActive(with data: Data) throws {
+        state.withLock { $0.active = data }
+    }
+
+    func replacePrevious(with data: Data) throws {
+        state.withLock { $0.previous = data }
+    }
+
+    func removePrevious() throws {
+        state.withLock { $0.previous = nil }
+    }
+
+    func quarantine(_: Data, source _: LocalViewerStateQuarantineSource) throws {}
+
+    func removeAllViewerState() throws {
+        state.withLock {
+            $0.active = nil
+            $0.previous = nil
+        }
+    }
+}
+
+struct UITestingEmptyLegacyViewerStateSource: LegacyViewerStateSource {
+    func readProfile() throws -> Data? {
+        nil
+    }
+
+    func readWatchlist() throws -> Data? {
+        nil
+    }
 }
 
 struct UITestingAvailabilityUseCase: CheckMovieAvailabilityUseCase {
@@ -143,4 +232,5 @@ struct UITestingPreparePlaybackOptionsUseCase: PreparePlaybackOptionsUseCase {
 
 private enum UITestingHomeScenarioError: Error {
     case invalidFixture
+    case feedbackWriteFailed
 }

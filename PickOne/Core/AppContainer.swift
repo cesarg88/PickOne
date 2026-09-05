@@ -20,6 +20,7 @@ final class AppContainer {
     let getMyMovies: GetMyMoviesUseCase
     let getViewerMovieState: GetViewerMovieStateUseCase
     let updateViewerMovieState: UpdateViewerMovieStateUseCase
+    let updateHomeViewerMovieState: UpdateViewerMovieStateUseCase
 
     // MARK: - Use Cases - Search
 
@@ -55,6 +56,7 @@ final class AppContainer {
         let availabilityUseCase: any CheckMovieAvailabilityUseCase
         let playbackOptionsUseCase: any PreparePlaybackOptionsUseCase
         let homeUseCase: any ThreeForTonightUseCase
+        let homeViewerMovieStateUpdateUseCase: any UpdateViewerMovieStateUseCase
 
         if AppConfiguration.isUITesting {
             movieDetailUseCase = UITestingMovieDetailUseCase()
@@ -67,6 +69,14 @@ final class AppContainer {
             playbackOptionsUseCase = useCases.preparePlaybackOptions
             homeUseCase = useCases.threeForTonight
         }
+        if AppConfiguration.isUITesting {
+            homeViewerMovieStateUpdateUseCase = UITestingHomeFeedbackUpdate(
+                base: useCases.updateViewerMovieState,
+                failsFirstUpdate: AppConfiguration.failsFirstHomeFeedbackForUITests
+            )
+        } else {
+            homeViewerMovieStateUpdateUseCase = useCases.updateViewerMovieState
+        }
 
         getDiscoveryFeed = useCases.getDiscoveryFeed
         getMovieDetail = movieDetailUseCase
@@ -77,6 +87,7 @@ final class AppContainer {
         getMyMovies = useCases.getMyMovies
         getViewerMovieState = useCases.getViewerMovieState
         updateViewerMovieState = useCases.updateViewerMovieState
+        updateHomeViewerMovieState = homeViewerMovieStateUpdateUseCase
         searchMovies = useCases.searchMovies
         searchHistory = useCases.searchHistory
         getChatRecommendations = useCases.getChatRecommendations
@@ -167,14 +178,25 @@ private extension AppContainer {
         )
         let availabilityClock = SystemAvailabilityClock()
         let localStore = UserDefaultsLocalStore()
-        let viewerStateFileStore: any LocalViewerStateFileStore =
-            (try? ApplicationSupportViewerStateStore()) ??
-            UnavailableLocalViewerStateFileStore()
-        let legacyViewerState = UserDefaultsLegacyViewerStateSource()
+        let viewerStateFileStore: any LocalViewerStateFileStore
+        let legacyViewerState: any LegacyViewerStateSource
+        let legacyViewerStateResetter: (any LegacyViewerStateResetter)?
+        if AppConfiguration.isUITesting {
+            viewerStateFileStore = UITestingViewerStateFileStore()
+            legacyViewerState = UITestingEmptyLegacyViewerStateSource()
+            legacyViewerStateResetter = nil
+        } else {
+            viewerStateFileStore =
+                (try? ApplicationSupportViewerStateStore()) ??
+                UnavailableLocalViewerStateFileStore()
+            let persistedLegacyViewerState = UserDefaultsLegacyViewerStateSource()
+            legacyViewerState = persistedLegacyViewerState
+            legacyViewerStateResetter = persistedLegacyViewerState
+        }
         let viewerState = LocalViewerStateRepository(
             fileStore: viewerStateFileStore,
             legacySource: legacyViewerState,
-            legacyResetter: legacyViewerState
+            legacyResetter: legacyViewerStateResetter
         )
         return Repositories(
             movie: DefaultMovieRepository(
