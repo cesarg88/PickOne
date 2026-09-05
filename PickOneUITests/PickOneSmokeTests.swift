@@ -57,6 +57,44 @@ final class PickOneSmokeTests: XCTestCase {
     }
 
     @MainActor
+    func testMilestone7P0UpgradeQuickFeedbackAndRelaunchJourney() {
+        let app = launchM7P0ClosureApp(resetting: true)
+        defer { cleanM7P0ClosureScenario(runningApp: app) }
+
+        XCTAssertTrue(app.buttons["home-recommendation-101"].waitForExistence(timeout: 15))
+        verifyM7P0PreservedSurfaces(in: app)
+
+        app.tabBars.buttons["Home"].tap()
+        let feedbackMenu = app.buttons["Feedback for Tonight's Movie"]
+        XCTAssertTrue(feedbackMenu.waitForExistence(timeout: 15))
+        feedbackMenu.tap()
+        tapButton("Already watched", in: app)
+        XCTAssertTrue(
+            app.buttons["home-recommendation-202"].waitForExistence(timeout: 15)
+        )
+        XCTAssertFalse(app.navigationBars["Details"].exists)
+
+        app.tabBars.buttons["Settings"].tap()
+        tapButton("My movies", in: app)
+        XCTAssertTrue(app.buttons["my-movies-row-101"].waitForExistence(timeout: 15))
+
+        app.terminate()
+        let relaunched = launchM7P0ClosureApp(resetting: false)
+
+        XCTAssertTrue(
+            relaunched.buttons["home-recommendation-202"].waitForExistence(timeout: 15)
+        )
+        XCTAssertFalse(relaunched.buttons["home-recommendation-101"].exists)
+        verifyM7P0PreservedSurfaces(in: relaunched)
+        relaunched.tabBars.buttons["Settings"].tap()
+        tapButton("My movies", in: relaunched)
+        XCTAssertTrue(
+            relaunched.buttons["my-movies-row-101"].waitForExistence(timeout: 15)
+        )
+        relaunched.terminate()
+    }
+
+    @MainActor
     private func launchReadyApp(extraArguments: [String] = []) -> XCUIApplication {
         let app = XCUIApplication()
         app.launchArguments.append("-ui-testing")
@@ -72,6 +110,39 @@ final class PickOneSmokeTests: XCTestCase {
             tapButton("Love it", in: app)
         }
         return app
+    }
+
+    @MainActor
+    private func launchM7P0ClosureApp(resetting: Bool) -> XCUIApplication {
+        let app = XCUIApplication()
+        app.launchArguments = ["-ui-testing", "-ui-testing-m7-p0-closure"]
+        if resetting {
+            app.launchArguments.append("-ui-testing-m7-p0-closure-reset")
+        }
+        app.launch()
+        return app
+    }
+
+    @MainActor
+    private func cleanM7P0ClosureScenario(runningApp: XCUIApplication) {
+        runningApp.terminate()
+        let cleanup = XCUIApplication()
+        cleanup.launchArguments = [
+            "-ui-testing",
+            "-ui-testing-m7-p0-closure",
+            "-ui-testing-m7-p0-closure-cleanup",
+        ]
+        cleanup.launch()
+        cleanup.terminate()
+    }
+
+    @MainActor
+    private func verifyM7P0PreservedSurfaces(in app: XCUIApplication) {
+        app.tabBars.buttons["Watchlist"].tap()
+        XCTAssertTrue(app.buttons["watchlist-row-303"].waitForExistence(timeout: 15))
+
+        app.tabBars.buttons["Search"].tap()
+        XCTAssertTrue(app.staticTexts["Sanitized Query"].waitForExistence(timeout: 15))
     }
 
     @MainActor

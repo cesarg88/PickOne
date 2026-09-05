@@ -20,6 +20,23 @@ struct AppConfiguration {
     static let failsFirstHomeFeedbackForUITests = ProcessInfo.processInfo.arguments.contains(
         "-ui-testing-home-feedback-fails-once"
     )
+    static let usesM7P0ClosureScenarioForUITests = ProcessInfo.processInfo.arguments.contains(
+        "-ui-testing-m7-p0-closure"
+    )
+    static let resetsM7P0ClosureScenarioForUITests = ProcessInfo.processInfo.arguments.contains(
+        "-ui-testing-m7-p0-closure-reset"
+    )
+    static let cleansM7P0ClosureScenarioForUITests = ProcessInfo.processInfo.arguments.contains(
+        "-ui-testing-m7-p0-closure-cleanup"
+    )
+
+    #if DEBUG
+        static let runsM7P0DeviceDiagnostics = ProcessInfo.processInfo.arguments.contains(
+            "-m7-p0-device-diagnostics"
+        )
+    #else
+        static let runsM7P0DeviceDiagnostics = false
+    #endif
 
     static func detectsUnitTestHost(in environment: [String: String]) -> Bool {
         environment["XCTestConfigurationFilePath"] != nil

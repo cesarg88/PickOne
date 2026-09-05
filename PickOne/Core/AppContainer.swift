@@ -52,17 +52,19 @@ final class AppContainer {
     init() {
         let repositories = Self.makeRepositories()
         let useCases = Self.makeUseCases(repositories: repositories)
-        let movieDetailUseCase: any GetMovieDetailUseCase
-        let availabilityUseCase: any CheckMovieAvailabilityUseCase
-        let playbackOptionsUseCase: any PreparePlaybackOptionsUseCase
-        let homeUseCase: any ThreeForTonightUseCase
-        let homeViewerMovieStateUpdateUseCase: any UpdateViewerMovieStateUseCase
+        var movieDetailUseCase: any GetMovieDetailUseCase
+        var availabilityUseCase: any CheckMovieAvailabilityUseCase
+        var playbackOptionsUseCase: any PreparePlaybackOptionsUseCase
+        var homeUseCase: any ThreeForTonightUseCase
+        var homeViewerMovieStateUpdateUseCase: any UpdateViewerMovieStateUseCase
 
         if AppConfiguration.isUITesting {
             movieDetailUseCase = UITestingMovieDetailUseCase()
             availabilityUseCase = UITestingAvailabilityUseCase()
             playbackOptionsUseCase = UITestingPreparePlaybackOptionsUseCase()
-            homeUseCase = UITestingThreeForTonightUseCase()
+            homeUseCase = AppConfiguration.usesM7P0ClosureScenarioForUITests
+                ? M7P0ClosureUITestingScenario.makeHomeUseCase()
+                : UITestingThreeForTonightUseCase()
         } else {
             movieDetailUseCase = useCases.getMovieDetail
             availabilityUseCase = useCases.checkMovieAvailability
@@ -77,6 +79,17 @@ final class AppContainer {
         } else {
             homeViewerMovieStateUpdateUseCase = useCases.updateViewerMovieState
         }
+        #if DEBUG
+            if AppConfiguration.runsM7P0DeviceDiagnostics {
+                movieDetailUseCase = useCases.getMovieDetail
+                availabilityUseCase = useCases.checkMovieAvailability
+                playbackOptionsUseCase = useCases.preparePlaybackOptions
+                homeUseCase = Self.makeM7P0DeviceDiagnosticsUseCase(
+                    repositories: repositories
+                )
+                homeViewerMovieStateUpdateUseCase = M7P0DeviceDiagnosticsViewerStateUpdate()
+            }
+        #endif
 
         getDiscoveryFeed = useCases.getDiscoveryFeed
         getMovieDetail = movieDetailUseCase
@@ -182,7 +195,9 @@ private extension AppContainer {
         let legacyViewerState: any LegacyViewerStateSource
         let legacyViewerStateResetter: (any LegacyViewerStateResetter)?
         if AppConfiguration.isUITesting {
-            viewerStateFileStore = UITestingViewerStateFileStore()
+            viewerStateFileStore = AppConfiguration.usesM7P0ClosureScenarioForUITests
+                ? M7P0ClosureUITestingScenario.makeViewerStateFileStore()
+                : UITestingViewerStateFileStore()
             legacyViewerState = UITestingEmptyLegacyViewerStateSource()
             legacyViewerStateResetter = nil
         } else {
@@ -275,6 +290,18 @@ private extension AppContainer {
             bundled: bundled
         )
     }
+
+    #if DEBUG
+        static func makeM7P0DeviceDiagnosticsUseCase(
+            repositories: Repositories
+        ) -> any ThreeForTonightUseCase {
+            M7P0DeviceDiagnosticsScenario.makeUseCase(
+                candidateRepository: repositories.decisionCandidate,
+                movieRepository: repositories.movie,
+                availabilityRepository: repositories.availability
+            )
+        }
+    #endif
 
     static func makeUseCases(repositories: Repositories) -> UseCases {
         let checkAvailability = CheckMovieAvailability(

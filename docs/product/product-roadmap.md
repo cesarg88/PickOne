@@ -198,7 +198,8 @@ repeated after Milestone 7 with the enriched Taste Profile.
 [Continuous Taste Learning](../milestones/milestone-7-continuous-taste-learning.md)
 
 Status:
-Reopened — corrective D0 accepted; implementation pending; Milestone 8 blocked
+Reopened — P0-4 integration candidate; final validation pending; Milestone 8
+blocked
 
 Purpose:
 
@@ -222,12 +223,14 @@ and ADR-014. Corrective D0 plus P0-1 through P0-4 must merge sequentially. The
 last slice installs over the preserved blocked pilot state and owns the new M7
 closure record. Exhaustion suppresses unchanged retries for 24 hours rather
 than permanently, and closure records request count plus observed latency from
-a real twenty-page expansion on the physical iPhone.
+a real twenty-page expansion on the physical iPhone. D0 and P0-1 through P0-3
+are merged as PRs #44 and #46–#48; P0-4 now owns the final integration,
+preserved-device, CI, and acceptance gates without advancing Milestone 8.
 
 ### Utility Checkpoint after Milestone 7
 
 Status:
-Blocked — corrective P0 implementation and repeat physical validation pending
+Blocked — P0-4 final CI, preserved-device validation, and acceptance pending
 
 Purpose:
 
