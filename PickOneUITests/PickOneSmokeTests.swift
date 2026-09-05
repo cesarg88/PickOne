@@ -7,18 +7,7 @@ final class PickOneSmokeTests: XCTestCase {
 
     @MainActor
     func testMilestone7EndToEndFlow() {
-        let app = XCUIApplication()
-        app.launchArguments.append("-ui-testing")
-        app.launchArguments.append("-ui-testing-reset-viewer-profile")
-        app.launch()
-
-        XCTAssertTrue(app.staticTexts["Streaming services"].waitForExistence(timeout: 15))
-        tapButton("Netflix", in: app)
-        tapButton("Continue", in: app)
-
-        for _ in 0 ..< 8 {
-            tapButton("Love it", in: app)
-        }
+        let app = launchReadyApp()
 
         let tabs = ["Home", "Search", "Discover", "Watchlist", "Settings"]
 
@@ -31,32 +20,102 @@ final class PickOneSmokeTests: XCTestCase {
 
         XCTAssertFalse(app.tabBars.buttons["Ask"].exists, "Ask should not be exposed as a tab")
 
+        verifyHomeQuickFeedback(in: app)
         verifyFeedbackSurfaces(in: app)
         verifyAttribution(in: app)
         verifyRecalibration(in: app)
     }
 
     @MainActor
-    private func verifyFeedbackSurfaces(in app: XCUIApplication) {
+    func testHomeQuickFeedbackFailureCanRetryAtAccessibilityTextSize() {
+        let app = launchReadyApp(extraArguments: [
+            "-ui-testing-home-feedback-fails-once",
+            "-UIPreferredContentSizeCategoryName",
+            "UICTContentSizeCategoryAccessibilityXXXL",
+        ])
+        let recommendation = app.buttons["home-recommendation-101"]
+        let feedbackMenu = app.buttons["Feedback for Tonight's Movie"]
+        XCTAssertTrue(recommendation.waitForExistence(timeout: 15))
+        XCTAssertTrue(feedbackMenu.waitForExistence(timeout: 15))
+        XCTAssertTrue(feedbackMenu.isHittable)
+
+        feedbackMenu.tap()
+        XCTAssertFalse(app.navigationBars["Details"].exists)
+        tapButton("Not interested", in: app)
+
+        let alert = app.alerts["Couldn't save feedback"]
+        XCTAssertTrue(alert.waitForExistence(timeout: 15))
+        XCTAssertTrue(alert.staticTexts["Your feedback wasn't saved. Please try again."].exists)
+        XCTAssertTrue(alert.buttons["Try again"].exists)
+        XCTAssertTrue(alert.buttons["Cancel"].exists)
+        XCTAssertTrue(recommendation.exists, "A failed write must preserve the card")
+
+        alert.buttons["Try again"].tap()
+        XCTAssertTrue(recommendation.waitForNonExistence(timeout: 15))
+        XCTAssertTrue(app.buttons["home-recommendation-202"].waitForExistence(timeout: 15))
+        XCTAssertFalse(app.navigationBars["Details"].exists)
+    }
+
+    @MainActor
+    private func launchReadyApp(extraArguments: [String] = []) -> XCUIApplication {
+        let app = XCUIApplication()
+        app.launchArguments.append("-ui-testing")
+        app.launchArguments.append("-ui-testing-reset-viewer-profile")
+        app.launchArguments.append(contentsOf: extraArguments)
+        app.launch()
+
+        XCTAssertTrue(app.staticTexts["Streaming services"].waitForExistence(timeout: 15))
+        tapButton("Netflix", in: app)
+        tapButton("Continue", in: app)
+
+        for _ in 0 ..< 8 {
+            tapButton("Love it", in: app)
+        }
+        return app
+    }
+
+    @MainActor
+    private func verifyHomeQuickFeedback(in app: XCUIApplication) {
         app.tabBars.buttons["Home"].tap()
         let recommendation = app.buttons["home-recommendation-101"]
+        let feedbackMenu = app.buttons["Feedback for Tonight's Movie"]
+        XCTAssertTrue(recommendation.waitForExistence(timeout: 15))
+        XCTAssertTrue(feedbackMenu.waitForExistence(timeout: 15))
+
+        feedbackMenu.tap()
+        XCTAssertFalse(app.navigationBars["Details"].exists)
+        for action in [
+            "Love it",
+            "Like it",
+            "It was okay",
+            "Didn't like it",
+            "Already watched",
+            "Not interested",
+        ] {
+            XCTAssertTrue(app.buttons[action].waitForExistence(timeout: 15), "\(action) is missing")
+        }
+
+        tapButton("Already watched", in: app)
+        XCTAssertTrue(recommendation.waitForNonExistence(timeout: 15))
+        XCTAssertTrue(app.buttons["home-recommendation-202"].waitForExistence(timeout: 15))
+        XCTAssertFalse(app.navigationBars["Details"].exists)
+    }
+
+    @MainActor
+    private func verifyFeedbackSurfaces(in app: XCUIApplication) {
+        app.tabBars.buttons["Home"].tap()
+        let recommendation = app.buttons["home-recommendation-202"]
         XCTAssertTrue(
             recommendation.waitForExistence(timeout: 15),
             "Home recommendation did not load"
         )
         recommendation.tap()
         XCTAssertTrue(app.navigationBars["Details"].waitForExistence(timeout: 15))
-        XCTAssertTrue(app.staticTexts["Tonight's Movie"].waitForExistence(timeout: 15))
+        XCTAssertTrue(app.staticTexts["Replacement Movie"].waitForExistence(timeout: 15))
         XCTAssertTrue(
             app.otherElements["movie-feedback-section"].waitForExistence(timeout: 15)
         )
         tapButton("Love it", in: app)
-        app.navigationBars["Details"].buttons["Home"].tap()
-        XCTAssertTrue(
-            app.staticTexts["Recommendations updated."].waitForExistence(timeout: 15)
-        )
-        recommendation.tap()
-        XCTAssertTrue(app.navigationBars["Details"].waitForExistence(timeout: 15))
         tapButton("Mark unwatched", in: app)
         tapButton("Not interested", in: app)
         tapButton("Add to Watchlist", in: app)
@@ -66,8 +125,11 @@ final class PickOneSmokeTests: XCTestCase {
         XCTAssertFalse(app.buttons["Undo Not interested"].exists)
 
         app.navigationBars["Details"].buttons["Home"].tap()
+        XCTAssertTrue(
+            app.staticTexts["Recommendations updated."].waitForExistence(timeout: 15)
+        )
         app.tabBars.buttons["Watchlist"].tap()
-        let watchlistRow = app.buttons["watchlist-row-101"]
+        let watchlistRow = app.buttons["watchlist-row-202"]
         XCTAssertTrue(watchlistRow.waitForExistence(timeout: 15))
         watchlistRow.tap()
         XCTAssertTrue(app.navigationBars["Details"].waitForExistence(timeout: 15))
@@ -78,17 +140,17 @@ final class PickOneSmokeTests: XCTestCase {
         app.tabBars.buttons["Settings"].tap()
         tapButton("My movies", in: app)
         XCTAssertTrue(app.navigationBars["My movies"].waitForExistence(timeout: 15))
-        let myMoviesRow = app.buttons["my-movies-row-101"]
+        let myMoviesRow = app.buttons["my-movies-row-202"]
         XCTAssertTrue(myMoviesRow.waitForExistence(timeout: 15))
         myMoviesRow.tap()
         XCTAssertTrue(app.navigationBars["Details"].waitForExistence(timeout: 15))
-        XCTAssertTrue(app.staticTexts["Tonight's Movie"].waitForExistence(timeout: 15))
+        XCTAssertTrue(app.staticTexts["Replacement Movie"].waitForExistence(timeout: 15))
         tapButton("Love it", in: app)
         app.navigationBars["Details"].buttons["My movies"].tap()
         XCTAssertTrue(
             waitUntilLabel(
                 myMoviesRow,
-                equals: "Tonight's Movie, Love it",
+                equals: "Replacement Movie, Love it",
                 timeout: 15
             )
         )
@@ -136,6 +198,9 @@ final class PickOneSmokeTests: XCTestCase {
         in app: XCUIApplication
     ) {
         let button = app.buttons[label]
+        for _ in 0 ..< 6 where !button.exists {
+            app.swipeUp()
+        }
         XCTAssertTrue(button.waitForExistence(timeout: 15), "\(label) is missing")
         XCTAssertTrue(
             waitUntilEnabled(button, timeout: 15),

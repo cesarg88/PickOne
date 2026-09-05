@@ -22,7 +22,7 @@ struct MainTabView: View {
                     model: container.homeDecisionViewModel,
                     getMovieDetail: container.getMovieDetail,
                     getViewerMovieState: container.getViewerMovieState,
-                    updateViewerMovieState: container.updateViewerMovieState,
+                    updateViewerMovieState: container.updateHomeViewerMovieState,
                     checkAvailability: container.checkMovieAvailability,
                     preparePlaybackOptions: container.preparePlaybackOptions,
                     imagePipeline: container.imagePipeline,

@@ -17,6 +17,9 @@ struct AppConfiguration {
     static let resetsViewerProfileForUITests = ProcessInfo.processInfo.arguments.contains(
         "-ui-testing-reset-viewer-profile"
     )
+    static let failsFirstHomeFeedbackForUITests = ProcessInfo.processInfo.arguments.contains(
+        "-ui-testing-home-feedback-fails-once"
+    )
 
     static func detectsUnitTestHost(in environment: [String: String]) -> Bool {
         environment["XCTestConfigurationFilePath"] != nil

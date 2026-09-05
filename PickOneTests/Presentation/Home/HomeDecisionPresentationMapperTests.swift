@@ -20,6 +20,11 @@ struct HomeDecisionPresentationMapperTests {
         #expect(item.providers.map(\.name) == ["Netflix"])
         #expect(item.details == "2024 · 2h 3m · Drama, Science Fiction")
         #expect(item.isSaved)
+        #expect(try item.feedbackMetadata == MovieFeedbackMetadata(
+            title: "Tonight's Movie",
+            releaseYear: 2024,
+            posterPath: "/poster.jpg"
+        ))
     }
 
     @Test("direct anchor reason enumerates only shared genres")
