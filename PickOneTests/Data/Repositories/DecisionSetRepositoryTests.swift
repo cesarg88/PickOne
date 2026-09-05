@@ -516,6 +516,14 @@ final class InMemoryDecisionSetDataStore: DecisionSetDataStore {
         }
     }
 
+    func removeActive() throws {
+        try state.withLock {
+            if $0.rejectActiveReplacements { throw TestStoreError.rejected }
+            $0.activeData = nil
+            $0.activeReplacementCount += 1
+        }
+    }
+
     func readQuarantine() throws -> Data? {
         state.withLock { $0.quarantineData }
     }

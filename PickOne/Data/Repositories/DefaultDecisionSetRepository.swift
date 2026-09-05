@@ -1,8 +1,22 @@
 import Foundation
 
+struct StagedDecisionSetPublication {
+    let committedData: Data?
+    let committedRevision: UInt64
+    var replacementData: Data?
+}
+
 actor DefaultDecisionSetRepository: DecisionSetRepository {
-    private let store: any DecisionSetDataStore
+    let store: any DecisionSetDataStore
     private let coder: any DecisionSetEnvelopeCoding
+    var publicationTransactions: [
+        DecisionSetPublicationTransaction: StagedDecisionSetPublication
+    ] = [:]
+    var committedRevision: UInt64 = 0
+
+    var inFlightPublicationCount: Int {
+        publicationTransactions.count
+    }
 
     init(
         store: any DecisionSetDataStore,
@@ -47,12 +61,22 @@ actor DefaultDecisionSetRepository: DecisionSetRepository {
     }
 
     func replace(_ envelope: PersistedDecisionSet) throws {
+        try persist(envelope)
+        committedRevision += 1
+    }
+
+    func encode(_ envelope: PersistedDecisionSet) throws -> Data {
         let data: Data
         do {
             data = try coder.encodeEnvelope(map(envelope))
         } catch {
             throw DecisionSetRepositoryError.encodingFailed
         }
+        return data
+    }
+
+    private func persist(_ envelope: PersistedDecisionSet) throws {
+        let data = try encode(envelope)
         do {
             try store.replaceActive(with: data)
         } catch {

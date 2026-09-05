@@ -156,14 +156,19 @@ struct DecisionEngineInputAssemblyTests {
             )
         )
 
-        await #expect(
-            throws: DecisionEngineInputAssemblyError.availabilitySourceUnavailable
-        ) {
-            _ = try await sut.execute(
-                trustedState: trustedState(),
-                currentCycleShownMovieIDs: []
-            )
-        }
+        let prepared = try await sut.prepare(trustedState: trustedState())
+        let batch = try await sut.recallAndEnrich(
+            pages: RecommendationSearchPolicy.accepted.normalPageRange,
+            prepared: prepared,
+            excludingMovieIDs: [],
+            alreadyRecalledMovieIDs: []
+        )
+
+        #expect(batch.hasUnresolvedAvailability)
+        #expect(batch.candidates.map(\.availabilityOutcome) == [
+            .unknown(reason: .verificationFailed),
+            .unknown(reason: .verificationFailed),
+        ])
     }
 
     @Test("availability verification never exceeds eight concurrent requests")

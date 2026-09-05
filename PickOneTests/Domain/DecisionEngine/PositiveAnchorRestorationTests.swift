@@ -24,7 +24,7 @@ struct PositiveAnchorRestorationTests {
         )
 
         let result = try await sut.load()
-        guard case let .usable(snapshot) = result,
+        guard let snapshot = result.snapshot,
               case let .positiveAnchor(anchor) = snapshot.decisionSet
               .recommendations.first?.evidence.primary
         else {
@@ -69,7 +69,7 @@ struct PositiveAnchorRestorationTests {
         )?.decisionSet.recommendations.isEmpty == true)
 
         let result = try await sut.load()
-        guard case let .usable(snapshot) = result,
+        guard let snapshot = result.snapshot,
               case let .positiveAnchor(anchor) = snapshot.decisionSet
               .recommendations.first?.evidence.primary
         else {
@@ -269,5 +269,15 @@ struct PositiveAnchorRestorationTests {
             selectedProviderIDs: profile.selectedServices.map(\.providerID),
             recommendations: [recommendation]
         )
+    }
+}
+
+private extension ThreeForTonightResult {
+    var snapshot: ThreeForTonightSnapshot? {
+        switch self {
+            case let .usable(snapshot): snapshot
+            case let .exhausted(exhaustion): exhaustion.snapshot
+            case .retryableFailure: nil
+        }
     }
 }

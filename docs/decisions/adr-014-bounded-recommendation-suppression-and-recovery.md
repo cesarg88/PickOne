@@ -119,6 +119,16 @@ deduplicated across stages, and existing fresh availability evidence is reused.
 A transport, hydration, persistence, or cancellation failure is not exhaustion
 and follows the existing retryable-failure contract.
 
+Exhaustion requires conclusive completion, not merely fewer surviving
+candidates. A successfully decoded response with no regional evidence is a
+resolved `unknown`; a transport error, invalid response, or verification failure
+is unresolved. A complete credible set of three may still succeed when an
+unrelated candidate is unresolved. When zero, one, or two recommendations
+survive, any unresolved availability result for an otherwise locally eligible
+recalled candidate produces retryable failure, preserves only a previously
+persisted independently proven-safe set, and persists no partial set, history,
+rollover, or `exhaustedAt` change.
+
 `Give me three more` executes the complete progressive strategy in one action.
 It cannot require repeated taps to advance hidden stages.
 
@@ -249,6 +259,45 @@ Corrupt and unsupported v2 bytes retain the existing exact-byte quarantine
 behavior. No partial history is guessed from invalid data, and no failure
 manufactures an empty envelope.
 
+### Decision Set publication transaction
+
+Decision Set publication uses an explicit transaction lifecycle:
+
+```text
+last committed envelope
+  -> begin transaction
+  -> stage complete replacement
+  -> validate cancellation + operation identity + Viewer State snapshot
+  -> commit | discard
+```
+
+Commit is the single linearization point. Before it, the replacement is
+provisional and ordinary repository loads continue to return the exact last
+committed envelope. After it succeeds, the complete replacement is current and
+is not rolled back by cancellation arriving after that boundary.
+
+The concrete Data implementation must satisfy all of the following:
+
+- a second operation never reads or inherits cycle/history from a first
+  operation's staged replacement;
+- cancellation or stale-work rejection observed before commit discards the
+  transaction without changing the committed envelope;
+- commit, discard, and failure finalize their transaction ownership so staged
+  bytes, checkpoints, and ancestry are bounded by in-flight work rather than
+  lifetime operation count;
+- a detectable staging, commit, cleanup, or rollback failure leaves the exact
+  prior committed bytes readable and exposes retryable persistence failure;
+- process termination before commit cannot make provisional bytes appear
+  committed on relaunch;
+- an implementation that temporarily replaces the only active key and relies
+  solely on an in-memory rollback checkpoint does not satisfy this contract.
+
+Serialization by the coordinator and isolated repository staging are both valid
+implementation strategies. Whichever strategy is selected must be covered by a
+deterministic two-operation test in which A stages and is cancelled while B
+starts and succeeds: B must derive from the last committed source, and no A
+history may survive.
+
 ## Presentation contract
 
 ### Exhausted copy and actions
@@ -325,6 +374,11 @@ updates its counters. An injected nonthrowing sink receives the final snapshot,
 while production composition uses a no-op sink. Diagnostics cannot alter
 selection, persistence, cancellation, or visible error behavior, and its output
 is never stored in the viewer-state or Decision Set envelopes.
+
+Every entered stage produces exactly one duration in deterministic stage order.
+Rollover is one measured stage spanning its complete release-and-reselection
+loop, not one record per three-ID release. A retryable failure still records the
+elapsed duration of the stage in which it occurred.
 
 ### Quick feedback interaction
 

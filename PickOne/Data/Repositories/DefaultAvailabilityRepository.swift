@@ -46,6 +46,7 @@ actor DefaultAvailabilityRepository: AvailabilityRepository {
                 freshnessInterval: freshnessInterval
             )
         {
+            AvailabilityDiagnosticsContext.operation?.recordCacheHit()
             return cached
         }
 
@@ -61,8 +62,11 @@ actor DefaultAvailabilityRepository: AvailabilityRepository {
         } else {
             let client = client
             let clock = clock
+            let diagnostics = AvailabilityDiagnosticsContext.operation
             requestID = UUID()
+            diagnostics?.networkRequestStarted()
             request = Task<VerifiedAvailabilityEvidence?, Error> {
+                defer { diagnostics?.networkRequestFinished() }
                 let response = try await client.getWatchProviders(
                     movieID: movieID
                 )

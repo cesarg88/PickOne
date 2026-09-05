@@ -10,6 +10,10 @@ actor ThreeForTonightCoordinator: ThreeForTonightUseCase {
     let selector: any DecisionSelecting
     let repairComposer: P1DecisionRepairComposer
     let migrationPlanner: DecisionSetMigrationPlanner
+    let clock: any DecisionSetClock
+    let searchPolicy: RecommendationSearchPolicy
+    let exhaustionPolicy: RecommendationExhaustionPolicy
+    let diagnosticsSink: any RecommendationGenerationDiagnosticsSink
     private let reconciliationPlanner: DecisionStateReconciliationPlanner
     let makeUUID: @Sendable () -> UUID
 
@@ -28,6 +32,10 @@ actor ThreeForTonightCoordinator: ThreeForTonightUseCase {
         selector: any DecisionSelecting = P1DecisionEngine(),
         repairComposer: P1DecisionRepairComposer = P1DecisionRepairComposer(),
         clock: any DecisionSetClock = SystemDecisionSetClock(),
+        searchPolicy: RecommendationSearchPolicy = .accepted,
+        exhaustionPolicy: RecommendationExhaustionPolicy = .accepted,
+        diagnosticsSink: any RecommendationGenerationDiagnosticsSink =
+            NoOpRecommendationDiagnosticsSink(),
         makeUUID: @escaping @Sendable () -> UUID = { UUID() }
     ) {
         self.init(
@@ -44,6 +52,9 @@ actor ThreeForTonightCoordinator: ThreeForTonightUseCase {
             selector: selector,
             repairComposer: repairComposer,
             clock: clock,
+            searchPolicy: searchPolicy,
+            exhaustionPolicy: exhaustionPolicy,
+            diagnosticsSink: diagnosticsSink,
             makeUUID: makeUUID
         )
     }
@@ -59,6 +70,10 @@ actor ThreeForTonightCoordinator: ThreeForTonightUseCase {
         selector: any DecisionSelecting = P1DecisionEngine(),
         repairComposer: P1DecisionRepairComposer = P1DecisionRepairComposer(),
         clock: any DecisionSetClock = SystemDecisionSetClock(),
+        searchPolicy: RecommendationSearchPolicy = .accepted,
+        exhaustionPolicy: RecommendationExhaustionPolicy = .accepted,
+        diagnosticsSink: any RecommendationGenerationDiagnosticsSink =
+            NoOpRecommendationDiagnosticsSink(),
         makeUUID: @escaping @Sendable () -> UUID = { UUID() }
     ) {
         self.trustedStateLoader = trustedStateLoader
@@ -78,6 +93,10 @@ actor ThreeForTonightCoordinator: ThreeForTonightUseCase {
         self.selector = selector
         self.repairComposer = repairComposer
         migrationPlanner = DecisionSetMigrationPlanner()
+        self.clock = clock
+        self.searchPolicy = searchPolicy
+        self.exhaustionPolicy = exhaustionPolicy
+        self.diagnosticsSink = diagnosticsSink
         reconciliationPlanner = DecisionStateReconciliationPlanner()
         self.makeUUID = makeUUID
     }
@@ -119,9 +138,7 @@ actor ThreeForTonightCoordinator: ThreeForTonightUseCase {
             }
         }
         return try await withTaskCancellationHandler {
-            let result = try await task.value
-            try Task.checkCancellation()
-            return result
+            try await task.value
         } onCancel: {
             task.cancel()
         }
@@ -191,8 +208,11 @@ private extension ThreeForTonightCoordinator {
                     trusted: trusted,
                     currentSignature: signature
                 )
-                guard envelope.sourceViewerStateSnapshotID == trusted.snapshotID,
-                      envelope.cycle.identitySignature == signature
+                guard isCompatible(
+                    envelope,
+                    trusted: trusted,
+                    signature: signature
+                )
                 else {
                     return try await regenerate(
                         from: envelope.cycle,
@@ -202,6 +222,9 @@ private extension ThreeForTonightCoordinator {
                         retained: retained,
                         operationID: operationID
                     )
+                }
+                if case .exhausted = envelope.outcome {
+                    return result(for: envelope, trusted: trusted)
                 }
                 let repairIDs = ThreeForTonightSnapshotFactory.localRepairMovieIDs(
                     envelope: envelope,
@@ -232,8 +255,12 @@ private extension ThreeForTonightCoordinator {
 
         switch await decisionSetRepository.load() {
             case let .available(envelope)
-            where envelope.cycle.identitySignature == signature
-            && envelope.sourceViewerStateSnapshotID == trusted.snapshotID:
+            where isCompatible(envelope, trusted: trusted, signature: signature):
+                if case let .exhausted(exhaustedAt) = envelope.outcome,
+                   exhaustionPolicy.isFresh(exhaustedAt: exhaustedAt, now: clock.now())
+                {
+                    return result(for: envelope, trusted: trusted)
+                }
                 return try await generate(
                     cycle: envelope.cycle,
                     trusted: trusted,
@@ -387,11 +414,14 @@ private extension ThreeForTonightCoordinator {
                         }
                         return .usable(retained)
                     case let .successorCycle(cycle):
-                        return try await generate(
-                            cycle: cycle,
+                        return try await repair(
+                            envelope: envelope,
                             trusted: trusted,
-                            retained: retained,
-                            recovery: false,
+                            currentSignature: signature,
+                            reevaluatedMovieIDs: Set(
+                                envelope.recommendations.map(\.display.movieID)
+                            ),
+                            targetCycle: cycle,
                             operationID: operationID
                         )
                     case let .repair(movieID):
@@ -441,13 +471,24 @@ private extension ThreeForTonightCoordinator {
         trusted: TrustedDecisionState,
         signature: DecisionCycleSignature
     ) -> Bool {
-        envelope.sourceViewerStateSnapshotID == trusted.snapshotID
-            && envelope.cycle.identitySignature == signature
+        isCompatible(envelope, trusted: trusted, signature: signature)
             && ThreeForTonightSnapshotFactory.localRepairMovieIDs(
                 envelope: envelope,
                 trustedState: trusted,
                 currentCycleSignature: signature
             ).isEmpty
+    }
+
+    func isCompatible(
+        _ envelope: PersistedDecisionSet,
+        trusted: TrustedDecisionState,
+        signature: DecisionCycleSignature
+    ) -> Bool {
+        envelope.sourceViewerStateSnapshotID == trusted.snapshotID
+            && envelope.cycle.identitySignature == signature
+            && envelope.cycle.history.suppressionEpochID
+            == trusted.recommendationSuppressionEpochID
+            && envelope.searchPolicyVersion == searchPolicy.version
     }
 }
 

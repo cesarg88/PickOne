@@ -32,6 +32,24 @@ struct RecallDecisionCandidatesTests {
         #expect(candidates.first?.localizedTitle == "First")
     }
 
+    @Test("an empty page terminates the requested stage early")
+    func emptyPageTerminatesStage() async throws {
+        let repository = try CandidateRepositorySpy(pages: [
+            1: [seed(id: 10)],
+            2: [],
+            3: [seed(id: 30)],
+        ])
+        let sut = RecallDecisionCandidates(repository: repository)
+
+        let candidates = try await sut.execute(
+            pages: 1 ... 6,
+            context: testContext()
+        )
+
+        #expect(candidates.map(\.movieID) == [10])
+        #expect(await repository.requestedPages == [1, 2])
+    }
+
     @Test("a source error stops recall and remains an error")
     func propagatesSourceError() async throws {
         let repository = CandidateRepositorySpy(failingPage: 3)

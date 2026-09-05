@@ -25,6 +25,12 @@ struct ThreeForTonightSnapshot: Equatable, Sendable {
     }
 }
 
+struct ThreeForTonightExhaustion: Equatable, Sendable {
+    let snapshot: ThreeForTonightSnapshot
+    let expiresAt: Date
+    let canRefresh: Bool
+}
+
 enum ThreeForTonightFailureReason: Equatable, Sendable {
     case profileUnavailable
     case generationUnavailable
@@ -37,6 +43,7 @@ enum ThreeForTonightFailureReason: Equatable, Sendable {
 
 enum ThreeForTonightResult: Equatable, Sendable {
     case usable(ThreeForTonightSnapshot)
+    case exhausted(ThreeForTonightExhaustion)
     case retryableFailure(
         reason: ThreeForTonightFailureReason,
         retained: ThreeForTonightSnapshot?
@@ -272,6 +279,8 @@ enum CoordinatorError: Error {
         if recovery {
             return .recoveryFailed
         }
-        return .invariantViolation
+        return switch self {
+            case .invariantViolation: .invariantViolation
+        }
     }
 }

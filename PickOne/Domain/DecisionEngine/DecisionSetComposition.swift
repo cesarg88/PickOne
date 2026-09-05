@@ -20,7 +20,8 @@ struct DecisionSetEnvelopeComposer: Sendable {
         candidates: [DecisionInputCandidate],
         profile: ViewerProfile,
         cycle: DecisionCycle,
-        sourceViewerStateSnapshotID: ViewerStateSnapshotID
+        sourceViewerStateSnapshotID: ViewerStateSnapshotID,
+        outcome: PersistedDecisionSetOutcome = .recommendations
     ) async throws -> PersistedDecisionSet {
         let candidatesByID = Dictionary(
             uniqueKeysWithValues: candidates.map { ($0.seed.movieID, $0) }
@@ -45,6 +46,7 @@ struct DecisionSetEnvelopeComposer: Sendable {
             engineModelVersion: .p1Model,
             cycle: presentedCycle,
             sourceViewerStateSnapshotID: sourceViewerStateSnapshotID,
+            outcome: outcome,
             region: profile.region,
             selectedProviderIDs: profile.selectedServices.map(\.providerID),
             recommendations: recommendations
@@ -175,13 +177,19 @@ struct DecisionMemberRehydrator: Sendable {
         profile: ViewerProfile,
         forceReload: Bool
     ) async throws -> AvailabilityOutcome {
+        AvailabilityDiagnosticsContext.operation?.recordCheck()
         let evidence = try await availabilityRepository.getVerifiedEvidence(
             movieID: movieID,
             region: profile.region,
             policy: forceReload ? .reloadIgnoringCache : .useFreshCache
         )
-        guard let evidence, evidence.regionalEvidence.movieID == movieID else {
+        guard let evidence else {
             return .unknown(reason: .regionalEvidenceMissing)
+        }
+        guard evidence.regionalEvidence.movieID == movieID,
+              evidence.regionalEvidence.region == profile.region
+        else {
+            throw CoordinatorError.invariantViolation
         }
         return availabilityEvaluator.evaluate(
             evidence,

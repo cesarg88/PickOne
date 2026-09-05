@@ -161,18 +161,24 @@ enum CoordinatorTestError: Error { case unavailable }
 
 actor CoordinatorCandidateRepository: DecisionCandidateRepository {
     private let candidatesByPage: [Int: [DecisionCandidateSeed]]
+    private var candidateBatchesByPage: [Int: [[DecisionCandidateSeed]]]
     private let error: CoordinatorTestError?
     private let delay: Duration?
+    private let failureStartingAtRequest: Int?
     private(set) var requestedPages: [Int] = []
 
     init(
         candidatesByPage: [Int: [DecisionCandidateSeed]] = [:],
+        candidateBatchesByPage: [Int: [[DecisionCandidateSeed]]] = [:],
         error: CoordinatorTestError? = nil,
-        delay: Duration? = nil
+        delay: Duration? = nil,
+        failureStartingAtRequest: Int? = nil
     ) {
         self.candidatesByPage = candidatesByPage
+        self.candidateBatchesByPage = candidateBatchesByPage
         self.error = error
         self.delay = delay
+        self.failureStartingAtRequest = failureStartingAtRequest
     }
 
     func discoverPage(
@@ -181,32 +187,66 @@ actor CoordinatorCandidateRepository: DecisionCandidateRepository {
     ) async throws -> [DecisionCandidateSeed] {
         requestedPages.append(page)
         if let delay { try await Task.sleep(for: delay) }
-        if let error { throw error }
+        if let error {
+            if let failureStartingAtRequest {
+                if requestedPages.count >= failureStartingAtRequest {
+                    throw error
+                }
+            } else {
+                throw error
+            }
+        }
+        if var batches = candidateBatchesByPage[page], !batches.isEmpty {
+            let batch = batches.removeFirst()
+            candidateBatchesByPage[page] = batches
+            return batch
+        }
         return candidatesByPage[page] ?? []
     }
 }
 
 actor CoordinatorAvailabilityRepository: AvailabilityRepository {
     private let evidenceByMovieID: [Int: VerifiedAvailabilityEvidence]
+    private let failingMovieIDs: Set<Int>
+    private let cacheHitMovieIDs: Set<Int>
     private(set) var requests: [CoordinatorAvailabilityRequest] = []
 
     var requestedMovieIDs: [Int] {
         requests.map(\.movieID)
     }
 
-    init(evidenceByMovieID: [Int: VerifiedAvailabilityEvidence] = [:]) {
+    init(
+        evidenceByMovieID: [Int: VerifiedAvailabilityEvidence] = [:],
+        failingMovieIDs: Set<Int> = [],
+        cacheHitMovieIDs: Set<Int> = []
+    ) {
         self.evidenceByMovieID = evidenceByMovieID
+        self.failingMovieIDs = failingMovieIDs
+        self.cacheHitMovieIDs = cacheHitMovieIDs
     }
 
     func getVerifiedEvidence(
         movieID: Int,
         region _: ViewingRegion,
         policy: AvailabilityFetchPolicy
-    ) -> VerifiedAvailabilityEvidence? {
+    ) throws -> VerifiedAvailabilityEvidence? {
         requests.append(CoordinatorAvailabilityRequest(
             movieID: movieID,
             policy: policy
         ))
+        let diagnostics = AvailabilityDiagnosticsContext.operation
+        let isCacheHit = cacheHitMovieIDs.contains(movieID)
+        if isCacheHit {
+            diagnostics?.recordCacheHit()
+        } else {
+            diagnostics?.networkRequestStarted()
+        }
+        defer {
+            if !isCacheHit { diagnostics?.networkRequestFinished() }
+        }
+        if failingMovieIDs.contains(movieID) {
+            throw CoordinatorTestError.unavailable
+        }
         return evidenceByMovieID[movieID]
     }
 }
@@ -219,16 +259,29 @@ struct CoordinatorAvailabilityRequest: Equatable, Sendable {
 actor CoordinatorDecisionSetRepository: DecisionSetRepository {
     private var loadResult: DecisionSetLoadResult
     let replaceError: CoordinatorTestError?
+    let restoreError: CoordinatorTestError?
+    let delayAfterReplace: Duration?
     let onReplace: @Sendable () -> Void
     private(set) var replacements: [PersistedDecisionSet] = []
+    private var publications: [
+        DecisionSetPublicationTransaction: CoordinatorStagedPublication
+    ] = [:]
+
+    var inFlightPublicationCount: Int {
+        publications.count
+    }
 
     init(
         loadResult: DecisionSetLoadResult,
         replaceError: CoordinatorTestError? = nil,
+        restoreError: CoordinatorTestError? = nil,
+        delayAfterReplace: Duration? = nil,
         onReplace: @escaping @Sendable () -> Void = {}
     ) {
         self.loadResult = loadResult
         self.replaceError = replaceError
+        self.restoreError = restoreError
+        self.delayAfterReplace = delayAfterReplace
         self.onReplace = onReplace
     }
 
@@ -241,6 +294,68 @@ actor CoordinatorDecisionSetRepository: DecisionSetRepository {
         replacements.append(envelope)
         loadResult = .available(envelope)
         onReplace()
+    }
+
+    func beginPublicationTransaction() -> DecisionSetPublicationTransaction {
+        let transaction = DecisionSetPublicationTransaction()
+        publications[transaction] = CoordinatorStagedPublication(replacement: nil)
+        return transaction
+    }
+
+    func stage(
+        _ envelope: PersistedDecisionSet,
+        in transaction: DecisionSetPublicationTransaction
+    ) async throws {
+        if let replaceError { throw replaceError }
+        guard publications[transaction] != nil else {
+            throw CoordinatorTestError.unavailable
+        }
+        replacements.append(envelope)
+        publications[transaction]?.replacement = envelope
+        onReplace()
+        if let delayAfterReplace, replacements.count == 1 {
+            try await Task.sleep(for: delayAfterReplace)
+        }
+    }
+
+    func commit(_ transaction: DecisionSetPublicationTransaction) throws {
+        guard let publication = publications.removeValue(forKey: transaction),
+              let replacement = publication.replacement
+        else {
+            throw CoordinatorTestError.unavailable
+        }
+        loadResult = .available(replacement)
+    }
+
+    func discard(_ transaction: DecisionSetPublicationTransaction) throws {
+        if let restoreError { throw restoreError }
+        guard publications.removeValue(forKey: transaction) != nil else {
+            throw CoordinatorTestError.unavailable
+        }
+    }
+}
+
+private struct CoordinatorStagedPublication: Sendable {
+    var replacement: PersistedDecisionSet?
+}
+
+actor RecordingRecommendationDiagnosticsSink:
+    RecommendationGenerationDiagnosticsSink
+{
+    private(set) var snapshots: [RecommendationGenerationDiagnostics] = []
+
+    func record(_ diagnostics: RecommendationGenerationDiagnostics) {
+        snapshots.append(diagnostics)
+    }
+
+    func firstSnapshot() async -> RecommendationGenerationDiagnostics? {
+        for _ in 0 ..< 100 {
+            if let first = snapshots.first {
+                return first
+            }
+            try? await Task.sleep(for: .milliseconds(10))
+        }
+        return nil
     }
 }
 

@@ -29,6 +29,9 @@ struct HydrateDecisionTasteProfile: Sendable {
             func addTask(at index: Int) {
                 let (movieID, reaction) = orderedReactions[index]
                 group.addTask {
+                    let diagnostics = RecommendationDiagnosticsContext.operation
+                    diagnostics?.tasteHydrationStarted()
+                    defer { diagnostics?.tasteHydrationFinished() }
                     do {
                         let movie = try await movieRepository.getMovieDetail(
                             id: movieID,

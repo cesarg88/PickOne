@@ -390,22 +390,38 @@ extension LocalViewerStateRepository {
         )
         let inputsChanged = profileState != current.envelope.viewerProfileState ||
             states != current.snapshot.states
+        let currentEpochID = current.envelope.recommendationSuppressionEpochID
+        let replacementEpochID = freshSuppressionEpochID(excluding: currentEpochID)
         _ = try persistProfileState(
             profileState,
             states: states,
             current: current,
-            recommendationInputsChanged: inputsChanged
+            recommendationInputsChanged: inputsChanged,
+            suppressionEpochID: replacementEpochID
         )
+    }
+
+    private func freshSuppressionEpochID(excluding current: UUID) -> UUID {
+        for _ in 0 ..< 8 {
+            let candidate = makeSuppressionEpochID()
+            if candidate != current {
+                return candidate
+            }
+        }
+        var bytes = current.uuid
+        bytes.0 ^= 1
+        return UUID(uuid: bytes)
     }
 
     private func persistProfileState(
         _ profileState: LocalViewerProfileStateV2DTO,
         states: [ViewerMovieState],
         current: ResolvedState,
-        recommendationInputsChanged: Bool
+        recommendationInputsChanged: Bool,
+        suppressionEpochID: UUID? = nil
     ) throws -> ResolvedState {
         let unchanged = profileState == current.envelope.viewerProfileState &&
-            states == current.snapshot.states
+            states == current.snapshot.states && suppressionEpochID == nil
         if unchanged {
             return current
         }
@@ -415,7 +431,8 @@ extension LocalViewerStateRepository {
         let envelope = LocalViewerStateEnvelopeV3DTO(
             envelopeSchemaVersion: LocalViewerStateEnvelopeV3DTO.schemaVersion,
             committedStateSnapshotID: snapshotID,
-            recommendationSuppressionEpochID: current.envelope.recommendationSuppressionEpochID,
+            recommendationSuppressionEpochID: suppressionEpochID
+                ?? current.envelope.recommendationSuppressionEpochID,
             viewerProfileState: profileState,
             viewerMovieStates: states.sorted { $0.movieID < $1.movieID }.map(mapper.map),
             migrationRecord: current.envelope.migrationRecord

@@ -1,3 +1,5 @@
+import Foundation
+
 enum DecisionSetRecoveryReason: Equatable, Sendable {
     case corruptData
     case unsupportedVersion
@@ -12,9 +14,23 @@ enum DecisionSetLoadResult: Equatable, Sendable {
     case recovery(DecisionSetRecoveryReason)
 }
 
+struct DecisionSetPublicationTransaction: Hashable, Sendable {
+    let id: UUID
+
+    init(id: UUID = UUID()) {
+        self.id = id
+    }
+}
+
 protocol DecisionSetRepository: Sendable {
     func load() async -> DecisionSetLoadResult
-    func replace(_ envelope: PersistedDecisionSet) async throws
+    func beginPublicationTransaction() async throws -> DecisionSetPublicationTransaction
+    func stage(
+        _ envelope: PersistedDecisionSet,
+        in transaction: DecisionSetPublicationTransaction
+    ) async throws
+    func commit(_ transaction: DecisionSetPublicationTransaction) async throws
+    func discard(_ transaction: DecisionSetPublicationTransaction) async throws
 }
 
 enum DecisionSetRepositoryError: Error, Equatable, Sendable {

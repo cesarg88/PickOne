@@ -96,8 +96,8 @@ struct ViewerStateReconciliationTests {
         #expect(snapshot.decisionSet.sourceViewerStateSnapshotID == snapshotID)
     }
 
-    @Test("eligibility-only identity change retains unaffected affinity on repair failure")
-    func eligibilityOnlyIdentityChangeRetainsAffinityOnFailure() async throws {
+    @Test("eligibility-only change retains a revalidated member on generation failure")
+    func eligibilityOnlyChangeRetainsRevalidatedMemberOnFailure() async throws {
         let profile = profile(reactions: [155: .loveIt])
         let affinity = PositiveAffinityEvidence(
             genres: [DecisionGenre(id: 18, name: "Drama")],
@@ -111,14 +111,18 @@ struct ViewerStateReconciliationTests {
         let snapshotID = ViewerStateSnapshotID(rawValue: UUID())
         let reaction = try viewerState(movieID: 155, preference: .reaction(.loveIt))
         let watched = try CoordinatorTestFixtures.watchedState(166)
-        let candidates = CoordinatorCandidateRepository()
+        let candidates = CoordinatorCandidateRepository(error: .unavailable)
         let decisionSets = CoordinatorDecisionSetRepository(loadResult: .available(source))
         let sut = CoordinatorTestFixtures.makeCoordinator(
             profile: profile,
             candidateRepository: candidates,
-            availabilityRepository: CoordinatorAvailabilityRepository(),
+            availabilityRepository: CoordinatorAvailabilityRepository(
+                evidenceByMovieID: [10: CoordinatorTestFixtures.evidence(10)]
+            ),
             decisionSetRepository: decisionSets,
-            movieRepository: CoordinatorMovieRepository(movies: [:]),
+            movieRepository: CoordinatorMovieRepository(movies: Dictionary(
+                uniqueKeysWithValues: [10, 155].map { ($0, CoordinatorTestFixtures.movie($0)) }
+            )),
             snapshotID: snapshotID,
             viewerMovieStates: [reaction, watched]
         )
@@ -130,14 +134,13 @@ struct ViewerStateReconciliationTests {
 
         let result = try await sut.reconcileAfterViewerStateChange(change)
 
-        #expect(result == .retryableFailure(
-            reason: .repairFailed,
-            retained: ThreeForTonightSnapshot(
-                decisionSet: source,
-                savedMovieIDs: []
-            )
-        ))
-        #expect(await candidates.requestedPages.isEmpty)
+        guard case let .retryableFailure(reason, retained) = result else {
+            Issue.record("Expected generation failure")
+            return
+        }
+        #expect(reason == .generationUnavailable)
+        #expect(retained?.decisionSet.recommendations.map(\.display.movieID) == [10])
+        #expect(await candidates.requestedPages == [1])
         #expect(await decisionSets.replacements.isEmpty)
     }
 
@@ -197,10 +200,21 @@ struct ViewerStateReconciliationTests {
 
         let result = try await sut.reconcileAfterViewerStateChange(change)
 
-        #expect(result == .retryableFailure(
-            reason: .generationUnavailable,
+        #expect(try result == .retryableFailure(
+            reason: .repairFailed,
             retained: ThreeForTonightSnapshot(
-                decisionSet: source,
+                decisionSet: PersistedDecisionSet(
+                    id: source.id,
+                    generatedAt: source.generatedAt,
+                    engineModelVersion: source.engineModelVersion,
+                    cycle: source.cycle,
+                    sourceViewerStateSnapshotID: source.sourceViewerStateSnapshotID,
+                    searchPolicyVersion: source.searchPolicyVersion,
+                    outcome: source.outcome,
+                    region: source.region,
+                    selectedProviderIDs: source.selectedProviderIDs,
+                    recommendations: []
+                ),
                 savedMovieIDs: []
             )
         ))
@@ -256,7 +270,7 @@ struct ViewerStateReconciliationTests {
             Issue.record("Expected a retryable hydration failure")
             return
         }
-        #expect(reason == .generationUnavailable)
+        #expect(reason == .repairFailed)
         #expect(retained?.decisionSet.recommendations.isEmpty == true)
         #expect(await candidates.requestedPages.isEmpty)
         #expect(await decisionSets.replacements.isEmpty)
@@ -338,7 +352,13 @@ struct ViewerStateReconciliationTests {
         let decisionSets = CoordinatorDecisionSetRepository(loadResult: .available(source))
         let sut = coordinator(
             trustedStateLoader: loader,
-            decisionSetRepository: decisionSets
+            decisionSetRepository: decisionSets,
+            movieRepository: CoordinatorMovieRepository(
+                movies: [10: CoordinatorTestFixtures.movie(10)]
+            ),
+            availabilityRepository: CoordinatorAvailabilityRepository(
+                evidenceByMovieID: [10: CoordinatorTestFixtures.evidence(10)]
+            )
         )
 
         let result = try await sut.refresh()
@@ -408,7 +428,7 @@ struct ViewerStateReconciliationTests {
         #expect(published.decisionSet.sourceViewerStateSnapshotID == queued.snapshotID)
         #expect(published.decisionSet.cycle.shownMovieIDs == [10, 30])
         #expect(await decisionSets.replacements == [published.decisionSet])
-        #expect(await candidates.requestedPages.count == 12)
+        #expect(await candidates.requestedPages == [1, 2, 1, 2])
     }
 }
 
@@ -525,7 +545,10 @@ enum LatestEligibilityExclusion: CaseIterable, Sendable {
 
 private extension ThreeForTonightResult {
     var usableSnapshot: ThreeForTonightSnapshot? {
-        guard case let .usable(snapshot) = self else { return nil }
-        return snapshot
+        switch self {
+            case let .usable(snapshot): snapshot
+            case let .exhausted(exhaustion): exhaustion.snapshot
+            case .retryableFailure: nil
+        }
     }
 }

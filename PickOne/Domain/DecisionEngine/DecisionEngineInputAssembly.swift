@@ -23,6 +23,23 @@ struct DecisionEngineInputSnapshot: Equatable, Sendable {
     let input: DecisionEngineInput
 }
 
+struct PreparedDecisionEngineInput: Equatable, Sendable {
+    let trustedState: TrustedDecisionState
+    let profile: P1TasteProfile
+    let candidateContext: DecisionCandidateContext
+    let availabilityContext: AvailabilityViewingContext
+}
+
+struct DecisionInputCandidateBatch: Equatable, Sendable {
+    let candidates: [DecisionInputCandidate]
+    let recalledMovieIDs: Set<Int>
+    let requestedPageCount: Int
+    let recalledCandidateCount: Int
+    let reachedEmptyPage: Bool
+    let maximumSimultaneousAvailabilityChecks: Int
+    let hasUnresolvedAvailability: Bool
+}
+
 struct AssembleDecisionEngineInput: Sendable {
     private static let availabilityRequestLimit = 8
 
@@ -49,6 +66,24 @@ struct AssembleDecisionEngineInput: Sendable {
         trustedState: TrustedDecisionState,
         currentCycleShownMovieIDs: Set<Int>
     ) async throws -> DecisionEngineInputSnapshot {
+        let prepared = try await prepare(trustedState: trustedState)
+        let batch = try await recallAndEnrich(
+            pages: RecommendationSearchPolicy.accepted.normalPageRange,
+            prepared: prepared,
+            excludingMovieIDs: trustedState.recommendationExcludedMovieIDs
+                .union(currentCycleShownMovieIDs),
+            alreadyRecalledMovieIDs: []
+        )
+        return snapshot(
+            prepared: prepared,
+            candidates: batch.candidates,
+            currentCycleShownMovieIDs: currentCycleShownMovieIDs
+        )
+    }
+
+    func prepare(
+        trustedState: TrustedDecisionState
+    ) async throws -> PreparedDecisionEngineInput {
         let context = try candidateContext(for: trustedState.profile)
         let tasteProfile: P1TasteProfile
         do {
@@ -65,38 +100,72 @@ struct AssembleDecisionEngineInput: Sendable {
                     )
             }
         }
-        try Task.checkCancellation()
+        return PreparedDecisionEngineInput(
+            trustedState: trustedState,
+            profile: tasteProfile,
+            candidateContext: context,
+            availabilityContext: AvailabilityViewingContext(
+                region: trustedState.profile.region,
+                selectedServices: trustedState.profile.selectedServices
+            )
+        )
+    }
 
-        let seeds: [DecisionCandidateSeed]
+    func recallAndEnrich(
+        pages: ClosedRange<Int>,
+        prepared: PreparedDecisionEngineInput,
+        excludingMovieIDs: Set<Int>,
+        alreadyRecalledMovieIDs: Set<Int>
+    ) async throws -> DecisionInputCandidateBatch {
+        let recalled: RecalledDecisionCandidateBatch
         do {
-            seeds = try await recallCandidates.execute(context: context)
+            recalled = try await recallCandidates.executeBatch(
+                pages: pages,
+                context: prepared.candidateContext
+            )
         } catch is CancellationError {
             throw CancellationError()
         } catch {
             throw DecisionEngineInputAssemblyError.candidateRecallFailed
         }
 
-        let locallyExcludedMovieIDs = trustedState.recommendationExcludedMovieIDs
-            .union(currentCycleShownMovieIDs)
-        let locallyEligibleSeeds = seeds.filter {
-            !locallyExcludedMovieIDs.contains($0.movieID)
+        let eligibleSeeds = recalled.candidates.filter {
+            !excludingMovieIDs.contains($0.movieID)
+                && !alreadyRecalledMovieIDs.contains($0.movieID)
         }
-        let candidates = try await enrichAvailability(
-            locallyEligibleSeeds,
-            context: AvailabilityViewingContext(
-                region: trustedState.profile.region,
-                selectedServices: trustedState.profile.selectedServices
-            )
+        let enrichment = try await enrichAvailability(
+            eligibleSeeds,
+            context: prepared.availabilityContext
         )
+        return DecisionInputCandidateBatch(
+            candidates: enrichment.candidates,
+            recalledMovieIDs: Set(recalled.candidates.map(\.movieID)),
+            requestedPageCount: recalled.requestedPageCount,
+            recalledCandidateCount: recalled.candidates.count,
+            reachedEmptyPage: recalled.reachedEmptyPage,
+            maximumSimultaneousAvailabilityChecks: min(
+                Self.availabilityRequestLimit,
+                eligibleSeeds.count
+            ),
+            hasUnresolvedAvailability: enrichment.hasUnresolvedAvailability
+        )
+    }
+
+    func snapshot(
+        prepared: PreparedDecisionEngineInput,
+        candidates: [DecisionInputCandidate],
+        currentCycleShownMovieIDs: Set<Int>
+    ) -> DecisionEngineInputSnapshot {
         let input = DecisionEngineInput(
-            profile: tasteProfile,
+            profile: prepared.profile,
             candidates: candidates.map(\.decisionCandidate),
-            recommendationExcludedMovieIDs: trustedState.recommendationExcludedMovieIDs,
-            savedUnwatchedMovieIDs: trustedState.savedUnwatchedMovieIDs,
+            recommendationExcludedMovieIDs: prepared.trustedState
+                .recommendationExcludedMovieIDs,
+            savedUnwatchedMovieIDs: prepared.trustedState.savedUnwatchedMovieIDs,
             currentCycleShownMovieIDs: currentCycleShownMovieIDs
         )
         return DecisionEngineInputSnapshot(
-            trustedState: trustedState,
+            trustedState: prepared.trustedState,
             candidates: candidates,
             input: input
         )
@@ -117,7 +186,7 @@ struct AssembleDecisionEngineInput: Sendable {
     private func enrichAvailability(
         _ seeds: [DecisionCandidateSeed],
         context: AvailabilityViewingContext
-    ) async throws -> [DecisionInputCandidate] {
+    ) async throws -> AvailabilityEnrichmentBatch {
         var results = [AvailabilityEnrichment?](
             repeating: nil,
             count: seeds.count
@@ -163,16 +232,17 @@ struct AssembleDecisionEngineInput: Sendable {
         }
 
         let completed = results.compactMap { $0 }
-        if !completed.isEmpty, completed.allSatisfy(\.requestFailed) {
-            throw DecisionEngineInputAssemblyError.availabilitySourceUnavailable
-        }
-        return completed.map(\.candidate)
+        return AvailabilityEnrichmentBatch(
+            candidates: completed.map(\.candidate),
+            hasUnresolvedAvailability: completed.contains(where: \.requestFailed)
+        )
     }
 
     private func availabilityOutcome(
         for seed: DecisionCandidateSeed,
         context: AvailabilityViewingContext
     ) async throws -> AvailabilityResolution {
+        AvailabilityDiagnosticsContext.operation?.recordCheck()
         do {
             guard let evidence = try await availabilityRepository.getVerifiedEvidence(
                 movieID: seed.movieID,
@@ -187,12 +257,13 @@ struct AssembleDecisionEngineInput: Sendable {
             guard evidence.regionalEvidence.movieID == seed.movieID else {
                 return AvailabilityResolution(
                     outcome: .unknown(reason: .regionalEvidenceMissing),
-                    requestFailed: false
+                    requestFailed: true
                 )
             }
+            let outcome = availabilityEvaluator.evaluate(evidence, context: context)
             return AvailabilityResolution(
-                outcome: availabilityEvaluator.evaluate(evidence, context: context),
-                requestFailed: false
+                outcome: outcome,
+                requestFailed: outcome.isUnresolvedVerification
             )
         } catch is CancellationError {
             throw CancellationError()
@@ -239,4 +310,16 @@ private struct AvailabilityResolution: Sendable {
 private struct AvailabilityEnrichment: Sendable {
     let candidate: DecisionInputCandidate
     let requestFailed: Bool
+}
+
+private struct AvailabilityEnrichmentBatch: Sendable {
+    let candidates: [DecisionInputCandidate]
+    let hasUnresolvedAvailability: Bool
+}
+
+private extension AvailabilityOutcome {
+    var isUnresolvedVerification: Bool {
+        if case .unknown = self { return true }
+        return false
+    }
 }
