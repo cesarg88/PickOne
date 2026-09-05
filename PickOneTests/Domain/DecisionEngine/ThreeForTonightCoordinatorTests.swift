@@ -97,6 +97,7 @@ struct ThreeForTonightCoordinatorTests {
             retained: ThreeForTonightSnapshot(decisionSet: envelope, savedMovieIDs: [])
         ))
         #expect(await decisionSetRepository.replacements.isEmpty)
+        #expect(await decisionSetRepository.inFlightPublicationCount == 0)
     }
 
     @Test("quarantined recovery replaces only the recommendation envelope")

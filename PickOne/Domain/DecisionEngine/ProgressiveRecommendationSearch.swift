@@ -64,6 +64,10 @@ extension ThreeForTonightCoordinator {
         var uniqueRecalledCandidateCount = 0
         var maxAvailabilityConcurrency = 0
         var recallStageDurations: [RecommendationRecallStageDuration] = []
+        var hasUnresolvedAvailability = false
+        let excludedMovieIDs = trusted.recommendationExcludedMovieIDs
+            .union(activeMovieIDs)
+            .union(additionallyExcludedMovieIDs)
 
         if let completed = completedRetainedSearchResult(
             selection: selection,
@@ -76,27 +80,21 @@ extension ThreeForTonightCoordinator {
         }
 
         for stage in searchPolicy.stages {
-            let stageStartedAt = clock.now()
-            RecommendationDiagnosticsContext.operation?.beginRecallStage(stage.kind)
-            let batch = try await inputAssembler.recallAndEnrich(
-                pages: stage.pageRange,
+            let batch = try await recallBatch(
+                stage: stage,
                 prepared: prepared,
-                excludingMovieIDs: trusted.recommendationExcludedMovieIDs
-                    .union(activeMovieIDs)
-                    .union(additionallyExcludedMovieIDs),
-                alreadyRecalledMovieIDs: recalledMovieIDs
+                excludedMovieIDs: excludedMovieIDs,
+                recalledMovieIDs: recalledMovieIDs,
+                durations: &recallStageDurations
             )
             candidates.append(contentsOf: batch.candidates)
             recalledMovieIDs.formUnion(batch.recalledMovieIDs)
+            hasUnresolvedAvailability = hasUnresolvedAvailability
+                || batch.hasUnresolvedAvailability
             discoverRequestCount += batch.requestedPageCount
             uniqueRecalledCandidateCount = recalledMovieIDs.count
             maxAvailabilityConcurrency = updatedAvailabilityConcurrency(maxAvailabilityConcurrency, batch)
             highestStage = stage.kind
-            recordCompletedRecallStage(
-                stage.kind,
-                startedAt: stageStartedAt,
-                durations: &recallStageDurations
-            )
             selection = prioritizedSelection(
                 prepared: prepared,
                 candidates: candidates,
@@ -124,7 +122,7 @@ extension ThreeForTonightCoordinator {
             }
         }
 
-        return searchResultAfterRollover(
+        return try searchResultAfterRollover(
             prepared: prepared,
             selection: selection,
             candidates: candidates,
@@ -138,8 +136,41 @@ extension ThreeForTonightCoordinator {
             activeMovieIDs: activeMovieIDs,
             mandatoryRetainedMovieIDs: mandatoryRetainedMovieIDs,
             searchStartedAt: searchStartedAt,
-            availabilityDiagnostics: diagnostics
+            availabilityDiagnostics: diagnostics,
+            hasUnresolvedAvailability: hasUnresolvedAvailability
         )
+    }
+
+    private func recallBatch(
+        stage: RecommendationRecallStage,
+        prepared: PreparedDecisionEngineInput,
+        excludedMovieIDs: Set<Int>,
+        recalledMovieIDs: Set<Int>,
+        durations: inout [RecommendationRecallStageDuration]
+    ) async throws -> DecisionInputCandidateBatch {
+        let stageStartedAt = clock.now()
+        RecommendationDiagnosticsContext.operation?.beginRecallStage(stage.kind)
+        do {
+            let batch = try await inputAssembler.recallAndEnrich(
+                pages: stage.pageRange,
+                prepared: prepared,
+                excludingMovieIDs: excludedMovieIDs,
+                alreadyRecalledMovieIDs: recalledMovieIDs
+            )
+            recordCompletedRecallStage(
+                stage.kind,
+                startedAt: stageStartedAt,
+                durations: &durations
+            )
+            return batch
+        } catch {
+            recordCompletedRecallStage(
+                stage.kind,
+                startedAt: stageStartedAt,
+                durations: &durations
+            )
+            throw error
+        }
     }
 
     private func completedRetainedSearchResult(
@@ -219,27 +250,44 @@ extension ThreeForTonightCoordinator {
         activeMovieIDs: Set<Int>,
         mandatoryRetainedMovieIDs: Set<Int>,
         searchStartedAt: Date,
-        availabilityDiagnostics: AvailabilityOperationDiagnostics
-    ) -> ProgressiveRecommendationSearchResult {
+        availabilityDiagnostics: AvailabilityOperationDiagnostics,
+        hasUnresolvedAvailability: Bool
+    ) throws -> ProgressiveRecommendationSearchResult {
         var selection = initialSelection
         var history = initialHistory
         var highestStage = initialHighestStage
-        while selection.recommendations.count < 3 {
-            let released = history.releasingOldestSuppression(
-                count: searchPolicy.rolloverStep,
-                excluding: activeMovieIDs
-            )
-            guard released != history else { break }
-            history = released
+        var recallStageDurations = recallStageDurations
+        var released = history.releasingOldestSuppression(
+            count: searchPolicy.rolloverStep,
+            excluding: activeMovieIDs
+        )
+        if selection.recommendations.count < 3, released != history {
+            let rolloverStartedAt = clock.now()
             highestStage = .rollover
             RecommendationDiagnosticsContext.operation?.beginRecallStage(.rollover)
-            selection = prioritizedSelection(
-                prepared: prepared,
-                candidates: candidates,
-                history: history,
-                activeMovieIDs: activeMovieIDs,
-                mandatoryRetainedMovieIDs: mandatoryRetainedMovieIDs
+            while selection.recommendations.count < 3, released != history {
+                history = released
+                selection = prioritizedSelection(
+                    prepared: prepared,
+                    candidates: candidates,
+                    history: history,
+                    activeMovieIDs: activeMovieIDs,
+                    mandatoryRetainedMovieIDs: mandatoryRetainedMovieIDs
+                )
+                released = history.releasingOldestSuppression(
+                    count: searchPolicy.rolloverStep,
+                    excluding: activeMovieIDs
+                )
+            }
+            recordCompletedRecallStage(
+                .rollover,
+                startedAt: rolloverStartedAt,
+                durations: &recallStageDurations
             )
+        }
+
+        guard selection.recommendations.count == 3 || !hasUnresolvedAvailability else {
+            throw DecisionEngineInputAssemblyError.availabilitySourceUnavailable
         }
 
         if selection.recommendations.count == 3 {

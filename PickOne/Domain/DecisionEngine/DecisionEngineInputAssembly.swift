@@ -37,6 +37,7 @@ struct DecisionInputCandidateBatch: Equatable, Sendable {
     let recalledCandidateCount: Int
     let reachedEmptyPage: Bool
     let maximumSimultaneousAvailabilityChecks: Int
+    let hasUnresolvedAvailability: Bool
 }
 
 struct AssembleDecisionEngineInput: Sendable {
@@ -132,12 +133,12 @@ struct AssembleDecisionEngineInput: Sendable {
             !excludingMovieIDs.contains($0.movieID)
                 && !alreadyRecalledMovieIDs.contains($0.movieID)
         }
-        let candidates = try await enrichAvailability(
+        let enrichment = try await enrichAvailability(
             eligibleSeeds,
             context: prepared.availabilityContext
         )
         return DecisionInputCandidateBatch(
-            candidates: candidates,
+            candidates: enrichment.candidates,
             recalledMovieIDs: Set(recalled.candidates.map(\.movieID)),
             requestedPageCount: recalled.requestedPageCount,
             recalledCandidateCount: recalled.candidates.count,
@@ -145,7 +146,8 @@ struct AssembleDecisionEngineInput: Sendable {
             maximumSimultaneousAvailabilityChecks: min(
                 Self.availabilityRequestLimit,
                 eligibleSeeds.count
-            )
+            ),
+            hasUnresolvedAvailability: enrichment.hasUnresolvedAvailability
         )
     }
 
@@ -184,7 +186,7 @@ struct AssembleDecisionEngineInput: Sendable {
     private func enrichAvailability(
         _ seeds: [DecisionCandidateSeed],
         context: AvailabilityViewingContext
-    ) async throws -> [DecisionInputCandidate] {
+    ) async throws -> AvailabilityEnrichmentBatch {
         var results = [AvailabilityEnrichment?](
             repeating: nil,
             count: seeds.count
@@ -230,10 +232,10 @@ struct AssembleDecisionEngineInput: Sendable {
         }
 
         let completed = results.compactMap { $0 }
-        if !completed.isEmpty, completed.allSatisfy(\.requestFailed) {
-            throw DecisionEngineInputAssemblyError.availabilitySourceUnavailable
-        }
-        return completed.map(\.candidate)
+        return AvailabilityEnrichmentBatch(
+            candidates: completed.map(\.candidate),
+            hasUnresolvedAvailability: completed.contains(where: \.requestFailed)
+        )
     }
 
     private func availabilityOutcome(
@@ -255,12 +257,13 @@ struct AssembleDecisionEngineInput: Sendable {
             guard evidence.regionalEvidence.movieID == seed.movieID else {
                 return AvailabilityResolution(
                     outcome: .unknown(reason: .regionalEvidenceMissing),
-                    requestFailed: false
+                    requestFailed: true
                 )
             }
+            let outcome = availabilityEvaluator.evaluate(evidence, context: context)
             return AvailabilityResolution(
-                outcome: availabilityEvaluator.evaluate(evidence, context: context),
-                requestFailed: false
+                outcome: outcome,
+                requestFailed: outcome.isUnresolvedVerification
             )
         } catch is CancellationError {
             throw CancellationError()
@@ -307,4 +310,16 @@ private struct AvailabilityResolution: Sendable {
 private struct AvailabilityEnrichment: Sendable {
     let candidate: DecisionInputCandidate
     let requestFailed: Bool
+}
+
+private struct AvailabilityEnrichmentBatch: Sendable {
+    let candidates: [DecisionInputCandidate]
+    let hasUnresolvedAvailability: Bool
+}
+
+private extension AvailabilityOutcome {
+    var isUnresolvedVerification: Bool {
+        if case .unknown = self { return true }
+        return false
+    }
 }

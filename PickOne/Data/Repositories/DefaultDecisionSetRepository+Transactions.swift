@@ -1,60 +1,56 @@
 import Foundation
 
 extension DefaultDecisionSetRepository {
-    func makePersistenceCheckpoint() async throws -> DecisionSetPersistenceCheckpoint {
-        let checkpoint = DecisionSetPersistenceCheckpoint()
+    func beginPublicationTransaction() async throws -> DecisionSetPublicationTransaction {
+        let transaction = DecisionSetPublicationTransaction()
         do {
-            checkpointSequence += 1
-            persistenceCheckpoints[checkpoint] = try StoredPersistenceCheckpoint(
-                previousData: store.readActive(),
-                previousOwner: activeCheckpoint,
-                sequence: checkpointSequence
+            publicationTransactions[transaction] = try StagedDecisionSetPublication(
+                committedData: store.readActive(),
+                committedRevision: committedRevision,
+                replacementData: nil
             )
-            return checkpoint
+            return transaction
         } catch {
             throw DecisionSetRepositoryError.storageFailed
         }
     }
 
-    func restorePersistenceCheckpoint(
-        _ checkpoint: DecisionSetPersistenceCheckpoint
+    func stage(
+        _ envelope: PersistedDecisionSet,
+        in transaction: DecisionSetPublicationTransaction
     ) async throws {
-        guard var stored = persistenceCheckpoints[checkpoint], stored.status == .open else {
+        guard var publication = publicationTransactions[transaction] else {
             throw DecisionSetRepositoryError.storageFailed
         }
-        guard activeCheckpoint == checkpoint else {
-            stored.status = .cancelled
-            persistenceCheckpoints[checkpoint] = stored
-            return
+        publication.replacementData = try encode(envelope)
+        publicationTransactions[transaction] = publication
+    }
+
+    func commit(_ transaction: DecisionSetPublicationTransaction) async throws {
+        guard let publication = publicationTransactions[transaction],
+              let replacementData = publication.replacementData
+        else {
+            throw DecisionSetRepositoryError.storageFailed
         }
-        let restoration = resolvedRestoration(for: stored)
+        defer { publicationTransactions.removeValue(forKey: transaction) }
         do {
-            if let data = restoration.data {
-                try store.replaceActive(with: data)
-            } else {
-                try store.removeActive()
+            guard publication.committedRevision == committedRevision,
+                  try store.readActive() == publication.committedData
+            else {
+                throw DecisionSetRepositoryError.storageFailed
             }
-            stored.status = .cancelled
-            persistenceCheckpoints[checkpoint] = stored
-            activeCheckpoint = restoration.owner
+            try store.replaceActive(with: replacementData)
+            committedRevision += 1
+        } catch let error as DecisionSetRepositoryError {
+            throw error
         } catch {
             throw DecisionSetRepositoryError.storageFailed
         }
     }
 
-    private func resolvedRestoration(
-        for checkpoint: StoredPersistenceCheckpoint
-    ) -> (data: Data?, owner: DecisionSetPersistenceCheckpoint?) {
-        guard let owner = checkpoint.previousOwner,
-              let previous = persistenceCheckpoints[owner]
-        else {
-            return (checkpoint.previousData, nil)
-        }
-        switch previous.status {
-            case .open:
-                return (checkpoint.previousData, owner)
-            case .cancelled:
-                return resolvedRestoration(for: previous)
+    func discard(_ transaction: DecisionSetPublicationTransaction) async throws {
+        guard publicationTransactions.removeValue(forKey: transaction) != nil else {
+            throw DecisionSetRepositoryError.storageFailed
         }
     }
 }

@@ -183,8 +183,13 @@ struct DecisionMemberRehydrator: Sendable {
             region: profile.region,
             policy: forceReload ? .reloadIgnoringCache : .useFreshCache
         )
-        guard let evidence, evidence.regionalEvidence.movieID == movieID else {
+        guard let evidence else {
             return .unknown(reason: .regionalEvidenceMissing)
+        }
+        guard evidence.regionalEvidence.movieID == movieID,
+              evidence.regionalEvidence.region == profile.region
+        else {
+            throw CoordinatorError.invariantViolation
         }
         return availabilityEvaluator.evaluate(
             evidence,

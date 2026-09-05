@@ -14,7 +14,7 @@ enum DecisionSetLoadResult: Equatable, Sendable {
     case recovery(DecisionSetRecoveryReason)
 }
 
-struct DecisionSetPersistenceCheckpoint: Hashable, Sendable {
+struct DecisionSetPublicationTransaction: Hashable, Sendable {
     let id: UUID
 
     init(id: UUID = UUID()) {
@@ -24,15 +24,13 @@ struct DecisionSetPersistenceCheckpoint: Hashable, Sendable {
 
 protocol DecisionSetRepository: Sendable {
     func load() async -> DecisionSetLoadResult
-    func makePersistenceCheckpoint() async throws -> DecisionSetPersistenceCheckpoint
-    func replace(_ envelope: PersistedDecisionSet) async throws
-    func replace(
+    func beginPublicationTransaction() async throws -> DecisionSetPublicationTransaction
+    func stage(
         _ envelope: PersistedDecisionSet,
-        using checkpoint: DecisionSetPersistenceCheckpoint
+        in transaction: DecisionSetPublicationTransaction
     ) async throws
-    func restorePersistenceCheckpoint(
-        _ checkpoint: DecisionSetPersistenceCheckpoint
-    ) async throws
+    func commit(_ transaction: DecisionSetPublicationTransaction) async throws
+    func discard(_ transaction: DecisionSetPublicationTransaction) async throws
 }
 
 enum DecisionSetRepositoryError: Error, Equatable, Sendable {

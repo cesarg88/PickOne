@@ -161,6 +161,7 @@ enum CoordinatorTestError: Error { case unavailable }
 
 actor CoordinatorCandidateRepository: DecisionCandidateRepository {
     private let candidatesByPage: [Int: [DecisionCandidateSeed]]
+    private var candidateBatchesByPage: [Int: [[DecisionCandidateSeed]]]
     private let error: CoordinatorTestError?
     private let delay: Duration?
     private let failureStartingAtRequest: Int?
@@ -168,11 +169,13 @@ actor CoordinatorCandidateRepository: DecisionCandidateRepository {
 
     init(
         candidatesByPage: [Int: [DecisionCandidateSeed]] = [:],
+        candidateBatchesByPage: [Int: [[DecisionCandidateSeed]]] = [:],
         error: CoordinatorTestError? = nil,
         delay: Duration? = nil,
         failureStartingAtRequest: Int? = nil
     ) {
         self.candidatesByPage = candidatesByPage
+        self.candidateBatchesByPage = candidateBatchesByPage
         self.error = error
         self.delay = delay
         self.failureStartingAtRequest = failureStartingAtRequest
@@ -192,6 +195,11 @@ actor CoordinatorCandidateRepository: DecisionCandidateRepository {
             } else {
                 throw error
             }
+        }
+        if var batches = candidateBatchesByPage[page], !batches.isEmpty {
+            let batch = batches.removeFirst()
+            candidateBatchesByPage[page] = batches
+            return batch
         }
         return candidatesByPage[page] ?? []
     }
@@ -255,10 +263,13 @@ actor CoordinatorDecisionSetRepository: DecisionSetRepository {
     let delayAfterReplace: Duration?
     let onReplace: @Sendable () -> Void
     private(set) var replacements: [PersistedDecisionSet] = []
-    private var checkpoints: [
-        DecisionSetPersistenceCheckpoint: CoordinatorPersistenceCheckpoint
+    private var publications: [
+        DecisionSetPublicationTransaction: CoordinatorStagedPublication
     ] = [:]
-    private var activeCheckpoint: DecisionSetPersistenceCheckpoint?
+
+    var inFlightPublicationCount: Int {
+        publications.count
+    }
 
     init(
         loadResult: DecisionSetLoadResult,
@@ -282,74 +293,50 @@ actor CoordinatorDecisionSetRepository: DecisionSetRepository {
         if let replaceError { throw replaceError }
         replacements.append(envelope)
         loadResult = .available(envelope)
-        activeCheckpoint = nil
         onReplace()
     }
 
-    func replace(
+    func beginPublicationTransaction() -> DecisionSetPublicationTransaction {
+        let transaction = DecisionSetPublicationTransaction()
+        publications[transaction] = CoordinatorStagedPublication(replacement: nil)
+        return transaction
+    }
+
+    func stage(
         _ envelope: PersistedDecisionSet,
-        using checkpoint: DecisionSetPersistenceCheckpoint
+        in transaction: DecisionSetPublicationTransaction
     ) async throws {
         if let replaceError { throw replaceError }
-        guard checkpoints[checkpoint]?.cancelled == false else {
+        guard publications[transaction] != nil else {
             throw CoordinatorTestError.unavailable
         }
         replacements.append(envelope)
-        loadResult = .available(envelope)
-        activeCheckpoint = checkpoint
+        publications[transaction]?.replacement = envelope
         onReplace()
-        if let delayAfterReplace {
+        if let delayAfterReplace, replacements.count == 1 {
             try await Task.sleep(for: delayAfterReplace)
         }
     }
 
-    func makePersistenceCheckpoint() -> DecisionSetPersistenceCheckpoint {
-        let checkpoint = DecisionSetPersistenceCheckpoint()
-        checkpoints[checkpoint] = CoordinatorPersistenceCheckpoint(
-            previous: loadResult,
-            previousOwner: activeCheckpoint
-        )
-        return checkpoint
-    }
-
-    func restorePersistenceCheckpoint(
-        _ checkpoint: DecisionSetPersistenceCheckpoint
-    ) throws {
-        if let restoreError { throw restoreError }
-        guard var saved = checkpoints[checkpoint], !saved.cancelled else {
+    func commit(_ transaction: DecisionSetPublicationTransaction) throws {
+        guard let publication = publications.removeValue(forKey: transaction),
+              let replacement = publication.replacement
+        else {
             throw CoordinatorTestError.unavailable
         }
-        guard activeCheckpoint == checkpoint else {
-            saved.cancelled = true
-            checkpoints[checkpoint] = saved
-            return
-        }
-        let restoration = resolvedRestoration(saved)
-        loadResult = restoration.result
-        activeCheckpoint = restoration.owner
-        saved.cancelled = true
-        checkpoints[checkpoint] = saved
+        loadResult = .available(replacement)
     }
 
-    private func resolvedRestoration(
-        _ checkpoint: CoordinatorPersistenceCheckpoint
-    ) -> (result: DecisionSetLoadResult, owner: DecisionSetPersistenceCheckpoint?) {
-        guard let owner = checkpoint.previousOwner,
-              let previous = checkpoints[owner]
-        else {
-            return (checkpoint.previous, nil)
+    func discard(_ transaction: DecisionSetPublicationTransaction) throws {
+        if let restoreError { throw restoreError }
+        guard publications.removeValue(forKey: transaction) != nil else {
+            throw CoordinatorTestError.unavailable
         }
-        if previous.cancelled {
-            return resolvedRestoration(previous)
-        }
-        return (checkpoint.previous, owner)
     }
 }
 
-private struct CoordinatorPersistenceCheckpoint: Sendable {
-    let previous: DecisionSetLoadResult
-    let previousOwner: DecisionSetPersistenceCheckpoint?
-    var cancelled = false
+private struct CoordinatorStagedPublication: Sendable {
+    var replacement: PersistedDecisionSet?
 }
 
 actor RecordingRecommendationDiagnosticsSink:

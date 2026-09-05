@@ -377,9 +377,9 @@ extension ThreeForTonightCoordinator {
                 staleRetryCount: staleRetryCount
             )
         }
-        let checkpoint: DecisionSetPersistenceCheckpoint
+        let transaction: DecisionSetPublicationTransaction
         do {
-            checkpoint = try await decisionSetRepository.makePersistenceCheckpoint()
+            transaction = try await decisionSetRepository.beginPublicationTransaction()
         } catch {
             return .retryableFailure(
                 reason: recovery ? .recoveryFailed : .persistenceFailed,
@@ -387,40 +387,29 @@ extension ThreeForTonightCoordinator {
             )
         }
         do {
-            try await decisionSetRepository.replace(envelope, using: checkpoint)
+            try await decisionSetRepository.stage(envelope, in: transaction)
         } catch is CancellationError {
-            try await rollback(checkpoint)
+            guard await discard(transaction) else {
+                return persistenceFailure(recovery: recovery, retained: retained)
+            }
             throw CancellationError()
         } catch {
-            do {
-                try await rollback(checkpoint)
-            } catch {
-                return .retryableFailure(
-                    reason: recovery ? .recoveryFailed : .persistenceFailed,
-                    retained: retained
-                )
-            }
-            return .retryableFailure(
-                reason: recovery ? .recoveryFailed : .persistenceFailed,
-                retained: retained
-            )
+            _ = await discard(transaction)
+            return persistenceFailure(recovery: recovery, retained: retained)
         }
         do {
             try ensureCurrent(operationID)
         } catch {
-            try await rollback(checkpoint)
+            guard await discard(transaction) else {
+                return persistenceFailure(recovery: recovery, retained: retained)
+            }
             throw error
         }
         guard await trustedStateLoader.matches(
             snapshotID: expectedTrustedState.snapshotID
         ) else {
-            do {
-                try await rollback(checkpoint)
-            } catch {
-                return .retryableFailure(
-                    reason: recovery ? .recoveryFailed : .persistenceFailed,
-                    retained: retained
-                )
+            guard await discard(transaction) else {
+                return persistenceFailure(recovery: recovery, retained: retained)
             }
             return try await regenerateAfterStaleWork(
                 sourceCycle: sourceCycle,
@@ -433,20 +422,36 @@ extension ThreeForTonightCoordinator {
         do {
             try ensureCurrent(operationID)
         } catch {
-            try await rollback(checkpoint)
+            guard await discard(transaction) else {
+                return persistenceFailure(recovery: recovery, retained: retained)
+            }
             throw error
+        }
+        do {
+            try await decisionSetRepository.commit(transaction)
+        } catch {
+            return persistenceFailure(recovery: recovery, retained: retained)
         }
         return result(for: envelope, trusted: expectedTrustedState)
     }
 
-    private func rollback(
-        _ checkpoint: DecisionSetPersistenceCheckpoint
-    ) async throws {
+    private func discard(_ transaction: DecisionSetPublicationTransaction) async -> Bool {
         do {
-            try await decisionSetRepository.restorePersistenceCheckpoint(checkpoint)
+            try await decisionSetRepository.discard(transaction)
+            return true
         } catch {
-            throw CoordinatorError.persistenceRollbackFailed
+            return false
         }
+    }
+
+    private func persistenceFailure(
+        recovery: Bool,
+        retained: ThreeForTonightSnapshot?
+    ) -> ThreeForTonightResult {
+        .retryableFailure(
+            reason: recovery ? .recoveryFailed : .persistenceFailed,
+            retained: retained
+        )
     }
 
     func result(

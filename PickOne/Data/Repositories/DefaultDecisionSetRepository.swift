@@ -1,25 +1,22 @@
 import Foundation
 
-enum StoredPersistenceCheckpointStatus: Equatable {
-    case open
-    case cancelled
-}
-
-struct StoredPersistenceCheckpoint {
-    let previousData: Data?
-    let previousOwner: DecisionSetPersistenceCheckpoint?
-    let sequence: UInt64
-    var status = StoredPersistenceCheckpointStatus.open
+struct StagedDecisionSetPublication {
+    let committedData: Data?
+    let committedRevision: UInt64
+    var replacementData: Data?
 }
 
 actor DefaultDecisionSetRepository: DecisionSetRepository {
     let store: any DecisionSetDataStore
     private let coder: any DecisionSetEnvelopeCoding
-    var persistenceCheckpoints: [
-        DecisionSetPersistenceCheckpoint: StoredPersistenceCheckpoint
+    var publicationTransactions: [
+        DecisionSetPublicationTransaction: StagedDecisionSetPublication
     ] = [:]
-    var activeCheckpoint: DecisionSetPersistenceCheckpoint?
-    var checkpointSequence: UInt64 = 0
+    var committedRevision: UInt64 = 0
+
+    var inFlightPublicationCount: Int {
+        publicationTransactions.count
+    }
 
     init(
         store: any DecisionSetDataStore,
@@ -65,36 +62,21 @@ actor DefaultDecisionSetRepository: DecisionSetRepository {
 
     func replace(_ envelope: PersistedDecisionSet) throws {
         try persist(envelope)
-        activeCheckpoint = nil
+        committedRevision += 1
     }
 
-    func replace(
-        _ envelope: PersistedDecisionSet,
-        using checkpoint: DecisionSetPersistenceCheckpoint
-    ) async throws {
-        guard let stored = persistenceCheckpoints[checkpoint],
-              stored.status == .open,
-              !hasNewerOpenCheckpoint(than: stored.sequence)
-        else {
-            throw DecisionSetRepositoryError.storageFailed
-        }
-        try persist(envelope)
-        activeCheckpoint = checkpoint
-    }
-
-    private func hasNewerOpenCheckpoint(than sequence: UInt64) -> Bool {
-        persistenceCheckpoints.values.contains {
-            $0.sequence > sequence && $0.status == .open
-        }
-    }
-
-    private func persist(_ envelope: PersistedDecisionSet) throws {
+    func encode(_ envelope: PersistedDecisionSet) throws -> Data {
         let data: Data
         do {
             data = try coder.encodeEnvelope(map(envelope))
         } catch {
             throw DecisionSetRepositoryError.encodingFailed
         }
+        return data
+    }
+
+    private func persist(_ envelope: PersistedDecisionSet) throws {
+        let data = try encode(envelope)
         do {
             try store.replaceActive(with: data)
         } catch {

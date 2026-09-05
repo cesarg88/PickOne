@@ -269,55 +269,6 @@ struct DecisionSetRepositoryTests {
         #expect(store.activeData == previous)
     }
 
-    @Test("persistence checkpoint restores the exact previous active bytes")
-    func persistenceCheckpointRestoresExactBytes() async throws {
-        let original = Data("exact-previous-bytes".utf8)
-        let store = InMemoryDecisionSetDataStore(activeData: original)
-        let repository = DefaultDecisionSetRepository(store: store)
-        let checkpoint = try await repository.makePersistenceCheckpoint()
-
-        try await repository.replace(decisionSet(), using: checkpoint)
-        try await repository.restorePersistenceCheckpoint(checkpoint)
-
-        #expect(store.activeData == original)
-    }
-
-    @Test("overlapping checkpoints restore past cancelled provisional writes")
-    func overlappingCheckpointsRestoreOriginalState() async throws {
-        let original = try decisionSet(recommendations: [])
-        let first = try decisionSet(recommendations: [
-            recommendation(movieID: 10, role: .safeChoice),
-        ])
-        let second = try decisionSet(recommendations: [
-            recommendation(movieID: 20, role: .safeChoice),
-        ])
-        let repository = DefaultDecisionSetRepository(store: InMemoryDecisionSetDataStore())
-        try await repository.replace(original)
-
-        let firstCheckpoint = try await repository.makePersistenceCheckpoint()
-        try await repository.replace(first, using: firstCheckpoint)
-        let secondCheckpoint = try await repository.makePersistenceCheckpoint()
-        try await repository.replace(second, using: secondCheckpoint)
-
-        try await repository.restorePersistenceCheckpoint(firstCheckpoint)
-        #expect(await repository.load() == .available(second))
-        try await repository.restorePersistenceCheckpoint(secondCheckpoint)
-        #expect(await repository.load() == .available(original))
-    }
-
-    @Test("restoration storage failure is surfaced")
-    func persistenceRestorationFailureIsSurfaced() async throws {
-        let store = InMemoryDecisionSetDataStore()
-        let repository = DefaultDecisionSetRepository(store: store)
-        let checkpoint = try await repository.makePersistenceCheckpoint()
-        try await repository.replace(decisionSet(), using: checkpoint)
-        store.rejectActiveReplacements = true
-
-        await #expect(throws: DecisionSetRepositoryError.storageFailed) {
-            try await repository.restorePersistenceCheckpoint(checkpoint)
-        }
-    }
-
     @Test("corrupt bytes are quarantined and retained after recovery replacement")
     func corruptRecovery() async throws {
         let corrupt = Data("not-json".utf8)

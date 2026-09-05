@@ -247,6 +247,7 @@ struct ThreeForTonightProgressiveRecoveryTests {
 
         #expect(reason == .generationUnavailable)
         #expect(await decisionSets.load() == .absent)
+        #expect(await decisionSets.inFlightPublicationCount == 0)
         let attempted = try #require(await decisionSets.replacements.first)
         #expect(attempted.outcome.isExhausted)
         #expect(attempted.cycle.history.allShownMovieIDs == [20])
@@ -294,7 +295,7 @@ struct ThreeForTonightProgressiveRecoveryTests {
         let recorded = try #require(await diagnostics.firstSnapshot())
         #expect(recorded.outcome == .retryableFailure)
         #expect(recorded.highestRecallStage == .firstExpansion)
-        #expect(recorded.recallStageDurations.map(\.stage) == [.normal])
+        #expect(recorded.recallStageDurations.map(\.stage) == [.normal, .firstExpansion])
         #expect(recorded.discoverPageRequestCount == 8)
         #expect(recorded.uniqueRecalledCandidateCount == 2)
         #expect(recorded.candidateAvailabilityCheckCount == 3)

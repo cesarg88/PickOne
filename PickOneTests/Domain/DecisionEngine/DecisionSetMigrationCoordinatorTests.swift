@@ -185,6 +185,7 @@ struct DecisionSetMigrationCoordinatorTests {
             retained: nil
         ))
         #expect(await decisionSets.replacements.isEmpty)
+        #expect(await decisionSets.inFlightPublicationCount == 0)
     }
 
     @Test("v2 persistence failure never publishes regenerated v1 content")
