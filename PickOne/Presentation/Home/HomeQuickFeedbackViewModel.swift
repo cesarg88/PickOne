@@ -42,7 +42,6 @@ final class HomeQuickFeedbackViewModel {
                 ),
                 metadata: metadata
             )
-            try Task.checkCancellation()
             guard let decisionChange = DecisionViewerStateChange(
                 movieID: movieID,
                 impact: change.impact,

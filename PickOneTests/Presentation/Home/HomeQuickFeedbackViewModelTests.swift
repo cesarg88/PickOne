@@ -107,11 +107,11 @@ struct HomeQuickFeedbackViewModelTests {
         #expect(await update.transitions.count == 1)
     }
 
-    @Test("cancelled write publishes neither success nor reconciliation")
-    func cancellationIsSilent() async throws {
-        let gate = HomeQuickFeedbackGate()
+    @Test("cancellation before an uncommitted mutation completes is silent")
+    func cancellationBeforeCommitIsSilent() async throws {
+        let allowCancellationCheck = HomeQuickFeedbackGate()
         let update = RecordingHomeQuickFeedbackUpdate(outcomes: [
-            .gated(gate, change(impact: .eligibilityChanged)),
+            .cancelBeforeCommit(allowCancellationCheck),
         ])
         var receivedChanges: [DecisionViewerStateChange] = []
         let sut = try makeSUT(update: update) { receivedChanges.append($0) }
@@ -119,11 +119,40 @@ struct HomeQuickFeedbackViewModelTests {
         let task = Task { await sut.submit(.markWatched) }
         await update.waitForCallCount(1)
         task.cancel()
-        await gate.open()
+        await allowCancellationCheck.open()
         await task.value
 
         #expect(sut.state == .idle)
+        #expect(await update.committedChanges.isEmpty)
         #expect(receivedChanges.isEmpty)
+    }
+
+    @Test("cancellation after commit still hands off the exact successful change once")
+    func cancellationAfterCommitStillHandsOffReconciliation() async throws {
+        let expectedChange = change(impact: .eligibilityChanged)
+        let expectedDecisionChange = try #require(DecisionViewerStateChange(
+            movieID: 101,
+            impact: expectedChange.impact,
+            snapshotID: expectedChange.snapshotID
+        ))
+        let didCommit = HomeQuickFeedbackGate()
+        let allowSuccessfulReturn = HomeQuickFeedbackGate()
+        let update = RecordingHomeQuickFeedbackUpdate(outcomes: [
+            .commitThenWaitForReturn(didCommit, allowSuccessfulReturn, expectedChange),
+        ])
+        var receivedChanges: [DecisionViewerStateChange] = []
+        let sut = try makeSUT(update: update) { receivedChanges.append($0) }
+
+        let task = Task { await sut.submit(.markWatched) }
+        await didCommit.wait()
+        #expect(await update.committedChanges == [expectedChange])
+
+        task.cancel()
+        await allowSuccessfulReturn.open()
+        await task.value
+
+        #expect(sut.state == .submitted)
+        #expect(receivedChanges == [expectedDecisionChange])
     }
 }
 
@@ -181,6 +210,12 @@ enum HomeQuickFeedbackActionCase: CaseIterable {
 private enum HomeQuickFeedbackUpdateOutcome: Sendable {
     case success(ViewerMovieStateChange)
     case gated(HomeQuickFeedbackGate, ViewerMovieStateChange)
+    case cancelBeforeCommit(HomeQuickFeedbackGate)
+    case commitThenWaitForReturn(
+        HomeQuickFeedbackGate,
+        HomeQuickFeedbackGate,
+        ViewerMovieStateChange
+    )
     case failure
 }
 
@@ -188,6 +223,7 @@ private actor RecordingHomeQuickFeedbackUpdate: UpdateViewerMovieStateUseCase {
     private var outcomes: [HomeQuickFeedbackUpdateOutcome]
     private(set) var transitions: [ViewerMovieStateTransition] = []
     private(set) var metadata: [MovieFeedbackMetadata] = []
+    private(set) var committedChanges: [ViewerMovieStateChange] = []
 
     init(outcomes: [HomeQuickFeedbackUpdateOutcome]) {
         self.outcomes = outcomes
@@ -202,9 +238,21 @@ private actor RecordingHomeQuickFeedbackUpdate: UpdateViewerMovieStateUseCase {
         let outcome = outcomes.removeFirst()
         switch outcome {
             case let .success(change):
+                committedChanges.append(change)
                 return change
             case let .gated(gate, change):
                 await gate.wait()
+                try Task.checkCancellation()
+                committedChanges.append(change)
+                return change
+            case let .cancelBeforeCommit(gate):
+                await gate.wait()
+                try Task.checkCancellation()
+                throw HomeQuickFeedbackTestError.expectedCancellationNotObserved
+            case let .commitThenWaitForReturn(didCommit, allowReturn, change):
+                committedChanges.append(change)
+                await didCommit.open()
+                await allowReturn.wait()
                 return change
             case .failure:
                 throw HomeQuickFeedbackTestError.writeFailed
@@ -240,5 +288,6 @@ private actor HomeQuickFeedbackGate {
 }
 
 private enum HomeQuickFeedbackTestError: Error {
+    case expectedCancellationNotObserved
     case writeFailed
 }
