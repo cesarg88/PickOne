@@ -199,6 +199,58 @@ Its refresh action returns when the exhausted outcome expires.
 - Home checks persisted exhaustion freshness on load, activation/foreground,
   and one cancellable deadline while visible; it performs no background retry.
 
+### Proof of exhaustion under partial failures
+
+An exhausted result asserts that the accepted search space was evaluated
+successfully. Availability evidence that resolves successfully as eligible,
+ineligible, or regionally absent is conclusive for that candidate. A transport
+error, invalid response, or verification failure is unresolved evidence and
+cannot help prove exhaustion.
+
+- a complete credible set of three may be published even when unrelated
+  candidates have unresolved availability, because no vacant slot remains;
+- if only zero, one, or two recommendations survive, any unresolved
+  availability result from an otherwise locally eligible recalled candidate
+  makes the operation a typed retryable failure, not exhaustion;
+- that failure may expose only the previous independently proven-safe persisted
+  set; it does not publish newly assembled partial results;
+- failure advances neither complete/recent history nor rollover state and does
+  not create or refresh `exhaustedAt`.
+
+The orchestration result must therefore carry whether unresolved availability
+occurred across every cumulative stage instead of discarding per-candidate
+failure information after mapping it to Domain `unknown`.
+
+### Decision Set publication transaction
+
+Recommendation persistence has one explicit linearization point: commit. The
+last committed envelope and a replacement being validated are different states.
+The repository contract may implement staging or another equivalent mechanism,
+but must provide these observable guarantees:
+
+1. A transaction begins from the exact last committed bytes.
+2. A staged replacement is invisible to ordinary `load` and cannot become the
+   source cycle or history of another operation.
+3. All cancellation, operation-identity, and Viewer State snapshot checks happen
+   before commit. Work known to be cancelled or obsolete is discarded.
+4. Commit atomically makes the complete replacement the active envelope. Once
+   commit succeeds, the operation is no longer provisional; later cancellation
+   cannot roll back that committed envelope.
+5. Success finalizes and releases all transaction metadata. Failure and
+   cancellation discard it. Stored checkpoints, staged bytes, and ancestry must
+   remain bounded by currently in-flight work and cannot grow with successful
+   refresh count.
+6. A cleanup, rollback, or replacement failure leaves the prior committed
+   envelope readable with its exact bytes. It cannot promote a staged envelope.
+7. Relaunch during an unfinished transaction observes the prior committed
+   envelope. If staging is durable, its journal and recovery semantics must be
+   explicit and tested; an in-memory checkpoint alone cannot make provisional
+   active bytes safe across process termination.
+
+Repeated user operations may wait for cancelled work to reach discard or may
+run against isolated staging. In either design, operation B cannot load,
+inherit history from, commit over, or publish operation A's provisional state.
+
 ## Request and latency diagnostics
 
 P0-2 introduces the injected non-analytics diagnostics contract defined by
@@ -210,6 +262,11 @@ The diagnostics snapshot is immutable and `Sendable`, one operation-local
 owner serializes counters, and a nonthrowing injected sink receives the result.
 It is never part of Viewer State or Decision Set persistence and cannot change
 selection, failure, or cancellation behavior.
+
+Every entered recall stage contributes exactly one duration in deterministic
+stage order. This includes rollover, measured as one stage covering the full
+release-and-reselection loop rather than one record per three-ID release. A
+retryable failure records elapsed time for the stage in which it failed.
 
 The search-policy cold-cache ceiling is 20 Discover requests plus at most 400
 candidate availability network requests. Reaction hydration is counted
@@ -263,6 +320,9 @@ force exhaustion.
 - reaction retention with rebuilt explanation and roles;
 - watched and `Not interested` title-local repair;
 - typed smaller and zero exhaustion distinct from failure.
+- mixed availability success/failure with fewer than three recommendations is
+  retryable and never exhaustion, while three credible resolved recommendations
+  may still succeed;
 - 24-hour exhaustion freshness at before/equal/after boundaries under an
   injected clock.
 
@@ -274,6 +334,13 @@ force exhaustion.
 - blocked empty-v2 migration preserving 93 shown/47 watched equivalent
   sanitized evidence and enabling recovery;
 - valid v2 bytes preserved until successful v3 replacement;
+- staged Decision Set bytes are invisible to ordinary loads and relaunch until
+  commit, and every successful or abandoned transaction releases its metadata;
+- two overlapping operations where the first is cancelled cannot let the
+  second inherit the first operation's provisional history;
+- cancellation before commit, stale rejection, replacement failure, cleanup
+  failure, and process-relaunch simulation all preserve the exact prior
+  committed envelope;
 - v3 relaunch, unsupported schema, corruption, quarantine, encoding,
   replacement, and recovery failure;
 - `exhaustedAt` round trip, semantic validation, no fabricated timestamp during
@@ -295,6 +362,8 @@ force exhaustion.
 - diagnostics report no identity or preference values, never affect outcomes,
   and prove no more than 20 Discover plus 400 candidate-availability network
   requests for the search policy;
+- diagnostics record exactly one duration for every entered recall stage,
+  including rollover and a stage terminated by retryable failure;
 - stale work cannot persist history or exhaustion;
 - reaction preserves valid unaffected cards and replaces only invalid/missing
   slots;
