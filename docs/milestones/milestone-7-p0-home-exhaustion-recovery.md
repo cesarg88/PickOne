@@ -2,7 +2,7 @@
 
 ## Status
 
-`P0-4 integration candidate — final CI and physical acceptance pending`
+`P0-4 technically approved — Product Owner physical and utility acceptance pending`
 
 - Milestone 7 reopened: `2026-09-01`
 - Trigger: final physical-device validation on the Product Owner's retained
@@ -12,6 +12,9 @@
   [ADR-014 — Bounded Recommendation Suppression and Exhaustion Recovery](../decisions/adr-014-bounded-recommendation-suppression-and-recovery.md)
 - Backlog: IMP-025
 - Corrective D0 and P0-1 through P0-3 merged as PRs #44 and #46–#48.
+- Technical Lead review passed on `2026-09-06` for the P0-4 implementation at
+  `f8b4ba4fca28795e081291c96f069eb18530251e`; its local `make verify` and
+  GitHub `quality` check were green.
 - P0-4 owns the final automated, CI, preserved-device, latency, and Product
   Owner acceptance record; completion is not inferred before those gates pass.
 - Milestone 8 remains blocked.
@@ -486,6 +489,26 @@ P0-1 through P0-3 behavior:
   withholds otherwise eligible results until page 20, disables Home feedback
   writes, and emits only the accepted privacy-safe diagnostics fields. Normal
   production composition retains the no-op sink.
+
+The physical diagnostic at implementation SHA
+`f8b4ba4fca28795e081291c96f069eb18530251e` ran on an iPhone 13 Pro
+(`iPhone14,2`) with a cold availability cache. It returned an honest
+`exhausted` outcome after `5.683 s` total wall-clock time measured from the
+coordinator operation start until that result. The measurement covers 20
+sequential Discover page requests, 39 candidate availability checks and network
+requests, deterministic selection/composition, and publication to the
+transient Decision Set repository. It is not application launch time, latency
+per movie, or the expected duration of a normal Home load.
+
+The measured recall stages account for `5.429 s`: normal `1.224 s`, first
+expansion `1.143 s`, and final expansion `3.062 s`. The remaining approximately
+`0.254 s` covers operation preparation and completion outside those stage
+timers. The same run observed 39 unique candidates, zero cache hits, no
+reaction hydration, and maximum Discover/Availability/Taste concurrency of
+`1/8/0`. These values remain inside the accepted request and concurrency
+bounds. The Technical Lead accepts the result as technically reasonable for a
+rare, visibly loading worst-path recovery; Product Owner acceptance of the
+experienced wait remains a separate closure gate.
 
 The final P0-4 PR records `make verify`, CI, the exact physical-device SHA and
 twenty-page diagnostic values, the preserved-installation checklist, Technical

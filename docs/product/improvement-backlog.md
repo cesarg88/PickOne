@@ -231,7 +231,7 @@ Priorities:
 
 ### IMP-004 — Add continuous taste learning and unified movie state
 
-- Status: `Reopened — P0-4 final validation pending`
+- Status: `Reopened — P0-4 technically approved; Product Owner validation pending`
 - Priority: `P0`
 - Roadmap relationship: Milestone 7
 - Accepted specification:
@@ -271,8 +271,11 @@ Priorities:
     required before final approval
   - corrective D0 and P0-1 through P0-3 merged as PRs #44 and #46–#48
   - P0-4 composes the sanitized prolonged regression, upgrade/relaunch UI
-    journey, and non-persisting twenty-page device diagnostics path; final CI,
-    physical validation, and Product Owner acceptance remain closure gates
+    journey, and non-persisting twenty-page device diagnostics path
+  - Technical Lead review passed on `2026-09-06`; the measured twenty-page
+    coordinator operation completed in `5.683 s` and is technically accepted
+  - final-SHA CI, physical validation, Product Owner latency acceptance, and the
+    household utility checkpoint remain closure gates
 - Done when:
   - Detail, Watchlist, calibration, Settings history, and Home agree for every
     movie state
@@ -289,7 +292,7 @@ Priorities:
 
 ### IMP-025 — Recover exhausted Home and add direct feedback
 
-- Status: `In Progress — P0-4 integration candidate; final validation pending`
+- Status: `In Progress — P0-4 technically approved; Product Owner validation pending`
 - Priority: `P0`
 - Roadmap relationship: reopened Milestone 7
 - Correction specification:
@@ -335,9 +338,12 @@ Priorities:
   - the DEBUG-only device scenario forces production orchestration through page
     20 without writing Viewer State or Decision Set data and reports only the
     accepted privacy-safe diagnostics
-  - final CI, preserved-device validation, measured request/latency evidence,
-    Technical Lead review, Product Owner acceptance, and household utility
-    approval remain required before completion
+  - the iPhone 13 Pro cold-cache run completed the full coordinator operation
+    in `5.683 s`, with 20 Discover requests, 39 availability network requests,
+    and maximum concurrency `1/8/0`; Technical Lead review accepts this result
+    for the rare recovery path
+  - final-SHA CI, preserved-device validation, Product Owner latency acceptance,
+    and household utility approval remain required before completion
 - Done when:
   - D0 and corrective slices P0-1 through P0-4 are merged sequentially
   - a sanitized prolonged-feedback/relaunch regression cannot reproduce the

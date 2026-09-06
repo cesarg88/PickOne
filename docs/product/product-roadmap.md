@@ -198,8 +198,8 @@ repeated after Milestone 7 with the enriched Taste Profile.
 [Continuous Taste Learning](../milestones/milestone-7-continuous-taste-learning.md)
 
 Status:
-Reopened — P0-4 integration candidate; final validation pending; Milestone 8
-blocked
+Reopened — P0-4 technically approved; Product Owner validation pending;
+Milestone 8 blocked
 
 Purpose:
 
@@ -225,12 +225,16 @@ closure record. Exhaustion suppresses unchanged retries for 24 hours rather
 than permanently, and closure records request count plus observed latency from
 a real twenty-page expansion on the physical iPhone. D0 and P0-1 through P0-3
 are merged as PRs #44 and #46–#48; P0-4 now owns the final integration,
-preserved-device, CI, and acceptance gates without advancing Milestone 8.
+preserved-device, CI, and acceptance gates without advancing Milestone 8. The
+Technical Lead accepted the P0-4 implementation and its `5.683 s` full
+twenty-page coordinator measurement on `2026-09-06`; Product Owner acceptance
+and the household utility checkpoint remain pending.
 
 ### Utility Checkpoint after Milestone 7
 
 Status:
-Blocked — P0-4 final CI, preserved-device validation, and acceptance pending
+Blocked — P0-4 final-SHA CI, preserved-device validation, and Product Owner
+acceptance pending
 
 Purpose:
 

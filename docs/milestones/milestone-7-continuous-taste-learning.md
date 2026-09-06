@@ -2,7 +2,7 @@
 
 ## Status
 
-`Reopened — P0-4 integration candidate; final approval blocked on validation`
+`Reopened — P0-4 technically approved; Product Owner validation pending`
 
 - Product direction accepted: `2026-08-19`
 - `My movies` label accepted: `2026-08-24`
@@ -19,6 +19,9 @@
 - Corrective D0 and P0-1 through P0-3 merged as PRs #44 and #46–#48; P0-4 adds
   the sanitized prolonged regression, upgrade/relaunch UI journey, and
   non-persisting twenty-page device evidence path.
+- Technical Lead review passed on `2026-09-06` for P0-4 implementation SHA
+  `f8b4ba4fca28795e081291c96f069eb18530251e`, including technical acceptance
+  of the measured `5.683 s` twenty-page cold-cache recovery path.
 - Dependency satisfied: Milestone 6 and its explanation correction are merged
   into `develop`.
 
@@ -80,10 +83,15 @@ migration, catalog, and Decision Engine boundaries.
   repository relaunches, and persisted exhaustion without losing explicit or
   diagnostic history. Its UI journey verifies migration, Home quick feedback,
   Watchlist, Search History, `My movies`, and process relaunch together.
+- Physical performance evidence: the DEBUG-only non-persisting run on iPhone 13
+  Pro reached all 20 sequential Discover pages and completed as `exhausted` in
+  `5.683 s`. It performed 39 availability network checks with maximum
+  concurrency `1/8/0` for Discover/Availability/Taste. The time measures the
+  complete coordinator operation, not app launch or per-title latency, and the
+  Technical Lead accepts it for this rare recovery path.
 - Final approval remains external to automation: the final-SHA CI result,
-  preserved-device checklist, measured twenty-page run, Technical Lead review,
-  Product Owner latency acceptance, and repeated household utility checkpoint
-  are recorded in the P0-4 PR before merge.
+  preserved-device checklist, Product Owner latency acceptance, and repeated
+  household utility checkpoint are recorded in the P0-4 PR before merge.
 
 ## Goal
 
@@ -1183,10 +1191,11 @@ twenty-page device request/latency evidence. M7 and its utility checkpoint can
 close only in this new PR after Technical Lead review and Product Owner
 acceptance of the observed wait.
 
-The P0-4 candidate is implemented as integration, UI, DEBUG-only diagnostic,
-and documentary coverage. It does not change P1 scoring, availability,
-credibility, feedback semantics, or any later milestone. M7 remains reopened
-until the final-SHA external gates above pass and this closure slice merges.
+The P0-4 candidate is implemented and technically approved as integration, UI,
+DEBUG-only diagnostic, and documentary coverage. It does not change P1
+scoring, availability, credibility, feedback semantics, or any later
+milestone. M7 remains reopened until the final-SHA external gates above pass
+and this closure slice merges.
 
 ## Dependency graph
 
