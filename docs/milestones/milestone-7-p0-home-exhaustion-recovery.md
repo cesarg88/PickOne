@@ -2,7 +2,7 @@
 
 ## Status
 
-`P0-4 technically approved — Product Owner physical and utility acceptance pending`
+`Complete — P0-4 physical validation and household utility checkpoint passed`
 
 - Milestone 7 reopened: `2026-09-01`
 - Trigger: final physical-device validation on the Product Owner's retained
@@ -15,9 +15,12 @@
 - Technical Lead review passed on `2026-09-06` for the P0-4 implementation at
   `f8b4ba4fca28795e081291c96f069eb18530251e`; its local `make verify` and
   GitHub `quality` check were green.
-- P0-4 owns the final automated, CI, preserved-device, latency, and Product
-  Owner acceptance record; completion is not inferred before those gates pass.
-- Milestone 8 remains blocked.
+- Product Owner validation passed on `2026-09-07` over the retained installation
+  without reinstalling or clearing application data.
+- The Product Owner accepted the measured `5.683 s` extreme latency and approved
+  the repeated household utility checkpoint.
+- P0-4 integration and closure are delivered by PR #49; Milestone 8 is
+  unblocked for product definition.
 
 ## Goal
 
@@ -507,14 +510,19 @@ timers. The same run observed 39 unique candidates, zero cache hits, no
 reaction hydration, and maximum Discover/Availability/Taste concurrency of
 `1/8/0`. These values remain inside the accepted request and concurrency
 bounds. The Technical Lead accepts the result as technically reasonable for a
-rare, visibly loading worst-path recovery; Product Owner acceptance of the
-experienced wait remains a separate closure gate.
+rare, visibly loading worst-path recovery. On `2026-09-07`, the Product Owner
+also accepted the experienced `5.683 s` wait.
+
+The same retained-installation validation confirmed successful upgrade and Home
+recovery. Ratings, `Already watched`, and `Not interested` each replaced only
+their affected recommendation card. `My movies`, Watchlist, and Search remained
+correct, and the household utility checkpoint passed.
 
 The final P0-4 PR records `make verify`, CI, the exact physical-device SHA and
 twenty-page diagnostic values, the preserved-installation checklist, Technical
 Lead review, Product Owner acceptance of the observed wait, and the repeated
-household utility checkpoint. Milestone 7 and IMP-025 remain open until those
-external gates pass and the closure PR merges; Milestone 8 remains blocked.
+household utility checkpoint. Every gate passed; PR #49 closes Milestone 7 and
+IMP-025, after which Milestone 8 may enter product definition.
 
 ## Dependency graph
 

@@ -2,7 +2,7 @@
 
 ## Status
 
-`Reopened — P0-4 technically approved; Product Owner validation pending`
+`Complete — corrective P0 validation and household utility checkpoint passed`
 
 - Product direction accepted: `2026-08-19`
 - `My movies` label accepted: `2026-08-24`
@@ -22,6 +22,11 @@
 - Technical Lead review passed on `2026-09-06` for P0-4 implementation SHA
   `f8b4ba4fca28795e081291c96f069eb18530251e`, including technical acceptance
   of the measured `5.683 s` twenty-page cold-cache recovery path.
+- Product Owner validation passed on `2026-09-07` over the retained
+  installation, including Home recovery, stable per-card feedback replacement,
+  `My movies`, Watchlist, Search, explicit latency acceptance, and the household
+  utility checkpoint.
+- P0-4 integration and documentary closure are delivered by PR #49.
 - Dependency satisfied: Milestone 6 and its explanation correction are merged
   into `develop`.
 
@@ -35,7 +40,7 @@
   [ADR-013 — Remote Calibration Catalog with Frozen Local Fallback](../decisions/adr-013-remote-calibration-catalog.md)
 - Decision Engine architecture:
   [ADR-011 — Deterministic Decision Engine v1](../decisions/adr-011-deterministic-decision-engine-v1.md)
-- P0 history and recovery architecture proposal:
+- P0 history and recovery architecture:
   [ADR-014 — Bounded Recommendation Suppression and Exhaustion Recovery](../decisions/adr-014-bounded-recommendation-suppression-and-recovery.md)
 - Product language:
   [Product Language Glossary](../product/product-language-glossary.md)
@@ -68,9 +73,10 @@ migration, catalog, and Decision Engine boundaries.
 - Device evidence: PR4 already validated installed-state migration on the
   Product Owner's iPhone. On `2026-08-31`, the PR10 candidate also built,
   installed, and launched successfully on that iPhone without resetting its
-  application data. The remaining final-SHA functional checklist and enriched
-  household utility checkpoint are external approval gates and are not
-  inferred from simulator automation.
+  application data. On `2026-09-07`, P0-4 then passed over the retained
+  installation: Home recovered, ratings, `Already watched`, and `Not
+  interested` each replaced only their affected card, and `My movies`,
+  Watchlist, and Search remained correct.
 - Reopening evidence: the retained pilot installation reached a persisted
   zero-result Home after normal feedback. Read-only inspection found 93 shown
   IDs, 47 watched IDs, 113 IDs in their union, and an empty current Decision
@@ -89,9 +95,10 @@ migration, catalog, and Decision Engine boundaries.
   concurrency `1/8/0` for Discover/Availability/Taste. The time measures the
   complete coordinator operation, not app launch or per-title latency, and the
   Technical Lead accepts it for this rare recovery path.
-- Final approval remains external to automation: the final-SHA CI result,
-  preserved-device checklist, Product Owner latency acceptance, and repeated
-  household utility checkpoint are recorded in the P0-4 PR before merge.
+- Final acceptance: GitHub `quality` passed for the reviewed P0-4 SHA; the
+  Technical Lead approved the implementation; and the Product Owner accepted
+  the physical checklist, the `5.683 s` extreme wait, and the repeated household
+  utility checkpoint. PR #49 owns the final documentary closure.
 
 ## Goal
 
@@ -1191,11 +1198,10 @@ twenty-page device request/latency evidence. M7 and its utility checkpoint can
 close only in this new PR after Technical Lead review and Product Owner
 acceptance of the observed wait.
 
-The P0-4 candidate is implemented and technically approved as integration, UI,
-DEBUG-only diagnostic, and documentary coverage. It does not change P1
-scoring, availability, credibility, feedback semantics, or any later
-milestone. M7 remains reopened until the final-SHA external gates above pass
-and this closure slice merges.
+P0-4 is implemented and accepted as integration, UI, DEBUG-only diagnostic, and
+documentary coverage. It does not change P1 scoring, availability, credibility,
+feedback semantics, or any later milestone. The physical, latency, utility,
+technical-review, and reviewed-SHA CI gates passed; PR #49 closes M7.
 
 ## Dependency graph
 
@@ -1273,15 +1279,16 @@ separate ADR and PR.
 
 ## Final approval record
 
-The original Milestone 7 implementation merged through PR #43, but the final
-physical run invalidated its approval by reproducing the P0 Home exhaustion.
-Milestone 7 is formally reopened and Milestone 8 is blocked.
+The original Milestone 7 implementation merged through PR #43, but its final
+physical run invalidated approval by reproducing the P0 Home exhaustion. M7 was
+therefore reopened on `2026-09-01` and corrected through D0 and P0-1 to P0-4.
 
 The product direction and corrective D0 contract are accepted. The exact
 30-title window, 6→12→20 recall stages, three-title rollover increment,
 terminal copy/actions, 24-hour exhaustion freshness, quick-feedback menu,
 v2-to-v3 migration, and twenty-page device evidence contract were accepted by
-the Product Owner on `2026-09-01`. After D0 merges, P0-1 through P0-4 execute
-sequentially. Final approval requires P0-4 validation over the untouched
-blocked installation, Technical Lead review and Product Owner acceptance of
-the recorded latency, and the repeated household utility checkpoint.
+the Product Owner on `2026-09-01`. The corrective slices were delivered in PRs
+#44 and #46–#49. Technical review passed on `2026-09-06`; retained-installation
+validation, explicit acceptance of the recorded latency, and the repeated
+household utility checkpoint passed on `2026-09-07`. Milestone 7 is complete,
+and Milestone 8 may enter product definition.

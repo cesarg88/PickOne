@@ -2,12 +2,17 @@
 
 ## Status
 
-Accepted — Milestone 7 P0 correction Engineering Ready after D0 merges
+Accepted — implemented and physically validated
 
 Accepted by the Product Owner on `2026-09-01`, including the 30-title recent
 window, 6→12→20 recall expansion, three-title rollover, 24-hour exhaustion
 freshness, terminal recovery actions, quick-feedback menu, v2-to-v3 migrations,
 and physical-device request and latency evidence contract.
+
+The correction was delivered through PRs #46–#49. Technical review passed on
+`2026-09-06`; retained-installation recovery, per-card feedback stability,
+explicit acceptance of the `5.683 s` extreme wait, and the household utility
+checkpoint passed on `2026-09-07`.
 
 Milestone 7 was reopened after final physical-device validation found that
 normal explicit feedback could exhaust the bounded recall pool permanently.

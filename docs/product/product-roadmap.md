@@ -190,16 +190,16 @@ decisions. The checkpoint evaluates whether:
 This is a lightweight household validation, not external user research or an
 analytics implementation. The Product Owner's device validation confirmed the
 flow and identified the explanation-strength correction plus continuous taste
-learning as the correct next investment. The household utility checkpoint is
-repeated after Milestone 7 with the enriched Taste Profile.
+learning as the correct next investment. The enriched household utility
+checkpoint was repeated and approved after Milestone 7.
 
 ### Milestone 7
 
 [Continuous Taste Learning](../milestones/milestone-7-continuous-taste-learning.md)
 
 Status:
-Reopened — P0-4 technically approved; Product Owner validation pending;
-Milestone 8 blocked
+Complete — corrective P0 validation and household utility checkpoint passed;
+closure delivered by PR #49
 
 Purpose:
 
@@ -224,17 +224,17 @@ last slice installs over the preserved blocked pilot state and owns the new M7
 closure record. Exhaustion suppresses unchanged retries for 24 hours rather
 than permanently, and closure records request count plus observed latency from
 a real twenty-page expansion on the physical iPhone. D0 and P0-1 through P0-3
-are merged as PRs #44 and #46–#48; P0-4 now owns the final integration,
-preserved-device, CI, and acceptance gates without advancing Milestone 8. The
-Technical Lead accepted the P0-4 implementation and its `5.683 s` full
-twenty-page coordinator measurement on `2026-09-06`; Product Owner acceptance
-and the household utility checkpoint remain pending.
+are merged as PRs #44 and #46–#48; PR #49 delivers P0-4 integration and closure.
+The Technical Lead accepted the implementation and its `5.683 s` full
+twenty-page coordinator measurement on `2026-09-06`. On `2026-09-07`, the
+Product Owner validated the retained installation, Home recovery, stable
+single-card replacement, `My movies`, Watchlist, and Search; accepted the
+extreme wait; and approved the household utility checkpoint.
 
 ### Utility Checkpoint after Milestone 7
 
 Status:
-Blocked — P0-4 final-SHA CI, preserved-device validation, and Product Owner
-acceptance pending
+Approved — `2026-09-07`
 
 Purpose:
 
@@ -245,12 +245,17 @@ Spanish services, explanations remain readable, and the flow still supports a
 confident choice quickly. This is qualitative product evidence, not analytics,
 and cannot be inferred from automated tests.
 
+The retained-installation validation confirmed that the corrected Home remains
+recoverable during normal feedback and that the enriched experience is useful
+enough to proceed to the next product-definition cycle.
+
 ### Milestone 8
 
 Trailers & Pilot Measurement
 
 Status:
-Blocked until Milestone 7 receives final approval after P0-4
+Ready for product definition — implementation requires an accepted
+specification
 
 Purpose:
 

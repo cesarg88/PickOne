@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted baseline — implemented; ADR-014 reset-epoch amendment accepted
+Accepted baseline — implemented and validated with the ADR-014 amendment
 
 The Product Owner accepted the product transitions and the general architecture
 on 2026-08-19 and accepted `My movies` as the final history label on
@@ -11,10 +11,12 @@ were accepted with the final Milestone 7 D0 specification after Milestone 6
 merged.
 
 Milestone 7 PR1 through PR10 implement the original decision. Final physical
-validation reopened the milestone on 2026-09-01. ADR-014 proposes a v3
+validation reopened the milestone on 2026-09-01. ADR-014 introduced a v3
 `recommendationSuppressionEpochID` owned by this aggregate so `Reset
 preferences` can clear recent recommendation suppression atomically without
-deleting watched, Watchlist, Search History, or complete shown history.
+deleting watched, Watchlist, Search History, or complete shown history. The
+corrective implementation and retained-installation validation completed in
+PRs #46–#49.
 
 ## Context
 
