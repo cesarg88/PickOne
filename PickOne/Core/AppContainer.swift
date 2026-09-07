@@ -62,8 +62,8 @@ final class AppContainer {
             movieDetailUseCase = UITestingMovieDetailUseCase()
             availabilityUseCase = UITestingAvailabilityUseCase()
             playbackOptionsUseCase = UITestingPreparePlaybackOptionsUseCase()
-            homeUseCase = AppConfiguration.usesM7P0ClosureScenarioForUITests
-                ? M7P0ClosureUITestingScenario.makeHomeUseCase()
+            homeUseCase = AppConfiguration.usesHomeRecoveryScenarioForUITests
+                ? HomeRecoveryUITestingScenario.makeHomeUseCase()
                 : UITestingThreeForTonightUseCase()
         } else {
             movieDetailUseCase = useCases.getMovieDetail
@@ -80,14 +80,14 @@ final class AppContainer {
             homeViewerMovieStateUpdateUseCase = useCases.updateViewerMovieState
         }
         #if DEBUG
-            if AppConfiguration.runsM7P0DeviceDiagnostics {
+            if AppConfiguration.runsProgressiveRecallDeviceDiagnostics {
                 movieDetailUseCase = useCases.getMovieDetail
                 availabilityUseCase = useCases.checkMovieAvailability
                 playbackOptionsUseCase = useCases.preparePlaybackOptions
-                homeUseCase = Self.makeM7P0DeviceDiagnosticsUseCase(
+                homeUseCase = Self.makeProgressiveRecallDiagnosticsUseCase(
                     repositories: repositories
                 )
-                homeViewerMovieStateUpdateUseCase = M7P0DeviceDiagnosticsViewerStateUpdate()
+                homeViewerMovieStateUpdateUseCase = DisabledDiagnosticsViewerStateUpdate()
             }
         #endif
 
@@ -195,8 +195,8 @@ private extension AppContainer {
         let legacyViewerState: any LegacyViewerStateSource
         let legacyViewerStateResetter: (any LegacyViewerStateResetter)?
         if AppConfiguration.isUITesting {
-            viewerStateFileStore = AppConfiguration.usesM7P0ClosureScenarioForUITests
-                ? M7P0ClosureUITestingScenario.makeViewerStateFileStore()
+            viewerStateFileStore = AppConfiguration.usesHomeRecoveryScenarioForUITests
+                ? HomeRecoveryUITestingScenario.makeViewerStateFileStore()
                 : UITestingViewerStateFileStore()
             legacyViewerState = UITestingEmptyLegacyViewerStateSource()
             legacyViewerStateResetter = nil
@@ -292,10 +292,10 @@ private extension AppContainer {
     }
 
     #if DEBUG
-        static func makeM7P0DeviceDiagnosticsUseCase(
+        static func makeProgressiveRecallDiagnosticsUseCase(
             repositories: Repositories
         ) -> any ThreeForTonightUseCase {
-            M7P0DeviceDiagnosticsScenario.makeUseCase(
+            ProgressiveRecallDiagnosticsScenario.makeUseCase(
                 candidateRepository: repositories.decisionCandidate,
                 movieRepository: repositories.movie,
                 availabilityRepository: repositories.availability

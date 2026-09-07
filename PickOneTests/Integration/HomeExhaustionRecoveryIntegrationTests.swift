@@ -2,8 +2,8 @@ import Foundation
 @testable import PickOne
 import Testing
 
-@Suite("Milestone 7 P0 closure integration", .serialized)
-struct Milestone7P0ClosureIntegrationTests {
+@Suite("Home exhaustion recovery integration", .serialized)
+struct HomeExhaustionRecoveryIntegrationTests {
     #if DEBUG
         @Test("debug-only non-persisting diagnostics scenario reaches page twenty")
         func deviceDiagnosticsScenarioReachesPageTwenty() async throws {
@@ -24,7 +24,7 @@ struct Milestone7P0ClosureIntegrationTests {
                     ($0, CoordinatorTestFixtures.evidence($0))
                 })
             )
-            let sut = M7P0DeviceDiagnosticsScenario.makeUseCase(
+            let sut = ProgressiveRecallDiagnosticsScenario.makeUseCase(
                 candidateRepository: candidates,
                 movieRepository: movies,
                 availabilityRepository: availability
@@ -118,7 +118,7 @@ struct Milestone7P0ClosureIntegrationTests {
     }
 }
 
-private extension Milestone7P0ClosureIntegrationTests {
+private extension HomeExhaustionRecoveryIntegrationTests {
     private func exerciseProlongedFeedback(
         runtime initialRuntime: Runtime,
         snapshot initialSnapshot: ThreeForTonightSnapshot,
@@ -219,7 +219,7 @@ private extension Milestone7P0ClosureIntegrationTests {
                 ($0, CoordinatorTestFixtures.evidence($0))
             })
         )
-        let searchSuite = "PickOneTests.M7P0Closure.\(UUID().uuidString)"
+        let searchSuite = "PickOneTests.HomeExhaustionRecovery.\(UUID().uuidString)"
         let searchDefaults = try #require(UserDefaults(suiteName: searchSuite))
         UserDefaultsLocalStore(suiteName: searchSuite).addSearchQuery("Sanitized Query")
         return Scenario(
@@ -424,14 +424,14 @@ private extension Milestone7P0ClosureIntegrationTests {
     ) throws -> ThreeForTonightSnapshot {
         guard case let .usable(snapshot) = result else {
             Issue.record("Expected a usable recommendation set, got \(result)")
-            throw M7P0ClosureIntegrationError.expectedUsableSnapshot
+            throw HomeExhaustionRecoveryIntegrationError.expectedUsableSnapshot
         }
         return snapshot
     }
 
     private func requiredUUID(_ value: String) throws -> UUID {
         guard let uuid = UUID(uuidString: value) else {
-            throw M7P0ClosureIntegrationError.invalidFixture
+            throw HomeExhaustionRecoveryIntegrationError.invalidFixture
         }
         return uuid
     }
@@ -483,7 +483,7 @@ private extension Array {
     }
 }
 
-private enum M7P0ClosureIntegrationError: Error {
+private enum HomeExhaustionRecoveryIntegrationError: Error {
     case expectedUsableSnapshot
     case invalidFixture
 }

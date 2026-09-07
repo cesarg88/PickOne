@@ -20,22 +20,22 @@ struct AppConfiguration {
     static let failsFirstHomeFeedbackForUITests = ProcessInfo.processInfo.arguments.contains(
         "-ui-testing-home-feedback-fails-once"
     )
-    static let usesM7P0ClosureScenarioForUITests = ProcessInfo.processInfo.arguments.contains(
-        "-ui-testing-m7-p0-closure"
+    static let usesHomeRecoveryScenarioForUITests = ProcessInfo.processInfo.arguments.contains(
+        "-ui-testing-home-recovery"
     )
-    static let resetsM7P0ClosureScenarioForUITests = ProcessInfo.processInfo.arguments.contains(
-        "-ui-testing-m7-p0-closure-reset"
+    static let resetsHomeRecoveryScenarioForUITests = ProcessInfo.processInfo.arguments.contains(
+        "-ui-testing-home-recovery-reset"
     )
-    static let cleansM7P0ClosureScenarioForUITests = ProcessInfo.processInfo.arguments.contains(
-        "-ui-testing-m7-p0-closure-cleanup"
+    static let cleansHomeRecoveryScenarioForUITests = ProcessInfo.processInfo.arguments.contains(
+        "-ui-testing-home-recovery-cleanup"
     )
 
     #if DEBUG
-        static let runsM7P0DeviceDiagnostics = ProcessInfo.processInfo.arguments.contains(
-            "-m7-p0-device-diagnostics"
+        static let runsProgressiveRecallDeviceDiagnostics = ProcessInfo.processInfo.arguments.contains(
+            "-progressive-recall-device-diagnostics"
         )
     #else
-        static let runsM7P0DeviceDiagnostics = false
+        static let runsProgressiveRecallDeviceDiagnostics = false
     #endif
 
     static func detectsUnitTestHost(in environment: [String: String]) -> Bool {

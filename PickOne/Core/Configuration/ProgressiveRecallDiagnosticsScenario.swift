@@ -2,24 +2,24 @@
     import Foundation
     import Synchronization
 
-    enum M7P0DeviceDiagnosticsScenario {
+    enum ProgressiveRecallDiagnosticsScenario {
         static func makeUseCase(
             candidateRepository: any DecisionCandidateRepository,
             movieRepository: any MovieRepository,
             availabilityRepository: any AvailabilityRepository
         ) -> any ThreeForTonightUseCase {
-            let state = M7P0DeviceDiagnosticsState()
-            let diagnosticCandidates = M7P0DeviceDiagnosticsCandidateRepository(
+            let state = ProgressiveRecallDiagnosticsState()
+            let diagnosticCandidates = ProgressiveRecallCandidateSource(
                 base: candidateRepository,
                 state: state
             )
-            let diagnosticAvailability = M7P0DiagnosticsAvailability(
+            let diagnosticAvailability = ProgressiveRecallDiagnosticAvailability(
                 base: availabilityRepository,
                 state: state
             )
             return ThreeForTonightCoordinator(
-                trustedStateLoader: M7P0DeviceDiagnosticsTrustedStateLoader(),
-                decisionSetRepository: M7P0TransientDecisionSetRepository(),
+                trustedStateLoader: SyntheticDiagnosticsTrustedStateLoader(),
+                decisionSetRepository: TransientDiagnosticsDecisionSetStore(),
                 inputAssembler: AssembleDecisionEngineInput(
                     candidateRepository: diagnosticCandidates,
                     movieRepository: movieRepository,
@@ -28,27 +28,27 @@
                 movieRepository: movieRepository,
                 availabilityRepository: diagnosticAvailability,
                 signer: StableDecisionCycleSigner(),
-                diagnosticsSink: M7P0ConsoleDiagnosticsSink()
+                diagnosticsSink: ConsoleRecommendationDiagnosticsSink()
             )
         }
     }
 
-    struct M7P0DeviceDiagnosticsViewerStateUpdate: UpdateViewerMovieStateUseCase {
+    struct DisabledDiagnosticsViewerStateUpdate: UpdateViewerMovieStateUseCase {
         func execute(
             transition _: ViewerMovieStateTransition,
             metadata _: MovieFeedbackMetadata
         ) async throws -> ViewerMovieStateChange {
-            throw M7P0DeviceDiagnosticsError.mutationDisabled
+            throw ProgressiveRecallDiagnosticsError.mutationDisabled
         }
     }
 
-    struct M7P0DeviceDiagnosticsCandidateRepository: DecisionCandidateRepository {
+    struct ProgressiveRecallCandidateSource: DecisionCandidateRepository {
         private let base: any DecisionCandidateRepository
-        private let state: M7P0DeviceDiagnosticsState
+        private let state: ProgressiveRecallDiagnosticsState
 
         init(
             base: any DecisionCandidateRepository,
-            state: M7P0DeviceDiagnosticsState
+            state: ProgressiveRecallDiagnosticsState
         ) {
             self.base = base
             self.state = state
@@ -90,13 +90,13 @@
         }
     }
 
-    struct M7P0DiagnosticsAvailability: AvailabilityRepository {
+    struct ProgressiveRecallDiagnosticAvailability: AvailabilityRepository {
         private let base: any AvailabilityRepository
-        private let state: M7P0DeviceDiagnosticsState
+        private let state: ProgressiveRecallDiagnosticsState
 
         init(
             base: any AvailabilityRepository,
-            state: M7P0DeviceDiagnosticsState
+            state: ProgressiveRecallDiagnosticsState
         ) {
             self.base = base
             self.state = state
@@ -116,7 +116,7 @@
         }
     }
 
-    final class M7P0DeviceDiagnosticsState: Sendable {
+    final class ProgressiveRecallDiagnosticsState: Sendable {
         private let suppressedMovieIDs = Mutex(Set<Int>())
 
         func suppress(_ movieID: Int) {
@@ -128,7 +128,7 @@
         }
     }
 
-    private struct M7P0DeviceDiagnosticsTrustedStateLoader: TrustedDecisionStateLoading {
+    private struct SyntheticDiagnosticsTrustedStateLoader: TrustedDecisionStateLoading {
         private let snapshotID = ViewerStateSnapshotID(
             rawValue: UUID(uuid: (0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1))
         )
@@ -160,7 +160,7 @@
         }
     }
 
-    private actor M7P0TransientDecisionSetRepository: DecisionSetRepository {
+    private actor TransientDiagnosticsDecisionSetStore: DecisionSetRepository {
         private var committed: PersistedDecisionSet?
         private var staged: [DecisionSetPublicationTransaction: PersistedDecisionSet] = [:]
 
@@ -181,7 +181,7 @@
 
         func commit(_ transaction: DecisionSetPublicationTransaction) async throws {
             guard let replacement = staged.removeValue(forKey: transaction) else {
-                throw M7P0DeviceDiagnosticsError.missingStagedDecisionSet
+                throw ProgressiveRecallDiagnosticsError.missingStagedDecisionSet
             }
             committed = replacement
         }
@@ -191,14 +191,14 @@
         }
     }
 
-    private struct M7P0ConsoleDiagnosticsSink: RecommendationGenerationDiagnosticsSink {
+    private struct ConsoleRecommendationDiagnosticsSink: RecommendationGenerationDiagnosticsSink {
         func record(_ diagnostics: RecommendationGenerationDiagnostics) async {
             let stages = diagnostics.recallStageDurations.map {
                 "\(stageName($0.stage)):\(formatted($0.duration))"
             }.joined(separator: ",")
             let firstUsable = diagnostics.timeToFirstUsableSet.map(formatted) ?? "none"
             print(
-                "M7_P0_DIAGNOSTICS " +
+                "RECOMMENDATION_DIAGNOSTICS " +
                     "outcome=\(outcomeName(diagnostics.outcome)) " +
                     "cache=\(cacheCondition(diagnostics)) " +
                     "highestStage=\(stageName(diagnostics.highestRecallStage)) " +
@@ -251,7 +251,7 @@
         }
     }
 
-    private enum M7P0DeviceDiagnosticsError: Error {
+    private enum ProgressiveRecallDiagnosticsError: Error {
         case missingStagedDecisionSet
         case mutationDisabled
     }

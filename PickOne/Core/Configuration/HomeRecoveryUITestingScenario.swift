@@ -1,10 +1,10 @@
 import Foundation
 
-enum M7P0ClosureUITestingScenario {
-    private static let activeStateKey = "ui_testing_m7_p0_viewer_state_active"
-    private static let previousStateKey = "ui_testing_m7_p0_viewer_state_previous"
-    private static let quarantineStateKey = "ui_testing_m7_p0_viewer_state_quarantine"
-    private static let currentHomeMovieIDKey = "ui_testing_m7_p0_home_movie_id"
+enum HomeRecoveryUITestingScenario {
+    private static let activeStateKey = "ui_testing_home_recovery_viewer_state_active"
+    private static let previousStateKey = "ui_testing_home_recovery_viewer_state_previous"
+    private static let quarantineStateKey = "ui_testing_home_recovery_viewer_state_quarantine"
+    private static let currentHomeMovieIDKey = "ui_testing_home_recovery_home_movie_id"
     private static let searchHistoryKey = "search_history"
 
     static func makeViewerStateFileStore() -> any LocalViewerStateFileStore {
@@ -13,11 +13,11 @@ enum M7P0ClosureUITestingScenario {
             previousKey: previousStateKey,
             quarantineKey: quarantineStateKey
         )
-        if AppConfiguration.cleansM7P0ClosureScenarioForUITests {
+        if AppConfiguration.cleansHomeRecoveryScenarioForUITests {
             try? store.removeAllViewerState()
             UserDefaults.standard.removeObject(forKey: currentHomeMovieIDKey)
             UserDefaults.standard.removeObject(forKey: searchHistoryKey)
-        } else if AppConfiguration.resetsM7P0ClosureScenarioForUITests {
+        } else if AppConfiguration.resetsHomeRecoveryScenarioForUITests {
             try? store.removeAllViewerState()
             if let data = try? legacyViewerStateData() {
                 try? store.replaceActive(with: data)
@@ -29,7 +29,7 @@ enum M7P0ClosureUITestingScenario {
     }
 
     static func makeHomeUseCase() -> any ThreeForTonightUseCase {
-        M7P0ClosureHomeUseCase(
+        HomeRecoveryUITestingUseCase(
             currentMovieIDKey: currentHomeMovieIDKey
         )
     }
@@ -86,7 +86,7 @@ enum M7P0ClosureUITestingScenario {
 
     private static func requiredUUID(_ value: String) throws -> UUID {
         guard let uuid = UUID(uuidString: value) else {
-            throw M7P0ClosureUITestingError.invalidFixture
+            throw HomeRecoveryUITestingError.invalidFixture
         }
         return uuid
     }
@@ -128,7 +128,7 @@ private struct UITestingPersistentViewerStateFileStore: LocalViewerStateFileStor
     }
 }
 
-private actor M7P0ClosureHomeUseCase: ThreeForTonightUseCase {
+private actor HomeRecoveryUITestingUseCase: ThreeForTonightUseCase {
     private let currentMovieIDKey: String
 
     init(currentMovieIDKey: String) {
@@ -169,6 +169,6 @@ private actor M7P0ClosureHomeUseCase: ThreeForTonightUseCase {
     }
 }
 
-private enum M7P0ClosureUITestingError: Error {
+private enum HomeRecoveryUITestingError: Error {
     case invalidFixture
 }
