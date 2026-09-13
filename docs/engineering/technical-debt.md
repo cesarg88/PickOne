@@ -36,10 +36,11 @@ Statuses are `Observed`, `Planned`, `Monitoring`, `Resolved`, or `Accepted`.
   violation reaches review, or measured build/test performance justifies a
   physical module.
 - Milestone 7 evaluation:
-  no trigger fired through PR10. Focused boundaries remain reviewable, the
-  complete verification time has not justified extraction, and no reuse or
-  compiler-enforced isolation need emerged. Keep monitoring; any future module
-  still requires a separate accepted ADR and PR.
+  no trigger fired through PR10 or corrective P0-4. The prolonged integration
+  fixture and DEBUG-only device seam compose existing protocols without a
+  boundary violation, new dependency, or production module. Focused boundaries
+  remain reviewable; keep monitoring, and require a separate accepted ADR and
+  PR for any future module.
 
 ### TD-002 — Viewer-profile orchestration has concentrated files
 
@@ -62,6 +63,10 @@ Statuses are `Observed`, `Planned`, `Monitoring`, `Resolved`, or `Accepted`.
   responsibility; do not refactor solely to reduce line count.
 - PR10 constraint: documentary monitoring only; no production refactor belongs
   in the integration-and-closure slice.
+- P0-4 checkpoint: the prolonged regression was implemented with existing
+  repositories and coordinator contracts, and the device evidence path is
+  isolated behind DEBUG with transient state. Neither hotspot required an
+  unrelated refactor, so no extraction trigger fired; keep monitoring.
 
 ## Resolved Items
 

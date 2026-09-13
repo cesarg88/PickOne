@@ -74,6 +74,11 @@ Feature code must not use it as a service locator.
 - Name protocols for the capability they model; do not append `Protocol`.
 - Name concrete implementations for behavior or technology; do not append
   `Impl`, `Implementation`, or type-kind suffixes.
+- Name code identifiers and source files for stable behavior or domain
+  responsibility. Do not encode milestone, pull-request, issue, priority, or
+  delivery-slice identifiers in them. Runtime schema and model versions such as
+  `V2`, `V3`, and `P1` remain allowed when they express an executable
+  compatibility contract.
 - Prefer contracts that make invalid states hard to represent and error
   semantics explicit.
 - Avoid speculative abstractions, pass-through wrappers, and public API exposure

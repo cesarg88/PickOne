@@ -2,7 +2,7 @@
 
 ## Status
 
-`Accepted — Engineering Ready; implementation begins after D0 merges`
+`Complete — P0-4 physical validation and household utility checkpoint passed`
 
 - Milestone 7 reopened: `2026-09-01`
 - Trigger: final physical-device validation on the Product Owner's retained
@@ -11,7 +11,16 @@
 - Architecture proposal:
   [ADR-014 — Bounded Recommendation Suppression and Exhaustion Recovery](../decisions/adr-014-bounded-recommendation-suppression-and-recovery.md)
 - Backlog: IMP-025
-- Milestone 8 remains blocked.
+- Corrective D0 and P0-1 through P0-3 merged as PRs #44 and #46–#48.
+- Technical Lead review passed on `2026-09-06` for the P0-4 implementation at
+  `f8b4ba4fca28795e081291c96f069eb18530251e`; its local `make verify` and
+  GitHub `quality` check were green.
+- Product Owner validation passed on `2026-09-07` over the retained installation
+  without reinstalling or clearing application data.
+- The Product Owner accepted the measured `5.683 s` extreme latency and approved
+  the repeated household utility checkpoint.
+- P0-4 integration and closure are delivered by PR #49; Milestone 8 is
+  unblocked for product definition.
 
 ## Goal
 
@@ -461,6 +470,59 @@ physical update validation on the preserved blocked installation. Record the
 required twenty-page request and latency evidence and obtain explicit Product
 Owner acceptance of the observed wait. This is a new PR; merged PR #43 remains
 historical evidence.
+
+## P0-4 closure record
+
+The P0-4 candidate adds only integration and validation support over the merged
+P0-1 through P0-3 behavior:
+
+- a sanitized structurally equivalent regression begins with 93 shown IDs, 47
+  watched IDs, and 113 IDs in their union, migrates Viewer State and an empty
+  Decision Set from v2 to v3, then exercises 42 direct feedback mutations, six
+  replacement refreshes, four repository relaunches, persisted exhaustion, and
+  a blocked identical retry;
+- the same regression proves that profile, reactions, watched facts, Watchlist,
+  Search History, complete shown history, the 30-ID recent bound, and every new
+  explicit exclusion survive the composed sequence;
+- a simulator UI journey launches from a deterministic v2 Viewer State, recovers
+  Home, applies quick feedback without opening Detail, and verifies Home,
+  Watchlist, Search History, and `My movies` again after process relaunch;
+- a DEBUG-only, non-persisting device scenario sends synthetic trusted state
+  through the production coordinator and real TMDB repositories, deliberately
+  withholds otherwise eligible results until page 20, disables Home feedback
+  writes, and emits only the accepted privacy-safe diagnostics fields. Normal
+  production composition retains the no-op sink.
+
+The physical diagnostic at implementation SHA
+`f8b4ba4fca28795e081291c96f069eb18530251e` ran on an iPhone 13 Pro
+(`iPhone14,2`) with a cold availability cache. It returned an honest
+`exhausted` outcome after `5.683 s` total wall-clock time measured from the
+coordinator operation start until that result. The measurement covers 20
+sequential Discover page requests, 39 candidate availability checks and network
+requests, deterministic selection/composition, and publication to the
+transient Decision Set repository. It is not application launch time, latency
+per movie, or the expected duration of a normal Home load.
+
+The measured recall stages account for `5.429 s`: normal `1.224 s`, first
+expansion `1.143 s`, and final expansion `3.062 s`. The remaining approximately
+`0.254 s` covers operation preparation and completion outside those stage
+timers. The same run observed 39 unique candidates, zero cache hits, no
+reaction hydration, and maximum Discover/Availability/Taste concurrency of
+`1/8/0`. These values remain inside the accepted request and concurrency
+bounds. The Technical Lead accepts the result as technically reasonable for a
+rare, visibly loading worst-path recovery. On `2026-09-07`, the Product Owner
+also accepted the experienced `5.683 s` wait.
+
+The same retained-installation validation confirmed successful upgrade and Home
+recovery. Ratings, `Already watched`, and `Not interested` each replaced only
+their affected recommendation card. `My movies`, Watchlist, and Search remained
+correct, and the household utility checkpoint passed.
+
+The final P0-4 PR records `make verify`, CI, the exact physical-device SHA and
+twenty-page diagnostic values, the preserved-installation checklist, Technical
+Lead review, Product Owner acceptance of the observed wait, and the repeated
+household utility checkpoint. Every gate passed; PR #49 closes Milestone 7 and
+IMP-025, after which Milestone 8 may enter product definition.
 
 ## Dependency graph
 

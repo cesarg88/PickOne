@@ -3,7 +3,7 @@
 ## Document Status
 
 - Status: `Canonical`
-- Last product review: `2026-09-01`
+- Last product review: `2026-09-07`
 - Product name: `PickOne` is a codename until the decision experience is
   validated.
 
@@ -689,21 +689,21 @@ The current application already provides:
   extended in Milestone 7 to regenerate or repair from the latest Viewer Movie
   State
 
-Milestone 6 is complete. The Milestone 7 implementation baseline now includes
-Unified Viewer Movie State, continuous reactions and Taste Profile updates,
-Home reconciliation, `My movies`, and remote/cached/bundled frozen calibration
-catalog resolution. Final physical validation found a P0 exhaustion defect, so
-Milestone 7 is reopened and Milestone 8 remains blocked. The accepted product
-correction preserves explicit feedback and complete shown history while making
-recent repeat suppression bounded, recoverable, and directly operable from
-Home. Its exact D0 policy is accepted in
+Milestones 6 and 7 are complete. Milestone 7 includes Unified Viewer Movie
+State, continuous reactions and Taste Profile updates, stable Home
+reconciliation, direct feedback, `My movies`, bounded exhaustion recovery, and
+remote/cached/bundled frozen calibration catalog resolution. The corrective
+P0 validation on the retained iPhone passed on `2026-09-07`: Home recovered,
+feedback replaced only the affected card, the surrounding movie surfaces
+remained coherent, the extreme `5.683 s` recovery wait was accepted, and the
+household utility checkpoint passed. The exact recovery policy is defined in
 [Milestone 7 P0 — Home Exhaustion Recovery](docs/milestones/milestone-7-p0-home-exhaustion-recovery.md).
 
 Explicit decision outcomes such as `Watch this` and `Not tonight`, later
 viewing confirmation, and trailer presentation remain future product work.
 
-Technical migration or architecture work may continue without changing current
-behavior, but new product implementation must be specified against this target.
+Milestone 8 may now enter product definition. Its implementation must still be
+authorized by an accepted specification and architecture decision where needed.
 
 ## Explicit Non-Goals for the First Product Version
 

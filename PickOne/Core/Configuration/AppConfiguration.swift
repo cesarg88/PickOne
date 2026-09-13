@@ -20,6 +20,23 @@ struct AppConfiguration {
     static let failsFirstHomeFeedbackForUITests = ProcessInfo.processInfo.arguments.contains(
         "-ui-testing-home-feedback-fails-once"
     )
+    static let usesHomeRecoveryScenarioForUITests = ProcessInfo.processInfo.arguments.contains(
+        "-ui-testing-home-recovery"
+    )
+    static let resetsHomeRecoveryScenarioForUITests = ProcessInfo.processInfo.arguments.contains(
+        "-ui-testing-home-recovery-reset"
+    )
+    static let cleansHomeRecoveryScenarioForUITests = ProcessInfo.processInfo.arguments.contains(
+        "-ui-testing-home-recovery-cleanup"
+    )
+
+    #if DEBUG
+        static let runsProgressiveRecallDeviceDiagnostics = ProcessInfo.processInfo.arguments.contains(
+            "-progressive-recall-device-diagnostics"
+        )
+    #else
+        static let runsProgressiveRecallDeviceDiagnostics = false
+    #endif
 
     static func detectsUnitTestHost(in environment: [String: String]) -> Bool {
         environment["XCTestConfigurationFilePath"] != nil

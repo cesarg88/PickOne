@@ -12,7 +12,8 @@ It contains only work that remains pending after Milestone 3.3. Completed work
 should remain in this file with its status changed to `Completed` and a link to
 the implementing PR or milestone.
 
-Last reviewed: 2026-09-01, during Milestone 7 P0 reopening and corrective D0.
+Last reviewed: 2026-09-07, after Milestone 7 P0-4 physical validation and the
+household utility checkpoint.
 
 ## Product Direction
 
@@ -231,7 +232,7 @@ Priorities:
 
 ### IMP-004 — Add continuous taste learning and unified movie state
 
-- Status: `Reopened — P0 correction accepted; implementation pending`
+- Status: `Completed — PR #49`
 - Priority: `P0`
 - Roadmap relationship: Milestone 7
 - Accepted specification:
@@ -269,6 +270,17 @@ Priorities:
     Set, deterministic empty refresh, and no recovery after preference reset
   - Milestone 7 is reopened; IMP-025 and a new integration/closure PR are
     required before final approval
+  - corrective D0 and P0-1 through P0-3 merged as PRs #44 and #46–#48
+  - P0-4 composes the sanitized prolonged regression, upgrade/relaunch UI
+    journey, and non-persisting twenty-page device diagnostics path
+  - Technical Lead review passed on `2026-09-06`; the measured twenty-page
+    coordinator operation completed in `5.683 s` and is technically accepted
+  - GitHub `quality` passed for the reviewed P0-4 SHA
+  - on `2026-09-07`, retained-installation validation confirmed Home recovery,
+    stable single-card replacement for every feedback kind, and coherent `My
+    movies`, Watchlist, and Search behavior
+  - the Product Owner accepted the `5.683 s` extreme-path latency and approved
+    the household utility checkpoint
 - Done when:
   - Detail, Watchlist, calibration, Settings history, and Home agree for every
     movie state
@@ -285,9 +297,9 @@ Priorities:
 
 ### IMP-025 — Recover exhausted Home and add direct feedback
 
-- Status: `Accepted — Engineering Ready after D0 merges`
+- Status: `Completed — PR #49`
 - Priority: `P0`
-- Roadmap relationship: reopened Milestone 7
+- Roadmap relationship: Milestone 7
 - Correction specification:
   [`Milestone 7 P0 — Home Exhaustion Recovery`](../milestones/milestone-7-p0-home-exhaustion-recovery.md)
 - Accepted architecture:
@@ -321,6 +333,26 @@ Priorities:
     installations
   - privacy-safe physical-device request and latency evidence for the full
     twenty-page path
+- Progress:
+  - D0 and P0-1 through P0-3 merged as PRs #44 and #46–#48
+  - the P0-4 sanitized regression exercises the 93-shown/47-watched/113-union
+    shape through 42 feedback mutations, six refreshes, four relaunches, and
+    persisted exhaustion without an identical retry loop
+  - the P0-4 UI journey verifies v2 upgrade, Home quick feedback, preserved
+    Watchlist and Search History, `My movies`, and process relaunch together
+  - the DEBUG-only device scenario forces production orchestration through page
+    20 without writing Viewer State or Decision Set data and reports only the
+    accepted privacy-safe diagnostics
+  - the iPhone 13 Pro cold-cache run completed the full coordinator operation
+    in `5.683 s`, with 20 Discover requests, 39 availability network requests,
+    and maximum concurrency `1/8/0`; Technical Lead review accepts this result
+    for the rare recovery path
+  - GitHub `quality` passed for the reviewed P0-4 SHA
+  - the retained blocked installation recovered without losing its existing
+    state; ratings, `Already watched`, and `Not interested` replaced only their
+    affected card; `My movies`, Watchlist, and Search remained correct
+  - the Product Owner accepted the `5.683 s` worst-path latency and approved the
+    repeated household utility checkpoint on `2026-09-07`
 - Done when:
   - D0 and corrective slices P0-1 through P0-4 are merged sequentially
   - a sanitized prolonged-feedback/relaunch regression cannot reproduce the
@@ -335,7 +367,7 @@ Priorities:
 
 ### IMP-022 — Deliver a remotely updateable calibration catalog
 
-- Status: `Pilot Validation — remote capability passed; M7 P0 closure pending`
+- Status: `Completed — PRs #41–#43 and final M7 validation in PR #49`
 - Priority: `P0`
 - Roadmap relationship: Milestone 7
 - Accepted architecture:
@@ -697,20 +729,13 @@ the added complexity.
 
 ## Suggested Sequence
 
-1. Review and merge the Milestone 7 corrective D0, including ADR-014 and the
-   exact suppression, progressive recall, rollover, terminal-state,
-   quick-feedback, and v2-to-v3 migration policy.
-2. Implement corrective slices P0-1 through P0-3 sequentially from current
-   `develop`.
-3. Deliver P0-4 as a new integration and closure PR, install it over the
-   preserved blocked iPhone state, and repeat the full M7 physical validation.
-4. Repeat the household utility checkpoint with continuous taste learning and
-   approve M7 before beginning M8.
-5. Define explicit decision outcomes, trailers, and the minimum pilot
-   measurement contract from observed use.
-6. Introduce a backend or AI provider only if product validation demonstrates
+1. Define Milestone 8 product outcomes, trailer behavior, viewing confirmation,
+   and the minimum privacy-safe pilot measurement contract from observed use.
+2. Convert the accepted product direction into an executable D0 specification
+   and any required architecture decision before implementation begins.
+3. Introduce a backend or AI provider only if product validation demonstrates
    a need that deterministic recommendation cannot meet.
-7. Complete distribution, accessibility, and persistence hardening as the
+4. Complete distribution, accessibility, and persistence hardening as the
    audience expands.
 
 ## Update Rules

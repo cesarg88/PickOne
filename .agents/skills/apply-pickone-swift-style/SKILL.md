@@ -33,6 +33,10 @@ description: Apply PickOne's Swift and SwiftUI coding conventions when writing, 
 - Name protocols for their capability or role without a `Protocol` suffix.
 - Name concrete types for behavior or technology without `Impl`,
   `Implementation`, or type-kind suffixes.
+- Name code identifiers and source files for stable behavior or domain
+  responsibility. Never encode milestone, pull-request, issue, priority, or
+  delivery-slice identifiers in them. Runtime schema and model versions remain
+  allowed when they express an executable compatibility contract.
 - Introduce a protocol only for a real boundary, substitutability requirement,
   or current polymorphic consumer; do not create speculative abstractions.
 - Keep protocol conformances in focused extensions when that improves cohesion,

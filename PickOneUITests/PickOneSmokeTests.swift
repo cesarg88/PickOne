@@ -57,6 +57,44 @@ final class PickOneSmokeTests: XCTestCase {
     }
 
     @MainActor
+    func testHomeRecoveryUpgradeQuickFeedbackAndRelaunchJourney() {
+        let app = launchHomeRecoveryApp(resetting: true)
+        defer { cleanHomeRecoveryScenario(runningApp: app) }
+
+        XCTAssertTrue(app.buttons["home-recommendation-101"].waitForExistence(timeout: 15))
+        verifyHomeRecoveryPreservedSurfaces(in: app)
+
+        app.tabBars.buttons["Home"].tap()
+        let feedbackMenu = app.buttons["Feedback for Tonight's Movie"]
+        XCTAssertTrue(feedbackMenu.waitForExistence(timeout: 15))
+        feedbackMenu.tap()
+        tapButton("Already watched", in: app)
+        XCTAssertTrue(
+            app.buttons["home-recommendation-202"].waitForExistence(timeout: 15)
+        )
+        XCTAssertFalse(app.navigationBars["Details"].exists)
+
+        app.tabBars.buttons["Settings"].tap()
+        tapButton("My movies", in: app)
+        XCTAssertTrue(app.buttons["my-movies-row-101"].waitForExistence(timeout: 15))
+
+        app.terminate()
+        let relaunched = launchHomeRecoveryApp(resetting: false)
+
+        XCTAssertTrue(
+            relaunched.buttons["home-recommendation-202"].waitForExistence(timeout: 15)
+        )
+        XCTAssertFalse(relaunched.buttons["home-recommendation-101"].exists)
+        verifyHomeRecoveryPreservedSurfaces(in: relaunched)
+        relaunched.tabBars.buttons["Settings"].tap()
+        tapButton("My movies", in: relaunched)
+        XCTAssertTrue(
+            relaunched.buttons["my-movies-row-101"].waitForExistence(timeout: 15)
+        )
+        relaunched.terminate()
+    }
+
+    @MainActor
     private func launchReadyApp(extraArguments: [String] = []) -> XCUIApplication {
         let app = XCUIApplication()
         app.launchArguments.append("-ui-testing")
@@ -72,6 +110,39 @@ final class PickOneSmokeTests: XCTestCase {
             tapButton("Love it", in: app)
         }
         return app
+    }
+
+    @MainActor
+    private func launchHomeRecoveryApp(resetting: Bool) -> XCUIApplication {
+        let app = XCUIApplication()
+        app.launchArguments = ["-ui-testing", "-ui-testing-home-recovery"]
+        if resetting {
+            app.launchArguments.append("-ui-testing-home-recovery-reset")
+        }
+        app.launch()
+        return app
+    }
+
+    @MainActor
+    private func cleanHomeRecoveryScenario(runningApp: XCUIApplication) {
+        runningApp.terminate()
+        let cleanup = XCUIApplication()
+        cleanup.launchArguments = [
+            "-ui-testing",
+            "-ui-testing-home-recovery",
+            "-ui-testing-home-recovery-cleanup",
+        ]
+        cleanup.launch()
+        cleanup.terminate()
+    }
+
+    @MainActor
+    private func verifyHomeRecoveryPreservedSurfaces(in app: XCUIApplication) {
+        app.tabBars.buttons["Watchlist"].tap()
+        XCTAssertTrue(app.buttons["watchlist-row-303"].waitForExistence(timeout: 15))
+
+        app.tabBars.buttons["Search"].tap()
+        XCTAssertTrue(app.staticTexts["Sanitized Query"].waitForExistence(timeout: 15))
     }
 
     @MainActor

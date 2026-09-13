@@ -52,17 +52,19 @@ final class AppContainer {
     init() {
         let repositories = Self.makeRepositories()
         let useCases = Self.makeUseCases(repositories: repositories)
-        let movieDetailUseCase: any GetMovieDetailUseCase
-        let availabilityUseCase: any CheckMovieAvailabilityUseCase
-        let playbackOptionsUseCase: any PreparePlaybackOptionsUseCase
-        let homeUseCase: any ThreeForTonightUseCase
-        let homeViewerMovieStateUpdateUseCase: any UpdateViewerMovieStateUseCase
+        var movieDetailUseCase: any GetMovieDetailUseCase
+        var availabilityUseCase: any CheckMovieAvailabilityUseCase
+        var playbackOptionsUseCase: any PreparePlaybackOptionsUseCase
+        var homeUseCase: any ThreeForTonightUseCase
+        var homeViewerMovieStateUpdateUseCase: any UpdateViewerMovieStateUseCase
 
         if AppConfiguration.isUITesting {
             movieDetailUseCase = UITestingMovieDetailUseCase()
             availabilityUseCase = UITestingAvailabilityUseCase()
             playbackOptionsUseCase = UITestingPreparePlaybackOptionsUseCase()
-            homeUseCase = UITestingThreeForTonightUseCase()
+            homeUseCase = AppConfiguration.usesHomeRecoveryScenarioForUITests
+                ? HomeRecoveryUITestingScenario.makeHomeUseCase()
+                : UITestingThreeForTonightUseCase()
         } else {
             movieDetailUseCase = useCases.getMovieDetail
             availabilityUseCase = useCases.checkMovieAvailability
@@ -77,6 +79,17 @@ final class AppContainer {
         } else {
             homeViewerMovieStateUpdateUseCase = useCases.updateViewerMovieState
         }
+        #if DEBUG
+            if AppConfiguration.runsProgressiveRecallDeviceDiagnostics {
+                movieDetailUseCase = useCases.getMovieDetail
+                availabilityUseCase = useCases.checkMovieAvailability
+                playbackOptionsUseCase = useCases.preparePlaybackOptions
+                homeUseCase = Self.makeProgressiveRecallDiagnosticsUseCase(
+                    repositories: repositories
+                )
+                homeViewerMovieStateUpdateUseCase = DisabledDiagnosticsViewerStateUpdate()
+            }
+        #endif
 
         getDiscoveryFeed = useCases.getDiscoveryFeed
         getMovieDetail = movieDetailUseCase
@@ -182,7 +195,9 @@ private extension AppContainer {
         let legacyViewerState: any LegacyViewerStateSource
         let legacyViewerStateResetter: (any LegacyViewerStateResetter)?
         if AppConfiguration.isUITesting {
-            viewerStateFileStore = UITestingViewerStateFileStore()
+            viewerStateFileStore = AppConfiguration.usesHomeRecoveryScenarioForUITests
+                ? HomeRecoveryUITestingScenario.makeViewerStateFileStore()
+                : UITestingViewerStateFileStore()
             legacyViewerState = UITestingEmptyLegacyViewerStateSource()
             legacyViewerStateResetter = nil
         } else {
@@ -275,6 +290,18 @@ private extension AppContainer {
             bundled: bundled
         )
     }
+
+    #if DEBUG
+        static func makeProgressiveRecallDiagnosticsUseCase(
+            repositories: Repositories
+        ) -> any ThreeForTonightUseCase {
+            ProgressiveRecallDiagnosticsScenario.makeUseCase(
+                candidateRepository: repositories.decisionCandidate,
+                movieRepository: repositories.movie,
+                availabilityRepository: repositories.availability
+            )
+        }
+    #endif
 
     static func makeUseCases(repositories: Repositories) -> UseCases {
         let checkAvailability = CheckMovieAvailability(
