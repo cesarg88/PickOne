@@ -32,7 +32,8 @@ their accepted slices. Viewer Movie State stays at v3.
 - Timing uses [ContinuousClock](https://developer.apple.com/documentation/swift/continuousclock)
   relative to this app runtime; no device boot-time value is read or stored.
 - UI/composition: Home cards expose Pick/Picked with title-specific accessibility
-  labels; Home also retains cancellation when the picked card leaves the set.
+  labels; tapping the selected card cancels the choice, and picking another
+  suggestion replaces it. There is no separate cancellation button.
   MainTabView supplies app activation and Home/related Detail visibility.
 
 ## Requirement traceability
@@ -49,7 +50,7 @@ their accepted slices. Viewer Movie State stays at v3.
 | First/final Pick, replacement and cancellation history | Session first timing and final-decision reference; decision chain | `foregroundPickReplacementAndCancellation`; `duplicatePickRefreshAndCancelSurviveRecreation` |
 | Stable-operation idempotence, including relaunch and concurrency | Actor and persisted receipts | `duplicatePickRefreshAndCancelSurviveRecreation`; `simultaneousDuplicateOperationsCommitOnce` |
 | Old work cannot replace newer selection | Ordered Presentation tasks and monotonic mutation ordering | `delayedCompletionsCannotReplaceNewerChoice`; `oldFailedRetryCannotUndoLaterPickOrCancellation`; `staleLifecycleCannotPauseNewerForegroundAndStaleCancelCannotCancelReplacement`; `cancellationRetryAfterNewerLifecycleStillCancelsTheSamePick` |
-| Success notice dismisses after three seconds without cancelling or replaying on Home return/relaunch | Separate Presentation timer; persistent card state and Home cancellation | `HomePickFeedbackTests`; `HomePickInteractionTests` waits for dismissal before cancellation |
+| Success notice dismisses after three seconds without cancelling or replaying on Home return/relaunch | Separate Presentation timer; persistent card state and cancellation on the selected card | `HomePickFeedbackTests`; `HomePickInteractionTests` waits for dismissal before cancellation |
 | Failed Pick remains retryable with no false Picked UI | Publish only after complete durable write | `perCardFailureRetryAndReplacementPublishOnlyDurableSuccess`; `failedWriteKeepsPriorEnvelopeAndRetrySucceeds` |
 | Task cancellation is not explicit Pick cancellation | Pre-commit cancellation check | `cancellationBeforeMutationWritesNothing` |
 | Active/previous/quarantine/recreation; never invent empty history | Independent versioned envelope and storage recovery | `exactInvalidBytesAreQuarantinedAndPreviousRecovered`; `failedRecoveryNeverFabricatesEmptyHistory`; `storageFailureDoesNotOverwriteUnreadHistory`; `applicationSupportRoundTripStoresOnlyAllowedEvidence` |
@@ -79,10 +80,13 @@ sample localized it to lazy subview placement. Home's bounded three-card list
 now uses eager layout, and the same English/Spanish UI tests pass.
 A regression test reproduced the permanently visible Pick notice before the
 fix. The notice now dismisses after three seconds, while the card remains
-Picked and cancellation moves to the Home toolbar. Focused tests cover durable
+Picked and tapping that card again cancels the choice. Home has no separate
+cancellation button, as requested by the Product Owner. Focused tests cover durable
 state after dismissal, return/relaunch, failed saves and retry, replacement
 deadlines, and immediate cancellation. English/Spanish UI tests wait for the
-notice to disappear before cancelling.
+notice to disappear, assert that no separate cancellation button remains,
+and cancel by tapping the selected card again. The redundant toolbar button
+was reproduced by a failing UI assertion before removal.
 The delivery gate is `make verify`;
 final results and CI status are recorded in the PR rather than assumed here.
 

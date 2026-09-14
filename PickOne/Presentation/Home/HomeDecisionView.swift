@@ -87,15 +87,6 @@ private struct HomeDecisionContent: View {
             }
             content
         }
-        .toolbar {
-            if !showsActivePickControl, let pickModel, let active = pickModel.activeDecision {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button("Cancel Pick") { pickModel.cancel() }
-                        .disabled(pickModel.savingMovieIDs.contains(active.recommendation.movieID))
-                        .accessibilityIdentifier("home-cancel-pick")
-                }
-            }
-        }
         .overlay(alignment: .top) {
             if let updateFeedback {
                 Label(updateFeedback, systemImage: "checkmark.circle")

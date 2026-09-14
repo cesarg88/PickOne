@@ -57,9 +57,6 @@ struct HomeActivePickControl: View {
                 Label("You have a Pick", systemImage: "checkmark.circle.fill")
                     .font(.subheadline)
             }
-            Button("Cancel Pick") { model.cancel() }
-                .disabled(model.savingMovieIDs.contains(decision.recommendation.movieID))
-                .accessibilityIdentifier("home-cancel-pick")
             if model.failedMovieIDs.contains(decision.recommendation.movieID) {
                 Text("Your choice couldn't be saved. Please try again.").font(.footnote)
                 Button("Try again") { model.retry(movieID: decision.recommendation.movieID) }

@@ -45,16 +45,20 @@ final class HomePickInteractionTests: XCTestCase {
         XCTAssertTrue(pick.isHittable)
         XCTAssertEqual(pick.label, label)
         pick.tap()
-        XCTAssertTrue(app.buttons["home-cancel-pick"].waitForExistence(timeout: 15))
+        let picked = XCTNSPredicateExpectation(predicate: NSPredicate(format: "label == %@", pickedLabel), object: pick)
+        XCTAssertEqual(XCTWaiter.wait(for: [picked], timeout: 15), .completed)
         XCTAssertEqual(pick.label, pickedLabel)
         XCTAssertTrue(app.buttons["home-recommendation-101"].exists, "Pick must preserve the recommendation")
         let notice = app.staticTexts[language == "es" ? "Tienes una película elegida" : "You have a Pick"]
         XCTAssertTrue(notice.waitForNonExistence(timeout: 8), "Pick feedback must dismiss automatically")
         XCTAssertEqual(pick.label, pickedLabel, "Dismissing feedback must preserve the choice")
-        let cancel = app.buttons["home-cancel-pick"]
-        if !cancel.isHittable { app.swipeDown() }
-        cancel.tap()
-        XCTAssertTrue(cancel.waitForNonExistence(timeout: 15))
+        XCTAssertFalse(app.buttons["home-cancel-pick"].exists, "Cancellation belongs on the selected card")
+        for _ in 0 ..< 6 where !pick.isHittable {
+            app.swipeUp()
+        }
+        pick.tap()
+        let cleared = XCTNSPredicateExpectation(predicate: NSPredicate(format: "label == %@", label), object: pick)
+        XCTAssertEqual(XCTWaiter.wait(for: [cleared], timeout: 15), .completed)
         XCTAssertEqual(pick.label, label)
     }
 }
