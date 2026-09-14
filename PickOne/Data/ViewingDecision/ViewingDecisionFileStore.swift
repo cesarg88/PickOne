@@ -40,7 +40,7 @@ struct ApplicationSupportViewingDecisionStore: ViewingDecisionFileStore {
 
     private func read(_ name: String) throws -> Data? {
         let url = directory.appending(path: name)
-        guard FileManager.default.fileExists(atPath: url.path()) else { return nil }
+        guard FileManager.default.fileExists(atPath: url.path(percentEncoded: false)) else { return nil }
         return try Data(contentsOf: url)
     }
 

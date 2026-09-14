@@ -185,8 +185,20 @@ private extension AppContainer {
     static func makeViewingDecisionRepository() -> LocalViewingDecisionRepository {
         let store: any ViewingDecisionFileStore
         do {
-            let directory = AppConfiguration.isUITesting
-                ? FileManager.default.temporaryDirectory.appending(path: "PickOne-UI-\(UUID().uuidString)") : nil
+            let directory: URL?
+            if AppConfiguration.isUITesting {
+                directory = try FileManager.default.url(
+                    for: .applicationSupportDirectory, in: .userDomainMask, appropriateFor: nil, create: true
+                ).appending(path: "PickOne/UITesting/ViewingDecisions", directoryHint: .isDirectory)
+                if AppConfiguration.resetsHomeRecoveryScenarioForUITests
+                    || AppConfiguration.cleansHomeRecoveryScenarioForUITests,
+                    let directory, FileManager.default.fileExists(atPath: directory.path(percentEncoded: false))
+                {
+                    try FileManager.default.removeItem(at: directory)
+                }
+            } else {
+                directory = nil
+            }
             store = try ApplicationSupportViewingDecisionStore(directory: directory)
         } catch {
             store = UnavailableViewingDecisionStore()

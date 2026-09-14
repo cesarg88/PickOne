@@ -56,6 +56,7 @@ their accepted slices. Viewer Movie State stays at v3.
 | Active/previous/quarantine/recreation; never invent empty history | Independent versioned envelope and storage recovery | `exactInvalidBytesAreQuarantinedAndPreviousRecovered`; `failedRecoveryNeverFabricatesEmptyHistory`; `storageFailureDoesNotOverwriteUnreadHistory`; `applicationSupportRoundTripStoresOnlyAllowedEvidence` |
 | Only known schemas migrate | Initial v1 decoder rejects other versions | Unsupported-schema fixture in `exactInvalidBytesAreQuarantinedAndPreviousRecovered`; no predecessor schema exists for this new repository |
 | Pick preserves recommendations and other authorities | Pick graph has no mutation dependency on existing repositories | `homePickDoesNotInvokeRecommendationGenerationOrMutatePublishedSet`; `HomePickInteractionTests`; full existing regression suite |
+| Pick survives process termination and relaunch; storage paths with spaces or escaped characters remain readable | File-store existence checks use an unencoded filesystem path; UI fixture storage survives relaunch | `applicationSupportRoundTripStoresOnlyAllowedEvidence` (plain, Application Support, accented/percent paths); `HomePickInteractionTests` terminates and relaunches before cancellation |
 | English/Spanish visible controls and title-specific accessibility | String Catalog; native buttons and scalable layouts | `HomePickInteractionTests` in English and Spanish at Accessibility XXXL |
 | No metadata, raw text, provenance, SDK, or new search requests | DTO allowlist and bounded dependency graph | `applicationSupportRoundTripStoresOnlyAllowedEvidence`; source/dependency inspection |
 
@@ -87,6 +88,14 @@ deadlines, and immediate cancellation. English/Spanish UI tests wait for the
 notice to disappear, assert that no separate cancellation button remains,
 and cancel by tapping the selected card again. The redundant toolbar button
 was reproduced by a failing UI assertion before removal.
+The relaunch regression exposed an encoded URL path used in a filesystem
+existence check: `Application Support` became `Application%20Support`, so a
+saved envelope was mistaken for an absent file and overwritten on startup.
+The file store now checks the unencoded path. The disk round-trip test covers
+spaces, accented text, and percent characters; UI tests retain an isolated
+Application Support directory across process launches, reset it explicitly
+between scenarios, and verify the selected card and absence of a replayed
+notice before cancelling. Production storage is never reset by those fixtures.
 The delivery gate is `make verify`;
 final results and CI status are recorded in the PR rather than assumed here.
 

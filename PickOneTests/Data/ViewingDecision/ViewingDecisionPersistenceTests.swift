@@ -133,9 +133,11 @@ struct ViewingDecisionPersistenceTests {
         #expect(store.writes == 1)
     }
 
-    @Test func applicationSupportRoundTripStoresOnlyAllowedEvidence() async throws {
-        let directory = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString)
-        defer { try? FileManager.default.removeItem(at: directory) }
+    @Test(arguments: ["Plain", "Application Support", "Selección % piloto"])
+    func applicationSupportRoundTripStoresOnlyAllowedEvidence(directoryName: String) async throws {
+        let root = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString)
+        let directory = root.appending(path: directoryName, directoryHint: .isDirectory)
+        defer { try? FileManager.default.removeItem(at: root) }
         let store = try ApplicationSupportViewingDecisionStore(directory: directory)
         let repository = LocalViewingDecisionRepository(store: store)
         let surface = try ViewingDecisionTestFixtures.surface()

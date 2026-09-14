@@ -52,6 +52,20 @@ final class HomePickInteractionTests: XCTestCase {
         let notice = app.staticTexts[language == "es" ? "Tienes una película elegida" : "You have a Pick"]
         XCTAssertTrue(notice.waitForNonExistence(timeout: 8), "Pick feedback must dismiss automatically")
         XCTAssertEqual(pick.label, pickedLabel, "Dismissing feedback must preserve the choice")
+        app.terminate()
+        app.launchArguments.removeAll { $0 == "-ui-testing-home-recovery-reset" }
+        app.launch()
+        XCTAssertTrue(pick.waitForExistence(timeout: 15))
+        let restored = XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "label == %@", pickedLabel),
+            object: pick
+        )
+        XCTAssertEqual(
+            XCTWaiter.wait(for: [restored], timeout: 15),
+            .completed,
+            "Relaunch must restore the selected card"
+        )
+        XCTAssertFalse(notice.exists, "Relaunch must not replay the success notice")
         XCTAssertFalse(app.buttons["home-cancel-pick"].exists, "Cancellation belongs on the selected card")
         for _ in 0 ..< 6 where !pick.isHittable {
             app.swipeUp()
