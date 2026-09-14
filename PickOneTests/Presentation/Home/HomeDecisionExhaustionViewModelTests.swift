@@ -84,7 +84,7 @@ struct HomeDecisionExhaustionViewModelTests {
             Issue.record("Expected retained content with Retry")
             return
         }
-        #expect(refreshError == "Couldn't update tonight's picks. Please try again.")
+        #expect(refreshError == String(localized: "Couldn't update tonight's picks. Please try again."))
     }
 
     private func waitUntilSettled(_ sut: HomeDecisionViewModel) async {

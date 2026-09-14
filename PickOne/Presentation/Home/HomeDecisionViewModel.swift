@@ -22,6 +22,7 @@ struct HomeDecisionExhaustionPresentation: Equatable {
 @MainActor
 @Observable
 final class HomeDecisionViewModel {
+    let pickModel: HomePickViewModel?
     private let threeForTonight: any ThreeForTonightUseCase
     @ObservationIgnored private var activeTask: Task<Void, Never>?
     @ObservationIgnored private var activeOperationID = UUID()
@@ -43,6 +44,7 @@ final class HomeDecisionViewModel {
 
     init(
         threeForTonight: any ThreeForTonightUseCase,
+        pickModel: HomePickViewModel? = nil,
         feedbackDuration: Duration = .seconds(3),
         feedbackSleep: @escaping @Sendable (Duration) async throws -> Void = {
             try await Task.sleep(for: $0)
@@ -52,6 +54,7 @@ final class HomeDecisionViewModel {
             try await Task.sleep(for: $0)
         }
     ) {
+        self.pickModel = pickModel
         self.threeForTonight = threeForTonight
         self.feedbackDuration = feedbackDuration
         self.feedbackSleep = feedbackSleep
@@ -93,6 +96,7 @@ final class HomeDecisionViewModel {
         else {
             return
         }
+        pickModel?.refreshRequested()
         start(.refresh)
     }
 
@@ -130,7 +134,8 @@ final class HomeDecisionViewModel {
                 return
             } catch {
                 guard activeOperationID == operationID else { return }
-                state = .failure("Tonight's picks couldn't be loaded. Please try again.")
+                pickModel?.updateSurface(nil)
+                state = .failure(String(localized: "Tonight's picks couldn't be loaded. Please try again."))
                 finish(operationID: operationID)
             }
         }
@@ -204,13 +209,14 @@ final class HomeDecisionViewModel {
             case let .retryableFailure(reason, retained):
                 guard let retained else {
                     clearExhaustion()
+                    pickModel?.updateSurface(nil)
                     state = .failure(blockingMessage(for: reason))
                     return
                 }
                 clearExhaustion()
                 apply(
                     snapshot: retained,
-                    refreshError: "Couldn't update tonight's picks. Please try again."
+                    refreshError: String(localized: "Couldn't update tonight's picks. Please try again.")
                 )
         }
     }
@@ -289,7 +295,7 @@ final class HomeDecisionViewModel {
         guard isHomeVisible, isUpdateFeedbackPending else { return }
         isUpdateFeedbackPending = false
         feedbackTask?.cancel()
-        updateFeedback = "Recommendations updated."
+        updateFeedback = String(localized: "Recommendations updated.")
         let duration = feedbackDuration
         let sleep = feedbackSleep
         feedbackTask = Task { [weak self] in
@@ -309,6 +315,19 @@ final class HomeDecisionViewModel {
         refreshError: String?
     ) {
         let model = HomeDecisionPresentationMapper.map(snapshot: snapshot)
+        let visibleIDs = Set(model.items.map(\.id))
+        pickModel?.updateSurface(try? ViewingDecisionSurface(
+            recommendations: snapshot.decisionSet.recommendations.filter {
+                visibleIDs.contains($0.display.movieID)
+            }.map {
+                PickRecommendation(
+                    movieID: $0.display.movieID,
+                    setID: snapshot.decisionSet.id,
+                    cycleID: snapshot.decisionSet.cycle.id,
+                    role: $0.role
+                )
+            }
+        ))
         if model.items.isEmpty {
             state = .empty(isRefreshing: false, refreshError: refreshError)
         } else {
@@ -323,16 +342,16 @@ final class HomeDecisionViewModel {
     private func blockingMessage(for reason: ThreeForTonightFailureReason) -> String {
         switch reason {
             case .profileUnavailable:
-                "Your preferences couldn't be loaded. Please try again."
+                String(localized: "Your preferences couldn't be loaded. Please try again.")
             case .persistenceFailed:
-                "Tonight's picks couldn't be saved. Please try again."
+                String(localized: "Tonight's picks couldn't be saved. Please try again.")
             case .recoveryFailed:
-                "Saved picks couldn't be recovered. Your other data is unchanged."
+                String(localized: "Saved picks couldn't be recovered. Your other data is unchanged.")
             case .generationUnavailable,
                  .repairFailed,
                  .trustedInputsChanged,
                  .invariantViolation:
-                "Tonight's picks couldn't be loaded. Please try again."
+                String(localized: "Tonight's picks couldn't be loaded. Please try again.")
         }
     }
 }

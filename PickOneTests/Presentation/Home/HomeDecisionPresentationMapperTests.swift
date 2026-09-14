@@ -4,6 +4,10 @@ import Testing
 
 @MainActor
 struct HomeDecisionPresentationMapperTests {
+    private var isSpanish: Bool {
+        Bundle.main.preferredLocalizations.first?.hasPrefix("es") == true
+    }
+
     @Test("maps role, evidence, providers, metadata, and transient saved state")
     func mapsRecommendation() throws {
         let snapshot = try HomeDecisionTestFixtures.snapshot(savedMovieIDs: [101])
@@ -12,10 +16,11 @@ struct HomeDecisionPresentationMapperTests {
 
         let item = try #require(model.items.first)
         #expect(item.id == 101)
-        #expect(item.role == "Safe Choice")
+        #expect(item.role == (isSpanish ? "Apuesta segura" : "Safe Choice"))
         #expect(
-            item.reason == "Saved for later, and similar to Arrival, which you loved — "
-                + "shares Drama and Science Fiction."
+            item.reason == (isSpanish
+                ? "Guardada para más adelante, y similar a Arrival, que te encantó — comparte Drama y Science Fiction."
+                : "Saved for later, and similar to Arrival, which you loved — shares Drama and Science Fiction.")
         )
         #expect(item.providers.map(\.name) == ["Netflix"])
         #expect(item.details == "2024 · 2h 3m · Drama, Science Fiction")
@@ -41,7 +46,9 @@ struct HomeDecisionPresentationMapperTests {
             snapshot: snapshot
         ).items.first)
 
-        #expect(item.reason == "Similar to Arrival, which you loved — shares Drama.")
+        #expect(item.reason == (isSpanish
+                ? "Similar a Arrival, que te encantó — comparte Drama."
+                : "Similar to Arrival, which you loved — shares Drama."))
         #expect(!item.reason.contains("2020s"))
         #expect(!item.reason.contains("Science Fiction"))
     }
@@ -63,8 +70,9 @@ struct HomeDecisionPresentationMapperTests {
         ).items.first)
 
         #expect(
-            item.reason == "Similar to Arrival, which you liked — shares Drama; "
-                + "both are from the 2020s."
+            item.reason == (isSpanish
+                ? "Similar a Arrival, que te gustó — comparte Drama; ambas son de los años 2020."
+                : "Similar to Arrival, which you liked — shares Drama; both are from the 2020s.")
         )
     }
 

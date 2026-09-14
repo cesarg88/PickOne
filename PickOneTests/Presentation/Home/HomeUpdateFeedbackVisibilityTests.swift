@@ -35,7 +35,7 @@ struct HomeUpdateFeedbackVisibilityTests {
         #expect(await delay.requestedDurations().isEmpty)
 
         sut.homeDidAppear()
-        #expect(sut.updateFeedback == "Recommendations updated.")
+        #expect(sut.updateFeedback == String(localized: "Recommendations updated."))
         await delay.waitForRequestCount(1)
         #expect(await delay.requestedDurations() == [.seconds(3)])
 
@@ -73,7 +73,7 @@ struct HomeUpdateFeedbackVisibilityTests {
         #expect(sut.updateFeedback == nil)
 
         sut.homeDidAppear()
-        #expect(sut.updateFeedback == "Recommendations updated.")
+        #expect(sut.updateFeedback == String(localized: "Recommendations updated."))
         await delay.waitForRequestCount(2)
         #expect(await delay.requestedDurations() == [.seconds(3), .seconds(3)])
 

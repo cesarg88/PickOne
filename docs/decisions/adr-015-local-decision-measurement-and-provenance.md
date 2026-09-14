@@ -2,13 +2,14 @@
 
 ## Status
 
-Accepted — implementation begins only after D0 merges and PR1 is authorized
+Accepted — PR1 authorized; implementation closure remains pending
 
 Product behavior and this architecture were accepted by the Product Owner and
 Technical Lead on `2026-09-14`. This ADR and
 [Milestone 8](../milestones/milestone-8-pilot-measurement.md) are Product Ready
-and Engineering Ready. Implementation remains blocked until the
-documentation-only D0 PR merges and PR1 receives explicit authorization.
+and Engineering Ready. D0 merged in #50 (`c31e39f`), and the Product Owner
+explicitly authorized PR1 on `2026-09-14`. This satisfies the implementation
+gate for PR1 only; confirmation, provenance, and later slices remain pending.
 
 ## Context
 

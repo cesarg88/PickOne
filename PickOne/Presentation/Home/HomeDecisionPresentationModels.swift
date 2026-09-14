@@ -73,22 +73,22 @@ enum HomeDecisionPresentationMapper {
 
     private static func roleTitle(_ role: DecisionRole) -> String {
         switch role {
-            case .safeChoice: "Safe Choice"
-            case .stretchChoice: "Stretch Choice"
-            case .discoveryChoice: "Discovery Choice"
+            case .safeChoice: String(localized: "Safe Choice")
+            case .stretchChoice: String(localized: "Stretch Choice")
+            case .discoveryChoice: String(localized: "Discovery Choice")
         }
     }
 
     private static func reason(_ evidence: RecommendationPrimaryEvidence) -> String? {
         switch evidence {
             case let .watchlistIntent(match):
-                tasteMatch(match).map { "Saved for later, and \($0)" }
+                tasteMatch(match).map { String(localized: "Saved for later, and \($0)") }
             case let .positiveAnchor(anchor):
                 positiveAnchorReason(anchor, sentenceStart: true)
             case let .positiveGenreAffinity(affinity):
                 affinityReason(affinity, sentenceStart: true)
             case .sparseQuality:
-                "Backed by strong ratings and broad viewer evidence."
+                String(localized: "Backed by strong ratings and broad viewer evidence.")
         }
     }
 
@@ -103,8 +103,8 @@ enum HomeDecisionPresentationMapper {
 
     private static func reactionVerb(_ reaction: PositiveAnchorReaction) -> String {
         switch reaction {
-            case .loved: "loved"
-            case .liked: "liked"
+            case .loved: String(localized: "loved")
+            case .liked: String(localized: "liked")
         }
     }
 
@@ -112,21 +112,28 @@ enum HomeDecisionPresentationMapper {
         _ anchor: PositiveAnchorEvidence,
         sentenceStart: Bool
     ) -> String? {
-        let prefix = sentenceStart ? "Similar" : "similar"
+        let prefix = sentenceStart ? String(localized: "home.reason.similar.sentence", defaultValue: "Similar") :
+            String(
+                localized: "home.reason.similar.embedded",
+                defaultValue: "similar"
+            )
         guard var sharedSignals = sharedGenreDescription(anchor.sharedGenres) else {
             return nil
         }
         switch anchor.eraMatch {
             case let .sameDecade(decade):
-                sharedSignals += "; both are from the \(decade.startingYear)s"
+                sharedSignals = String(localized: "\(sharedSignals); both are from the \(decade.startingYear)s")
             case let .adjacentDecade(candidate, anchor):
-                sharedSignals += "; their release eras are adjacent "
-                    + "(\(candidate.startingYear)s and \(anchor.startingYear)s)"
+                sharedSignals =
+                    String(
+                        localized: "\(sharedSignals); their release eras are adjacent (\(candidate.startingYear)s and \(anchor.startingYear)s)"
+                    )
             case nil:
                 break
         }
-        return "\(prefix) to \(anchor.movieTitle), which you "
-            + "\(reactionVerb(anchor.reaction)) — \(sharedSignals)."
+        return String(
+            localized: "\(prefix) to \(anchor.movieTitle), which you \(reactionVerb(anchor.reaction)) — \(sharedSignals)."
+        )
     }
 
     private static func sharedGenreDescription(
@@ -136,30 +143,34 @@ enum HomeDecisionPresentationMapper {
         guard !genreLabels.isEmpty, genreLabels.count == genres.count else {
             return nil
         }
-        return "shares \(naturalList(genreLabels))"
+        return String(localized: "shares \(naturalList(genreLabels))")
     }
 
     private static func affinityReason(
         _ affinity: PositiveAffinityEvidence,
         sentenceStart: Bool
     ) -> String? {
-        let prefix = sentenceStart ? "Matches" : "matches"
+        let prefix = sentenceStart ? String(localized: "home.reason.matches.sentence", defaultValue: "Matches") :
+            String(
+                localized: "home.reason.matches.embedded",
+                defaultValue: "matches"
+            )
         let genreNames = affinity.genres.compactMap(\.name)
         if !affinity.genres.isEmpty {
             guard genreNames.count == affinity.genres.count else {
                 return nil
             }
-            return "\(prefix) your taste for \(naturalList(genreNames))."
+            return String(localized: "\(prefix) your taste for \(naturalList(genreNames)).")
         }
         return affinity.era == nil
             ? nil
-            : "\(prefix) a release era you tend to enjoy."
+            : String(localized: "\(prefix) a release era you tend to enjoy.")
     }
 
     private static func naturalList(_ values: [String]) -> String {
         guard let last = values.last else { return "" }
         guard values.count > 1 else { return last }
-        return "\(values.dropLast().joined(separator: ", ")) and \(last)"
+        return String(localized: "\(values.dropLast().joined(separator: ", ")) and \(last)")
     }
 
     private static func details(_ display: DecisionDisplaySnapshot) -> String {

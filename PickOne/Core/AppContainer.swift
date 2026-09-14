@@ -114,7 +114,9 @@ final class AppContainer {
             getDiscoveryFeed: useCases.getDiscoveryFeed
         )
         let homeDecisionViewModel = HomeDecisionViewModel(
-            threeForTonight: homeUseCase
+            threeForTonight: homeUseCase,
+            pickModel: HomePickViewModel(manage: ManageViewingDecision(repository: Self
+                    .makeViewingDecisionRepository()))
         )
         self.homeDecisionViewModel = homeDecisionViewModel
         watchlistViewModel = WatchlistViewModel(
@@ -178,6 +180,18 @@ private extension AppContainer {
         let getViewerStateRecoveryNotice: GetViewerStateRecoveryNotice
         let resetUnrecoverableViewerState: ResetUnrecoverableViewerState
         let resolveCalibrationCatalog: ResolveCalibrationCatalog
+    }
+
+    static func makeViewingDecisionRepository() -> LocalViewingDecisionRepository {
+        let store: any ViewingDecisionFileStore
+        do {
+            let directory = AppConfiguration.isUITesting
+                ? FileManager.default.temporaryDirectory.appending(path: "PickOne-UI-\(UUID().uuidString)") : nil
+            store = try ApplicationSupportViewingDecisionStore(directory: directory)
+        } catch {
+            store = UnavailableViewingDecisionStore()
+        }
+        return LocalViewingDecisionRepository(store: store)
     }
 
     static func makeRepositories() -> Repositories {
