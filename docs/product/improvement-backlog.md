@@ -12,8 +12,7 @@ It contains only work that remains pending after Milestone 3.3. Completed work
 should remain in this file with its status changed to `Completed` and a link to
 the implementing PR or milestone.
 
-Last reviewed: 2026-09-07, after Milestone 7 P0-4 physical validation and the
-household utility checkpoint.
+Last reviewed: 2026-09-14, during Milestone 8 documentation-only D0.
 
 ## Product Direction
 
@@ -398,27 +397,31 @@ Priorities:
   - cached and bundled flows work offline
   - relaunch and late responses cannot change an active flow
 
-### IMP-005 — Define the product measurement contract
+### IMP-005 — Define and deliver local pilot measurement
 
-- Status: `Proposed`
+- Status: `Planned`
 - Priority: `P0`
+- Roadmap relationship: Milestone 8
 - Why: UI polish and model changes cannot be evaluated without success
   criteria.
 - Implementation:
-  - define time-to-decision
-  - measure sessions ending in `Watch this`
-  - measure confirmed viewing after a decision
-  - measure Detail, trailer, and Watchlist actions originating from Home
-  - measure new-set requests, context refinements, and distinct negative
-    feedback
-  - record unresolved candidates, duplicates, already-watched results, and
-    violated constraints
-  - define latency and cost budgets before integrating a provider
-  - document event names and allowed properties without collecting sensitive
-    prompt data by default
+  - use the accepted foreground-only recommendation-session lifecycle
+  - measure first and final Pick, confirmed viewing, and optional immutable
+    satisfaction snapshots as distinct funnel stages
+  - count observed sets, `Give me three more`, Home-originated `Already
+    watched`, and semantic search duration, expansion, and outcome
+  - retain completed sessions locally for 180 days
+  - expose `Pilot insights`, local export, and measurement-only deletion in
+    Settings
+  - use typed semantic records and stable identities without remote analytics,
+    raw user text, or exhaustive navigation tracking
+  - keep durable PickOne viewing provenance outside measurement retention
 - Done when:
-  - each product hypothesis has a metric and expected signal
-  - privacy boundaries and data retention are explicit
+  - Pick, viewing, and satisfaction stages are reported without inventing
+    missing evidence
+  - retention, export, and deletion preserve provenance and all existing user
+    state
+  - the Product Owner validates the local report against real actions
 
 ## P1 — Build a Credible Recommendation Beta
 
@@ -487,23 +490,49 @@ Priorities:
 
 ### IMP-023 — Define explicit decision-outcome actions
 
-- Status: `Deferred`
+- Status: `Planned`
 - Priority: `P1`
+- Roadmap relationship: Milestone 8
 - Why:
   Milestone 7 learns from explicit ratings, watched facts, Watchlist intent,
   and `Not interested`, but those signals do not prove that PickOne helped the
   Viewer choose and start a movie in the current session.
-- Future definition:
-  - distinguish `Watch this` intent from verified viewing
-  - define temporary `Not tonight` behavior without learning a stable dislike
-  - decide whether and when to ask for lightweight viewing confirmation
-  - preserve recommendation-cycle history and avoid passive-event inference
+- Implementation:
+  - expose a visible `Pick` / `Elegir` action on each Home recommendation
+  - allow one active Pick to be replaced or cancelled while preserving history
+  - request non-blocking viewing confirmation on return to Home at least 12
+    hours later
+  - postpone `Not yet` by 24 hours and move the decision to `My movies` pending
+    confirmations after three postponements
+  - make confirmed viewing establish watched plus durable PickOne provenance
+  - offer an optional four-reaction satisfaction step without making
+    provenance depend on it
 - Constraint:
-  do not add these actions to Milestone 7 or infer outcomes from Detail opens,
-  trailer plays, or impressions.
+  Pick changes no Taste, watched, Watchlist, eligibility, availability, score,
+  or Decision Set state. Never infer Pick, viewing, or satisfaction from Detail
+  opens, impressions, or existing feedback.
 - Done when:
-  accepted product copy, state transitions, measurement semantics, and failure
-  behavior distinguish intent from outcome.
+  Pick, superseded/cancelled decisions, confirmed viewing, provenance, and
+  optional satisfaction remain distinct and survive relaunch.
+
+### IMP-026 — Evaluate explicit incorrect-availability feedback
+
+- Status: `Deferred`
+- Priority: `P1`
+- Why: `Didn't like it` expresses dissatisfaction with a movie and cannot
+  identify stale or incorrect provider evidence.
+- Future definition:
+  - introduce `Availability is incorrect` only after the pilot observes a real
+    need
+  - record the relevant movie, region, and available evidence identity without
+    asking the Viewer to diagnose the correct provider
+  - never modify Taste Profile, Movie reaction, or watched state
+- Constraint:
+  excluded from Milestone 8; qualitative pilot reporting is sufficient until
+  evidence justifies another action.
+- Done when:
+  observed availability failures demonstrate the need and Product accepts the
+  interaction, privacy, and correction workflow.
 
 ### IMP-008 — Integrate one real recommendation provider behind a backend
 
@@ -643,6 +672,9 @@ Priorities:
 
 - Status: `Proposed`
 - Priority: `P2`
+- Localization relationship: Milestone 9; Milestone 8 first establishes the
+  English/Spanish String Catalog for only its affected surfaces. Supported-
+  device decisions remain unaccepted.
 - Why: the target currently declares iPhone and iPad support without a
   documented iPad QA commitment.
 - Implementation:
@@ -729,13 +761,15 @@ the added complexity.
 
 ## Suggested Sequence
 
-1. Define Milestone 8 product outcomes, trailer behavior, viewing confirmation,
-   and the minimum privacy-safe pilot measurement contract from observed use.
-2. Convert the accepted product direction into an executable D0 specification
-   and any required architecture decision before implementation begins.
-3. Introduce a backend or AI provider only if product validation demonstrates
+1. Review and merge Milestone 8 D0: Pick/session, viewing confirmation,
+   provenance, local measurement, and ADR-015.
+2. Deliver Milestone 8 through four ordered slices and repeat physical pilot
+   validation before closing it.
+3. Introduce trailers, a coach mark, or visual search feedback only if observed
+   use demonstrates that confidence or discoverability needs them.
+4. Introduce a backend or AI provider only if product validation demonstrates
    a need that deterministic recommendation cannot meet.
-4. Complete distribution, accessibility, and persistence hardening as the
+5. Complete distribution, accessibility, and persistence hardening as the
    audience expands.
 
 ## Update Rules

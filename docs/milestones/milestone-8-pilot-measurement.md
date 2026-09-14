@@ -2,16 +2,15 @@
 
 ## Status
 
-`Draft — product decisions closed; canonical D0 promotion pending`
+`Proposed — Ready for D0 review`
 
-- Product Ready: **Pending D0 promotion** to `PRODUCT.md`, roadmap, backlog,
-  glossary, and this specification.
-- Engineering Ready: **No**. The persistence and reconciliation ADR must be
-  accepted during D0.
+- Product decisions: **Accepted**.
+- Product Ready: **Yes when this D0 branch is accepted and merged**.
+- Engineering Ready: **Pending acceptance of ADR-015 in this D0 review**.
 - Implementation authorized: **No**.
 - Milestone 7 is complete.
-- This branch changes documentation only and does not promote the draft into
-  the canonical product or engineering authorities.
+- This branch promotes the accepted product behavior into the canonical
+  documents but changes no application behavior.
 
 ## Authority and purpose
 
@@ -22,6 +21,8 @@
 - Product language:
   [Product Language Glossary](../product/product-language-glossary.md)
 - Related backlog: IMP-005 and IMP-023
+- Architecture:
+  [ADR-015 — Local Decision Sessions, Measurement, and Viewing Provenance](../decisions/adr-015-local-decision-measurement-and-provenance.md)
 
 If this draft conflicts with `PRODUCT.md`, `PRODUCT.md` wins. If it conflicts
 with `ENGINEERING.md`, `ENGINEERING.md` wins.
@@ -195,7 +196,7 @@ provenance.
 
 None. Product decisions are closed for D0 promotion.
 
-## Technical contract proposed for D0 acceptance
+## Technical contract for D0 acceptance
 
 ### Authorities and dependency direction
 
@@ -420,13 +421,15 @@ must remain isolated and merge before insights work.
 - whole-app localization, deferred to M9;
 - a physical Swift module or statistically valid experimentation.
 
-## D0 promotion checklist
+## D0 acceptance checklist
 
-- [ ] Update `PRODUCT.md` with accepted M8 behavior and privacy boundaries.
-- [ ] Rename and update M8 in `docs/product/product-roadmap.md`.
-- [ ] Reconcile IMP-005 and IMP-023 in the improvement backlog.
-- [ ] Extend the glossary with session, Pick, confirmation, provenance, and
+- [x] Update `PRODUCT.md` with accepted M8 behavior and privacy boundaries.
+- [x] Rename and update M8 in `docs/product/product-roadmap.md`.
+- [x] Reconcile IMP-005 and IMP-023 in the improvement backlog.
+- [x] Extend the glossary with session, Pick, confirmation, provenance, and
       pilot-measurement terms.
-- [ ] Add and accept the local decision persistence/reconciliation ADR.
-- [ ] Mark this milestone Product Ready and Engineering Ready.
-- [ ] Authorize PR1 only after the documentation-only D0 is merged.
+- [x] Draft the local decision persistence/reconciliation ADR.
+- [ ] Product Owner and Technical Lead accept this specification and ADR-015.
+- [ ] Merge the documentation-only D0 PR.
+- [ ] Mark this milestone and ADR-015 accepted after review.
+- [ ] Authorize PR1 explicitly after D0 is merged.

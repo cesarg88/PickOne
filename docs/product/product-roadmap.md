@@ -251,16 +251,49 @@ enough to proceed to the next product-definition cycle.
 
 ### Milestone 8
 
-Trailers & Pilot Measurement
+Local Pilot Measurement
 
 Status:
-Ready for product definition — implementation requires an accepted
-specification
+Proposed — D0 ready for review; implementation is not authorized
 
 Purpose:
 
-Add suitable trailers, viewing confirmation, and the minimum privacy-safe
-measurement needed to evaluate time-to-decision.
+Add explicit Pick, bounded recommendation sessions, later non-blocking viewing
+confirmation, durable PickOne viewing provenance, and the minimum privacy-safe
+local measurement needed to evaluate decision utility.
+
+Delivery:
+
+1. Pick and session vertical slice.
+2. Viewing confirmation and durable `My movies` provenance.
+3. Local `Pilot insights`, export, retention, and measurement-only deletion.
+4. Upgrade integration, physical validation, and documentary closure.
+
+The milestone measures the funnel from Pick to confirmed viewing and optional
+satisfaction. It localizes every affected surface in English and Spanish while
+keeping all measurement on-device. Trailers, whole-app localization, coach
+marks, visual long-search feedback, incorrect-availability feedback, and
+remote analytics remain outside Milestone 8.
+
+Implementation begins only after the Product Owner and Technical Lead accept
+[the executable specification](../milestones/milestone-8-pilot-measurement.md)
+and
+[ADR-015](../decisions/adr-015-local-decision-measurement-and-provenance.md),
+and the documentation-only D0 PR merges.
+
+### Milestone 9
+
+Whole-App Localization & Visual Improvement
+
+Status:
+Deferred — product definition follows Milestone 8 evidence
+
+Purpose:
+
+Complete English/Spanish localization beyond the M8 surfaces and address
+evidence-backed visual improvements. Evaluate Pick coach marks or spotlights
+and visual long-search feedback only if M8 physical validation demonstrates a
+discoverability or waiting-state problem.
 
 ## Deferred Intelligence Infrastructure
 
