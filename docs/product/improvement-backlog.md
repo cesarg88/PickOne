@@ -399,7 +399,7 @@ Priorities:
 
 ### IMP-005 — Define and deliver local pilot measurement
 
-- Status: `Planned`
+- Status: `Accepted — Engineering Ready`
 - Priority: `P0`
 - Roadmap relationship: Milestone 8
 - Why: UI polish and model changes cannot be evaluated without success
@@ -490,7 +490,7 @@ Priorities:
 
 ### IMP-023 — Define explicit decision-outcome actions
 
-- Status: `Planned`
+- Status: `Accepted — Engineering Ready`
 - Priority: `P1`
 - Roadmap relationship: Milestone 8
 - Why:

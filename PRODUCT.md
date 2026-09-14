@@ -752,10 +752,10 @@ household utility checkpoint passed. The exact recovery policy is defined in
 Milestone 8 is defined but not implemented. It adds explicit Pick, bounded
 recommendation sessions, later non-blocking viewing confirmation, durable
 PickOne provenance, English/Spanish localization for affected surfaces, and
-local `Pilot insights`. Its implementation remains gated on D0 review and
-acceptance of the
+local `Pilot insights`. The Product Owner and Technical Lead accepted the
 [Milestone 8 specification](docs/milestones/milestone-8-pilot-measurement.md)
-and ADR-015.
+and ADR-015 on `2026-09-14`. Implementation remains gated on merge of the
+documentation-only D0 PR and explicit authorization of PR1.
 
 Trailers, coach marks, visual long-search feedback, and explicit incorrect-
 availability feedback remain future work. Whole-app localization is planned

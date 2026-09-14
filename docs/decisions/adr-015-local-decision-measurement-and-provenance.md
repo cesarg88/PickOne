@@ -2,11 +2,13 @@
 
 ## Status
 
-Proposed — Ready for D0 review
+Accepted — implementation begins only after D0 merges and PR1 is authorized
 
-Product behavior was accepted on `2026-09-14`. This ADR and
-[Milestone 8](../milestones/milestone-8-pilot-measurement.md) must be reviewed
-and accepted together before implementation begins.
+Product behavior and this architecture were accepted by the Product Owner and
+Technical Lead on `2026-09-14`. This ADR and
+[Milestone 8](../milestones/milestone-8-pilot-measurement.md) are Product Ready
+and Engineering Ready. Implementation remains blocked until the
+documentation-only D0 PR merges and PR1 receives explicit authorization.
 
 ## Context
 
@@ -412,14 +414,13 @@ remote transmission has no accepted product or privacy scope.
 Rejected because the new boundary is not stable and current build evidence
 does not justify package/module overhead.
 
-## Approval gate
+## Implementation gate
 
 Implementation may begin only after:
 
-- the Product Owner and Technical Lead accept this ADR and Milestone 8
-  together;
+- the Product Owner and Technical Lead have accepted this ADR and Milestone 8
+  together — satisfied on `2026-09-14`;
 - the documentation-only D0 PR is merged;
-- Milestone 8 and this ADR are marked accepted;
 - PR1 is explicitly authorized.
 
 ## Related documents

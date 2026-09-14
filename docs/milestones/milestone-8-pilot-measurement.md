@@ -2,12 +2,14 @@
 
 ## Status
 
-`Proposed — Ready for D0 review`
+`Accepted — Product Ready and Engineering Ready`
 
 - Product decisions: **Accepted**.
-- Product Ready: **Yes when this D0 branch is accepted and merged**.
-- Engineering Ready: **Pending acceptance of ADR-015 in this D0 review**.
+- Product Ready: **Yes**.
+- Engineering Ready: **Yes**.
 - Implementation authorized: **No**.
+- Product Owner acceptance: `2026-09-14`.
+- Technical Lead acceptance: `2026-09-14`.
 - Milestone 7 is complete.
 - This branch promotes the accepted product behavior into the canonical
   documents but changes no application behavior.
@@ -352,9 +354,8 @@ and verify deletion preserves provenance and all other repositories.
 
 ## Delivery plan
 
-No implementation begins until D0 promotes the product decisions, extends the
-glossary, updates roadmap/backlog, accepts the ADR, and marks this document
-Product Ready and Engineering Ready.
+No implementation begins until this accepted documentation-only D0 PR merges
+and the Product Owner explicitly authorizes PR1.
 
 ```text
 D0 canonical documents + ADR
@@ -429,7 +430,7 @@ must remain isolated and merge before insights work.
 - [x] Extend the glossary with session, Pick, confirmation, provenance, and
       pilot-measurement terms.
 - [x] Draft the local decision persistence/reconciliation ADR.
-- [ ] Product Owner and Technical Lead accept this specification and ADR-015.
+- [x] Product Owner and Technical Lead accept this specification and ADR-015.
 - [ ] Merge the documentation-only D0 PR.
-- [ ] Mark this milestone and ADR-015 accepted after review.
+- [x] Mark this milestone and ADR-015 accepted after review.
 - [ ] Authorize PR1 explicitly after D0 is merged.

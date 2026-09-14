@@ -254,7 +254,8 @@ enough to proceed to the next product-definition cycle.
 Local Pilot Measurement
 
 Status:
-Proposed — D0 ready for review; implementation is not authorized
+Accepted — Product Ready and Engineering Ready; implementation begins only
+after D0 merges and PR1 is explicitly authorized
 
 Purpose:
 
@@ -275,11 +276,12 @@ keeping all measurement on-device. Trailers, whole-app localization, coach
 marks, visual long-search feedback, incorrect-availability feedback, and
 remote analytics remain outside Milestone 8.
 
-Implementation begins only after the Product Owner and Technical Lead accept
+The Product Owner and Technical Lead accepted
 [the executable specification](../milestones/milestone-8-pilot-measurement.md)
 and
-[ADR-015](../decisions/adr-015-local-decision-measurement-and-provenance.md),
-and the documentation-only D0 PR merges.
+[ADR-015](../decisions/adr-015-local-decision-measurement-and-provenance.md) on
+`2026-09-14`. Implementation begins only after the documentation-only D0 PR
+merges and PR1 is explicitly authorized.
 
 ### Milestone 9
 
