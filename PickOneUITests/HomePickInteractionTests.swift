@@ -48,6 +48,9 @@ final class HomePickInteractionTests: XCTestCase {
         XCTAssertTrue(app.buttons["home-cancel-pick"].waitForExistence(timeout: 15))
         XCTAssertEqual(pick.label, pickedLabel)
         XCTAssertTrue(app.buttons["home-recommendation-101"].exists, "Pick must preserve the recommendation")
+        let notice = app.staticTexts[language == "es" ? "Tienes una película elegida" : "You have a Pick"]
+        XCTAssertTrue(notice.waitForNonExistence(timeout: 8), "Pick feedback must dismiss automatically")
+        XCTAssertEqual(pick.label, pickedLabel, "Dismissing feedback must preserve the choice")
         let cancel = app.buttons["home-cancel-pick"]
         if !cancel.isHittable { app.swipeDown() }
         cancel.tap()

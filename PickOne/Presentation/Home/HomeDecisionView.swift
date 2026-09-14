@@ -82,10 +82,19 @@ private struct HomeDecisionContent: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            if let pickModel, let active = pickModel.activeDecision {
+            if showsActivePickControl, let pickModel, let active = pickModel.activeDecision {
                 HomeActivePickControl(model: pickModel, decision: active)
             }
             content
+        }
+        .toolbar {
+            if !showsActivePickControl, let pickModel, let active = pickModel.activeDecision {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Cancel Pick") { pickModel.cancel() }
+                        .disabled(pickModel.savingMovieIDs.contains(active.recommendation.movieID))
+                        .accessibilityIdentifier("home-cancel-pick")
+                }
+            }
         }
         .overlay(alignment: .top) {
             if let updateFeedback {
@@ -99,6 +108,11 @@ private struct HomeDecisionContent: View {
                     .accessibilityIdentifier("home-recommendations-updated")
             }
         }
+    }
+
+    private var showsActivePickControl: Bool {
+        guard let pickModel, let active = pickModel.activeDecision else { return false }
+        return pickModel.isShowingPickFeedback || pickModel.failedMovieIDs.contains(active.recommendation.movieID)
     }
 
     @ViewBuilder

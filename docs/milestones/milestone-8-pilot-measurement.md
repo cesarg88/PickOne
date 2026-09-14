@@ -82,6 +82,10 @@ No reaction never implies neutral or negative satisfaction.
 - Every Home recommendation has a visible, compact button with icon and
   `Pick` in English or `Elegir` in Spanish. It is not icon-only.
 - After durable success, the active recommendation shows `Picked` / `Elegida`.
+  The success notice dismisses automatically after three seconds; dismissal
+  preserves the active Pick. Cancellation remains accessible in Home after
+  the notice disappears, including when the picked card leaves the set
+  (Product Owner correction, 2026-09-14).
 - The accessibility label includes the movie title. Its hint explains that the
   action records the choice without marking the movie watched.
 - A Pick changes no watched state, Movie reaction, Taste Profile, Watchlist,

@@ -53,8 +53,10 @@ struct HomeActivePickControl: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Label("You have a Pick", systemImage: "checkmark.circle.fill")
-                .font(.subheadline)
+            if model.isShowingPickFeedback {
+                Label("You have a Pick", systemImage: "checkmark.circle.fill")
+                    .font(.subheadline)
+            }
             Button("Cancel Pick") { model.cancel() }
                 .disabled(model.savingMovieIDs.contains(decision.recommendation.movieID))
                 .accessibilityIdentifier("home-cancel-pick")

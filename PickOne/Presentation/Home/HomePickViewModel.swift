@@ -7,6 +7,9 @@ final class HomePickViewModel {
     private let manage: ManageViewingDecision
     private let clock: @Sendable () -> DecisionMoment
     private let sleep: @Sendable (Duration) async throws -> Void
+    private let feedbackSleep: @Sendable (Duration) async throws -> Void
+    @ObservationIgnored private var feedbackTask: Task<Void, Never>?
+    private(set) var isShowingPickFeedback = false
     @ObservationIgnored private var tail: Task<Void, Never>?
     @ObservationIgnored private var deadlineTask: Task<Void, Never>?
     private var homeSurface: ViewingDecisionSurface?
@@ -21,7 +24,8 @@ final class HomePickViewModel {
     init(
         manage: ManageViewingDecision,
         clock: (@Sendable () -> DecisionMoment)? = nil,
-        sleep: @escaping @Sendable (Duration) async throws -> Void = { try await Task.sleep(for: $0) }
+        sleep: @escaping @Sendable (Duration) async throws -> Void = { try await Task.sleep(for: $0) },
+        feedbackSleep: @escaping @Sendable (Duration) async throws -> Void = { try await Task.sleep(for: $0) }
     ) {
         self.manage = manage
         let runtimeID = UUID()
@@ -33,6 +37,7 @@ final class HomePickViewModel {
             return DecisionMoment(wall: Date(), monotonicSeconds: seconds, runtimeID: runtimeID)
         }
         self.sleep = sleep
+        self.feedbackSleep = feedbackSleep
     }
 
     func updateSurface(_ surface: ViewingDecisionSurface?) {
@@ -132,7 +137,14 @@ final class HomePickViewModel {
             do {
                 _ = try await manage.apply(operation)
                 let snapshot = try await manage.snapshot()
+                let previousDecisionID = activeDecision?.id
                 activeDecision = snapshot.activeDecision
+                if activeDecision == nil {
+                    feedbackTask?.cancel()
+                    isShowingPickFeedback = false
+                } else if case .pick = operation.action, activeDecision?.id != previousDecisionID {
+                    showPickFeedback()
+                }
                 scheduleDeadline(snapshot.openSession)
                 if let movieID {
                     pendingOperations[movieID] = nil
@@ -144,6 +156,19 @@ final class HomePickViewModel {
                 if let movieID { failedMovieIDs.insert(movieID) }
             }
             if let movieID { savingMovieIDs.remove(movieID) }
+        }
+    }
+
+    private func showPickFeedback() {
+        feedbackTask?.cancel()
+        isShowingPickFeedback = true
+        let feedbackSleep = feedbackSleep
+        feedbackTask = Task { [weak self] in
+            do {
+                try await feedbackSleep(.seconds(3))
+                try Task.checkCancellation()
+                self?.isShowingPickFeedback = false
+            } catch { return }
         }
     }
 
