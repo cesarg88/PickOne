@@ -2,16 +2,16 @@
 
 ## Status
 
-`Draft — Product Definition`
+`Draft — product decisions closed; canonical D0 promotion pending`
 
-- Product Ready: **No**. The Product Owner decisions listed under
-  [Open product questions](#open-product-questions) remain unresolved.
-- Engineering Ready: **No**. Technical contracts and the delivery slices are
-  proposals until the product behavior is accepted.
+- Product Ready: **Pending D0 promotion** to `PRODUCT.md`, roadmap, backlog,
+  glossary, and this specification.
+- Engineering Ready: **No**. The persistence and reconciliation ADR must be
+  accepted during D0.
 - Implementation authorized: **No**.
-- Milestone 7 is complete and no longer blocks product definition.
-- This document defines no production-code change and authorizes no
-  implementation pull request.
+- Milestone 7 is complete.
+- This branch changes documentation only and does not promote the draft into
+  the canonical product or engineering authorities.
 
 ## Authority and purpose
 
@@ -21,839 +21,412 @@
   [Product and Engineering Agent Delivery Model](../process/agent-delivery-model.md)
 - Product language:
   [Product Language Glossary](../product/product-language-glossary.md)
-- Related backlog items: IMP-005 and IMP-023
+- Related backlog: IMP-005 and IMP-023
 
 If this draft conflicts with `PRODUCT.md`, `PRODUCT.md` wins. If it conflicts
-with `ENGINEERING.md`, `ENGINEERING.md` wins. Accepted product decisions in
-this draft must be promoted to the canonical documents before implementation.
+with `ENGINEERING.md`, `ENGINEERING.md` wins.
 
-Milestone 8 must determine whether PickOne helps the household pilot make and
-complete a movie decision. It adds the minimum explicit product interactions
-and local evidence needed to evaluate that question. It does not optimize for
-engagement and does not introduce remote analytics.
+Milestone 8 measures whether PickOne helps the household pilot make and
+complete a movie decision. It adds explicit Pick and viewing-confirmation
+interactions, durable PickOne provenance, and a minimal local report. It does
+not optimize engagement or introduce remote analytics.
 
-## Product problem
+## Product problem and outcome
 
-Milestone 7 proved that PickOne can present useful, available recommendations
-and recover under prolonged feedback. It does not prove that a recommendation
-caused a decision, that the selected movie was watched, or that the result was
-satisfying.
+Milestone 7 proved that PickOne can produce useful, available recommendations.
+It did not prove that a recommendation caused a decision or a completed
+viewing. Detail opens, passive impressions, Watchlist intent, and ratings of
+previously watched movies cannot establish that outcome.
 
-Current signals are insufficient:
+Milestone 8 should let the pilot answer:
 
-- opening Detail is not a decision;
-- adding a title to Watchlist is future intent;
-- rating an already-seen recommendation is feedback about past viewing;
-- marking `Already watched` exposes a recommendation-quality problem, not a
-  PickOne-assisted decision;
-- a passive impression proves none of these outcomes.
+- How often does a recommendation session produce an explicit Pick?
+- How much foreground decision time passes before the first and final Pick?
+- How often is a Pick later confirmed as watched?
+- How satisfying are confirmed PickOne-assisted viewings?
+- How often does Home recommend a movie the Viewer already watched?
+- How many sets and expanded searches precede a decision?
 
-Milestone 8 therefore introduces an explicit `Pick` and a later explicit
-viewing confirmation. It records only the local pilot evidence needed to
-interpret the resulting decision funnel.
+These are local diagnostic signals for one household, not statistically valid
+experimentation. Qualitative Product Owner feedback remains required.
 
-## Accepted decisions
-
-The following product direction is accepted for this draft.
+## Accepted product decisions
 
 ### Measurement before trailers
 
 - Milestone 8 measures the decision experience first.
-- Trailer implementation is outside this milestone.
-- Trailers may be reconsidered only if pilot evidence shows that missing
-  confidence-building content is preventing decisions.
+- Trailers remain outside M8 and may return only when evidence justifies them.
+- Visual long-search feedback is deferred to the visual-improvement milestone.
+  M8 may record technical search duration, expansion, and outcome without new
+  search UI.
 
-### Local-only pilot measurement
+### Staged success
 
-- All Milestone 8 measurement remains on the device during the household
-  pilot.
-- There is no backend, external analytics SDK, account, cloud sync, or remote
-  event transmission.
-- Measurement must remain usable without network access.
+Success is a funnel, not one boolean:
 
-### Explicit Pick action
+| Stage | Required explicit evidence | Interpretation |
+|---|---|---|
+| Pick | Pick from a Home recommendation | PickOne supported a decision |
+| Confirmed watched | Pick plus `Sí, la vi` / `Yes, I watched it` | PickOne contributed to a completed viewing |
+| `Love it` / `Like it` | Optional confirmation reaction | Strong decision and recommendation-quality success |
+| `It was okay` | Optional confirmation reaction | Decision utility with neutral satisfaction |
+| `Didn't like it` | Optional confirmation reaction | Decision/viewing occurred, but recommendation quality was negative |
 
-- Every Home recommendation has a compact action with a selection icon.
-- The label is `Pick` in English and `Elegir` in Spanish.
-- After successful persistence, the selected recommendation shows `Picked` in
-  English and `Elegida` in Spanish.
-- A Pick records a session decision.
-- A Pick does not mark the movie watched, change its Movie reaction, update the
-  Taste Profile, or imply Watchlist intent.
-- Persistence is part of success. Presentation must not show `Picked` before
-  the decision is durably accepted.
+No reaction never implies neutral or negative satisfaction.
 
-### First-use explanation
+### Pick interaction
 
-- The first Home that contains recommendations presents a dismissible,
-  non-blocking coach mark explaining the Pick action.
-- The coach mark is shown once and its presented state is persisted.
-- It must be accessible with VoiceOver, Dynamic Type, Reduce Motion, and
-  keyboard or switch-control dismissal where supported.
-- Failure to show or persist the coach mark must never block Home or the Pick
-  action.
+- Every Home recommendation has a visible, compact button with icon and
+  `Pick` in English or `Elegir` in Spanish. It is not icon-only.
+- After durable success, the active recommendation shows `Picked` / `Elegida`.
+- The accessibility label includes the movie title. Its hint explains that the
+  action records the choice without marking the movie watched.
+- A Pick changes no watched state, Movie reaction, Taste Profile, Watchlist,
+  availability, eligibility, score, or Decision Set.
+- Only one Pick is active. The Viewer may replace or cancel it.
+- Replaced and cancelled Picks remain `superseded` or `cancelled` history.
+  Neither means watched, rejected, nor dissatisfied.
+- A coach mark is outside M8. Physical validation must test whether the
+  self-contained affordance is discovered and understood. A coach mark or
+  spotlight may be reconsidered in the visual milestone if evidence requires
+  it.
+
+### Recommendation session
+
+A session is one bounded attempt to decide from Home:
+
+- it begins when a valid Home surface displays at least one usable
+  recommendation while the app is active;
+- Detail opened from a recommendation observed in that session remains part of
+  the session;
+- `Give me three more` does not restart it: the action count increases and the
+  resulting visible Decision Set is recorded once;
+- only foreground intervals contribute to decision duration;
+- background pauses duration but wall-clock inactivity continues;
+- after 30 minutes with no activity, a session without an active Pick closes
+  as `abandoned` and is preserved; a session with an active Pick finalizes with
+  that decision;
+- after the boundary, the next valid Home/related Detail surface creates a new
+  session even if its card belongs to a Decision Set generated earlier;
+- attribution belongs to the session where the card was observed and selected,
+  not where its Decision Set was generated.
+
+The session preserves:
+
+- foreground time to the first successful Pick;
+- foreground time to the final active Pick;
+- observed Decision Set identities without duplicates;
+- explicit `Give me three more` actions;
+- superseded and cancelled Pick history.
+
+A Pick received without a trustworthy active session is still preserved. Its
+timing is `unavailable`, it is excluded from time-to-decision calculations, and
+no zero duration is fabricated. It remains eligible for confirmation and
+provenance.
 
 ### Viewing confirmation
 
-- PickOne later asks explicitly whether the selected movie was actually
-  watched.
-- No passive behavior is interpreted as viewing confirmation.
-- The exact timing, wording, choices, and state transitions remain a Product
-  Owner decision.
+- A pending Pick becomes eligible for confirmation when the Viewer returns to
+  Home at least 12 hours after the active Pick.
+- The prompt is non-blocking and offers:
+  - `Yes, I watched it` / `Sí, la vi`;
+  - `Not yet` / `Todavía no`;
+  - `I didn't watch it after all` / `Al final no la vi`.
+- `Not yet` postpones automatic presentation for 24 hours.
+- After three postponements, the prompt stops appearing automatically and the
+  decision remains in a compact pending-confirmations section in `My movies`.
+- `I didn't watch it after all` closes the outcome without watched state or
+  provenance.
+- `Yes, I watched it` commits watched state and durable PickOne provenance,
+  then immediately offers an optional second step: `What did you think?` /
+  `¿Qué te pareció?` with the four Movie reactions and `Not now` / `Ahora no`.
+- Watched confirmation and provenance never depend on answering satisfaction.
+- A reaction supplied there updates current Viewer Movie State and is captured
+  as the immutable satisfaction snapshot for that session.
+- Later reaction edits update current reaction and Taste Profile without
+  rewriting the historic snapshot.
 
 ### My movies provenance
 
-- `My movies` visually distinguishes a movie only when PickOne contributed to
-  it being watched.
-- Attribution requires both:
-  1. an explicit Pick from a Home recommendation; and
-  2. a later explicit confirmation that the selected movie was watched.
-- Rating or marking an already-seen Home recommendation does not create this
-  attribution.
-- The distinction communicates provenance, not satisfaction. The current
-  Movie reaction continues to communicate satisfaction.
+- A compact `PickOne` badge with icon appears only when an explicit Home Pick
+  was later confirmed watched.
+- Its accessibility label is `Chosen with PickOne` / `Elegida con PickOne`.
+- Provenance is visually and semantically independent from satisfaction.
+- `My movies` also exposes compact pending confirmations after their third
+  postponement.
+- Rating or marking an already-seen recommendation without Pick never creates
+  provenance.
+- Marking a movie unwatched hides the badge. It does not erase retained session
+  history or fabricate a different outcome.
 
-### Staged success semantics
+### Local measurement and lifecycle
 
-Success is interpreted as a funnel rather than one boolean:
+- Measurement stays on-device. There is no backend, analytics SDK, account,
+  sync, or remote transmission.
+- Completed sessions are retained for 180 days.
+- `Pilot insights` in Settings presents a local aggregate and supports local
+  export and deletion of measurement only.
+- Deletion or retention never removes Viewer Profile, watched state, reactions,
+  Watchlist, Search History, Decision Sets, or durable PickOne provenance.
+- Reset preferences preserves provenance while watched remains true.
+- M8 records:
+  - funnel stage counts;
+  - foreground time to first and final Pick;
+  - sets observed and `Give me three more` actions;
+  - confirmations, postponements, and optional satisfaction snapshots;
+  - successful `Already watched` actions originating from Home;
+  - semantic technical search duration, expansion, and outcome.
+- It does not capture exhaustive passive navigation, raw Search/Ask text, or
+  unrelated UI activity.
+- The Home already-watched rate uses distinct recommendation movie IDs observed
+  per session so redraws and reconciliation do not inflate its denominator.
 
-1. **Picked** — the Viewer made an explicit session decision.
-2. **Confirmed watched** — the Viewer later confirmed that the Pick was
-   watched.
-3. **Satisfaction** — the confirmed viewing has an explicit Movie reaction.
+### Localization and availability feedback
 
-The accepted interpretation is:
-
-| Outcome | Evidence | Interpretation |
-|---|---|---|
-| Pick only | Explicit Pick | PickOne supported a decision; viewing is unknown |
-| Confirmed watched | Pick + explicit confirmation | PickOne contributed to a completed viewing |
-| `Love it` / `Like it` | Confirmed viewing + reaction | Strong product and recommendation-quality success |
-| `It was okay` | Confirmed viewing + reaction | Decision utility with neutral satisfaction |
-| `Didn't like it` | Confirmed viewing + reaction | Decision/viewing occurred, but recommendation quality was negative |
-
-The absence of a later reaction is not silently interpreted as neutral or
-negative satisfaction.
-
-### Existing Home feedback evidence
-
-- Milestone 8 records locally how often recommendations are marked `Already
-  watched` directly from Home.
-- This evidence informs whether a later `Improve recommendations` experience is
-  justified.
-- Milestone 8 does not expand onboarding, infer additional watched state, or
-  change the accepted Viewer Movie State transition.
-
-### Long-search feedback
-
-- Home must provide honest visual feedback while a prolonged progressive
-  search is still running.
-- The treatment must not expose internal page numbers, fabricate a percentage,
-  or promise a result.
-- The exact copy, timing, and interaction remain open.
-
-## Desired product outcomes
-
-Milestone 8 should let the household pilot answer:
-
-- How often does a recommendation session produce an explicit Pick?
-- How long does it take to Pick after usable recommendations first appear?
-- How often is a Pick later confirmed as watched?
-- How satisfying are confirmed PickOne-assisted viewings?
-- How often does Home recommend a title the Viewer has already watched?
-- How often does a decision require another set or the extreme expanded-search
-  path?
-- Where does the flow fail: no Pick, no viewing, or negative satisfaction?
-
-These are diagnostic pilot questions, not claims of statistical significance.
-The Product Owner's qualitative account remains part of the evidence.
+- Every new or modified M8 surface is localized in English and Spanish through
+  a String Catalog.
+- Whole-app translation is deferred to Milestone 9.
+- `Didn't like it` measures dissatisfaction with the movie recommendation.
+- A separate `Availability is incorrect` action is outside M8 and remains a
+  backlog candidate only if real availability errors justify it. It must never
+  alter Taste Profile when introduced.
 
 ## Open product questions
 
-Implementation must not begin until the Product Owner resolves the following
-questions. The Technical Lead recommendation is included to make each choice
-concrete; it is not accepted behavior.
+None. Product decisions are closed for D0 promotion.
 
-### 1. Recommendation-session definition
+## Technical contract proposed for D0 acceptance
 
-**Decision required:** define when a session begins, resumes, and ends, and how
-an abandoned session is represented.
+### Authorities and dependency direction
 
-**Technical Lead proposal:** a session begins when a non-empty Home Decision
-Set first becomes visible while the app is active. It spans Home and Movie
-Detail navigation. It ends on a successful Pick, explicit abandonment if one
-is introduced, or 30 minutes without foreground interaction. A relaunch or
-brief background transition resumes the same session inside that limit.
+Pick and measurement do not belong in a Decision Set. Keep the existing
+dependency direction `Presentation → Domain ← Data` and use semantic Domain
+operations rather than a generic analytics API.
 
-This provides a defensible time-to-decision denominator without treating app
-launch, onboarding, network recovery, or background time as decision time.
+Two local authorities have different lifecycles:
 
-### 2. Viewing-confirmation timing and choices
+1. `ViewerMovieStateRepository` owns current watched, reaction, Watchlist,
+   `Not interested`, and the durable per-movie PickOne viewing provenance.
+   Provenance does not affect P1, Taste Profile, eligibility, or availability.
+2. A new `ViewingDecisionRepository` owns sessions, Pick history, pending
+   confirmations, immutable satisfaction snapshots, diagnostic search evidence,
+   retention, and local-report inputs.
 
-**Decision required:** define when the question appears, whether it may be
-dismissed, and the exact answer choices.
+`PilotMeasurementSummary` is derived, never persisted as a second source of
+truth. Existing movie repositories supply display metadata; measurement does
+not duplicate titles, posters, or provider payloads.
 
-**Technical Lead proposal:** ask before the next independent Home decision
-attempt, after a reasonable viewing window. Offer `Watched`, `Not yet`, and
-`Didn't watch`. `Not yet` postpones the prompt; `Didn't watch` closes the
-decision without attribution. The prompt must not block use of other tabs.
+No physical Swift module or package is justified. Use folders and protocols in
+the current modular monolith and reconsider only after the boundary stabilizes
+or build measurements justify extraction.
 
-The waiting period and final localized copy require Product Owner acceptance.
+### Semantic model
 
-### 3. Changing or cancelling a Pick
+Working names must remain semantic and contain no milestone or PR identifiers.
 
-**Decision required:** decide whether a Viewer may undo a Pick or replace it
-with another recommendation from the same session.
+- `DecisionSessionID` and `ViewingDecisionID` are opaque, non-reusable IDs.
+- A session owns start/end, foreground intervals or accumulated duration,
+  wall-clock last activity, observed Decision Set IDs, refresh count, search
+  evidence, and its decision chain.
+- A viewing decision owns movie ID, source Decision Set/cycle/role, Pick time,
+  status, confirmation eligibility, postponements, outcome, and optional
+  satisfaction snapshot.
+- Every mutation is idempotent under a stable operation identity.
+- A recovered Pick with unreliable timing uses an explicit unavailable value.
+- Current display state joins these records with existing movie and Viewer
+  Movie State repositories.
 
-**Technical Lead proposal:** allow at most one active Pick per session. Picking
-another card requires an explicit replacement action and preserves the earlier
-record as superseded. The selected card offers a discreet cancel/change path.
-Cancellation removes pending confirmation but never deletes diagnostic
-history.
+### Confirmation reconciliation
 
-### 4. Retention, deletion, and export
+Confirmation crosses two repositories and therefore requires a persisted,
+idempotent operation:
 
-**Decision required:** define how long local pilot records are kept, whether
-the Viewer can delete them independently, and how the pilot evidence is read.
+1. record the pending confirmation operation locally;
+2. atomically apply watched plus durable provenance in Viewer Movie State;
+3. apply an optional reaction through the accepted Viewer Movie State reducer;
+4. finalize the session outcome and optional satisfaction snapshot;
+5. reconcile any incomplete operation on relaunch.
 
-**Technical Lead proposal:** retain at most 180 days of completed sessions,
-keep the active pending decision regardless of age, expose a Settings `Pilot
-insights` summary, and provide an explicit share/export action for a
-human-readable report. Deletion requires confirmation and affects measurement
-only, never Viewer Profile, Viewer Movie State, Watchlist, Search History, or
-Decision Sets.
+Presentation shows provenance only after Viewer Movie State accepted it. A
+later measurement write failure never rolls back watched/provenance; the
+pending operation remains retryable. The D0 ADR must own this ordering,
+migration, and recovery contract.
 
-### 5. My movies attribution treatment
+### Presentation and concurrency
 
-**Decision required:** accept the exact badge/icon and localized copy.
-
-**Technical Lead proposal:** show a compact provenance badge `Chosen with
-PickOne` / `Elegida con PickOne` only after confirmed viewing. Keep the Movie
-reaction adjacent and visually independent.
-
-### 6. Availability feedback scope
-
-**Decision required:** decide whether Milestone 8 includes an explicit
-`Availability is wrong` action and how it affects metrics.
-
-**Technical Lead proposal:** keep it out of the initial slice unless the pilot
-needs an explicit way to distinguish a bad recommendation from stale provider
-evidence. Continue recording existing eligibility loss and unknown evidence as
-technical diagnostics, not Viewer feedback.
-
-### 7. Localization scope
-
-**Decision required:** decide whether partial English/Spanish localization is
-acceptable or whether every affected Home, confirmation, `My movies`, and
-Settings surface must be localized together.
-
-The app currently has English as its development region and no existing string
-catalog. Adding only `Pick` and `Picked` would create a mixed-language
-experience.
-
-**Technical Lead proposal:** introduce one `Localizable.xcstrings` catalog and
-localize every new or changed Milestone 8 string in English and Spanish. Do not
-silently expand the milestone into whole-app translation; track remaining
-legacy hardcoded strings as separate localization debt.
-
-### 8. Local measurement readout
-
-**Decision required:** define who reads the evidence and through which product
-surface.
-
-**Technical Lead proposal:** add `Pilot insights` under Settings with aggregate
-counts and medians plus an explicit local export/share action. A developer log
-alone is not a usable pilot measurement system, while an always-visible
-consumer dashboard would overstate the feature's importance.
-
-### 9. Long-search feedback
-
-**Decision required:** accept exact copy, delay thresholds, and whether the
-message changes as the search expands.
-
-**Technical Lead proposal:** retain the existing immediate loading state, then
-switch to non-numeric copy such as `Still checking more options…` after a short
-foreground delay. The state disappears on result, exhaustion, cancellation,
-or failure. Do not show paging or request counts.
-
-### 10. Satisfaction evidence over time
-
-**Decision required:** decide whether a completed session reports the Movie
-reaction at confirmation time or the current reaction when the report is read.
-
-**Technical Lead proposal:** preserve the reaction explicitly provided during
-or after confirmation as the immutable historic outcome. Later edits continue
-to update the current reaction in `My movies` and Taste Profile but do not
-rewrite what the pilot recorded for the earlier session.
-
-## Technical Lead proposal
-
-This section is an engineering proposal conditioned on the open product
-decisions. It is not yet an accepted contract.
-
-### Boundary and ownership
-
-Pick and pilot measurement are not Viewer Movie State:
-
-- a Pick is a time-bounded decision, not watched state;
-- viewing confirmation is historical attribution, not current preference;
-- a measurement record must not change recommendation eligibility or Taste
-  Profile;
-- a Decision Set remains the recommendation result, not an analytics/event
-  container.
-
-Create a dedicated Domain boundary, provisionally named
-`ViewingDecisionRepository`, for typed local decision records. Do not expose a
-generic `track(name:properties:)` analytics API.
-
-```text
-Presentation ──> Domain use cases ──> ViewingDecisionRepository
-     │                    │                       ▲
-     │                    │                       │
-     └──────── reads existing Decision Set        Data actor + local envelope
-
-ViewerMovieStateRepository ──> current reaction/watched projection
-```
-
-Dependency direction remains `Presentation → Domain ← Data`. The repository
-protocol and semantic values belong to Domain; DTOs, encoding, recovery, and
-storage belong to Data; coach marks, buttons, prompts, and reporting views
-belong to Presentation.
-
-No physical Swift module or package is justified. The boundary is new and its
-product semantics are still evolving. Keep it isolated by folders and
-protocols inside the current modular monolith, then reconsider a module only
-after the contract is accepted and stable or build measurements justify it.
-
-### Proposed Domain concepts
-
-Names are semantic working names and must not contain milestone or PR labels.
-
-#### `DecisionSession`
-
-Represents one bounded attempt to choose from Home. Its final fields depend on
-the accepted session definition, but should use:
-
-- opaque, non-reusable `DecisionSessionID`;
-- start and optional end timestamps;
-- foreground decision duration rather than unqualified wall-clock duration;
-- zero or more Decision Set identities observed in that session;
-- number of explicit `Give me three more` actions;
-- Home-originated `Already watched` corrections;
-- optional active or terminal viewing decision.
-
-#### `ViewingDecision`
-
-Represents an explicit Pick and its later outcome:
-
-- opaque, non-reusable `ViewingDecisionID`;
-- source Decision Set ID and recommendation-cycle identity;
-- TMDB movie ID and recommendation role;
-- selected timestamp;
-- pending, superseded, cancelled, watched, or not-watched outcome as accepted
-  by Product;
-- optional confirmation timestamp;
-- optional satisfaction evidence with its capture timestamp.
-
-Persist identities and semantic evidence, not duplicated full movie metadata.
-Presentation obtains current display metadata through existing movie and Viewer
-Movie State boundaries.
-
-#### `HomeRecommendationCorrection`
-
-Records only a successful `Already watched` action that originated from a Home
-recommendation. Detail actions, calibration answers, passive appearances, and
-pre-existing watched state do not count.
-
-The Product Owner must define the denominator before a rate is reported: card
-appearances, distinct recommended titles, or recommendation sessions. The
-Technical Lead recommends distinct recommended titles per session to prevent
-reconciliation redraws from inflating the metric.
-
-#### `PilotMeasurementSummary`
-
-A calculated Domain projection rather than a persisted second source of truth.
-It may include:
-
-- sessions started and completed with Pick;
-- median foreground time to Pick;
-- Picks confirmed watched;
-- confirmed outcomes by satisfaction class;
-- Home already-watched correction rate;
-- new-set requests per session;
-- prolonged-search and exhausted-result counts.
-
-Summary values must be derived from valid retained records.
-
-### Proposed use cases
-
-- `StartOrResumeDecisionSession`
-- `PickRecommendation`
-- `ReplaceOrCancelPick` if accepted
-- `GetPendingViewingConfirmation`
-- `ConfirmViewingOutcome`
-- `RecordHomeAlreadyWatchedCorrection`
-- `RecordDecisionSearchOutcome`
-- `GetPilotMeasurementSummary`
-- `DeletePilotMeasurementHistory` if accepted
-- `ExportPilotMeasurementReport` if accepted
-
-These are semantic boundaries, not mandated concrete type names. One focused
-use case may own more than one operation when doing so keeps invariants atomic.
-
-### Pick sequence
-
-```mermaid
-sequenceDiagram
-    participant V as Viewer
-    participant H as Home Presentation
-    participant U as PickRecommendation
-    participant D as ViewingDecisionRepository
-
-    V->>H: Pick recommendation
-    H->>U: Decision Set ID, cycle, movie ID, role
-    U->>D: Persist validated session decision
-    alt Persisted
-        D-->>U: Current decision snapshot
-        U-->>H: Success
-        H-->>V: Picked / Elegida
-    else Persistence unavailable
-        D-->>U: Typed failure
-        U-->>H: Retryable failure
-        H-->>V: Pick remains available; no false success
-    end
-```
-
-The use case verifies that the recommendation belongs to the current accepted
-Decision Set and that the source identity is internally consistent. It does
-not re-run scoring or mutate Home.
-
-### Viewing confirmation and attribution
-
-Confirmation must orchestrate two separate meanings:
-
-1. persist the historical viewing outcome for the Pick; and
-2. apply the accepted current Viewer Movie State transition when the Viewer
-   confirms watched or supplies a reaction.
-
-These repositories cannot be committed atomically as one transaction under
-the current architecture. The final specification must define retry and
-reconciliation before implementation. The Technical Lead proposal is an
-idempotent coordinator with stable operation identity:
-
-- first ensure the Viewer Movie State transition is accepted;
-- then persist confirmation attribution;
-- on relaunch, reconcile any durable incomplete operation;
-- never show provenance until both meanings are durable;
-- never roll back an already-accepted watched fact solely because attribution
-  persistence failed.
-
-This decision likely merits a short ADR together with the local persistence
-boundary.
-
-### Presentation state
-
-Home should extend its existing deterministic view state rather than create a
-parallel screen model:
-
-- each visible card derives `canPick`, `isPicking`, and `isPicked` from the
-  active local decision;
-- only the selected card shows in-flight progress;
-- other feedback actions remain available according to current M7 behavior;
-- stale Pick completions from replaced Home state are ignored by Presentation,
-  while the persisted historical decision remains valid if Domain accepted it;
-- cancellation propagates through Swift concurrency and never fabricates
-  failure or success;
-- write failure leaves the action retryable and announces an accessible error.
-
-The coach mark should prefer native TipKit when it can satisfy exact one-time
-presentation, dismissal, accessibility, and deterministic test control. Its
-datastore should remain local. If those conditions cannot be verified, use a
-small custom Presentation component backed by the same persisted local
-preference; do not introduce a third-party coach-mark dependency.
-
-Long-search feedback should be driven by elapsed foreground time or a semantic
-Domain progress state. Presentation must not infer TMDB page numbers from
-incidental implementation details.
-
-### Concurrency
-
-- The Data repository is an actor and the sole mutable owner of its envelope.
+- Existing `@MainActor` view models own UI state and structured task lifetime.
+- The measurement repository is an actor and the sole mutable owner of its
+  envelope.
 - Domain values crossing isolation boundaries are `Sendable`.
-- A session mutation is serialized and idempotent under a stable operation or
-  decision identity.
-- Presentation mutation runs from `@MainActor` and does not launch unstructured
-  work whose lifetime outlives the owning view model.
-- Search diagnostics receive semantic completion events from the existing Home
-  coordinator; measurement must not introduce a second recommendation search.
-- Late or cancelled work cannot replace a newer session or Pick state.
+- Only the affected card shows Pick progress or failure.
+- Stale completions cannot replace newer Pick/session state.
+- App lifecycle signals start/pause foreground timing; repository timestamps
+  remain injectable for deterministic tests.
+- Measuring search consumes semantic outcomes from the existing coordinator
+  and never launches another candidate or availability request.
+
+### Future remote delivery
+
+Local state remains authoritative. Records use stable semantic IDs, event
+meaning, timestamps, and schema versions so a future Data adapter can derive a
+typed outbox.
+
+A future integration may add asynchronous, idempotent delivery through a
+vendor-neutral port and explicit property allowlist. M8 does **not** add an
+outbox, `MeasurementDelivery`, SDK, network request, or
+`track(name:properties:)`. Mixpanel/Firebase concerns must never enter Domain.
 
 ## Privacy and persistence
 
-### Data minimization
+Use a separately versioned JSON envelope in Application Support, actor-owned
+and independent from other repositories. It stores only opaque IDs, TMDB movie
+IDs, recommendation identities/roles, required timestamps/durations, explicit
+actions, and bounded search evidence.
 
-The proposed envelope stores only the evidence required for the accepted
-pilot questions:
+It must not store names, account/device advertising identity, raw prompts,
+Search text, full movie metadata, provider payloads, or passive navigation.
 
-- opaque local identifiers;
-- TMDB movie IDs, Decision Set/cycle identities, and recommendation roles;
-- timestamps or foreground durations required for the funnel;
-- explicit Pick, confirmation, satisfaction, and Home correction actions;
-- bounded technical search outcome and duration evidence;
-- persisted coach-mark state.
-
-It must not store:
-
-- names, account identity, device advertising identity, or household-member
-  identity;
-- raw search text or future Ask prompts;
-- synopsis, poster data, provider payloads, or full movie metadata;
-- passive navigation histories or every UI interaction;
-- credentials or remote analytics identifiers.
-
-### Proposed storage
-
-Use one independently versioned JSON envelope in Application Support, owned by
-the actor repository. Do not add measurement fields to Viewer Profile, Viewer
-Movie State, Decision Set, Search History, or Watchlist persistence.
-
-The envelope should follow existing repository guarantees:
+The Data implementation must:
 
 - encode and validate a complete envelope before replacement;
-- preserve one previous valid copy;
-- recover from the previous valid copy or a defined legacy migration;
-- quarantine exact corrupt or unsupported bytes for diagnosis;
-- never fabricate empty measurement history after failed decoding;
-- make schema migration explicit and tested;
-- apply accepted retention only after successful decoding and validation.
+- retain one previous valid copy;
+- migrate only known schemas;
+- quarantine exact corrupt or unsupported bytes;
+- never fabricate empty history after failed decoding;
+- prune eligible completed sessions older than 180 days only after successful
+  validation;
+- retain active Picks and pending confirmations regardless of age;
+- keep measurement deletion isolated from durable provenance and all existing
+  repositories.
 
-Measurement unavailability must not block recommendations, feedback, Search,
-Watchlist, or `My movies`. A failed Pick write cannot claim `Picked`, but Home
-remains otherwise usable. A corrupt measurement envelope should preserve bytes,
-attempt recovery, and expose a retryable measurement failure without asking the
-Viewer to reset unrelated application data.
+Measurement failure cannot block Home, Search, Watchlist, feedback, or
+`My movies`. A failed Pick write cannot claim `Picked`, but leaves a retryable
+action. An unavailable local report shows unavailable, never invented zeroes.
 
-Deletion and export behavior remain blocked on the Product Owner's retention
-decision.
+Viewer Movie State requires a versioned migration for durable provenance.
+Existing records migrate without provenance; M8 never infers it from watched or
+reaction history.
 
-## Failure behavior
+## Acceptance and tests
 
-| Failure | Proposed behavior |
-|---|---|
-| Pick persistence fails | Keep card unpicked, show accessible retry, leave Home usable |
-| Coach-mark persistence fails | Do not block Home; suppress repeat in memory and retry persistence later |
-| Session recovery fails | Preserve bytes, disable measurement mutation, keep core product usable |
-| Viewing-state update fails | Keep confirmation unresolved and retryable; do not claim watched attribution |
-| Attribution persistence fails after watched succeeds | Preserve watched state; keep pending reconciliation and withhold provenance badge |
-| Local report cannot decode | Preserve source bytes and show an unavailable state, never invented zero metrics |
-| App backgrounds during timing | Stop foreground decision duration; resume only under accepted session rules |
-| Search is cancelled or superseded | Record no failure and no completed search outcome for cancelled work |
+### Domain and Data
 
-## Acceptance criteria
+- session start, related Detail, refresh, foreground/background, 30-minute
+  boundary, abandonment, old-set reuse, and timing-unavailable fallback;
+- first/final Pick timing, replacement, cancellation, and duplicate-operation
+  idempotency;
+- confirmation eligibility at 12 hours, three 24-hour postponements, manual
+  pending access, watched/not-watched outcomes, and optional reaction snapshot;
+- provenance requires Pick plus explicit watched confirmation and never affects
+  Taste Profile or recommendation gates;
+- active/previous/migration/quarantine/relaunch and partial-operation recovery;
+- 180-day pruning preserves active work and measurement deletion preserves all
+  non-measurement state;
+- exact aggregate metrics and already-watched deduplication from fixed fixtures;
+- concurrency serialization and cancellation under Swift 6.
 
-These criteria combine accepted behavior and conditional technical proposals.
-They become executable only after the open product questions are resolved.
+### Presentation and integration
 
-### Pick and session
-
-- Every Home recommendation exposes an accessible localized Pick action.
-- A successful Pick survives relaunch and shows only on its selected card.
-- Pick changes no Viewer Movie State, Taste Profile, Watchlist, eligibility,
-  score, Decision Set, or recommendation-cycle history.
-- A failed write never presents success and remains retryable.
-- Session timing excludes background duration and does not start before a
-  usable non-empty Decision Set is visible.
-- Duplicate taps and retried operations are idempotent.
-
-### Coach mark
-
-- It appears on the first Home with recommendations and never blocks the cards.
-- Dismissal/presentation survives relaunch according to the accepted one-time
-  rule.
-- It does not appear on loading, failure, or honest empty Home.
-- VoiceOver explains both the coach mark and the Pick action without relying on
-  the icon alone.
-
-### Confirmation and provenance
-
-- Only explicit Pick plus explicit watched confirmation creates PickOne
-  provenance.
-- Rating or `Already watched` without a Pick never creates provenance.
-- `My movies` distinguishes provenance independently of the current reaction.
-- Pending, postponed, cancelled, superseded, watched, and not-watched outcomes
-  follow the accepted product transition table.
-- Partial cross-repository completion is recoverable after relaunch without
-  losing the watched fact or inventing attribution.
-
-### Measurement
-
-- The report derives staged success without collapsing neutral or negative
-  satisfaction into success or failure.
-- Home-originated `Already watched` evidence excludes Detail, calibration, and
-  pre-existing state.
-- Reconciliation, card redraw, and relaunch do not double-count a recommendation
-  or operation.
-- Long-search evidence reuses the actual coordinator operation and adds no
-  search request.
-- All persisted data remains local and contains no forbidden properties.
-
-### Localization and long-search UX
-
-- Accepted Milestone 8 strings exist in English and Spanish in the chosen
-  string-catalog scope.
-- Duplicate localization keys and hardcoded variants cannot diverge.
-- Prolonged search displays honest accessible feedback without percentages,
-  page counts, or promises.
-- Result, exhaustion, cancellation, and failure remove the prolonged-search
-  state deterministically.
-
-## Test strategy
-
-### Domain tests
-
-- session start/resume/end and foreground-duration boundaries;
-- Pick validation against the current Decision Set identity;
-- repeated Pick idempotency and accepted replacement/cancellation transitions;
-- staged outcome classification for Pick, watched confirmation, and each Movie
-  reaction;
-- provenance requires Pick plus confirmed watched;
-- direct reaction and `Already watched` do not create provenance;
-- Home correction denominator and deduplication;
-- summary calculation from retained records;
-- retention and deletion once accepted.
-
-### Data tests
-
-- clean round-trip and deterministic encoding of the versioned envelope;
-- actor serialization under concurrent mutations;
-- active, previous-valid, migration, unsupported-schema, corrupt-data, and
-  quarantine paths;
-- exact bytes survive failed recovery and replacement;
-- relaunch during pending cross-repository confirmation reconciliation;
-- retention never removes an active pending decision;
-- no network client or external analytics dependency exists.
-
-### Presentation tests
-
-- first-use coach mark, dismissal, persistence, and no-result suppression;
-- Pick/loading/Picked/failure/retry per-card states;
-- VoiceOver labels, focus order, Dynamic Type, and Reduce Motion;
-- accepted Pick replacement/cancellation interaction;
-- viewing-confirmation timing and postponement;
-- `My movies` provenance badge with and without a current reaction;
-- prolonged-search timing, cancellation, replacement, and terminal states;
-- English and Spanish snapshots or semantic string assertions for both equal
-  and longer translated labels.
-
-### Integration and regression tests
-
-- launch with an existing final-M7 installation and preserve every current
-  repository unchanged;
-- Home Pick → relaunch → pending confirmation → confirmed watched → `My movies`
-  provenance;
-- Home direct rating/`Already watched` without Pick → no provenance;
-- Pick does not regenerate Home or change Taste Profile;
-- M7 quick feedback, bounded suppression, rollover, exhaustion, Watchlist,
-  Search History, and recalibration remain unchanged;
-- partial persistence failure recovers after relaunch;
-- local summary and export, if accepted, match known event fixtures exactly.
+- localized visible Pick/Picked control, title-specific accessibility label,
+  semantic hint, per-card progress, failure, and retry;
+- physical discoverability without coach mark, VoiceOver, Dynamic Type, and
+  English/Spanish configurations;
+- non-blocking Home confirmation, postponement, optional reaction, and
+  `My movies` pending section;
+- PickOne badge only for confirmed provenance and hidden while unwatched;
+- `Pilot insights` summary, export, and measurement-only deletion;
+- Home direct rating or `Already watched` without Pick creates no provenance;
+- Pick alone does not regenerate Home or mutate current movie state;
+- M7 recovery, quick feedback, Watchlist, Search History, recalibration, and
+  existing installed data remain unchanged;
+- technical search evidence adds no requests and no long-search UI.
 
 ### Physical-device validation
 
-On the Product Owner's retained iPhone installation:
+Install over the retained final-M7 app without deleting data. Verify existing
+state survives, discover and understand Pick without a tutorial, replace and
+cancel choices, relaunch before confirmation, exercise all confirmation paths,
+confirm the badge/reaction separation, inspect/export/delete Pilot insights,
+and verify deletion preserves provenance and all other repositories.
 
-- install over the final M7 build without deleting data;
-- confirm existing Home, profile, Viewer Movie State, Watchlist, Search History,
-  and `My movies` survive;
-- use Pick in English and Spanish device-language configurations as accepted;
-- relaunch before confirmation and verify the pending decision survives;
-- confirm watched and verify provenance plus independent reaction display;
-- rate an already-seen Home card and verify it does not gain provenance;
-- exercise one prolonged twenty-page recovery and record the feedback timing
-  and total latency without persisting debug-only instrumentation;
-- inspect the local report/export against the performed actions;
-- validate VoiceOver and the largest supported Dynamic Type size.
+## Delivery plan
 
-## Proposed delivery slices
-
-No slice is authorized until this document is Product Ready and its technical
-proposal is accepted as Engineering Ready. Each implementation PR starts from
-the latest `develop`, remains independently green where dependencies allow,
-uses semantic names, and closes only its own accepted scope.
+No implementation begins until D0 promotes the product decisions, extends the
+glossary, updates roadmap/backlog, accepts the ADR, and marks this document
+Product Ready and Engineering Ready.
 
 ```text
-D0 accepted product + ADR + canonical document updates
- └── PR1 typed local decision contracts and persistence
-      └── PR2 Home session, Pick, and coach mark
-           ├── PR3 viewing confirmation and My movies provenance
-           └── PR4 long-search feedback and Home correction measurement
-                └── PR5 local pilot readout/export
-                     └── PR6 integration, physical validation, and M8 closure
+D0 canonical documents + ADR
+ └── PR1 Pick and session
+      └── PR2 confirmation and provenance
+           └── PR3 Pilot insights
+                └── PR4 integration and closure
 ```
 
-### D0 — Product and engineering acceptance
+### PR1 — Pick and session vertical slice
 
-Outcome:
+Add typed Domain contracts, actor-owned local persistence, session lifecycle,
+Pick/replace/cancel, English/Spanish affordance, recovery, and focused tests.
+The outcome is observable and independently validatable. Defer confirmation,
+provenance, insights, and remote-delivery abstractions.
 
-- resolve every open product question;
-- update `PRODUCT.md`, roadmap, IMP-005, and IMP-023;
-- extend the Product Language Glossary with `Decision session`, `Pick`,
-  `Viewing confirmation`, `PickOne-assisted viewing`, and `Pilot measurement`;
-- add an ADR for the separate local decision aggregate, versioned persistence,
-  cross-repository confirmation reconciliation, privacy, and recovery;
-- mark the milestone Product Ready and Engineering Ready only after joint
-  acceptance.
+### PR2 — Confirmation and provenance
 
-No production code.
+Add eligibility/postponement behavior, optional satisfaction step, the
+idempotent cross-repository operation, Viewer Movie State provenance migration,
+`My movies` badge/pending section, and relaunch recovery.
 
-### PR1 — Local decision Domain and persistence foundation
+### PR3 — Pilot insights
 
-Outcome:
+Add funnel and Home/search evidence, derived summary, Settings presentation,
+local export, 180-day retention, and measurement-only deletion. Do not add
+availability feedback or long-search UI.
 
-- typed Domain identities, records, invariants, summary projection, and
-  repository contract;
-- actor-owned Data implementation with versioned envelope, recovery,
-  quarantine, retention hooks, and test fixtures;
-- composition-root wiring without user-visible behavior.
+### PR4 — Integration and closure
 
-Verification:
+Add no new behavior. Prove final-M7 upgrade, prolonged/relaunch journeys,
+privacy and regression coverage, complete physical validation, and close the
+milestone, ADR, roadmap, and backlog documentation.
 
-- focused Domain/Data suites, concurrency serialization, recovery, migration,
-  privacy-schema audit, and full `make verify`.
+## Risks
 
-Deferred: Home UI, coach mark, confirmation, provenance, long-search UI, and
-reporting.
+| Risk | Required mitigation |
+|---|---|
+| Session ambiguity corrupts time-to-decision | Accepted lifecycle, injectable clocks, unavailable rather than zero |
+| Measurement couples to current movie state | Separate repositories and explicit authorities |
+| Partial confirmation write creates disagreement | Persisted idempotent reconciliation |
+| Retention erases user-visible provenance | Provenance lives durably in Viewer Movie State |
+| Reconciliation inflates metrics | Stable IDs and per-session deduplication |
+| Mixed-language UI | String Catalog for every affected M8 surface |
+| Measurement corruption blocks core use | Independent failure boundary and recovery |
+| Generic analytics abstraction leaks vendors | Typed semantic records; remote outbox deferred |
+| Local evidence cannot be evaluated | Pilot insights plus explicit export |
 
-### PR2 — Home session, Pick, and coach mark
-
-Depends on PR1.
-
-Outcome:
-
-- accepted session lifecycle around current Home navigation;
-- localized per-card Pick interaction and durable Picked state;
-- accessible one-time coach mark;
-- failure/retry and relaunch behavior.
-
-Verification:
-
-- focused view-model/UI tests, localization, accessibility, cancellation,
-  idempotency, M7 Home regression, and physical Pick smoke.
-
-Deferred: viewing confirmation and My movies provenance.
-
-### PR3 — Viewing confirmation and My movies provenance
-
-Depends on PR2.
-
-Outcome:
-
-- accepted confirmation timing, choices, and transitions;
-- idempotent cross-repository orchestration and relaunch reconciliation;
-- provenance projection and independent `My movies` presentation.
-
-Verification:
-
-- every transition, partial failure, relaunch, direct-rating non-attribution,
-  localization, accessibility, and physical confirmation journey.
-
-### PR4 — Long-search and recommendation-correction evidence
-
-Depends on PR2. May be developed after PR2 while PR3 proceeds only if the
-branches do not edit the same Home state/coordinator files; otherwise deliver
-sequentially.
-
-Outcome:
-
-- accepted prolonged-search feedback driven by semantic coordinator state;
-- local Home-originated `Already watched`, new-set, exhaustion, and search
-  duration evidence;
-- no new candidate or availability requests.
-
-Verification:
-
-- fake-clock thresholds, cancellation/supersession, exact deduplication,
-  twenty-page path, accessibility, and preserved M7 latency evidence.
-
-### PR5 — Local pilot readout and controlled lifecycle
-
-Depends on PR3 and PR4.
-
-Outcome:
-
-- accepted local summary/readout;
-- export/share and measurement-only deletion if accepted;
-- retention enforcement and privacy explanation.
-
-Verification:
-
-- fixed fixture summaries, export content audit, retention boundaries,
-  deletion isolation, accessibility, and no external network transmission.
-
-### PR6 — Integration and milestone closure
-
-Depends on PR1–PR5.
-
-Outcome:
-
-- final upgrade/relaunch journey and all-surface integration evidence;
-- Product Owner physical-device validation;
-- final `PRODUCT.md`, roadmap, backlog, ADR, and milestone status updates;
-- explicit pilot findings without claiming statistical validation.
-
-This slice owns no new product behavior.
-
-## Risks and mitigations
-
-| Risk | Consequence | Proposed mitigation |
-|---|---|---|
-| Ambiguous session boundary | Misleading time-to-decision | Product accepts one explicit lifecycle before schema design |
-| Measurement coupled to Viewer Movie State | Preference corruption and difficult migration | Independent aggregate and repository |
-| Cross-repository partial write | Watched fact and provenance disagree | Stable idempotent operation plus relaunch reconciliation |
-| Local evidence has no readable surface | Pilot cannot evaluate its hypothesis | Accept a Settings summary/export path before implementation |
-| Mixed English/Spanish UI | Incoherent experience and duplicated copy | String Catalog plus accepted localization scope |
-| Timestamps reveal sensitive habits | Privacy cost exceeds pilot value | Foreground durations, minimization, bounded retention, local-only storage |
-| Event-style API becomes generic analytics framework | Premature infrastructure and untyped data | Semantic Domain operations and fixed fields only |
-| Reconciliation double-counts cards | Inflated already-watched rate | Stable session/recommendation identity and deduplication |
-| Measurement corruption blocks Home | Core product becomes less reliable | Independent failure boundary; never block recommendations |
-| Coach mark becomes recurring friction | Pick action feels harder, not clearer | Persist once, non-blocking display, accessible dismissal |
-| Long-search UI exposes implementation | Copy breaks when paging changes | Semantic time/progress state, no page numbers |
-| Historic satisfaction changes retroactively | Pilot findings become unstable | Accept immutable capture semantics or explicitly choose current-state reporting |
+The four-PR reduction introduces no known technical contradiction. PR2 is the
+highest-risk slice because it owns migration and cross-repository recovery; it
+must remain isolated and merge before insights work.
 
 ## Non-goals
 
 - trailers, autoplay, or video-provider selection;
-- external analytics, backend event ingestion, dashboards, experimentation, or
-  remote feature flags;
-- accounts, cloud sync, household profiles, or cross-device measurement;
-- automatic inference of Pick, watched, satisfaction, or abandonment;
-- new onboarding questions or inferred watched-history import;
-- changes to P1 scoring, eligibility, credibility, roles, suppression,
-  rollover, availability rules, or Taste Profile derivation;
-- `Not tonight`, mood/context refinement, or free-text Ask;
-- changing Watchlist semantics or introducing rewatch intent;
-- full-application localization unless separately accepted;
-- a physical Swift module or package;
-- statistically valid experimentation from the single-household pilot.
+- coach marks, spotlights, or visual long-search feedback;
+- incorrect-availability feedback;
+- backend analytics, SDKs, outbox, remote delivery, dashboards, or experiments;
+- accounts, sync, household profiles, or cross-device measurement;
+- automatic inference of Pick, watched, satisfaction, or abandonment outcome;
+- onboarding expansion, rewatch intent, `Not tonight`, context, or Ask;
+- P1, availability, eligibility, credibility, suppression, or rollover changes;
+- exhaustive navigation tracking or raw user text;
+- whole-app localization, deferred to M9;
+- a physical Swift module or statistically valid experimentation.
 
-## Documentation required after acceptance
+## D0 promotion checklist
 
-D0 must update, in one documentation-only change:
-
-- `PRODUCT.md` — explicit Pick, staged outcomes, local measurement, privacy,
-  localization scope, and accepted non-goals;
-- `docs/product/product-roadmap.md` — rename M8 from trailers to measurement and
-  record the accepted outcome;
-- `docs/product/improvement-backlog.md` — reconcile IMP-005 and IMP-023 with
-  accepted measurement semantics and remove trailers from M8;
-- `docs/product/product-language-glossary.md` — add the new canonical terms;
-- a new ADR — own local decision persistence and reconciliation architecture;
-- this milestone — change status only when Product Ready and Engineering Ready
-  are both genuinely satisfied.
-
-## Platform references
-
-- [Apple — Localization](https://developer.apple.com/documentation/xcode/localization)
-- [Apple — Localizing and varying text with a string catalog](https://developer.apple.com/documentation/xcode/localizing-and-varying-text-with-a-string-catalog)
-- [Apple — TipKit configuration options](https://developer.apple.com/documentation/tipkit/tips/configurationoption)
-- [Apple — TipKit datastore location](https://developer.apple.com/documentation/tipkit/tips/configurationoption/datastorelocation)
+- [ ] Update `PRODUCT.md` with accepted M8 behavior and privacy boundaries.
+- [ ] Rename and update M8 in `docs/product/product-roadmap.md`.
+- [ ] Reconcile IMP-005 and IMP-023 in the improvement backlog.
+- [ ] Extend the glossary with session, Pick, confirmation, provenance, and
+      pilot-measurement terms.
+- [ ] Add and accept the local decision persistence/reconciliation ADR.
+- [ ] Mark this milestone Product Ready and Engineering Ready.
+- [ ] Authorize PR1 only after the documentation-only D0 is merged.
