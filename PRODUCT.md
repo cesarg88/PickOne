@@ -3,7 +3,7 @@
 ## Document Status
 
 - Status: `Canonical`
-- Last product review: `2026-09-07`
+- Last product review: `2026-09-14`
 - Product name: `PickOne` is a codename until the decision experience is
   validated.
 
@@ -212,8 +212,10 @@ decision set should remain stable.
 ## Target First Product Version
 
 The first product version validates a recommendation-first experience for
-individual viewing. It consists of onboarding, a persistent home selection,
-movie detail, availability, trailers when available, and explicit feedback.
+individual viewing. It consists of onboarding, a persistent Home selection,
+movie detail, availability, explicit feedback, an explicit Pick, later viewing
+confirmation, and privacy-safe local pilot measurement. Trailers remain a
+future confidence tool and are not part of Milestone 8.
 The first complete recommendation experience is the initial confidence test:
 technical sophistication has no value unless the resulting choices make sense
 to the viewer.
@@ -385,6 +387,29 @@ appear in recommendation copy. If a supported genre signal has no readable
 label, PickOne must resolve it from trusted hydrated metadata or treat that
 signal as unrenderable; it must not fall back to copy such as `genre 28`.
 
+#### Pick and decision sessions
+
+Every recommendation exposes a visible `Pick` / `Elegir` button with an icon,
+movie-specific accessibility label, and a hint explaining that choosing does
+not mark the movie watched. After durable success the active card shows
+`Picked` / `Elegida`. Pick is a session decision, not watched state, Taste
+evidence, Watchlist intent, or a request to regenerate Home.
+
+One Pick is active at a time. It may be replaced or cancelled while preserving
+the earlier action as `superseded` or `cancelled` history without inferring
+watched state or dissatisfaction.
+
+A recommendation session starts when an active Home displays at least one
+usable recommendation. Related Detail navigation remains in that session, and
+`Give me three more` adds an observed set without restarting it. Only foreground
+time counts. Background pauses timing; 30 minutes of wall-clock inactivity
+closes an undecided session as abandoned without deleting it. A later valid
+surface begins a new session even if it displays an older Decision Set.
+
+PickOne measures foreground time to the first and final Pick. A Pick recovered
+without trustworthy session timing remains a valid choice with unavailable
+timing and is excluded from time-to-decision; it is never reported as zero.
+
 ### 3. Recommendation-set persistence and refresh
 
 The current set persists when the app is closed and reopened. A user must not
@@ -489,10 +514,24 @@ watched` without a reaction, and `Not interested`. Movie Detail and `My movies`
 remain the full editing surfaces. Passive card impressions and navigation never
 become feedback.
 
-Explicit decision-outcome actions such as `Watch this`, `Not tonight`, and a
-later viewing confirmation remain future work. They are not prerequisites for
-learning from deliberate ratings, watched facts, Watchlist intent, or `Not
-interested`.
+Twelve hours after an active Pick, returning to Home may show a non-blocking
+viewing confirmation: `Yes, I watched it` / `Sí, la vi`, `Not yet` / `Todavía
+no`, or `I didn't watch it after all` / `Al final no la vi`. `Not yet`
+postpones the prompt for 24 hours. After three postponements the prompt stops
+appearing automatically and remains accessible in `My movies`.
+
+Confirmed viewing establishes watched state and durable PickOne provenance,
+then offers an optional reaction step. Provenance does not depend on providing
+a reaction. A reaction captured there updates current Taste evidence and also
+becomes an immutable satisfaction snapshot for that decision; later edits do
+not rewrite the historic outcome. A direct rating or `Already watched` action
+without a prior Pick creates no PickOne provenance.
+
+`My movies` shows confirmed provenance as a compact `PickOne` badge with icon
+and accessibility label `Chosen with PickOne` / `Elegida con PickOne`, separate
+from the current reaction. Marking the movie unwatched hides the badge. Metric
+retention, metric deletion, and Reset preferences never remove provenance while
+the watched fact remains current.
 
 ### 6. Movie detail
 
@@ -623,23 +662,24 @@ The primary outcome is a viewing decision, not engagement with PickOne.
 
 ### North-star candidate
 
-Percentage of recommendation sessions in which the user chooses a movie to
-watch within five minutes.
+Percentage of recommendation sessions that reach an explicit Pick within five
+minutes of foreground decision time.
 
 ### Supporting signals
 
-- time from opening Home to `Watch this`
-- percentage of sessions ending in `Watch this`
-- confirmation that the chosen movie was actually watched
-- number of new sets requested before a decision
-- `Not tonight`, `Not interested`, and watched-state rates
-- detail and trailer opens that lead to a decision
-- recommendation eligibility loss caused by availability constraints
-- repeated or already-watched recommendation rate
+- foreground time to first and final Pick
+- percentage of sessions reaching Pick and later confirmed watched
+- `Love it`/`Like it`, `It was okay`, and `Didn't like it` outcomes after a
+  confirmed PickOne-assisted viewing
+- observed Decision Sets and `Give me three more` actions per session
+- successful `Already watched` actions originating from Home
+- technical recommendation-search duration, expansion, and outcome
 - qualitative confidence and frustration reported in the pilot
 
-Time spent, number of screens viewed, and catalog impressions are not success
-metrics by themselves.
+The funnel is staged: Pick indicates decision utility, confirmed watched adds
+PickOne-assisted viewing, and an optional reaction adds satisfaction evidence.
+Missing satisfaction is unknown. Time spent, screens viewed, passive Detail
+opens, and catalog impressions are not success metrics by themselves.
 
 ### Initial product hypothesis
 
@@ -654,7 +694,17 @@ recommendations, or passes a device smoke test.
 
 - collect only preference and product-behavior data needed for accepted
   recommendation and measurement purposes
+- keep Milestone 8 pilot measurement on-device, with no backend, analytics SDK,
+  account, sync, or remote transmission
+- retain completed measurement sessions for 180 days and provide local
+  `Pilot insights`, export, and measurement-only deletion in Settings
+- preserve durable PickOne viewing provenance independently from measurement
+  retention or deletion
+- store semantic identifiers, explicit actions, required timing, and bounded
+  search evidence rather than exhaustive navigation or duplicated movie data
 - do not collect raw natural-language requests by default for analytics
+- require a separate privacy decision before any future remote measurement;
+  vendor SDKs and generic property dictionaries do not belong in Domain
 - explain any future account, sync, or remote-profile behavior before enabling
   it
 - allow users to edit subscriptions, region, preferences, watched state, and
@@ -699,11 +749,17 @@ remained coherent, the extreme `5.683 s` recovery wait was accepted, and the
 household utility checkpoint passed. The exact recovery policy is defined in
 [Milestone 7 P0 — Home Exhaustion Recovery](docs/milestones/milestone-7-p0-home-exhaustion-recovery.md).
 
-Explicit decision outcomes such as `Watch this` and `Not tonight`, later
-viewing confirmation, and trailer presentation remain future product work.
+Milestone 8 is defined but not implemented. It adds explicit Pick, bounded
+recommendation sessions, later non-blocking viewing confirmation, durable
+PickOne provenance, English/Spanish localization for affected surfaces, and
+local `Pilot insights`. The Product Owner and Technical Lead accepted the
+[Milestone 8 specification](docs/milestones/milestone-8-pilot-measurement.md)
+and ADR-015 on `2026-09-14`. Implementation remains gated on merge of the
+documentation-only D0 PR and explicit authorization of PR1.
 
-Milestone 8 may now enter product definition. Its implementation must still be
-authorized by an accepted specification and architecture decision where needed.
+Trailers, coach marks, visual long-search feedback, and explicit incorrect-
+availability feedback remain future work. Whole-app localization is planned
+for Milestone 9; Milestone 8 localizes only its new and modified surfaces.
 
 ## Explicit Non-Goals for the First Product Version
 
@@ -883,21 +939,56 @@ As of the last review:
 - Recovery that must roll back to an earlier saved snapshot says so and asks the
   Viewer to review Settings; a normal first migration does not show a false
   warning.
+- Milestone 8 evaluates decision utility before adding trailers. It measures a
+  staged local funnel: explicit Pick, confirmed viewing, and optional
+  satisfaction.
+- A recommendation session begins when active Home shows a usable set, spans
+  related Detail navigation and additional observed sets, counts foreground
+  time only, and closes an undecided attempt after 30 minutes of inactivity.
+- One Pick is active and may be replaced or cancelled. Pick changes no watched,
+  reaction, Taste Profile, Watchlist, availability, eligibility, or Decision
+  Set state.
+- A Pick with unavailable session timing remains valid but is excluded from
+  time-to-decision rather than reported as zero.
+- Viewing confirmation becomes eligible on return to Home at least 12 hours
+  after Pick. `Not yet` postpones for 24 hours; after three postponements the
+  pending confirmation remains accessible from `My movies` without automatic
+  prompts.
+- Confirmed viewing establishes watched plus durable PickOne provenance before
+  an optional four-reaction satisfaction step. Historic satisfaction is a
+  snapshot and is not rewritten by later reaction edits.
+- `My movies` presents confirmed provenance as a compact `PickOne` badge,
+  separately from reaction, and provides a compact pending-confirmations
+  section. Direct rating or `Already watched` without Pick creates no
+  provenance.
+- Completed pilot-measurement sessions remain local and are retained for 180
+  days. Settings provides `Pilot insights`, local export, and deletion of
+  measurement only; provenance and every existing user-state repository remain
+  independent.
+- Milestone 8 localizes every new or modified surface in English and Spanish.
+  Whole-app localization is deferred to Milestone 9.
+- Coach marks, trailers, visual long-search feedback, and explicit incorrect-
+  availability feedback are outside Milestone 8. `Didn't like it` remains
+  satisfaction evidence, never provider-data feedback.
+- Future remote analytics may consume typed semantic local events through an
+  asynchronous vendor-neutral boundary, but local state remains authoritative
+  and Milestone 8 adds no outbox, analytics SDK, or generic tracking API.
 
 ## Open Product Questions
 
-These require explicit product decisions before their related implementation:
-
-1. What confirmation language best distinguishes a future `Watch this` intent
-   from verified viewing?
-
-Open questions are not permission for implementation agents to invent behavior.
-They must be resolved in product steering or explicitly bounded by a milestone.
+No product question remains open for Milestone 8. Future milestones must still
+resolve their own deferred behavior rather than infer it from this scope.
 
 ## Related Documents
 
 - [`docs/product/product-language-glossary.md`](docs/product/product-language-glossary.md)
   defines canonical cross-cutting product and engineering language.
+- [`docs/milestones/milestone-8-pilot-measurement.md`](docs/milestones/milestone-8-pilot-measurement.md)
+  defines the bounded Pick, confirmation, provenance, and local-measurement
+  delivery.
+- [`docs/decisions/adr-015-local-decision-measurement-and-provenance.md`](docs/decisions/adr-015-local-decision-measurement-and-provenance.md)
+  defines the separate authorities, persistence, reconciliation, privacy, and
+  future delivery boundary.
 - [`docs/milestones/milestone-7-continuous-taste-learning.md`](docs/milestones/milestone-7-continuous-taste-learning.md)
   is the accepted executable specification for continuous taste learning,
   unified movie state, and the remote calibration catalog.

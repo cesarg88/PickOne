@@ -4,7 +4,7 @@
 
 - Status: `Accepted`
 - Product authority: [`PRODUCT.md`](../../PRODUCT.md)
-- Initial scope: Milestones 4–7
+- Initial scope: Milestones 4–8
 
 This glossary defines the canonical product and engineering meaning of terms
 that cross product specifications, Domain contracts, ADRs, persistence, and
@@ -73,6 +73,10 @@ TMDB movie. It represents separately:
 
 Its invariants prevent contradictory states. It is not part of the Viewer
 Profile aggregate.
+
+Milestone 8 extends this aggregate with durable PickOne viewing provenance.
+That provenance is independent from current satisfaction and pilot-measurement
+retention, and it never contributes to Taste Profile or recommendation gates.
 
 ### Viewer State snapshot identity
 
@@ -263,3 +267,71 @@ The three product roles used to compose a deliberate Decision Set:
 
 The role describes set composition. It never replaces the evidence-backed
 reason that a recommendation fits.
+
+## Decision and pilot measurement
+
+### Recommendation session
+
+One bounded attempt to choose from Home. It begins when an active Home displays
+at least one usable recommendation and includes Detail opened from a
+recommendation observed during that attempt.
+
+`Give me three more` adds another observed Decision Set without starting a new
+session. Only foreground time contributes to decision duration. Thirty minutes
+of wall-clock inactivity closes an undecided session as abandoned without
+deleting it. A later valid surface starts a new session, even when it displays
+a Decision Set generated previously.
+
+### Pick
+
+The Viewer's explicit selection of a Home recommendation for the current
+Recommendation session. Pick records decision intent; it does not mean watched,
+Watchlist, Movie reaction, satisfaction, availability feedback, or Taste
+evidence.
+
+Only one Pick is active. Replacing or cancelling it preserves the earlier
+decision as `superseded` or `cancelled` history. A Pick without trustworthy
+session timing remains valid with unavailable timing and never fabricates a
+zero time-to-decision.
+
+### Viewing confirmation
+
+The Viewer's later explicit answer about whether the active Pick was actually
+watched. It is separate from Pick and from satisfaction.
+
+`Yes, I watched it` establishes watched and PickOne viewing provenance. `Not
+yet` postpones the question without changing movie state. `I didn't watch it
+after all` closes the decision without watched state or provenance. No passive
+navigation or elapsed time becomes confirmation.
+
+### PickOne viewing provenance
+
+The durable fact that PickOne contributed to a viewing because a Home Pick was
+later explicitly confirmed watched. It belongs to Viewer Movie State and is
+presented in `My movies` as a PickOne badge independently from Movie reaction.
+
+Provenance is not a claim that the Viewer liked the movie. It survives pilot-
+measurement retention, export, deletion, and Reset preferences while watched
+remains current. Marking the movie unwatched hides its badge without rewriting
+retained session history.
+
+### Satisfaction snapshot
+
+The optional immutable Movie reaction captured in the confirmation flow for
+one PickOne-assisted viewing. It records how that session concluded.
+
+Later edits change the current Movie reaction and derived Taste Profile but do
+not rewrite the session's Satisfaction snapshot. Absence of a snapshot means
+satisfaction is unknown, not neutral or negative.
+
+### Pilot measurement
+
+The minimal local evidence used to evaluate PickOne's decision funnel during
+the household pilot: Recommendation sessions, observed Decision Sets, first
+and final Pick timing, confirmation, optional Satisfaction snapshots,
+Home-originated `Already watched`, and semantic search outcomes.
+
+Pilot measurement is local diagnostic evidence, not the source of current
+movie state and not statistically valid analytics. Completed sessions are
+retained for 180 days and may be exported or deleted independently from durable
+PickOne viewing provenance and every other user-state repository.
