@@ -92,13 +92,16 @@ struct MainTabView: View {
             }
         }
         .task {
+            container.homeDecisionViewModel.pickModel?.setActive(scenePhase == .active)
             container.homeDecisionViewModel.load()
         }
         .onChange(of: selectedTab) {
+            container.homeDecisionViewModel.pickModel?.setVisible(selectedTab == .home)
             guard selectedTab == .home else { return }
             container.homeDecisionViewModel.load()
         }
         .onChange(of: scenePhase) {
+            container.homeDecisionViewModel.pickModel?.setActive(scenePhase == .active)
             guard scenePhase == .active else { return }
             container.homeDecisionViewModel.appDidBecomeActive()
         }

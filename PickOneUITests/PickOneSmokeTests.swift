@@ -97,6 +97,7 @@ final class PickOneSmokeTests: XCTestCase {
     @MainActor
     private func launchReadyApp(extraArguments: [String] = []) -> XCUIApplication {
         let app = XCUIApplication()
+        app.launchArguments += ["-AppleLanguages", "(en)", "-AppleLocale", "en_US"]
         app.launchArguments.append("-ui-testing")
         app.launchArguments.append("-ui-testing-reset-viewer-profile")
         app.launchArguments.append(contentsOf: extraArguments)
@@ -115,7 +116,10 @@ final class PickOneSmokeTests: XCTestCase {
     @MainActor
     private func launchHomeRecoveryApp(resetting: Bool) -> XCUIApplication {
         let app = XCUIApplication()
-        app.launchArguments = ["-ui-testing", "-ui-testing-home-recovery"]
+        app.launchArguments = [
+            "-ui-testing", "-ui-testing-home-recovery",
+            "-AppleLanguages", "(en)", "-AppleLocale", "en_US",
+        ]
         if resetting {
             app.launchArguments.append("-ui-testing-home-recovery-reset")
         }

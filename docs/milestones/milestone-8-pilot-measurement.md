@@ -7,12 +7,12 @@
 - Product decisions: **Accepted**.
 - Product Ready: **Yes**.
 - Engineering Ready: **Yes**.
-- Implementation authorized: **No**.
+- Implementation authorized: **PR1 only**, explicitly by the Product Owner on `2026-09-14`.
 - Product Owner acceptance: `2026-09-14`.
 - Technical Lead acceptance: `2026-09-14`.
 - Milestone 7 is complete.
-- This branch promotes the accepted product behavior into the canonical
-  documents but changes no application behavior.
+- D0 merged into `develop` in #50 (`c31e39f`). PR1 is delivered separately;
+  PR2+ remains outside its authorization and scope.
 
 ## Authority and purpose
 
@@ -82,6 +82,10 @@ No reaction never implies neutral or negative satisfaction.
 - Every Home recommendation has a visible, compact button with icon and
   `Pick` in English or `Elegir` in Spanish. It is not icon-only.
 - After durable success, the active recommendation shows `Picked` / `Elegida`.
+  The success notice dismisses automatically after three seconds; dismissal
+  preserves the active Pick. Tapping `Picked` / `Elegida` again cancels it;
+  choosing another suggestion replaces it. Home has no separate cancellation
+  button (Product Owner correction, 2026-09-14).
 - The accessibility label includes the movie title. Its hint explains that the
   action records the choice without marking the movie watched.
 - A Pick changes no watched state, Movie reaction, Taste Profile, Watchlist,
@@ -372,6 +376,10 @@ Pick/replace/cancel, English/Spanish affordance, recovery, and focused tests.
 The outcome is observable and independently validatable. Defer confirmation,
 provenance, insights, and remote-delivery abstractions.
 
+PR1 implementation and requirement coverage are recorded in
+[`pick-and-session.md`](../engineering/validation/pick-and-session.md).
+This partial delivery does not close the milestone or authorize PR2+.
+
 ### PR2 — Confirmation and provenance
 
 Add eligibility/postponement behavior, optional satisfaction step, the
@@ -431,6 +439,6 @@ must remain isolated and merge before insights work.
       pilot-measurement terms.
 - [x] Draft the local decision persistence/reconciliation ADR.
 - [x] Product Owner and Technical Lead accept this specification and ADR-015.
-- [ ] Merge the documentation-only D0 PR.
+- [x] Merge the documentation-only D0 PR (#50, `c31e39f`).
 - [x] Mark this milestone and ADR-015 accepted after review.
-- [ ] Authorize PR1 explicitly after D0 is merged.
+- [x] Authorize PR1 explicitly after D0 is merged (Product Owner, `2026-09-14`).

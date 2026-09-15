@@ -5,15 +5,18 @@ struct HomeDecisionCard: View {
     @State private var quickFeedbackTask: Task<Void, Never>?
     @State private var quickFeedbackModel: HomeQuickFeedbackViewModel
 
+    let pickModel: HomePickViewModel?
     let item: HomeDecisionMovieItem
     let imagePipeline: ImagePipeline
 
     init(
         item: HomeDecisionMovieItem,
+        pickModel: HomePickViewModel? = nil,
         imagePipeline: ImagePipeline,
         updateViewerMovieState: any UpdateViewerMovieStateUseCase,
         viewerStateDidChange: @escaping @MainActor (DecisionViewerStateChange) -> Void
     ) {
+        self.pickModel = pickModel
         self.item = item
         self.imagePipeline = imagePipeline
         _quickFeedbackModel = State(initialValue: HomeQuickFeedbackViewModel(
@@ -26,17 +29,20 @@ struct HomeDecisionCard: View {
 
     var body: some View {
         if quickFeedbackModel.state != .submitted {
-            HStack(alignment: .top, spacing: 8) {
-                NavigationLink(value: HomeDecisionRoute(movieID: item.id)) {
-                    HomeDecisionCardContent(
-                        item: item,
-                        imagePipeline: imagePipeline
-                    )
-                }
-                .buttonStyle(.plain)
-                .accessibilityIdentifier("home-recommendation-\(item.id)")
+            VStack(alignment: .leading, spacing: 10) {
+                HStack(alignment: .top, spacing: 8) {
+                    NavigationLink(value: HomeDecisionRoute(movieID: item.id)) {
+                        HomeDecisionCardContent(
+                            item: item,
+                            imagePipeline: imagePipeline
+                        )
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityIdentifier("home-recommendation-\(item.id)")
 
-                quickFeedbackControl
+                    quickFeedbackControl
+                }
+                if let pickModel { HomePickControl(model: pickModel, movieID: item.id, title: item.title) }
             }
             .padding(14)
             .background(Color(.secondarySystemBackground))
@@ -127,7 +133,7 @@ struct HomeDecisionCard: View {
                 await quickFeedbackModel.submit(action)
             }
         } label: {
-            Label(title, systemImage: systemImage)
+            Label(LocalizedStringKey(title), systemImage: systemImage)
         }
         .accessibilityIdentifier("home-feedback-\(item.id)-\(action.accessibilityIdentifier)")
     }

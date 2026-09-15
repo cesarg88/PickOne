@@ -18,6 +18,7 @@ struct HomeDecisionView: View {
         NavigationStack(path: $navigationPath) {
             HomeDecisionContent(
                 state: model.state,
+                pickModel: model.pickModel,
                 exhaustion: model.exhaustion,
                 updateFeedback: model.updateFeedback,
                 imagePipeline: imagePipeline,
@@ -30,6 +31,7 @@ struct HomeDecisionView: View {
             )
             .onAppear {
                 model.homeDidAppear()
+                model.pickModel?.showHome()
             }
             .onDisappear {
                 model.homeDidDisappear()
@@ -40,6 +42,7 @@ struct HomeDecisionView: View {
             }
         }
         .onChange(of: navigationPath) { oldPath, newPath in
+            if let route = newPath.last { model.pickModel?.showRelatedDetail(movieID: route.movieID) }
             guard !oldPath.isEmpty, newPath.isEmpty else { return }
             model.load()
         }
@@ -66,6 +69,7 @@ struct HomeDecisionView: View {
 @MainActor
 private struct HomeDecisionContent: View {
     let state: HomeDecisionViewState
+    let pickModel: HomePickViewModel?
     let exhaustion: HomeDecisionExhaustionPresentation?
     let updateFeedback: String?
     let imagePipeline: ImagePipeline
@@ -77,19 +81,24 @@ private struct HomeDecisionContent: View {
     let reviewStreamingServices: () -> Void
 
     var body: some View {
-        content
-            .overlay(alignment: .top) {
-                if let updateFeedback {
-                    Label(updateFeedback, systemImage: "checkmark.circle")
-                        .font(.footnote.weight(.medium))
-                        .padding(.horizontal, 14)
-                        .padding(.vertical, 10)
-                        .background(.regularMaterial, in: .capsule)
-                        .padding(.top, 8)
-                        .allowsHitTesting(false)
-                        .accessibilityIdentifier("home-recommendations-updated")
-                }
+        VStack(spacing: 0) {
+            if pickModel?.isShowingPickFeedback == true {
+                HomePickSuccessNotice()
             }
+            content
+        }
+        .overlay(alignment: .top) {
+            if let updateFeedback {
+                Label(updateFeedback, systemImage: "checkmark.circle")
+                    .font(.footnote.weight(.medium))
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 10)
+                    .background(.regularMaterial, in: .capsule)
+                    .padding(.top, 8)
+                    .allowsHitTesting(false)
+                    .accessibilityIdentifier("home-recommendations-updated")
+            }
+        }
     }
 
     @ViewBuilder
@@ -101,6 +110,7 @@ private struct HomeDecisionContent: View {
             case let .loaded(set, isRefreshing, refreshError):
                 HomeDecisionLoadedView(
                     set: set,
+                    pickModel: pickModel,
                     isRefreshing: isRefreshing,
                     refreshError: refreshError,
                     exhaustion: exhaustion,
@@ -122,9 +132,9 @@ private struct HomeDecisionContent: View {
                 )
             case let .failure(message):
                 EmptyStateView(
-                    title: "Couldn't load tonight's picks",
+                    title: String(localized: "Couldn't load tonight's picks"),
                     message: message,
-                    actionTitle: "Retry",
+                    actionTitle: String(localized: "Retry"),
                     action: retry
                 )
         }
@@ -134,6 +144,7 @@ private struct HomeDecisionContent: View {
 @MainActor
 private struct HomeDecisionLoadedView: View {
     let set: HomeDecisionSetPresentationModel
+    let pickModel: HomePickViewModel?
     let isRefreshing: Bool
     let refreshError: String?
     let exhaustion: HomeDecisionExhaustionPresentation?
@@ -146,7 +157,9 @@ private struct HomeDecisionLoadedView: View {
 
     var body: some View {
         ScrollView {
-            LazyVStack(alignment: .leading, spacing: 16) {
+            // Home contains at most three cards. Eager layout keeps a scrolled card
+            // stable when Pick progress and the active-choice controls change height.
+            VStack(alignment: .leading, spacing: 16) {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Three for Tonight")
                         .font(.title2.bold())
@@ -158,6 +171,7 @@ private struct HomeDecisionLoadedView: View {
                 ForEach(set.items) { item in
                     HomeDecisionCard(
                         item: item,
+                        pickModel: pickModel,
                         imagePipeline: imagePipeline,
                         updateViewerMovieState: updateViewerMovieState,
                         viewerStateDidChange: viewerStateDidChange
@@ -201,9 +215,10 @@ private struct HomeDecisionEmptyView: View {
                     "No picks available right now",
                     systemImage: "film.stack",
                     description: Text(
-                        "We've checked more movies and revisited older suggestions, but " +
-                            "couldn't find an unseen match we can confidently recommend " +
-                            "from your services."
+                        """
+                        We've checked more movies and revisited older suggestions, but \
+                        couldn't find an unseen match we can confidently recommend from your services.
+                        """
                     )
                 )
                 HomeDecisionExhaustionControls(
@@ -246,15 +261,16 @@ private struct HomeDecisionExhaustionControls: View {
                 Text("No more picks available right now")
                     .font(.headline)
                 Text(
-                    "We couldn't find a different unseen match we can confidently recommend " +
-                        "from your services. Your current picks are still available."
+                    """
+                    We couldn't find a different unseen match we can confidently recommend \
+                    from your services. Your current picks are still available.
+                    """
                 )
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
             } else if exhaustion.recommendationCount > 0 {
                 Text(
-                    "We found only \(exhaustion.recommendationCount) strong " +
-                        "\(exhaustion.recommendationCount == 1 ? "match" : "matches") right now."
+                    "We found only \(exhaustion.recommendationCount) strong matches right now."
                 )
                 .font(.subheadline)
                 .foregroundStyle(.secondary)

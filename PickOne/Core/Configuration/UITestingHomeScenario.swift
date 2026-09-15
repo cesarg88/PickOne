@@ -234,3 +234,24 @@ private enum UITestingHomeScenarioError: Error {
     case invalidFixture
     case feedbackWriteFailed
 }
+
+actor UITestingCancellationFailureRepository: ViewingDecisionRepository {
+    private let base: any ViewingDecisionRepository
+    private var hasFailed = false
+
+    init(base: any ViewingDecisionRepository) {
+        self.base = base
+    }
+
+    func snapshot() async throws -> ViewingDecisionState {
+        try await base.snapshot()
+    }
+
+    func apply(_ operation: ViewingDecisionOperation) async throws -> ViewingDecisionReceipt {
+        if case .cancel = operation.action, !hasFailed {
+            hasFailed = true
+            throw ViewingDecisionError.unavailable
+        }
+        return try await base.apply(operation)
+    }
+}

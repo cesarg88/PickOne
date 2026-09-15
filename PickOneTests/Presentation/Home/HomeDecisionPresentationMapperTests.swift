@@ -4,6 +4,27 @@ import Testing
 
 @MainActor
 struct HomeDecisionPresentationMapperTests {
+    @Test(arguments: ["en_US", "es_ES", "de_DE", "fr_FR", "ar_EG", "hi_IN"], [false, true])
+    func decadeYearsNeverUseLocaleDependentNumberFormatting(localeID: String, adjacent: Bool) throws {
+        let candidate = DecisionDecade(year: 2024)
+        let anchor = DecisionDecade(year: 2015)
+        let recommendation = try HomeDecisionTestFixtures.recommendation(
+            watchlistWrapped: false,
+            sharedGenreIDs: [18],
+            eraMatch: adjacent ? .adjacentDecade(candidate: candidate, anchor: anchor) : .sameDecade(candidate)
+        )
+        let snapshot = try HomeDecisionTestFixtures.snapshot(recommendations: [recommendation])
+        let item = try #require(HomeDecisionPresentationMapper.map(
+            snapshot: snapshot, locale: Locale(identifier: localeID)
+        ).items.first)
+        #expect(item.reason.contains("2020"))
+        if adjacent { #expect(item.reason.contains("2010")) }
+    }
+
+    private var isSpanish: Bool {
+        Bundle.main.preferredLocalizations.first?.hasPrefix("es") == true
+    }
+
     @Test("maps role, evidence, providers, metadata, and transient saved state")
     func mapsRecommendation() throws {
         let snapshot = try HomeDecisionTestFixtures.snapshot(savedMovieIDs: [101])
@@ -12,10 +33,11 @@ struct HomeDecisionPresentationMapperTests {
 
         let item = try #require(model.items.first)
         #expect(item.id == 101)
-        #expect(item.role == "Safe Choice")
+        #expect(item.role == (isSpanish ? "Apuesta segura" : "Safe Choice"))
         #expect(
-            item.reason == "Saved for later, and similar to Arrival, which you loved — "
-                + "shares Drama and Science Fiction."
+            item.reason == (isSpanish
+                ? "Guardada para más adelante, y similar a Arrival, que te encantó — comparte Drama y Science Fiction."
+                : "Saved for later, and similar to Arrival, which you loved — shares Drama and Science Fiction.")
         )
         #expect(item.providers.map(\.name) == ["Netflix"])
         #expect(item.details == "2024 · 2h 3m · Drama, Science Fiction")
@@ -41,7 +63,9 @@ struct HomeDecisionPresentationMapperTests {
             snapshot: snapshot
         ).items.first)
 
-        #expect(item.reason == "Similar to Arrival, which you loved — shares Drama.")
+        #expect(item.reason == (isSpanish
+                ? "Similar a Arrival, que te encantó — comparte Drama."
+                : "Similar to Arrival, which you loved — shares Drama."))
         #expect(!item.reason.contains("2020s"))
         #expect(!item.reason.contains("Science Fiction"))
     }
@@ -63,8 +87,9 @@ struct HomeDecisionPresentationMapperTests {
         ).items.first)
 
         #expect(
-            item.reason == "Similar to Arrival, which you liked — shares Drama; "
-                + "both are from the 2020s."
+            item.reason == (isSpanish
+                ? "Similar a Arrival, que te gustó — comparte Drama; ambas son de los años 2020."
+                : "Similar to Arrival, which you liked — shares Drama; both are from the 2020s.")
         )
     }
 

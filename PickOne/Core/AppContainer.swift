@@ -114,7 +114,9 @@ final class AppContainer {
             getDiscoveryFeed: useCases.getDiscoveryFeed
         )
         let homeDecisionViewModel = HomeDecisionViewModel(
-            threeForTonight: homeUseCase
+            threeForTonight: homeUseCase,
+            pickModel: HomePickViewModel(manage: ManageViewingDecision(repository: Self
+                    .makeViewingDecisionRepository()))
         )
         self.homeDecisionViewModel = homeDecisionViewModel
         watchlistViewModel = WatchlistViewModel(
@@ -178,6 +180,36 @@ private extension AppContainer {
         let getViewerStateRecoveryNotice: GetViewerStateRecoveryNotice
         let resetUnrecoverableViewerState: ResetUnrecoverableViewerState
         let resolveCalibrationCatalog: ResolveCalibrationCatalog
+    }
+
+    static func makeViewingDecisionRepository() -> any ViewingDecisionRepository {
+        let store: any ViewingDecisionFileStore
+        do {
+            let directory: URL?
+            if AppConfiguration.isUITesting {
+                directory = try FileManager.default.url(
+                    for: .applicationSupportDirectory, in: .userDomainMask, appropriateFor: nil, create: true
+                ).appending(path: "PickOne/UITesting/ViewingDecisions", directoryHint: .isDirectory)
+                if AppConfiguration.resetsHomeRecoveryScenarioForUITests
+                    || AppConfiguration.cleansHomeRecoveryScenarioForUITests,
+                    let directory, FileManager.default.fileExists(atPath: directory.path(percentEncoded: false))
+                {
+                    try FileManager.default.removeItem(at: directory)
+                }
+            } else {
+                directory = nil
+            }
+            store = try ApplicationSupportViewingDecisionStore(directory: directory)
+        } catch {
+            store = UnavailableViewingDecisionStore()
+        }
+        let repository = LocalViewingDecisionRepository(store: store)
+        if AppConfiguration.isUITesting,
+           ProcessInfo.processInfo.arguments.contains("-ui-testing-pick-cancel-fails-once")
+        {
+            return UITestingCancellationFailureRepository(base: repository)
+        }
+        return repository
     }
 
     static func makeRepositories() -> Repositories {

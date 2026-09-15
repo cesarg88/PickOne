@@ -64,7 +64,7 @@ struct HomeDecisionViewModelTests {
         }
         #expect(set.items.map(\.id) == [101])
         #expect(!isRefreshing)
-        #expect(refreshError == "Couldn't update tonight's picks. Please try again.")
+        #expect(refreshError == String(localized: "Couldn't update tonight's picks. Please try again."))
     }
 
     @Test("eligibility change invokes the bounded repair operation")
@@ -107,7 +107,7 @@ struct HomeDecisionViewModelTests {
 
         await gate.open()
         await waitForUpdateFeedback(in: sut)
-        #expect(sut.updateFeedback == "Recommendations updated.")
+        #expect(sut.updateFeedback == String(localized: "Recommendations updated."))
         await delay.waitForRequestCount(1)
         #expect(await delay.requestedDurations() == [.seconds(3)])
 
@@ -164,7 +164,7 @@ struct HomeDecisionViewModelTests {
         await waitUntilSettled(sut)
 
         #expect(await useCase.recordedViewerChanges() == [activeChange])
-        #expect(sut.updateFeedback == "Recommendations updated.")
+        #expect(sut.updateFeedback == String(localized: "Recommendations updated."))
         guard case let .loaded(_, isRefreshing, refreshError) = sut.state else {
             Issue.record("Expected one usable publication without a blocking failure")
             return
@@ -222,7 +222,7 @@ struct HomeDecisionViewModelTests {
         await useCase.waitForCallCount(1)
         await waitUntilSettled(sut)
         #expect(
-            sut.state == .failure("Tonight's picks couldn't be loaded. Please try again.")
+            sut.state == .failure(String(localized: "Tonight's picks couldn't be loaded. Please try again."))
         )
 
         sut.load()
