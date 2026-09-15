@@ -41,6 +41,10 @@ struct ViewingDecisionEnvelope: Sendable {
                   session.status != .decided || session.finalDecisionID != nil,
                   session.status != .abandoned || session.finalDecisionID == nil
             else { throw ViewingDecisionError.invalidData }
+            if session.status == .open {
+                let activeID = decisions.first { $0.status == .active && $0.sessionID == session.id }?.id
+                guard session.finalDecisionID == activeID else { throw ViewingDecisionError.invalidData }
+            }
             if let id = session.finalDecisionID {
                 guard decisions.contains(where: { $0.id == id && $0.sessionID == session.id }) else {
                     throw ViewingDecisionError.invalidData

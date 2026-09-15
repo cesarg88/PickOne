@@ -16,7 +16,17 @@ final class HomePickInteractionTests: XCTestCase {
     }
 
     @MainActor
-    private func verifyPick(language: String, label: String, pickedLabel: String) {
+    func testFailedCancellationShowsOnlyOneCardRetry() {
+        verifyPick(
+            language: "en",
+            label: "Pick Tonight's Movie",
+            pickedLabel: "Picked: Tonight's Movie",
+            failsCancellation: true
+        )
+    }
+
+    @MainActor
+    private func verifyPick(language: String, label: String, pickedLabel: String, failsCancellation: Bool = false) {
         let app = XCUIApplication()
         app.launchArguments = [
             "-ui-testing", "-ui-testing-home-recovery", "-ui-testing-home-recovery-reset",
@@ -25,6 +35,7 @@ final class HomePickInteractionTests: XCTestCase {
         if language == "es" {
             app.launchArguments += ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"]
         }
+        if failsCancellation { app.launchArguments += ["-ui-testing-pick-cancel-fails-once"] }
         app.launch()
         defer {
             app.terminate()
@@ -71,8 +82,33 @@ final class HomePickInteractionTests: XCTestCase {
             app.swipeUp()
         }
         pick.tap()
+        if failsCancellation {
+            verifyFailedCancellation(app: app, pick: pick, pickedLabel: pickedLabel, notice: notice)
+        }
         let cleared = XCTNSPredicateExpectation(predicate: NSPredicate(format: "label == %@", label), object: pick)
         XCTAssertEqual(XCTWaiter.wait(for: [cleared], timeout: 15), .completed)
         XCTAssertEqual(pick.label, label)
+    }
+
+    @MainActor
+    private func verifyFailedCancellation(
+        app: XCUIApplication, pick: XCUIElement, pickedLabel: String, notice: XCUIElement
+    ) {
+        let retry = app.buttons["home-pick-retry-101"]
+        XCTAssertTrue(retry.waitForExistence(timeout: 15))
+        XCTAssertEqual(pick.label, pickedLabel, "Failed cancellation must preserve the committed choice")
+        XCTAssertEqual(app.buttons.matching(NSPredicate(format: "label == %@", "Try again")).count, 1)
+        XCTAssertEqual(
+            app.staticTexts.matching(NSPredicate(
+                format: "label == %@",
+                "Your choice couldn't be saved. Please try again."
+            )).count,
+            1
+        )
+        XCTAssertFalse(notice.exists)
+        for _ in 0 ..< 6 where !retry.isHittable {
+            app.swipeUp()
+        }
+        retry.tap()
     }
 }

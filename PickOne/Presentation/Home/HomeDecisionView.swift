@@ -82,8 +82,8 @@ private struct HomeDecisionContent: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            if showsActivePickControl, let pickModel, let active = pickModel.activeDecision {
-                HomeActivePickControl(model: pickModel, decision: active)
+            if pickModel?.isShowingPickFeedback == true {
+                HomePickSuccessNotice()
             }
             content
         }
@@ -99,11 +99,6 @@ private struct HomeDecisionContent: View {
                     .accessibilityIdentifier("home-recommendations-updated")
             }
         }
-    }
-
-    private var showsActivePickControl: Bool {
-        guard let pickModel, let active = pickModel.activeDecision else { return false }
-        return pickModel.isShowingPickFeedback || pickModel.failedMovieIDs.contains(active.recommendation.movieID)
     }
 
     @ViewBuilder

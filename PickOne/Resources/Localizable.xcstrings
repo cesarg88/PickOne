@@ -960,36 +960,36 @@
         }
       }
     },
-    "%@; both are from the %llds": {
+    "%@; both are from the %@s": {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@; both are from the %llds"
+            "value": "%@; both are from the %@s"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@; ambas son de los años %lld"
+            "value": "%@; ambas son de los años %@"
           }
         }
       }
     },
-    "%@; their release eras are adjacent (%llds and %llds)": {
+    "%@; their release eras are adjacent (%@s and %@s)": {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@; their release eras are adjacent (%llds and %llds)"
+            "value": "%@; their release eras are adjacent (%@s and %@s)"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@; sus épocas de estreno son cercanas (años %lld y %lld)"
+            "value": "%@; sus épocas de estreno son cercanas (años %@ y %@)"
           }
         }
       }

@@ -57,6 +57,9 @@ their accepted slices. Viewer Movie State stays at v3.
 | Only known schemas migrate | Initial v1 decoder rejects other versions | Unsupported-schema fixture in `exactInvalidBytesAreQuarantinedAndPreviousRecovered`; no predecessor schema exists for this new repository |
 | Pick preserves recommendations and other authorities | Pick graph has no mutation dependency on existing repositories | `homePickDoesNotInvokeRecommendationGenerationOrMutatePublishedSet`; `HomePickInteractionTests`; full existing regression suite |
 | Pick survives process termination and relaunch; storage paths with spaces or escaped characters remain readable | File-store existence checks use an unencoded filesystem path; UI fixture storage survives relaunch | `applicationSupportRoundTripStoresOnlyAllowedEvidence` (plain, Application Support, accented/percent paths); `HomePickInteractionTests` terminates and relaunches before cancellation |
+| Decade labels never acquire thousands separators under any formatting locale | Convert decade years to literal strings before localized interpolation | `decadeYearsNeverUseLocaleDependentNumberFormatting` exercises same/adjacent decades with six explicit locales |
+| Open-session final decision equals its attributed active decision, including nil on both sides | Envelope semantic validation and previous-copy recovery | `contradictoryOpenSessionIsQuarantinedAndPreviousRestored` covers cancelled/superseded finals, missing final, and a different final with an active decision |
+| Persistence error and retry appear only on the affected card | Card-only failure UI; top-level success-only notice | `testFailedCancellationShowsOnlyOneCardRetry` verifies one error, one retry, retained Picked state, and successful retry |
 | English/Spanish visible controls and title-specific accessibility | String Catalog; native buttons and scalable layouts | `HomePickInteractionTests` in English and Spanish at Accessibility XXXL |
 | No metadata, raw text, provenance, SDK, or new search requests | DTO allowlist and bounded dependency graph | `applicationSupportRoundTripStoresOnlyAllowedEvidence`; source/dependency inspection |
 
@@ -96,6 +99,14 @@ spaces, accented text, and percent characters; UI tests retain an isolated
 Application Support directory across process launches, reset it explicitly
 between scenarios, and verify the selected card and absence of a replayed
 notice before cancelling. Production storage is never reset by those fixtures.
+Review regressions cover locale-specific numeric grouping, contradictory
+open-session decision references, and duplicate cancellation-retry controls.
+Decade fixtures explicitly select formatting locales instead of inheriting the
+host setting. Contradictory bytes are quarantined verbatim, the valid previous
+envelope is restored, and repository recreation preserves the recovered state.
+The cancellation UI scenario injects one failure before the repository commit
+and verifies that only the affected card offers retry; the existing storage
+failure tests continue to cover the actual write boundaries.
 The delivery gate is `make verify`;
 final results and CI status are recorded in the PR rather than assumed here.
 

@@ -4,6 +4,23 @@ import Testing
 
 @MainActor
 struct HomeDecisionPresentationMapperTests {
+    @Test(arguments: ["en_US", "es_ES", "de_DE", "fr_FR", "ar_EG", "hi_IN"], [false, true])
+    func decadeYearsNeverUseLocaleDependentNumberFormatting(localeID: String, adjacent: Bool) throws {
+        let candidate = DecisionDecade(year: 2024)
+        let anchor = DecisionDecade(year: 2015)
+        let recommendation = try HomeDecisionTestFixtures.recommendation(
+            watchlistWrapped: false,
+            sharedGenreIDs: [18],
+            eraMatch: adjacent ? .adjacentDecade(candidate: candidate, anchor: anchor) : .sameDecade(candidate)
+        )
+        let snapshot = try HomeDecisionTestFixtures.snapshot(recommendations: [recommendation])
+        let item = try #require(HomeDecisionPresentationMapper.map(
+            snapshot: snapshot, locale: Locale(identifier: localeID)
+        ).items.first)
+        #expect(item.reason.contains("2020"))
+        if adjacent { #expect(item.reason.contains("2010")) }
+    }
+
     private var isSpanish: Bool {
         Bundle.main.preferredLocalizations.first?.hasPrefix("es") == true
     }

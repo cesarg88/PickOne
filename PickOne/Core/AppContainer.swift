@@ -182,7 +182,7 @@ private extension AppContainer {
         let resolveCalibrationCatalog: ResolveCalibrationCatalog
     }
 
-    static func makeViewingDecisionRepository() -> LocalViewingDecisionRepository {
+    static func makeViewingDecisionRepository() -> any ViewingDecisionRepository {
         let store: any ViewingDecisionFileStore
         do {
             let directory: URL?
@@ -203,7 +203,13 @@ private extension AppContainer {
         } catch {
             store = UnavailableViewingDecisionStore()
         }
-        return LocalViewingDecisionRepository(store: store)
+        let repository = LocalViewingDecisionRepository(store: store)
+        if AppConfiguration.isUITesting,
+           ProcessInfo.processInfo.arguments.contains("-ui-testing-pick-cancel-fails-once")
+        {
+            return UITestingCancellationFailureRepository(base: repository)
+        }
+        return repository
     }
 
     static func makeRepositories() -> Repositories {

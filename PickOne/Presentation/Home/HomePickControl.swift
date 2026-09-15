@@ -47,23 +47,12 @@ struct HomePickControl: View {
 }
 
 @MainActor
-struct HomeActivePickControl: View {
-    let model: HomePickViewModel
-    let decision: ViewingDecision
-
+struct HomePickSuccessNotice: View {
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            if model.isShowingPickFeedback {
-                Label("You have a Pick", systemImage: "checkmark.circle.fill")
-                    .font(.subheadline)
-            }
-            if model.failedMovieIDs.contains(decision.recommendation.movieID) {
-                Text("Your choice couldn't be saved. Please try again.").font(.footnote)
-                Button("Try again") { model.retry(movieID: decision.recommendation.movieID) }
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding()
-        .background(.thinMaterial)
+        Label("You have a Pick", systemImage: "checkmark.circle.fill")
+            .font(.subheadline)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding()
+            .background(.thinMaterial)
     }
 }
