@@ -113,6 +113,34 @@ final class HomePickViewModel {
         await tail?.value
     }
 
+    /// Reload durable Pick state after another decision workflow, without recording activity.
+    func refreshDecision() async throws {
+        let previous = tail
+        let refresh = Task { [weak self] in
+            await previous?.value
+            guard let self else { return }
+            let snapshot = try await manage.snapshot()
+            publish(snapshot)
+        }
+        tail = Task { _ = try? await refresh.value }
+        try await refresh.value
+    }
+
+    private func publish(_ snapshot: ViewingDecisionState) {
+        activeDecision = snapshot.activeDecision
+        if activeDecision == nil {
+            feedbackTask?.cancel()
+            isShowingPickFeedback = false
+        }
+        for (movieID, operation) in pendingOperations {
+            if case let .cancel(id) = operation.action, id != activeDecision?.id {
+                pendingOperations[movieID] = nil
+                failedMovieIDs.remove(movieID)
+            }
+        }
+        scheduleDeadline(snapshot.openSession)
+    }
+
     private var currentSurface: ViewingDecisionSurface? {
         detailSurface ?? homeSurface
     }
@@ -138,14 +166,10 @@ final class HomePickViewModel {
                 _ = try await manage.apply(operation)
                 let snapshot = try await manage.snapshot()
                 let previousDecisionID = activeDecision?.id
-                activeDecision = snapshot.activeDecision
-                if activeDecision == nil {
-                    feedbackTask?.cancel()
-                    isShowingPickFeedback = false
-                } else if case .pick = operation.action, activeDecision?.id != previousDecisionID {
+                publish(snapshot)
+                if case .pick = operation.action, activeDecision != nil, activeDecision?.id != previousDecisionID {
                     showPickFeedback()
                 }
-                scheduleDeadline(snapshot.openSession)
                 if let movieID {
                     pendingOperations[movieID] = nil
                     failedMovieIDs.remove(movieID)

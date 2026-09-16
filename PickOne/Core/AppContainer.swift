@@ -220,6 +220,7 @@ private extension AppContainer {
         return ViewingConfirmationViewModel(
             coordinator: confirmation,
             now: { ViewingConfirmationUITestingScenario.isEnabled ? ViewingConfirmationUITestingScenario.now : Date() },
+            refreshPickState: { [weak pickModel = home.pickModel] in try await pickModel?.refreshDecision() },
             didChange: { @MainActor [weak home, weak myMovies] in
                 home?.load()
                 myMovies?.reloadAfterConfirmation()

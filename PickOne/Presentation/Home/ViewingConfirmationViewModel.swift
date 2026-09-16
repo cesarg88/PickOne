@@ -6,6 +6,7 @@ import Observation
 final class ViewingConfirmationViewModel {
     private let coordinator: ConfirmViewingDecision
     private let now: @Sendable () -> Date
+    private let refreshPickState: @MainActor () async throws -> Void
     private let didChange: @MainActor () -> Void
     private var generation = UUID()
     private var pendingAction: PendingAction?
@@ -28,11 +29,13 @@ final class ViewingConfirmationViewModel {
     init(
         coordinator: ConfirmViewingDecision,
         now: @escaping @Sendable () -> Date = Date.init,
+        refreshPickState: @escaping @MainActor () async throws -> Void = {},
         didChange: @escaping @MainActor () -> Void = {}
     ) {
         self.coordinator = coordinator
         self.now = now
         self.didChange = didChange
+        self.refreshPickState = refreshPickState
     }
 
     func refresh() async {
@@ -43,6 +46,7 @@ final class ViewingConfirmationViewModel {
                 guard generation == token else { return }
                 failure = true
             }
+            try await refreshPickState()
             let state = try await coordinator.snapshot()
             try Task.checkCancellation()
             guard generation == token else { return }

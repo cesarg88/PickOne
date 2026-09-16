@@ -62,6 +62,8 @@ closure are excluded, as are remote analytics and recommendation changes.
 | Retry preserves operation identity and no false satisfaction success | MainActor model and persisted receipt | `failedAnswerIsRetryableAndNeverClaimsSuccess` |
 | English/Spanish confirmation, optional step, badge, relaunch, large text | String Catalog and native SwiftUI views | `ViewingConfirmationInteractionTests` |
 | Concurrent retries, cancellation before preparation, corrupt measurement, offline replay, PR1 v1 upgrade | Actor coordinator, receipt lookup, versioned envelope | `ViewingConfirmationIntegrityTests` |
+| Closing either confirmation outcome immediately refreshes Home's Pick cache; old cancel/retry cannot target the closed decision; relaunch remains correct | Read-only refresh serialized with Pick actions; confirmation composition callback | `ConfirmationPickCacheTests` |
+| Journal stages and immutable outcomes agree in both directions; contradictory active bytes are quarantined exactly and valid previous restored | Semantic envelope validation and existing recovery | `ConfirmationSemanticRecoveryTests`, including no-previous failure and valid superseded pending journals |
 | Existing profile, Watchlist, Search History, recommendations and recovery | Unchanged authority boundaries plus current-schema fixtures | Full `make verify` regression suite, including existing M7 upgrade/recovery and PR1 suites |
 
 ## Validation
@@ -78,6 +80,8 @@ xcodebuild test -project PickOne.xcodeproj -scheme PickOne \
   -only-testing:PickOneTests/ViewingConfirmationIntegrityTests \
   -only-testing:PickOneTests/ViewingProvenanceMigrationTests \
   -only-testing:PickOneTests/ViewingConfirmationPresentationTests \
+  -only-testing:PickOneTests/ConfirmationPickCacheTests \
+  -only-testing:PickOneTests/ConfirmationSemanticRecoveryTests \
   -only-testing:PickOneUITests/ViewingConfirmationInteractionTests
 ```
 
@@ -92,9 +96,21 @@ owns that destination model for the navigation lifetime. The unchanged
 `PickOneSmokeTests.testMilestone7EndToEndFlow` failed before the fix and passed
 after it (focused run on `2026-09-15`).
 
+PR review regressions were reproduced before the fixes: both not-watched and
+watched left the cached active Pick intact, and the old card attempted stale
+cancellation. Contradictory confirmation envelopes also bypassed quarantine.
+The semantic cache refresh now reads the shared repository in the Pick action
+queue without recording lifecycle/observation events. It clears stale failed
+cancellation retries and runs after confirmation/recovery. Bidirectional journal
+validation rejects impossible cancelled/not-watched pending operations and
+completed satisfaction without its matching immutable reaction. Pending
+operations for superseded Picks remain valid because the state machine can
+produce them. Recovery tests cover exact quarantine bytes, previous-copy restore,
+no-previous failure and repository recreation.
+
 Final automated validation on `2026-09-16`:
 
-- Full test suite: 601 unit tests in 112 suites and 8 UI tests passed on
+- Full test suite: 605 unit tests in 114 suites and 8 UI tests passed on
   iPhone 17 Pro simulator, including existing PR1/M7 regression journeys.
 - English and Spanish confirmation journeys verify the optional reaction/skip,
   separate badge, Accessibility XXXL layout, and persistence after relaunch.
@@ -120,9 +136,12 @@ Record device, iOS version, app SHA, language, text size, date/time and outcome.
 3. Choose Not yet. Return before and after 24 hours. Repeat three times; verify
    Home stops automatic prompting and My movies offers the pending choice.
    Resolve it there. Replaced/cancelled Picks must not prompt.
-4. For another Pick choose I didn't watch it after all. Relaunch and verify no
+4. For another Pick choose I didn't watch it after all. Before navigating,
+   verify the Home card immediately stops showing Picked and offers a new Pick
+   instead of cancellation. Relaunch and verify no
    watched state, reaction, or PickOne badge was created by that answer.
-5. Confirm watched and choose Not now. Verify watched plus PickOne badge in
+5. Confirm watched and verify the old Pick action is cleared immediately.
+   Choose Not now. Verify watched plus PickOne badge in
    My movies, with no reaction inferred; relaunch and check the same state.
 6. Confirm another viewing and supply each optional reaction across separate
    journeys. Verify current reaction and badge are separate. Edit/remove the

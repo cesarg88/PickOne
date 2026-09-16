@@ -69,6 +69,17 @@ extension ViewingDecisionEnvelope {
                   operation.reaction == nil || decision.status == .confirmedWatched,
                   operation.stage != .completed || decision.status == .confirmedWatched
             else { throw ViewingDecisionError.invalidData }
+            if let reaction = operation.reaction {
+                guard operation.stage == .completed
+                    ? decision.satisfaction == reaction : decision.satisfaction == nil
+                else { throw ViewingDecisionError.invalidData }
+            } else if operation.stage != .completed {
+                // Another Pick may supersede a prepared confirmation, but cancellation
+                // and not-watched answers cannot close it while its journal is pending.
+                guard decision.status == .active || decision.status == .superseded else {
+                    throw ViewingDecisionError.invalidData
+                }
+            }
         }
     }
 }
