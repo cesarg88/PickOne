@@ -3,6 +3,7 @@ import SwiftUI
 @MainActor
 struct HomeDecisionView: View {
     let model: HomeDecisionViewModel
+    var confirmationModel: ViewingConfirmationViewModel?
     let getMovieDetail: GetMovieDetailUseCase
     let getViewerMovieState: GetViewerMovieStateUseCase
     let updateViewerMovieState: UpdateViewerMovieStateUseCase
@@ -16,19 +17,23 @@ struct HomeDecisionView: View {
 
     var body: some View {
         NavigationStack(path: $navigationPath) {
-            HomeDecisionContent(
-                state: model.state,
-                pickModel: model.pickModel,
-                exhaustion: model.exhaustion,
-                updateFeedback: model.updateFeedback,
-                imagePipeline: imagePipeline,
-                updateViewerMovieState: updateViewerMovieState,
-                viewerStateDidChange: model.reconcile,
-                refresh: model.refresh,
-                retry: model.load,
-                reviewMyMovies: reviewMyMovies,
-                reviewStreamingServices: reviewStreamingServices
-            )
+            VStack(spacing: 0) {
+                if let confirmationModel { ViewingConfirmationView(model: confirmationModel) }
+                HomeDecisionContent(
+                    state: model.state,
+                    pickModel: model.pickModel,
+                    exhaustion: model.exhaustion,
+                    updateFeedback: model.updateFeedback,
+                    imagePipeline: imagePipeline,
+                    updateViewerMovieState: updateViewerMovieState,
+                    viewerStateDidChange: model.reconcile,
+                    refresh: model.refresh,
+                    retry: model.load,
+                    reviewMyMovies: reviewMyMovies,
+                    reviewStreamingServices: reviewStreamingServices
+                )
+            }
+            .task(id: model.pickModel?.activeDecision?.id) { await confirmationModel?.refresh() }
             .onAppear {
                 model.homeDidAppear()
                 model.pickModel?.showHome()
@@ -58,10 +63,35 @@ struct HomeDecisionView: View {
             viewerStateDidChange: model.reconcile,
             eligibilityDidChange: model.repair
         )
-        return MovieDetailView(
-            model: dependencies.makeViewModel(movieID: movieID),
+        return HomeMovieDetailDestination(
+            movieID: movieID,
             imagePipeline: imagePipeline,
             navigationDependencies: dependencies
+        )
+    }
+}
+
+@MainActor
+private struct HomeMovieDetailDestination: View {
+    @State private var model: MovieDetailViewModel
+    let imagePipeline: ImagePipeline
+    let navigationDependencies: MovieDetailNavigationDependencies
+
+    init(
+        movieID: Int,
+        imagePipeline: ImagePipeline,
+        navigationDependencies: MovieDetailNavigationDependencies
+    ) {
+        _model = State(initialValue: navigationDependencies.makeViewModel(movieID: movieID))
+        self.imagePipeline = imagePipeline
+        self.navigationDependencies = navigationDependencies
+    }
+
+    var body: some View {
+        MovieDetailView(
+            model: model,
+            imagePipeline: imagePipeline,
+            navigationDependencies: navigationDependencies
         )
     }
 }

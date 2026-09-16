@@ -20,12 +20,12 @@ struct MyMoviesPresentationMapperTests {
 
         #expect(items.map(\.id) == [1, 2, 3, 4, 5, 6])
         #expect(items.map(\.stateLabel) == [
-            "Love it",
-            "Like it",
-            "It was okay",
-            "Didn't like it",
-            "Watched",
-            "Not interested",
+            String(localized: "Love it"),
+            String(localized: "Like it"),
+            String(localized: "It was okay"),
+            String(localized: "Didn't like it"),
+            String(localized: "Watched"),
+            String(localized: "Not interested"),
         ])
         #expect(items.first?.title == "Movie 1")
         #expect(items.first?.releaseYear == "2024")

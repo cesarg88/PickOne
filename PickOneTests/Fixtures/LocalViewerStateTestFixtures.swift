@@ -11,9 +11,9 @@ enum LocalViewerStateTestFixtures {
     static func emptyEnvelope(
         id: UUID,
         source: LocalViewerStateMigrationRecordV2DTO.Source = .freshInstall
-    ) -> LocalViewerStateEnvelopeV3DTO {
-        LocalViewerStateEnvelopeV3DTO(
-            envelopeSchemaVersion: LocalViewerStateEnvelopeV3DTO.schemaVersion,
+    ) -> LocalViewerStateEnvelopeV4DTO {
+        LocalViewerStateEnvelopeV4DTO(
+            envelopeSchemaVersion: LocalViewerStateEnvelopeV4DTO.schemaVersion,
             committedStateSnapshotID: id,
             recommendationSuppressionEpochID: secondID ?? id,
             viewerProfileState: LocalViewerProfileStateV2DTO(
@@ -32,9 +32,9 @@ enum LocalViewerStateTestFixtures {
         id: UUID,
         completedProfile: CompletedViewerProfileV2DTO? = nil,
         profileDraft: ViewerProfileDraftV2DTO? = nil
-    ) -> LocalViewerStateEnvelopeV3DTO {
+    ) -> LocalViewerStateEnvelopeV4DTO {
         let base = emptyEnvelope(id: id)
-        return LocalViewerStateEnvelopeV3DTO(
+        return LocalViewerStateEnvelopeV4DTO(
             envelopeSchemaVersion: base.envelopeSchemaVersion,
             committedStateSnapshotID: base.committedStateSnapshotID,
             recommendationSuppressionEpochID: base.recommendationSuppressionEpochID,
@@ -120,7 +120,7 @@ enum LocalViewerStateTestFixtures {
         )
     }
 
-    static func encoded(_ envelope: LocalViewerStateEnvelopeV3DTO) throws -> Data {
+    static func encoded(_ envelope: LocalViewerStateEnvelopeV4DTO) throws -> Data {
         try JSONLocalViewerStateEnvelopeCoder().encode(envelope)
     }
 

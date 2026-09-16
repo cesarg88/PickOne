@@ -33,7 +33,7 @@ struct LocalViewerStateDestructiveRecoveryTests {
         #expect(legacy.profileData == nil)
         #expect(legacy.watchlistData == nil)
         let active = try #require(files.activeData)
-        guard case let .currentV3(envelope) = try JSONLocalViewerStateEnvelopeCoder().decode(active) else {
+        guard case let .currentV4(envelope) = try JSONLocalViewerStateEnvelopeCoder().decode(active) else {
             Issue.record("Expected reset v3 Viewer State")
             return
         }

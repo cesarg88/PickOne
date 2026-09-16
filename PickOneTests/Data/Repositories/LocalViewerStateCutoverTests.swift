@@ -357,9 +357,9 @@ private extension LocalViewerStateCutoverTests {
 
     private func activeEnvelope(
         _ files: InMemoryLocalViewerStateFileStore
-    ) throws -> LocalViewerStateEnvelopeV3DTO {
+    ) throws -> LocalViewerStateEnvelopeV4DTO {
         let decoded = try JSONLocalViewerStateEnvelopeCoder().decode(#require(files.activeData))
-        guard case let .currentV3(envelope) = decoded else {
+        guard case let .currentV4(envelope) = decoded else {
             throw LocalViewerStateTestError.rejected
         }
         return envelope
@@ -370,9 +370,9 @@ private extension LocalViewerStateCutoverTests {
         completedProfile: CompletedViewerProfileV2DTO? = nil,
         profileDraft: ViewerProfileDraftV2DTO? = nil,
         states: [ViewerMovieState] = []
-    ) -> LocalViewerStateEnvelopeV3DTO {
-        LocalViewerStateEnvelopeV3DTO(
-            envelopeSchemaVersion: LocalViewerStateEnvelopeV3DTO.schemaVersion,
+    ) -> LocalViewerStateEnvelopeV4DTO {
+        LocalViewerStateEnvelopeV4DTO(
+            envelopeSchemaVersion: LocalViewerStateEnvelopeV4DTO.schemaVersion,
             committedStateSnapshotID: id,
             recommendationSuppressionEpochID: LocalViewerStateTestFixtures.secondID ?? id,
             viewerProfileState: LocalViewerProfileStateV2DTO(

@@ -6,6 +6,7 @@ struct MyMoviesItemPresentation: Identifiable, Equatable {
     let releaseYear: String?
     let posterURL: URL?
     let stateLabel: String
+    var hasPickOneProvenance = false
 }
 
 @MainActor
@@ -19,7 +20,8 @@ enum MyMoviesPresentationMapper {
                 title: state.displayMetadata.title,
                 releaseYear: state.displayMetadata.releaseYear.map(String.init),
                 posterURL: posterURL(for: state.displayMetadata.posterPath),
-                stateLabel: stateLabel(for: state)
+                stateLabel: stateLabel(for: state),
+                hasPickOneProvenance: state.watchState.isWatched && state.pickOneProvenance != nil
             )
         }
     }
@@ -30,16 +32,16 @@ enum MyMoviesPresentationMapper {
         if let reaction = state.reaction {
             switch reaction {
                 case .loveIt:
-                    return "Love it"
+                    return String(localized: "Love it")
                 case .likeIt:
-                    return "Like it"
+                    return String(localized: "Like it")
                 case .itWasOkay:
-                    return "It was okay"
+                    return String(localized: "It was okay")
                 case .didNotLikeIt:
-                    return "Didn't like it"
+                    return String(localized: "Didn't like it")
             }
         }
-        return state.isNotInterested ? "Not interested" : "Watched"
+        return state.isNotInterested ? String(localized: "Not interested") : String(localized: "Watched")
     }
 
     private static func posterURL(for path: String?) -> URL? {

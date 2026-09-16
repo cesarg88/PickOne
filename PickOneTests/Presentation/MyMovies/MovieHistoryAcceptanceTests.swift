@@ -28,7 +28,7 @@ struct MovieHistoryAcceptanceTests {
                 title: updated.displayMetadata.title,
                 releaseYear: nil,
                 posterURL: nil,
-                stateLabel: "Love it"
+                stateLabel: String(localized: "Love it")
             ),
         ])
         await waitForMyMoviesState(model, expected: expectedState)

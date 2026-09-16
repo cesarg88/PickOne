@@ -7,8 +7,11 @@ enum LocalViewerStateEnvelopeMappingError: Error, Equatable, Sendable {
 }
 
 struct LocalViewerStateEnvelopeMapper: Sendable {
-    func snapshot(from envelope: LocalViewerStateEnvelopeV3DTO) throws -> ViewerMovieStateSnapshot {
-        guard envelope.envelopeSchemaVersion == LocalViewerStateEnvelopeV3DTO.schemaVersion else {
+    func snapshot(from envelope: LocalViewerStateEnvelopeV4DTO) throws -> ViewerMovieStateSnapshot {
+        guard envelope.envelopeSchemaVersion == LocalViewerStateEnvelopeV4DTO.schemaVersion else {
+            throw LocalViewerStateEnvelopeMappingError.invalidEnvelope
+        }
+        guard Set(envelope.appliedConfirmationOperations).count == envelope.appliedConfirmationOperations.count else {
             throw LocalViewerStateEnvelopeMappingError.invalidEnvelope
         }
         try validateProfileState(envelope.viewerProfileState)
@@ -23,7 +26,9 @@ struct LocalViewerStateEnvelopeMapper: Sendable {
     }
 
     func snapshot(from envelope: LocalViewerStateEnvelopeV2DTO) throws -> ViewerMovieStateSnapshot {
-        guard envelope.envelopeSchemaVersion == LocalViewerStateEnvelopeV2DTO.schemaVersion else {
+        guard envelope.envelopeSchemaVersion == LocalViewerStateEnvelopeV2DTO.schemaVersion,
+              envelope.viewerMovieStates.allSatisfy({ $0.pickOneProvenance == nil })
+        else {
             throw LocalViewerStateEnvelopeMappingError.invalidEnvelope
         }
         try validateProfileState(envelope.viewerProfileState)
@@ -35,12 +40,13 @@ struct LocalViewerStateEnvelopeMapper: Sendable {
     }
 
     func replacingStates(
-        in envelope: LocalViewerStateEnvelopeV3DTO,
+        in envelope: LocalViewerStateEnvelopeV4DTO,
         snapshotID: UUID,
         states: [ViewerMovieState]
-    ) -> LocalViewerStateEnvelopeV3DTO {
-        LocalViewerStateEnvelopeV3DTO(
-            envelopeSchemaVersion: LocalViewerStateEnvelopeV3DTO.schemaVersion,
+    ) -> LocalViewerStateEnvelopeV4DTO {
+        LocalViewerStateEnvelopeV4DTO(
+            appliedConfirmationOperations: envelope.appliedConfirmationOperations,
+            envelopeSchemaVersion: LocalViewerStateEnvelopeV4DTO.schemaVersion,
             committedStateSnapshotID: snapshotID,
             recommendationSuppressionEpochID: envelope.recommendationSuppressionEpochID,
             viewerProfileState: envelope.viewerProfileState,
@@ -72,7 +78,14 @@ struct LocalViewerStateEnvelopeMapper: Sendable {
             watchState: state.watchState == .watched ? "watched" : "unwatched",
             preference: state.preference.map(map),
             watchlistAddedAt: state.watchlistIntent?.addedAt,
-            stateChangedAt: state.stateChangedAt
+            stateChangedAt: state.stateChangedAt,
+            pickOneProvenance: state.pickOneProvenance.map {
+                PickOneViewingProvenanceDTO(
+                    source: "homePick",
+                    confirmationOperationID: $0.confirmationOperationID,
+                    confirmedAt: $0.confirmedAt
+                )
+            }
         )
     }
 
@@ -92,7 +105,14 @@ struct LocalViewerStateEnvelopeMapper: Sendable {
             watchState: watchState,
             preference: dto.preference.map(map),
             watchlistIntent: dto.watchlistAddedAt.map(WatchlistIntent.init),
-            stateChangedAt: dto.stateChangedAt
+            stateChangedAt: dto.stateChangedAt,
+            pickOneProvenance: dto.pickOneProvenance.map {
+                guard $0.source == "homePick" else { throw LocalViewerStateEnvelopeMappingError.invalidEnvelope }
+                return PickOneViewingProvenance(
+                    confirmationOperationID: $0.confirmationOperationID,
+                    confirmedAt: $0.confirmedAt
+                )
+            }
         )
     }
 

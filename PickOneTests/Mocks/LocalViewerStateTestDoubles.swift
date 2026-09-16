@@ -214,7 +214,7 @@ struct FailingLocalViewerStateEncoder: LocalViewerStateEnvelopeCoding {
         try JSONLocalViewerStateEnvelopeCoder().decode(data)
     }
 
-    func encode(_: LocalViewerStateEnvelopeV3DTO) throws -> Data {
+    func encode(_: LocalViewerStateEnvelopeV4DTO) throws -> Data {
         throw LocalViewerStateTestError.rejected
     }
 }

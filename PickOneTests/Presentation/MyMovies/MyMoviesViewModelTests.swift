@@ -28,7 +28,7 @@ struct MyMoviesViewModelTests {
             return
         }
         #expect(items.map(\.id) == [movie.movieID])
-        #expect(items.first?.stateLabel == "Watched")
+        #expect(items.first?.stateLabel == String(localized: "Watched"))
     }
 
     @Test("load failure is blocking and retryable")
@@ -38,7 +38,7 @@ struct MyMoviesViewModelTests {
 
         await sut.load()
 
-        #expect(sut.state == .failure("Your movies couldn't be loaded. Please try again."))
+        #expect(sut.state == .failure(String(localized: "Your movies couldn't be loaded. Please try again.")))
 
         try await useCase.setResult(states: [historyState()], error: nil)
         await sut.load()

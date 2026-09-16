@@ -5,7 +5,7 @@ import Testing
 
 @Suite("Local Viewer State persistence", .serialized)
 struct LocalViewerStatePersistenceTests {
-    @Test("v3 envelope round trips with stable dates and sorted JSON keys")
+    @Test("v4 envelope round trips with stable dates and sorted JSON keys")
     func envelopeRoundTrip() throws {
         let id = try LocalViewerStateTestFixtures.uuid(LocalViewerStateTestFixtures.firstID)
         let state = try ViewerMovieState(
@@ -27,10 +27,10 @@ struct LocalViewerStatePersistenceTests {
         let data = try coder.encode(envelope)
         let decoded = try coder.decode(data)
 
-        #expect(decoded == .currentV3(envelope))
+        #expect(decoded == .currentV4(envelope))
         #expect(try LocalViewerStateEnvelopeMapper().snapshot(from: envelope).states == [state])
         let json = try #require(String(bytes: data, encoding: .utf8))
-        #expect(json.hasPrefix("{\"committedStateSnapshotID\""))
+        #expect(json.hasPrefix("{\"appliedConfirmationOperations\""))
     }
 
     @Test("corrupt and unsupported schemas remain distinct")
@@ -41,7 +41,7 @@ struct LocalViewerStatePersistenceTests {
             _ = try coder.decode(Data("not-json".utf8))
         }
         #expect(throws: LocalViewerStateCodingError.unsupportedSchema) {
-            _ = try coder.decode(Data(#"{"envelopeSchemaVersion":4}"#.utf8))
+            _ = try coder.decode(Data(#"{"envelopeSchemaVersion":99}"#.utf8))
         }
     }
 
@@ -59,7 +59,7 @@ struct LocalViewerStatePersistenceTests {
             stateChangedAt: LocalViewerStateTestFixtures.date
         )
         let base = LocalViewerStateTestFixtures.emptyEnvelope(id: id)
-        let envelope = LocalViewerStateEnvelopeV3DTO(
+        let envelope = LocalViewerStateEnvelopeV4DTO(
             envelopeSchemaVersion: base.envelopeSchemaVersion,
             committedStateSnapshotID: base.committedStateSnapshotID,
             recommendationSuppressionEpochID: base.recommendationSuppressionEpochID,

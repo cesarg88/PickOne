@@ -3,6 +3,7 @@ import Foundation
 struct ViewingDecisionState: Equatable, Sendable {
     var sessions: [RecommendationSession] = []
     var decisions: [ViewingDecision] = []
+    var confirmationOperations: [ViewingConfirmationOperation] = []
     // Runtime evidence is deliberately not restored as proof of foreground activity.
     var isActive = false
     var visibleSurface: ViewingDecisionSurface?
@@ -23,9 +24,14 @@ struct ViewingDecisionState: Equatable, Sendable {
         else {
             throw ViewingDecisionError.invalidData
         }
+        if case let .confirmation(command) = action {
+            try confirm(command, at: moment.wall)
+            return
+        }
         if case let .pick(selection, snapshot, _) = action,
            !snapshot.recommendations.contains(selection)
         { throw ViewingDecisionError.invalidRecommendation }
+        try validateCancellation(action)
         if case let .cancel(id) = action, activeDecision?.id != id {
             throw ViewingDecisionError.staleDecision
         }
@@ -78,10 +84,18 @@ struct ViewingDecisionState: Equatable, Sendable {
                         sessions[sessionIndex].lastActivityAt = max(sessions[sessionIndex].lastActivityAt, moment.wall)
                     }
                 }
+            case let .confirmation(command):
+                try confirm(command, at: moment.wall)
             case .expire:
                 break
         }
         if ordered { lastMoment = moment }
+    }
+
+    private func validateCancellation(_ action: ViewingDecisionAction) throws {
+        if case .cancel = action, confirmationOperations.contains(where: {
+            $0.decisionID == activeDecision?.id && $0.stage != .completed
+        }) { throw ViewingDecisionError.staleDecision }
     }
 
     private var openIndex: Int? {

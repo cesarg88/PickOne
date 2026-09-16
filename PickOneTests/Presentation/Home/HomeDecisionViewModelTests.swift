@@ -459,7 +459,8 @@ private actor GatedHomeDecisionUseCase: ThreeForTonightUseCase {
     }
 
     func waitForLoadStart() async -> Bool {
-        for _ in 0 ..< 200 {
+        let deadline = ContinuousClock.now.advanced(by: .seconds(1))
+        while ContinuousClock.now < deadline, !Task.isCancelled {
             if loadCallCount > 0 {
                 return true
             }
