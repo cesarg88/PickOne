@@ -64,6 +64,7 @@ closure are excluded, as are remote analytics and recommendation changes.
 | Concurrent retries, cancellation before preparation, corrupt measurement, offline replay, PR1 v1 upgrade | Actor coordinator, receipt lookup, versioned envelope | `ViewingConfirmationIntegrityTests` |
 | Closing either confirmation outcome immediately refreshes Home's Pick cache; old cancel/retry cannot target the closed decision; relaunch remains correct | Read-only refresh serialized with Pick actions; confirmation composition callback | `ConfirmationPickCacheTests` |
 | Journal stages and immutable outcomes agree in both directions; contradictory active bytes are quarantined exactly and valid previous restored | Semantic envelope validation and existing recovery | `ConfirmationSemanticRecoveryTests`, including no-previous failure and valid superseded pending journals |
+| Cancel queued during suspended confirmation refresh cannot mutate or resurrect error/retry state; newer same-movie operation keeps ownership | Pending-operation ID guards before apply and after awaits; identity-checked cleanup | `QueuedPickOperationTests`, with controlled snapshot continuations and unchanged persisted bytes |
 | Existing profile, Watchlist, Search History, recommendations and recovery | Unchanged authority boundaries plus current-schema fixtures | Full `make verify` regression suite, including existing M7 upgrade/recovery and PR1 suites |
 
 ## Validation
@@ -81,6 +82,7 @@ xcodebuild test -project PickOne.xcodeproj -scheme PickOne \
   -only-testing:PickOneTests/ViewingProvenanceMigrationTests \
   -only-testing:PickOneTests/ViewingConfirmationPresentationTests \
   -only-testing:PickOneTests/ConfirmationPickCacheTests \
+  -only-testing:PickOneTests/QueuedPickOperationTests \
   -only-testing:PickOneTests/ConfirmationSemanticRecoveryTests \
   -only-testing:PickOneUITests/ViewingConfirmationInteractionTests
 ```
@@ -108,7 +110,30 @@ operations for superseded Picks remain valid because the state machine can
 produce them. Recovery tests cover exact quarantine bytes, previous-copy restore,
 no-previous failure and repository recreation.
 
-Final automated validation on `2026-09-16`:
+The remaining queued-cancellation race was reproduced on `2026-09-21` using a
+controllable repository snapshot suspension: refresh started, Cancel queued,
+then refresh published the already-closed decision before Cancel resumed. The
+old implementation still applied Cancel and exposed a failed action with no
+retry operation. Queue tasks now check their pending-operation ID before
+applying and after each await, and all movie-bound result/cleanup publication
+is conditional on retaining ownership. Invalidation removes saving, failed and
+retry state together. A second controlled suspension proves a cleared old
+cancellation cannot alter a newer Pick for the same movie, including that new
+Pick's failure and retry. Existing ordinary confirmation, failed-cancellation
+cleanup, semantic recovery and relaunch coverage remain in place.
+
+Focused race/regression run: 12 tests across `QueuedPickOperationTests`,
+`ConfirmationPickCacheTests`, `HomePickViewModelTests`, and
+`ViewingConfirmationPresentationTests` passed after the two new regression
+tests failed against the previous implementation.
+
+Final automated validation on `2026-09-21`: `make verify` passed with 607 unit
+tests in 115 suites and 8 UI tests, formatting/lint/repository/secret checks,
+static analysis, unsigned Release build and app-bundle inspection. Environment:
+Xcode 26.6, iOS 26.5, iPhone 17 Pro simulator. This includes all existing
+confirmation, failed-cancellation cleanup, relaunch and semantic-recovery tests.
+
+Previous automated validation on `2026-09-16`:
 
 - Full test suite: 605 unit tests in 114 suites and 8 UI tests passed on
   iPhone 17 Pro simulator, including existing PR1/M7 regression journeys.

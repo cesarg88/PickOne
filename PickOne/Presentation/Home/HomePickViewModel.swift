@@ -134,8 +134,7 @@ final class HomePickViewModel {
         }
         for (movieID, operation) in pendingOperations {
             if case let .cancel(id) = operation.action, id != activeDecision?.id {
-                pendingOperations[movieID] = nil
-                failedMovieIDs.remove(movieID)
+                clearPendingOperation(operation, movieID: movieID)
             }
         }
         scheduleDeadline(snapshot.openSession)
@@ -157,29 +156,48 @@ final class HomePickViewModel {
         enqueue(ViewingDecisionOperation(action: action, moment: clock()), movieID: nil)
     }
 
+    private func isCurrent(_ operation: ViewingDecisionOperation, movieID: Int?) -> Bool {
+        guard let movieID else { return true }
+        return pendingOperations[movieID]?.id == operation.id
+    }
+
+    private func clearPendingOperation(_ operation: ViewingDecisionOperation, movieID: Int) {
+        guard isCurrent(operation, movieID: movieID) else { return }
+        pendingOperations[movieID] = nil
+        savingMovieIDs.remove(movieID)
+        failedMovieIDs.remove(movieID)
+    }
+
     private func enqueue(_ operation: ViewingDecisionOperation, movieID: Int?) {
         let previous = tail
         tail = Task { [weak self] in
             await previous?.value
-            guard let self else { return }
+            guard let self, isCurrent(operation, movieID: movieID) else { return }
+            defer {
+                if let movieID, isCurrent(operation, movieID: movieID) {
+                    savingMovieIDs.remove(movieID)
+                }
+            }
             do {
                 _ = try await manage.apply(operation)
+                guard isCurrent(operation, movieID: movieID) else { return }
                 let snapshot = try await manage.snapshot()
+                guard isCurrent(operation, movieID: movieID) else { return }
                 let previousDecisionID = activeDecision?.id
                 publish(snapshot)
                 if case .pick = operation.action, activeDecision != nil, activeDecision?.id != previousDecisionID {
                     showPickFeedback()
                 }
                 if let movieID {
-                    pendingOperations[movieID] = nil
-                    failedMovieIDs.remove(movieID)
+                    clearPendingOperation(operation, movieID: movieID)
                 }
             } catch is CancellationError {
                 // Task cancellation is never an explicit Pick cancellation.
             } catch {
-                if let movieID { failedMovieIDs.insert(movieID) }
+                if let movieID, isCurrent(operation, movieID: movieID) {
+                    failedMovieIDs.insert(movieID)
+                }
             }
-            if let movieID { savingMovieIDs.remove(movieID) }
         }
     }
 
