@@ -5,6 +5,32 @@ import Testing
 @MainActor
 @Suite("Home quick feedback", .serialized)
 struct HomeQuickFeedbackViewModelTests {
+    @Test func onlySuccessfulAlreadyWatchedContributesEvidence() async throws {
+        let update = RecordingHomeQuickFeedbackUpdate(outcomes: [
+            .failure, .success(change(impact: .eligibilityChanged)),
+        ])
+        var count = 0
+        let sut = try HomeQuickFeedbackViewModel(
+            movieID: 101, metadata: metadata(), updateViewerMovieState: update,
+            viewerStateDidChange: { _ in }, alreadyWatchedRecorder: { { count += 1 } }
+        )
+        await sut.submit(.markWatched)
+        #expect(count == 0)
+        await sut.retry()
+        #expect(count == 1)
+        await sut.submit(.markWatched)
+        #expect(count == 1)
+        let rating = try HomeQuickFeedbackViewModel(
+            movieID: 101, metadata: metadata(),
+            updateViewerMovieState: RecordingHomeQuickFeedbackUpdate(
+                outcomes: [.success(change(impact: .tasteChanged))]
+            ),
+            viewerStateDidChange: { _ in }, alreadyWatchedRecorder: { { count += 1 } }
+        )
+        await rating.submit(.assignReaction(.loveIt))
+        #expect(count == 1)
+    }
+
     @Test(
         "every quick action uses the existing Viewer Movie State transition",
         arguments: HomeQuickFeedbackActionCase.allCases

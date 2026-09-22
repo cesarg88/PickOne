@@ -2,6 +2,7 @@ import Foundation
 
 struct ViewingDecisionEnvelope: Sendable {
     var id = UUID()
+    var deletionOperationIDs: [UUID] = []
     var state = ViewingDecisionState()
     var receipts: [ViewingDecisionReceipt] = []
 
@@ -16,8 +17,16 @@ struct ViewingDecisionEnvelope: Sendable {
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .millisecondsSince1970
         let header = try decoder.decode(ViewingDecisionHeaderDTO.self, from: data)
-        guard [1, 2].contains(header.schemaVersion) else { throw ViewingDecisionError.unsupportedSchema }
-        let result = try decoder.decode(ViewingDecisionEnvelopeDTO.self, from: data).domain()
+        guard [1, 2, 3].contains(header.schemaVersion) else { throw ViewingDecisionError.unsupportedSchema }
+        let decoded = try decoder.decode(ViewingDecisionEnvelopeDTO.self, from: data)
+        if header.schemaVersion == 3 {
+            guard decoded.searchEvidence != nil, decoded.deletionOperationIDs != nil,
+                  decoded.sessions.allSatisfy({ $0.alreadyWatchedMovieIDs != nil })
+            else {
+                throw ViewingDecisionError.invalidData
+            }
+        }
+        let result = try decoded.domain()
         if header.schemaVersion == 1 {
             guard result.state.confirmationOperations.isEmpty,
                   result.state.decisions.allSatisfy({
@@ -68,6 +77,7 @@ struct ViewingDecisionEnvelope: Sendable {
                 else { throw ViewingDecisionError.invalidData }
             } else if decision.timing != .unavailable { throw ViewingDecisionError.invalidData }
         }
+        try validateMeasurement()
         try validateConfirmations()
         for receipt in receipts {
             guard receipt.sessionID.map({ id in sessions.contains { $0.id == id } }) ?? true,
@@ -87,9 +97,13 @@ private struct ViewingDecisionEnvelopeDTO: Codable {
     let receipts: [ViewingDecisionReceiptDTO]
     let lastDecisionMoment: DecisionMomentDTO?
     let confirmationOperations: [ViewingConfirmationOperationDTO]?
+    let searchEvidence: [PilotSearchEvidenceDTO]?
+    let deletionOperationIDs: [UUID]?
 
     init(_ envelope: ViewingDecisionEnvelope) {
-        schemaVersion = 2
+        schemaVersion = 3
+        deletionOperationIDs = envelope.deletionOperationIDs
+        searchEvidence = envelope.state.searchEvidence.map(PilotSearchEvidenceDTO.init)
         confirmationOperations = envelope.state.confirmationOperations.map(ViewingConfirmationOperationDTO.init)
         id = envelope.id
         sessions = envelope.state.sessions.map(RecommendationSessionDTO.init)
@@ -100,8 +114,9 @@ private struct ViewingDecisionEnvelopeDTO: Codable {
 
     func domain() throws -> ViewingDecisionEnvelope {
         try ViewingDecisionEnvelope(
-            id: id,
+            id: id, deletionOperationIDs: deletionOperationIDs ?? [],
             state: ViewingDecisionState(
+                searchEvidence: (searchEvidence ?? []).map { try $0.domain() },
                 sessions: sessions.map { try $0.domain() },
                 decisions: decisions.map { try $0.domain() },
                 confirmationOperations: (confirmationOperations ?? []).map { try $0.domain() },
@@ -136,6 +151,8 @@ private struct RecommendationSessionDTO: Codable {
     let foregroundAnchor: DecisionMomentDTO?
     let observedSetIDs: [UUID]
     let refreshCount: Int
+    let observedMovieIDs: [Int]?
+    let alreadyWatchedMovieIDs: [Int]?
     let firstPickTiming: DecisionTimingDTO?
     let finalDecisionID: UUID?
 
@@ -150,6 +167,8 @@ private struct RecommendationSessionDTO: Codable {
         foregroundAnchor = session.foregroundAnchor.map(DecisionMomentDTO.init)
         observedSetIDs = session.observedSetIDs
         refreshCount = session.refreshCount
+        observedMovieIDs = session.observedMovieIDs
+        alreadyWatchedMovieIDs = session.alreadyWatchedMovieIDs
         firstPickTiming = session.firstPickTiming.map(DecisionTimingDTO.init)
         finalDecisionID = session.finalDecisionID?.rawValue
     }
@@ -162,6 +181,7 @@ private struct RecommendationSessionDTO: Codable {
             endedAt: endedAt, status: status, foregroundDuration: foregroundDuration,
             timingIsReliable: timingIsReliable, foregroundAnchor: foregroundAnchor?.domain(),
             observedSetIDs: observedSetIDs, refreshCount: refreshCount,
+            observedMovieIDs: observedMovieIDs, alreadyWatchedMovieIDs: alreadyWatchedMovieIDs ?? [],
             firstPickTiming: firstPickTiming?.domain(), finalDecisionID: finalDecisionID.map(ViewingDecisionID.init)
         )
     }

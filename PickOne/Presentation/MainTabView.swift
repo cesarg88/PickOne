@@ -77,6 +77,7 @@ struct MainTabView: View {
             Tab("Settings", systemImage: "gearshape", value: MainTab.settings) {
                 SettingsView(
                     model: profileModel,
+                    pilotInsightsModel: container.pilotInsightsViewModel,
                     myMoviesModel: container.myMoviesViewModel,
                     imagePipeline: container.imagePipeline,
                     movieDetailDependencies: MovieDetailNavigationDependencies(

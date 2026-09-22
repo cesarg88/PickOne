@@ -56,6 +56,8 @@ struct RecommendationSession: Equatable, Sendable {
     var foregroundAnchor: DecisionMoment?
     var observedSetIDs: [UUID] = []
     var refreshCount = 0
+    var observedMovieIDs: [Int]? = []
+    var alreadyWatchedMovieIDs: [Int] = []
     var firstPickTiming: DecisionTiming?
     var finalDecisionID: ViewingDecisionID?
 }
@@ -84,6 +86,8 @@ enum ViewingDecisionAction: Equatable, Sendable {
     case pick(PickRecommendation, snapshot: ViewingDecisionSurface, isVisible: Bool)
     case cancel(ViewingDecisionID)
     case expire
+    case alreadyWatched(DecisionSessionID, movieID: Int)
+    case search(PilotSearchEvidence)
     case confirmation(ViewingConfirmationCommand)
 }
 

@@ -5,6 +5,46 @@ import Testing
 
 @MainActor
 struct HomePickViewModelTests {
+    @Test func immediateFeedbackWaitsForObservationAndKeepsOriginalSession() async throws {
+        let repository = LocalViewingDecisionRepository(store: MemoryViewingDecisionStore())
+        let clock = PickTestClock()
+        let model = HomePickViewModel(manage: ManageViewingDecision(repository: repository), clock: clock.now)
+        try model.updateSurface(ViewingDecisionTestFixtures.surface())
+        model.showHome()
+        model.setActive(true)
+        let record = model.alreadyWatchedRecorder(movieID: 1)
+        record()
+        await model.waitForPendingOperations()
+        #expect(try await repository.snapshot().sessions.first?.alreadyWatchedMovieIDs == [1])
+        let delayedRecord = model.alreadyWatchedRecorder(movieID: 2)
+        clock.seconds = 2000
+        model.showHome()
+        await model.waitForPendingOperations()
+        delayedRecord()
+        await model.waitForPendingOperations()
+        let sessions = try await repository.snapshot().sessions
+        #expect(sessions.count == 2)
+        #expect(sessions.first?.alreadyWatchedMovieIDs == [1, 2])
+        #expect(sessions.last?.alreadyWatchedMovieIDs.isEmpty == true)
+    }
+
+    @Test func feedbackAfterInactivityObservesTheStillVisibleHome() async throws {
+        let repository = LocalViewingDecisionRepository(store: MemoryViewingDecisionStore())
+        let clock = PickTestClock()
+        let model = HomePickViewModel(manage: ManageViewingDecision(repository: repository), clock: clock.now)
+        try model.updateSurface(ViewingDecisionTestFixtures.surface())
+        model.showHome()
+        model.setActive(true)
+        await model.waitForPendingOperations()
+        clock.seconds = 2000
+        _ = try await repository.apply(.init(action: .expire, moment: clock.now()))
+        model.alreadyWatchedRecorder(movieID: 1)()
+        await model.waitForPendingOperations()
+        let sessions = try await repository.snapshot().sessions
+        #expect(sessions.count == 2)
+        #expect(sessions.last?.alreadyWatchedMovieIDs == [1])
+    }
+
     @Test func perCardFailureRetryAndReplacementPublishOnlyDurableSuccess() async throws {
         let store = MemoryViewingDecisionStore()
         let repository = LocalViewingDecisionRepository(store: store)
@@ -113,6 +153,7 @@ struct HomePickViewModelTests {
         model.setActive(true)
         await model.waitForPendingOperations()
         #expect(try await repository.snapshot().sessions.count == 2)
+        #expect(try await repository.snapshot().openSession?.observedMovieIDs == [1])
         #expect(try await repository.snapshot().openSession?.observedSetIDs == surface.recommendations.first
             .map { [$0.setID] })
         model.hideSurface()

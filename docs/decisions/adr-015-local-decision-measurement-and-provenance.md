@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted — PR2 authorized; implementation closure remains pending
+Accepted — PR3 authorized; implementation closure remains pending
 
 Product behavior and this architecture were accepted by the Product Owner and
 Technical Lead on `2026-09-14`. This ADR and
@@ -11,7 +11,9 @@ and Engineering Ready. D0 merged in #50 (`c31e39f`), and the Product Owner
 explicitly authorized PR1 on `2026-09-14`. PR1 merged in #51 (`d2a9197`).
 The Product Owner authorized PR2 on `2026-09-15`; its implementation record is
 [Confirmation and provenance](../engineering/validation/confirmation-and-provenance.md).
-PR3+ and final implementation closure remain pending.
+PR2 merged in #52 (`81fa448`). The Product Owner authorized PR3 on `2026-09-22`;
+its implementation record is [Pilot insights](../engineering/validation/pilot-insights.md).
+PR4 and final implementation closure remain pending.
 
 ## Context
 

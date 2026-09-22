@@ -4,7 +4,7 @@ import Foundation
 final class AppContainer {
     // MARK: - Infrastructure
 
-    let imagePipeline: ImagePipeline
+    let imagePipeline = ImagePipeline()
 
     // MARK: - Use Cases - Discovery
 
@@ -48,11 +48,15 @@ final class AppContainer {
     let homeDecisionViewModel: HomeDecisionViewModel
     let viewerProfileViewModel: ViewerProfileViewModel
     let myMoviesViewModel: MyMoviesViewModel
+    let pilotInsightsViewModel: PilotInsightsViewModel
     let viewingConfirmationViewModel: ViewingConfirmationViewModel
 
     init() {
         let repositories = Self.makeRepositories()
-        let useCases = Self.makeUseCases(repositories: repositories)
+        let measurement = Self.makeViewingDecisionRepository()
+        let viewingDecisions = Self.makePickRepository(measurement)
+        pilotInsightsViewModel = PilotInsightsViewModel(repository: measurement)
+        let useCases = Self.makeUseCases(repositories: repositories, viewingDecisions: viewingDecisions)
         var movieDetailUseCase: any GetMovieDetailUseCase
         var availabilityUseCase: any CheckMovieAvailabilityUseCase
         var playbackOptionsUseCase: any PreparePlaybackOptionsUseCase
@@ -110,11 +114,9 @@ final class AppContainer {
         getViewerStateRecoveryNotice = useCases.getViewerStateRecoveryNotice
         resetUnrecoverableViewerState = useCases.resetUnrecoverableViewerState
         resolveCalibrationCatalog = useCases.resolveCalibrationCatalog
-        imagePipeline = ImagePipeline()
         discoveryViewModel = DiscoveryViewModel(
             getDiscoveryFeed: useCases.getDiscoveryFeed
         )
-        let viewingDecisions = Self.makeViewingDecisionRepository()
         let homeDecisionViewModel = HomeDecisionViewModel(
             threeForTonight: homeUseCase,
             pickModel: HomePickViewModel(manage: ManageViewingDecision(repository: viewingDecisions))
@@ -228,7 +230,16 @@ private extension AppContainer {
         )
     }
 
-    static func makeViewingDecisionRepository() -> any ViewingDecisionRepository {
+    static func makePickRepository(_ measurement: LocalViewingDecisionRepository) -> any ViewingDecisionRepository {
+        if AppConfiguration.isUITesting,
+           ProcessInfo.processInfo.arguments.contains("-ui-testing-pick-cancel-fails-once")
+        {
+            return UITestingCancellationFailureRepository(base: measurement)
+        }
+        return measurement
+    }
+
+    static func makeViewingDecisionRepository() -> LocalViewingDecisionRepository {
         let store: any ViewingDecisionFileStore
         do {
             let directory: URL?
@@ -249,13 +260,7 @@ private extension AppContainer {
         } catch {
             store = UnavailableViewingDecisionStore()
         }
-        let repository = LocalViewingDecisionRepository(store: store)
-        if AppConfiguration.isUITesting,
-           ProcessInfo.processInfo.arguments.contains("-ui-testing-pick-cancel-fails-once")
-        {
-            return UITestingCancellationFailureRepository(base: repository)
-        }
-        return repository
+        return LocalViewingDecisionRepository(store: store)
     }
 
     static func makeRepositories() -> Repositories {
@@ -381,7 +386,7 @@ private extension AppContainer {
         }
     #endif
 
-    static func makeUseCases(repositories: Repositories) -> UseCases {
+    static func makeUseCases(repositories: Repositories, viewingDecisions: any ViewingDecisionRepository) -> UseCases {
         let checkAvailability = CheckMovieAvailability(
             repository: repositories.availability,
             getCurrentViewingContext: GetCurrentViewingContext(
@@ -428,7 +433,8 @@ private extension AppContainer {
                 inputAssembler: inputAssembler,
                 movieRepository: repositories.movie,
                 availabilityRepository: repositories.availability,
-                signer: StableDecisionCycleSigner()
+                signer: StableDecisionCycleSigner(),
+                diagnosticsSink: RecordPilotSearch(repository: viewingDecisions)
             ),
             manageViewerProfile: ManageViewerProfile(
                 repository: repositories.viewerProfile,
