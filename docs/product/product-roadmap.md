@@ -254,8 +254,9 @@ enough to proceed to the next product-definition cycle.
 Local Pilot Measurement
 
 Status:
-Accepted — Product Ready and Engineering Ready; implementation begins only
-after D0 merges and PR1 is explicitly authorized
+In progress — PR1 merged in #51; PR2 authorized on `2026-09-15`.
+[Confirmation/provenance evidence](../engineering/validation/confirmation-and-provenance.md)
+records this partial delivery. PR3 insights and PR4 closure remain pending.
 
 Purpose:
 
@@ -280,8 +281,8 @@ The Product Owner and Technical Lead accepted
 [the executable specification](../milestones/milestone-8-pilot-measurement.md)
 and
 [ADR-015](../decisions/adr-015-local-decision-measurement-and-provenance.md) on
-`2026-09-14`. Implementation begins only after the documentation-only D0 PR
-merges and PR1 is explicitly authorized.
+`2026-09-14`. D0 and PR1 are merged; PR2 proceeds under explicit Product Owner
+authorization. The milestone remains open.
 
 ### Milestone 9
 

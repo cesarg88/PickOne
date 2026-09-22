@@ -376,7 +376,8 @@ extension LocalViewerStateRepository {
                         watchState: .watched,
                         preference: nil,
                         watchlistIntent: nil,
-                        stateChangedAt: state.stateChangedAt
+                        stateChangedAt: state.stateChangedAt,
+                        pickOneProvenance: state.pickOneProvenance
                     )
                 case .notInterested:
                     nil
@@ -428,8 +429,9 @@ extension LocalViewerStateRepository {
         let snapshotID = recommendationInputsChanged
             ? freshSnapshotID(excluding: current.snapshot.id.rawValue)
             : current.snapshot.id.rawValue
-        let envelope = LocalViewerStateEnvelopeV3DTO(
-            envelopeSchemaVersion: LocalViewerStateEnvelopeV3DTO.schemaVersion,
+        let envelope = LocalViewerStateEnvelopeV4DTO(
+            appliedConfirmationOperations: current.envelope.appliedConfirmationOperations,
+            envelopeSchemaVersion: LocalViewerStateEnvelopeV4DTO.schemaVersion,
             committedStateSnapshotID: snapshotID,
             recommendationSuppressionEpochID: suppressionEpochID
                 ?? current.envelope.recommendationSuppressionEpochID,

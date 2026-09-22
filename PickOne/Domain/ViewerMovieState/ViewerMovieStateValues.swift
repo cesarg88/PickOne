@@ -1,6 +1,7 @@
 import Foundation
 
 enum ViewerMovieStateValidationError: Error, Equatable, Sendable {
+    case provenanceRequiresWatched
     case invalidMovieID
     case emptyTitle
     case reactionRequiresWatched
@@ -55,6 +56,11 @@ struct MovieFeedbackMetadata: Equatable, Sendable {
     }
 }
 
+struct PickOneViewingProvenance: Equatable, Sendable {
+    let confirmationOperationID: UUID
+    let confirmedAt: Date
+}
+
 struct ViewerMovieState: Equatable, Sendable {
     let movieID: Int
     let displayMetadata: MovieFeedbackMetadata
@@ -62,6 +68,7 @@ struct ViewerMovieState: Equatable, Sendable {
     let preference: MoviePreference?
     let watchlistIntent: WatchlistIntent?
     let stateChangedAt: Date
+    let pickOneProvenance: PickOneViewingProvenance?
 
     init(
         movieID: Int,
@@ -69,8 +76,12 @@ struct ViewerMovieState: Equatable, Sendable {
         watchState: MovieWatchState,
         preference: MoviePreference?,
         watchlistIntent: WatchlistIntent?,
-        stateChangedAt: Date
+        stateChangedAt: Date,
+        pickOneProvenance: PickOneViewingProvenance? = nil
     ) throws {
+        guard pickOneProvenance == nil || watchState == .watched else {
+            throw ViewerMovieStateValidationError.provenanceRequiresWatched
+        }
         guard movieID > 0 else {
             throw ViewerMovieStateValidationError.invalidMovieID
         }
@@ -92,6 +103,7 @@ struct ViewerMovieState: Equatable, Sendable {
             throw ViewerMovieStateValidationError.emptyUnwatchedState
         }
 
+        self.pickOneProvenance = pickOneProvenance
         self.movieID = movieID
         self.displayMetadata = displayMetadata
         self.watchState = watchState

@@ -48,6 +48,7 @@ final class AppContainer {
     let homeDecisionViewModel: HomeDecisionViewModel
     let viewerProfileViewModel: ViewerProfileViewModel
     let myMoviesViewModel: MyMoviesViewModel
+    let viewingConfirmationViewModel: ViewingConfirmationViewModel
 
     init() {
         let repositories = Self.makeRepositories()
@@ -113,10 +114,10 @@ final class AppContainer {
         discoveryViewModel = DiscoveryViewModel(
             getDiscoveryFeed: useCases.getDiscoveryFeed
         )
+        let viewingDecisions = Self.makeViewingDecisionRepository()
         let homeDecisionViewModel = HomeDecisionViewModel(
             threeForTonight: homeUseCase,
-            pickModel: HomePickViewModel(manage: ManageViewingDecision(repository: Self
-                    .makeViewingDecisionRepository()))
+            pickModel: HomePickViewModel(manage: ManageViewingDecision(repository: viewingDecisions))
         )
         self.homeDecisionViewModel = homeDecisionViewModel
         watchlistViewModel = WatchlistViewModel(
@@ -133,15 +134,14 @@ final class AppContainer {
         recommendationViewModel = RecommendationViewModel(
             getChatRecommendations: useCases.getChatRecommendations
         )
-        viewerProfileViewModel = ViewerProfileViewModel(
-            manageProfile: useCases.manageViewerProfile,
-            getMovieMetadata: useCases.getCalibrationMovieMetadata,
-            resolveCalibrationCatalog: useCases.resolveCalibrationCatalog,
-            getRecoveryNotice: useCases.getViewerStateRecoveryNotice,
-            resetUnrecoverableViewerState: useCases.resetUnrecoverableViewerState,
-            resetsProfileForUITests: AppConfiguration.resetsViewerProfileForUITests
+        viewerProfileViewModel = Self.makeViewerProfileModel(useCases: useCases)
+        let myMovies = MyMoviesViewModel(getMyMovies: useCases.getMyMovies)
+        viewingConfirmationViewModel = Self.makeConfirmationModel(
+            decisions: viewingDecisions, viewerState: repositories.viewerState, movie: repositories.movie,
+            home: homeDecisionViewModel, myMovies: myMovies
         )
-        myMoviesViewModel = MyMoviesViewModel(getMyMovies: useCases.getMyMovies)
+        myMovies.confirmationModel = viewingConfirmationViewModel
+        myMoviesViewModel = myMovies
     }
 }
 
@@ -180,6 +180,52 @@ private extension AppContainer {
         let getViewerStateRecoveryNotice: GetViewerStateRecoveryNotice
         let resetUnrecoverableViewerState: ResetUnrecoverableViewerState
         let resolveCalibrationCatalog: ResolveCalibrationCatalog
+    }
+
+    static func makeViewerProfileModel(useCases: UseCases) -> ViewerProfileViewModel {
+        ViewerProfileViewModel(
+            manageProfile: useCases.manageViewerProfile,
+            getMovieMetadata: useCases.getCalibrationMovieMetadata,
+            resolveCalibrationCatalog: useCases.resolveCalibrationCatalog,
+            getRecoveryNotice: useCases.getViewerStateRecoveryNotice,
+            resetUnrecoverableViewerState: useCases.resetUnrecoverableViewerState,
+            resetsProfileForUITests: AppConfiguration.resetsViewerProfileForUITests
+        )
+    }
+
+    static func makeConfirmationModel(
+        decisions: any ViewingDecisionRepository, viewerState: any ViewingConfirmationMovieStateRepository,
+        movie: any MovieRepository, home: HomeDecisionViewModel, myMovies: MyMoviesViewModel
+    ) -> ViewingConfirmationViewModel {
+        let runtimeID = UUID()
+        let confirmation = ConfirmViewingDecision(
+            decisions: decisions, viewerState: viewerState,
+            metadata: { id in
+                if ViewingConfirmationUITestingScenario.isEnabled {
+                    return try ViewingConfirmationUITestingScenario.metadata(movieID: id)
+                }
+                let detail = try await movie.getMovieDetail(id: id, policy: .returnCacheElseLoad).value
+                return try MovieFeedbackMetadata(
+                    title: detail.title,
+                    releaseYear: detail.releaseYear,
+                    posterPath: detail.posterPath
+                )
+            },
+            moment: { DecisionMoment(
+                wall: ViewingConfirmationUITestingScenario.isEnabled ? ViewingConfirmationUITestingScenario
+                    .now : Date(),
+                monotonicSeconds: 0, runtimeID: runtimeID
+            ) }
+        )
+        return ViewingConfirmationViewModel(
+            coordinator: confirmation,
+            now: { ViewingConfirmationUITestingScenario.isEnabled ? ViewingConfirmationUITestingScenario.now : Date() },
+            refreshPickState: { [weak pickModel = home.pickModel] in try await pickModel?.refreshDecision() },
+            didChange: { @MainActor [weak home, weak myMovies] in
+                home?.load()
+                myMovies?.reloadAfterConfirmation()
+            }
+        )
     }
 
     static func makeViewingDecisionRepository() -> any ViewingDecisionRepository {

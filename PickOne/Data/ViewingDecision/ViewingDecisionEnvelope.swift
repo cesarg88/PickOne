@@ -16,8 +16,15 @@ struct ViewingDecisionEnvelope: Sendable {
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .millisecondsSince1970
         let header = try decoder.decode(ViewingDecisionHeaderDTO.self, from: data)
-        guard header.schemaVersion == 1 else { throw ViewingDecisionError.unsupportedSchema }
+        guard [1, 2].contains(header.schemaVersion) else { throw ViewingDecisionError.unsupportedSchema }
         let result = try decoder.decode(ViewingDecisionEnvelopeDTO.self, from: data).domain()
+        if header.schemaVersion == 1 {
+            guard result.state.confirmationOperations.isEmpty,
+                  result.state.decisions.allSatisfy({
+                      $0.postponementCount == 0 && $0.nextConfirmationAt == nil
+                          && $0.confirmedAt == nil && $0.satisfaction == nil
+                  }) else { throw ViewingDecisionError.invalidData }
+        }
         try result.validate()
         return result
     }
@@ -61,6 +68,7 @@ struct ViewingDecisionEnvelope: Sendable {
                 else { throw ViewingDecisionError.invalidData }
             } else if decision.timing != .unavailable { throw ViewingDecisionError.invalidData }
         }
+        try validateConfirmations()
         for receipt in receipts {
             guard receipt.sessionID.map({ id in sessions.contains { $0.id == id } }) ?? true,
                   receipt.decisionID.map({ id in decisions.contains { $0.id == id } }) ?? true
@@ -78,9 +86,11 @@ private struct ViewingDecisionEnvelopeDTO: Codable {
     let decisions: [ViewingDecisionDTO]
     let receipts: [ViewingDecisionReceiptDTO]
     let lastDecisionMoment: DecisionMomentDTO?
+    let confirmationOperations: [ViewingConfirmationOperationDTO]?
 
     init(_ envelope: ViewingDecisionEnvelope) {
-        schemaVersion = 1
+        schemaVersion = 2
+        confirmationOperations = envelope.state.confirmationOperations.map(ViewingConfirmationOperationDTO.init)
         id = envelope.id
         sessions = envelope.state.sessions.map(RecommendationSessionDTO.init)
         decisions = envelope.state.decisions.map(ViewingDecisionDTO.init)
@@ -94,6 +104,7 @@ private struct ViewingDecisionEnvelopeDTO: Codable {
             state: ViewingDecisionState(
                 sessions: sessions.map { try $0.domain() },
                 decisions: decisions.map { try $0.domain() },
+                confirmationOperations: (confirmationOperations ?? []).map { try $0.domain() },
                 lastDecisionMoment: lastDecisionMoment?.domain()
             ),
             receipts: receipts.map { $0.domain() }
@@ -181,8 +192,16 @@ private struct ViewingDecisionDTO: Codable {
     let changedAt: Date
     let timing: DecisionTimingDTO
     let status: String
+    let postponementCount: Int?
+    let nextConfirmationAt: Date?
+    let confirmedAt: Date?
+    let satisfaction: String?
 
     init(_ decision: ViewingDecision) {
+        postponementCount = decision.postponementCount
+        nextConfirmationAt = decision.nextConfirmationAt
+        confirmedAt = decision.confirmedAt
+        satisfaction = decision.satisfaction?.rawValue
         id = decision.id.rawValue
         sessionID = decision.sessionID?.rawValue
         movieID = decision.recommendation.movieID
@@ -211,7 +230,12 @@ private struct ViewingDecisionDTO: Codable {
         return try ViewingDecision(
             id: ViewingDecisionID(rawValue: id), sessionID: sessionID.map(DecisionSessionID.init),
             recommendation: PickRecommendation(movieID: movieID, setID: setID, cycleID: cycleID, role: decisionRole),
-            pickedAt: pickedAt, timing: timing.domain(), changedAt: changedAt, status: status
+            pickedAt: pickedAt, timing: timing.domain(), changedAt: changedAt, status: status,
+            postponementCount: postponementCount ?? 0, nextConfirmationAt: nextConfirmationAt,
+            confirmedAt: confirmedAt, satisfaction: satisfaction.map { value in
+                guard let reaction = MovieReaction(rawValue: value)
+                else { throw ViewingDecisionError.invalidData }; return reaction
+            }
         )
     }
 }

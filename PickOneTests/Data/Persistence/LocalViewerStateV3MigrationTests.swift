@@ -29,7 +29,7 @@ struct LocalViewerStateV3MigrationTests {
 
         let active = try #require(files.activeData)
         let decoded = try JSONLocalViewerStateEnvelopeCoder().decode(active)
-        guard case let .currentV3(envelope) = decoded else {
+        guard case let .currentV4(envelope) = decoded else {
             Issue.record("Expected a persisted v3 replacement")
             return
         }

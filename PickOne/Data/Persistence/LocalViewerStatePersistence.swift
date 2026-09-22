@@ -7,7 +7,7 @@ enum LocalViewerStateCodingError: Error, Equatable, Sendable {
 
 protocol LocalViewerStateEnvelopeCoding: Sendable {
     func decode(_ data: Data) throws -> DecodedLocalViewerStateEnvelopeDTO
-    func encode(_ envelope: LocalViewerStateEnvelopeV3DTO) throws -> Data
+    func encode(_ envelope: LocalViewerStateEnvelopeV4DTO) throws -> Data
 }
 
 struct JSONLocalViewerStateEnvelopeCoder: LocalViewerStateEnvelopeCoding {
@@ -24,8 +24,10 @@ struct JSONLocalViewerStateEnvelopeCoder: LocalViewerStateEnvelopeCoding {
             return switch header.envelopeSchemaVersion {
                 case LocalViewerStateEnvelopeV2DTO.schemaVersion:
                     try .legacyV2(decoder.decode(LocalViewerStateEnvelopeV2DTO.self, from: data))
-                case LocalViewerStateEnvelopeV3DTO.schemaVersion:
-                    try .currentV3(decoder.decode(LocalViewerStateEnvelopeV3DTO.self, from: data))
+                case 3:
+                    try .legacyV3(decoder.decode(LocalViewerStateEnvelopeV3DTO.self, from: data))
+                case LocalViewerStateEnvelopeV4DTO.schemaVersion:
+                    try .currentV4(decoder.decode(LocalViewerStateEnvelopeV4DTO.self, from: data))
                 default:
                     throw LocalViewerStateCodingError.unsupportedSchema
             }
@@ -36,7 +38,7 @@ struct JSONLocalViewerStateEnvelopeCoder: LocalViewerStateEnvelopeCoding {
         }
     }
 
-    func encode(_ envelope: LocalViewerStateEnvelopeV3DTO) throws -> Data {
+    func encode(_ envelope: LocalViewerStateEnvelopeV4DTO) throws -> Data {
         let encoder = JSONEncoder()
         encoder.dateEncodingStrategy = .millisecondsSince1970
         encoder.outputFormatting = [.sortedKeys]
@@ -57,7 +59,8 @@ private struct LocalViewerStateEnvelopeHeaderDTO: Decodable {
 
 enum DecodedLocalViewerStateEnvelopeDTO: Equatable, Sendable {
     case legacyV2(LocalViewerStateEnvelopeV2DTO)
-    case currentV3(LocalViewerStateEnvelopeV3DTO)
+    case legacyV3(LocalViewerStateEnvelopeV3DTO)
+    case currentV4(LocalViewerStateEnvelopeV4DTO)
 }
 
 struct LocalViewerStateEnvelopeV2DTO: Codable, Equatable, Sendable {
@@ -71,7 +74,24 @@ struct LocalViewerStateEnvelopeV2DTO: Codable, Equatable, Sendable {
 }
 
 struct LocalViewerStateEnvelopeV3DTO: Codable, Equatable, Sendable {
-    static let schemaVersion = 3
+    let envelopeSchemaVersion: Int
+    let committedStateSnapshotID: UUID
+    let recommendationSuppressionEpochID: UUID
+    let viewerProfileState: LocalViewerProfileStateV2DTO
+    let viewerMovieStates: [ViewerMovieStateV2DTO]
+    let migrationRecord: LocalViewerStateMigrationRecordV2DTO
+}
+
+struct PickOneViewingProvenanceDTO: Codable, Equatable, Sendable {
+    let source: String
+    let confirmationOperationID: UUID
+    let confirmedAt: Date
+}
+
+struct LocalViewerStateEnvelopeV4DTO: Codable, Equatable, Sendable {
+    static let schemaVersion = 4
+
+    var appliedConfirmationOperations: [UUID] = []
 
     let envelopeSchemaVersion: Int
     let committedStateSnapshotID: UUID
@@ -144,6 +164,7 @@ struct ViewerMovieStateV2DTO: Codable, Equatable, Sendable {
     let preference: ViewerMoviePreferenceV2DTO?
     let watchlistAddedAt: Date?
     let stateChangedAt: Date
+    var pickOneProvenance: PickOneViewingProvenanceDTO?
 }
 
 struct ViewerMoviePreferenceV2DTO: Codable, Equatable, Sendable {

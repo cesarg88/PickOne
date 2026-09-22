@@ -142,9 +142,9 @@ struct CalibrationCatalogIntegrationTests {
 
     private func activeEnvelope(
         _ files: InMemoryLocalViewerStateFileStore
-    ) throws -> LocalViewerStateEnvelopeV3DTO {
+    ) throws -> LocalViewerStateEnvelopeV4DTO {
         let decoded = try JSONLocalViewerStateEnvelopeCoder().decode(#require(files.activeData))
-        guard case let .currentV3(envelope) = decoded else {
+        guard case let .currentV4(envelope) = decoded else {
             throw LocalViewerStateTestError.rejected
         }
         return envelope

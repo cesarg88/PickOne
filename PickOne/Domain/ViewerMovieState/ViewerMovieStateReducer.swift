@@ -2,6 +2,8 @@ import Foundation
 
 struct ViewerMovieStateTransition: Equatable, Sendable {
     enum Action: Equatable, Sendable {
+        case confirmPick(PickOneViewingProvenance)
+        case confirmationReaction(MovieReaction, operationID: UUID)
         case assignReaction(MovieReaction)
         case removeReaction
         case setNotInterested
@@ -36,7 +38,12 @@ enum ViewerMovieStateReducer {
         var nextSemanticState = previousSemanticState
 
         switch transition.action {
-            case let .assignReaction(reaction):
+            case let .confirmPick(provenance):
+                nextSemanticState.watchState = .watched
+                nextSemanticState.pickOneProvenance = provenance
+                if nextSemanticState.preference == .notInterested { nextSemanticState.preference = nil }
+                nextSemanticState.watchlistIntent = nil
+            case let .assignReaction(reaction), let .confirmationReaction(reaction, _):
                 nextSemanticState.watchState = .watched
                 nextSemanticState.preference = .reaction(reaction)
                 nextSemanticState.watchlistIntent = nil
@@ -61,6 +68,7 @@ enum ViewerMovieStateReducer {
                 }
                 nextSemanticState.watchlistIntent = nil
             case .markUnwatched:
+                nextSemanticState.pickOneProvenance = nil
                 nextSemanticState.watchState = .unwatched
                 if case .reaction = nextSemanticState.preference {
                     nextSemanticState.preference = nil
@@ -80,7 +88,7 @@ enum ViewerMovieStateReducer {
         }
 
         let impact = impact(from: previousSemanticState, to: nextSemanticState)
-        let stateChangedAt = impact == .none ? current?.stateChangedAt : date
+        let stateChangedAt = previousSemanticState == nextSemanticState ? current?.stateChangedAt : date
         let nextState = try makeState(
             movieID: transition.movieID,
             metadata: metadata,
@@ -156,7 +164,8 @@ enum ViewerMovieStateReducer {
             watchState: semanticState.watchState,
             preference: semanticState.preference,
             watchlistIntent: semanticState.watchlistIntent,
-            stateChangedAt: stateChangedAt
+            stateChangedAt: stateChangedAt,
+            pickOneProvenance: semanticState.pickOneProvenance
         )
     }
 
@@ -201,8 +210,10 @@ private struct SemanticState: Equatable {
     var watchState: MovieWatchState
     var preference: MoviePreference?
     var watchlistIntent: WatchlistIntent?
+    var pickOneProvenance: PickOneViewingProvenance?
 
     init(_ state: ViewerMovieState?) {
+        pickOneProvenance = state?.pickOneProvenance
         watchState = state?.watchState ?? .unwatched
         preference = state?.preference
         watchlistIntent = state?.watchlistIntent

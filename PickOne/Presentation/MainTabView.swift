@@ -20,6 +20,7 @@ struct MainTabView: View {
             Tab("Home", systemImage: "house", value: MainTab.home) {
                 HomeDecisionView(
                     model: container.homeDecisionViewModel,
+                    confirmationModel: container.viewingConfirmationViewModel,
                     getMovieDetail: container.getMovieDetail,
                     getViewerMovieState: container.getViewerMovieState,
                     updateViewerMovieState: container.updateHomeViewerMovieState,
@@ -89,6 +90,11 @@ struct MainTabView: View {
                     ),
                     navigationPath: $settingsPath
                 )
+            }
+        }
+        .task(id: "\(selectedTab)-\(scenePhase)") {
+            if selectedTab == .home, scenePhase == .active {
+                await container.viewingConfirmationViewModel.refresh()
             }
         }
         .task {

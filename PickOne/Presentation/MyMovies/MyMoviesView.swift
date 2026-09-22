@@ -7,50 +7,59 @@ struct MyMoviesView: View {
     let movieDetailDependencies: MovieDetailNavigationDependencies
 
     var body: some View {
-        Group {
-            switch model.state {
-                case .loading:
-                    ProgressView("Loading your movies...")
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                case .empty:
-                    ContentUnavailableView(
-                        "No movies yet",
-                        systemImage: "film.stack",
-                        description: Text(
-                            "Your rated, watched, and not interested movies will appear here."
-                        )
-                    )
-                case let .loaded(items):
-                    List(items) { item in
-                        NavigationLink {
-                            MovieDetailView(
-                                model: movieDetailDependencies.makeViewModel(
-                                    movieID: item.id
-                                ),
-                                imagePipeline: imagePipeline,
-                                navigationDependencies: movieDetailDependencies
-                            )
-                        } label: {
-                            MyMoviesRow(
-                                item: item,
-                                imagePipeline: imagePipeline
-                            )
-                        }
-                        .accessibilityIdentifier("my-movies-row-\(item.id)")
-                    }
-                    .listStyle(.plain)
-                case let .failure(message):
-                    EmptyStateView(
-                        title: "Couldn't load your movies",
-                        message: message,
-                        actionTitle: "Retry",
-                        action: { Task { await model.load() } }
-                    )
+        VStack(spacing: 0) {
+            if let confirmation = model.confirmationModel {
+                ViewingConfirmationView(model: confirmation, showsManual: true)
             }
+            content
         }
         .navigationTitle("My movies")
         .task {
             await model.load()
+            await model.confirmationModel?.refresh()
+        }
+    }
+
+    @ViewBuilder
+    private var content: some View {
+        switch model.state {
+            case .loading:
+                ProgressView("Loading your movies...")
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            case .empty:
+                ContentUnavailableView(
+                    "No movies yet",
+                    systemImage: "film.stack",
+                    description: Text(
+                        "Your rated, watched, and not interested movies will appear here."
+                    )
+                )
+            case let .loaded(items):
+                List(items) { item in
+                    NavigationLink {
+                        MovieDetailView(
+                            model: movieDetailDependencies.makeViewModel(
+                                movieID: item.id
+                            ),
+                            imagePipeline: imagePipeline,
+                            navigationDependencies: movieDetailDependencies
+                        )
+                    } label: {
+                        MyMoviesRow(
+                            item: item,
+                            imagePipeline: imagePipeline
+                        )
+                    }
+                    .accessibilityIdentifier("my-movies-row-\(item.id)")
+                }
+                .listStyle(.plain)
+            case let .failure(message):
+                EmptyStateView(
+                    title: "Couldn't load your movies",
+                    message: message,
+                    actionTitle: "Retry",
+                    action: { Task { await model.load() } }
+                )
         }
     }
 }
@@ -85,6 +94,13 @@ private struct MyMoviesRow: View {
                     Text(releaseYear)
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
+                }
+
+                if item.hasPickOneProvenance {
+                    Label("PickOne", systemImage: "checkmark.seal.fill")
+                        .font(.caption.weight(.semibold))
+                        .accessibilityLabel("Chosen with PickOne")
+                        .accessibilityIdentifier("pickone-provenance-\(item.id)")
                 }
 
                 Text(item.stateLabel)

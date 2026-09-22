@@ -2,14 +2,16 @@
 
 ## Status
 
-Accepted — PR1 authorized; implementation closure remains pending
+Accepted — PR2 authorized; implementation closure remains pending
 
 Product behavior and this architecture were accepted by the Product Owner and
 Technical Lead on `2026-09-14`. This ADR and
 [Milestone 8](../milestones/milestone-8-pilot-measurement.md) are Product Ready
 and Engineering Ready. D0 merged in #50 (`c31e39f`), and the Product Owner
-explicitly authorized PR1 on `2026-09-14`. This satisfies the implementation
-gate for PR1 only; confirmation, provenance, and later slices remain pending.
+explicitly authorized PR1 on `2026-09-14`. PR1 merged in #51 (`d2a9197`).
+The Product Owner authorized PR2 on `2026-09-15`; its implementation record is
+[Confirmation and provenance](../engineering/validation/confirmation-and-provenance.md).
+PR3+ and final implementation closure remain pending.
 
 ## Context
 
@@ -200,6 +202,11 @@ Once Viewer Movie State commits, later measurement failure never rolls back
 watched or provenance. Presentation may show the durable provenance while the
 journal retries completion. A corrupt measurement store never causes inferred
 provenance; only the Viewer Movie State record authorizes the badge.
+
+Viewer Movie State v4 also retains applied confirmation-operation receipts
+independently from current per-movie records. Removing watched or changing a
+reaction cannot cause an interrupted journal to replay an older mutation.
+These receipts contain only operation IDs and survive Reset preferences.
 
 Optional satisfaction uses a second stable operation so a reaction committed
 before interruption can be copied once into the session snapshot during

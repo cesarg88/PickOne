@@ -7,12 +7,14 @@
 - Product decisions: **Accepted**.
 - Product Ready: **Yes**.
 - Engineering Ready: **Yes**.
-- Implementation authorized: **PR1 only**, explicitly by the Product Owner on `2026-09-14`.
+- Implementation authorized: **PR2 — Confirmation and provenance**, explicitly by the Product Owner on `2026-09-15`. PR3+ is not authorized.
 - Product Owner acceptance: `2026-09-14`.
 - Technical Lead acceptance: `2026-09-14`.
 - Milestone 7 is complete.
-- D0 merged into `develop` in #50 (`c31e39f`). PR1 is delivered separately;
-  PR2+ remains outside its authorization and scope.
+- D0 merged in #50 (`c31e39f`). PR1 merged in #51 (`d2a9197`).
+- PR2 starts from that latest `develop`; its evidence is recorded in
+  [`confirmation-and-provenance.md`](../engineering/validation/confirmation-and-provenance.md).
+  This partial delivery does not close M8.
 
 ## Authority and purpose
 
@@ -385,6 +387,10 @@ This partial delivery does not close the milestone or authorize PR2+.
 Add eligibility/postponement behavior, optional satisfaction step, the
 idempotent cross-repository operation, Viewer Movie State provenance migration,
 `My movies` badge/pending section, and relaunch recovery.
+
+PR2 implementation and requirement coverage are recorded in
+[`confirmation-and-provenance.md`](../engineering/validation/confirmation-and-provenance.md).
+PR3 metrics/insights and PR4 final integration/closure remain pending.
 
 ### PR3 — Pilot insights
 

@@ -61,7 +61,7 @@ struct RecommendationSession: Equatable, Sendable {
 }
 
 struct ViewingDecision: Equatable, Sendable {
-    enum Status: String, Sendable { case active, superseded, cancelled }
+    enum Status: String, Sendable { case active, superseded, cancelled, confirmedWatched, notWatched }
     let id: ViewingDecisionID
     let sessionID: DecisionSessionID?
     let recommendation: PickRecommendation
@@ -69,6 +69,10 @@ struct ViewingDecision: Equatable, Sendable {
     let timing: DecisionTiming
     var changedAt: Date
     var status: Status = .active
+    var postponementCount = 0
+    var nextConfirmationAt: Date?
+    var confirmedAt: Date?
+    var satisfaction: MovieReaction?
 }
 
 enum ViewingDecisionAction: Equatable, Sendable {
@@ -80,6 +84,7 @@ enum ViewingDecisionAction: Equatable, Sendable {
     case pick(PickRecommendation, snapshot: ViewingDecisionSurface, isVisible: Bool)
     case cancel(ViewingDecisionID)
     case expire
+    case confirmation(ViewingConfirmationCommand)
 }
 
 struct ViewingDecisionOperation: Equatable, Sendable {

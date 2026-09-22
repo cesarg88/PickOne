@@ -400,6 +400,9 @@ Priorities:
 ### IMP-005 — Define and deliver local pilot measurement
 
 - Status: `Accepted — Engineering Ready`
+- Delivery evidence: PR1 merged in #51; PR2 confirmation/provenance is recorded
+  in [its validation record](../engineering/validation/confirmation-and-provenance.md).
+  This item remains open until the remaining M8 slices and device closure.
 - Priority: `P0`
 - Roadmap relationship: Milestone 8
 - Why: UI polish and model changes cannot be evaluated without success
@@ -491,6 +494,9 @@ Priorities:
 ### IMP-023 — Define explicit decision-outcome actions
 
 - Status: `Accepted — Engineering Ready`
+- Delivery evidence: PR1 merged in #51; PR2 confirmation/provenance is recorded
+  in [its validation record](../engineering/validation/confirmation-and-provenance.md).
+  This item remains open until the remaining M8 slices and device closure.
 - Priority: `P1`
 - Roadmap relationship: Milestone 8
 - Why:

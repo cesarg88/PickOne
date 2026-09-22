@@ -56,7 +56,7 @@ struct LocalViewerStateRecoveryTests {
         ])
         #expect(files.previousData == previous)
         let active = try #require(files.activeData)
-        guard case let .currentV3(envelope) = try JSONLocalViewerStateEnvelopeCoder().decode(active) else {
+        guard case let .currentV4(envelope) = try JSONLocalViewerStateEnvelopeCoder().decode(active) else {
             Issue.record("Expected recovered v3 Viewer State")
             return
         }
@@ -102,7 +102,7 @@ struct LocalViewerStateRecoveryTests {
             LocalViewerStateQuarantineItem(source: .previous, data: invalid),
         ])
         #expect(files.previousData == nil)
-        guard case let .currentV3(envelope) = try JSONLocalViewerStateEnvelopeCoder().decode(
+        guard case let .currentV4(envelope) = try JSONLocalViewerStateEnvelopeCoder().decode(
             #require(files.activeData)
         ) else {
             Issue.record("Expected recovered v3 Viewer State")
@@ -172,7 +172,7 @@ struct LocalViewerStateRecoveryTests {
     func unsupportedProfileSchema() async throws {
         let id = try LocalViewerStateTestFixtures.uuid(LocalViewerStateTestFixtures.firstID)
         let base = LocalViewerStateTestFixtures.emptyEnvelope(id: id)
-        let envelope = LocalViewerStateEnvelopeV3DTO(
+        let envelope = LocalViewerStateEnvelopeV4DTO(
             envelopeSchemaVersion: base.envelopeSchemaVersion,
             committedStateSnapshotID: base.committedStateSnapshotID,
             recommendationSuppressionEpochID: base.recommendationSuppressionEpochID,

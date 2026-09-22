@@ -285,7 +285,7 @@ private extension ViewerMovieStateTransition.Action {
             case .assignReaction(.didNotLikeIt): "did-not-like-it"
             case .markWatched: "already-watched"
             case .setNotInterested: "not-interested"
-            case .removeReaction,
+            case .confirmPick, .confirmationReaction, .removeReaction,
                  .removeNotInterested,
                  .markUnwatched,
                  .saveToWatchlist,

@@ -9,7 +9,7 @@ struct LocalViewerProfileMapper: Sendable {
     private static let bundledUpdatedAt = Date(timeIntervalSince1970: 1_787_097_600)
 
     func loadState(
-        from envelope: LocalViewerStateEnvelopeV3DTO,
+        from envelope: LocalViewerStateEnvelopeV4DTO,
         snapshot: ViewerMovieStateSnapshot
     ) throws -> ViewerProfileLoadState {
         try loadState(from: envelope.viewerProfileState, snapshot: snapshot)

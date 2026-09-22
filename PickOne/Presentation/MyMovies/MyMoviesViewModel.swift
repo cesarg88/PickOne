@@ -14,6 +14,14 @@ final class MyMoviesViewModel {
     private let getMyMovies: any GetMyMoviesUseCase
     @ObservationIgnored private var activeLoadID = UUID()
 
+    var confirmationModel: ViewingConfirmationViewModel?
+    @ObservationIgnored private var reloadTask: Task<Void, Never>?
+
+    func reloadAfterConfirmation() {
+        reloadTask?.cancel()
+        reloadTask = Task { await load() }
+    }
+
     var state: MyMoviesViewState = .loading
 
     init(getMyMovies: any GetMyMoviesUseCase) {
@@ -35,7 +43,7 @@ final class MyMoviesViewModel {
             return
         } catch {
             guard activeLoadID == loadID else { return }
-            state = .failure("Your movies couldn't be loaded. Please try again.")
+            state = .failure(String(localized: "Your movies couldn't be loaded. Please try again."))
         }
     }
 }
