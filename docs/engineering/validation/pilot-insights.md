@@ -39,6 +39,17 @@ M8, ADR-015 implementation closure, roadmap, IMP-005 and IMP-023 remain open.
   envelopes remain readable; sessions without prior observation evidence keep
   an unavailable denominator instead of receiving fabricated movie IDs or zero
   rates. Existing exact-byte quarantine and previous-copy recovery remain active.
+- Schema v3 requires the `observedMovieIDs` key in each session. A migrated
+  v1/v2 session is re-encoded with explicit JSON null, preserving unavailable
+  evidence. Omitted v3 keys and wrong types quarantine the exact source bytes;
+  recovery uses a valid previous copy or reports unavailable.
+- Operation receipts carry their accepted wall timestamp. Timed retention drops
+  unattributed receipts at 180 days, inclusive. Legacy unattributed receipts with
+  neither a timestamp nor retained search evidence are reclaimed; they cannot
+  identify retained work. Receipts linked to retained sessions, decisions or
+  search evidence keep their idempotency protection. Receipt-only pruning is
+  persisted and sanitizes the previous envelope, including when triggered by an
+  ordinary mutation. Export applies the same projection without writes.
 - Retention and deletion run under the repository actor. Completed history is
   eligible at 180 days, inclusive. For a session with a later resolved outcome,
   completion is the later of session end and its decisions' last outcome change;
@@ -75,6 +86,9 @@ M8, ADR-015 implementation closure, roadmap, IMP-005 and IMP-023 remain open.
 | Serialized and old-generation deletion retries | Actor isolation and durable deletion receipts | `concurrentDeletionRetriesLeaveOneValidGeneration`, `anOlderDeletionRetryCannotDeleteNewHistory` |
 | Export is read-only with allowlisted records and exact summary | Data export projection | `exportIsReadOnlyAndContainsAllowlistedRecordsAndDerivedSummary` |
 | Known-schema migration never invents earlier Home evidence | v3 mapper | `oldSchemaKeepsObservationRateUnavailable` |
+| Missing v3 observation key differs from explicit migrated null | Presence-aware session DTO | `PilotMeasurementRecoveryTests.legacyObservationMigratesToExplicitNullAndSurvivesRelaunch`, `malformedObservationQuarantinesExactBytes` |
+| Unattributed receipt retention, receipt-only persistence, export and recovery | Receipt timestamp and actor pruning | `receiptOnlyRetentionPersistsAndCannotRecoverExpiredReceipts`, `terminalReceiptExpiresAtBoundaryAcrossRelaunch` |
+| Pruning write failures and retained-work protection | Previous/active transaction | `failedReceiptOnlyPruningPreservesActiveAndRetriesAfterRelaunch`, `retentionKeepsReceiptsForOpenWorkAndRetainedSearches` |
 | Corrupt report/export/delete remains unavailable; never empty success | Existing recovery boundary | `corruptReportAndExportAreUnavailableWithoutOverwritingBytes`, `missingCurrentSchemaEvidenceIsNotInventedAsEmpty` |
 | Unavailable/empty/retry/export cleanup/delete failure presentation | MainActor model | `PilotInsightsPresentationTests` |
 | English/Spanish, export, deletion, large text reachability | String Catalog and Settings screen | `PilotInsightsInteractionTests` |
@@ -120,6 +134,50 @@ field. Both languages passed within the complete suite. Exported JSON was also
 parsed to check its schema, timestamp, records and summary. English and Spanish
 screenshots were inspected for wrapping and reachable controls at large text.
 Physical-device results have not been claimed from simulator evidence.
+
+## PR review follow-up
+
+Both persistence review findings were reproduced with failing regression tests:
+missing current-schema keys were accepted, migrated unknown evidence was omitted
+on encoding, and unattributed receipts survived retention/export/recovery. The new
+recovery suite covers v1/v2 migration, malformed current bytes with and without a
+valid previous copy, the exact cutoff, receipt-only pruning from summary and
+mutation, write failures, relaunch, read-only export and retained-work protection.
+
+The reported Spanish Accessibility XXXL failure did not reproduce in the first
+local run with an added hittability assertion. That run's screenshot showed both
+actions at the end of the long report, dependent on List scroll position after
+Files dismissal. A stronger no-swipe action-reachability test failed on that
+layout. Export and Delete now sit in a persistent footer within the safe area, with multiline
+Dynamic Type labels and the existing deletion confirmation. The List and footer occupy separate layout regions; metric scrolling is
+scoped to the List so gestures cannot hit the controls. Both action-search swipe
+loops are removed. The test asserts Delete is hittable before tapping and retains
+a screenshot after Files export. CI uses Xcode 26.4.1; local evidence uses 26.6,
+so this does not claim an exact reproduction of the hosted-runner failure.
+
+Final follow-up validation on `2026-09-23`, Xcode 26.6 (17F113), iOS 26.5
+Simulator, iPhone 17 Pro:
+
+```sh
+xcodebuild test -project PickOne.xcodeproj -scheme PickOne \
+  -destination 'platform=iOS Simulator,name=iPhone 17 Pro' \
+  -parallel-testing-enabled NO -derivedDataPath .derivedData/Tests \
+  -only-testing:PickOneTests/PilotMeasurementRecoveryTests \
+  -only-testing:PickOneTests/PilotMeasurementPersistenceTests \
+  -only-testing:PickOneTests/PilotMeasurementLifecycleTests \
+  -only-testing:PickOneUITests/PilotInsightsInteractionTests
+make verify
+```
+
+- Focused run: 17 unit tests in 3 persistence suites and both UI journeys passed.
+  Result: `Test-PickOne-2026.09.23_01-35-05-+0200.xcresult`.
+- Complete gate: 633 unit tests in 121 suites and all 10 UI tests passed;
+  formatting, strict lint, secret scan, static analysis, unsigned Release build
+  and bundle inspection passed (exit 0).
+  Result: `Test-PickOne-2026.09.23_01-37-08-+0200.xcresult`.
+- English and Spanish post-export screenshots were visually inspected. Both
+  complete action labels fit, with report and footer in separate layout regions.
+- GitHub CI and physical-device validation remain pending at handoff.
 
 ## Physical checks requested from the Product Owner
 

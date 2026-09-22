@@ -106,6 +106,14 @@ struct ViewingDecisionReceipt: Equatable, Sendable {
     let operationID: UUID
     let sessionID: DecisionSessionID?
     let decisionID: ViewingDecisionID?
+    let recordedAt: Date?
+
+    init(operationID: UUID, sessionID: DecisionSessionID?, decisionID: ViewingDecisionID?, recordedAt: Date? = nil) {
+        self.operationID = operationID
+        self.sessionID = sessionID
+        self.decisionID = decisionID
+        self.recordedAt = recordedAt
+    }
 }
 
 enum ViewingDecisionError: Error, Equatable, Sendable {

@@ -39,18 +39,17 @@ final class PilotInsightsInteractionTests: XCTestCase {
         XCTAssertTrue(link.waitForExistence(timeout: 5))
         link.tap()
         let sessions = app.staticTexts[language == "es" ? "Sesiones de recomendaciones" : "Recommendation sessions"]
+        let report = app.collectionViews["pilot-insights-report"]
+        XCTAssertTrue(report.waitForExistence(timeout: 5))
         for _ in 0 ..< 5 where !sessions.exists {
-            app.swipeUp()
+            report.swipeUp()
         }
-        XCTAssertTrue(sessions.waitForExistence(timeout: 10))
+        XCTAssertTrue(sessions.waitForExistence(timeout: 10), app.debugDescription)
         let screenshot = XCTAttachment(screenshot: app.screenshot())
         screenshot.name = "Pilot insights \(language)"
         screenshot.lifetime = .keepAlways
         add(screenshot)
         let export = app.buttons[language == "es" ? "Exportar medición local" : "Export local measurement"]
-        for _ in 0 ..< 30 where !export.isHittable {
-            app.swipeUp()
-        }
         XCTAssertTrue(export.isHittable)
         export.tap()
         let save = app.buttons.matching(NSPredicate(format: "label == 'Save' OR label == 'Guardar'")).firstMatch
@@ -62,9 +61,11 @@ final class PilotInsightsInteractionTests: XCTestCase {
         XCTAssertTrue(save.waitForNonExistence(timeout: 10))
         let deleteTitle = language == "es" ? "Eliminar medición" : "Delete measurement"
         let deleteButton = app.buttons[deleteTitle]
-        for _ in 0 ..< 5 where !deleteButton.isHittable {
-            app.swipeUp()
-        }
+        let returnedScreen = XCTAttachment(screenshot: app.screenshot())
+        returnedScreen.name = "After Files export \(language)"
+        returnedScreen.lifetime = .keepAlways
+        add(returnedScreen)
+        XCTAssertTrue(deleteButton.isHittable, app.debugDescription)
         deleteButton.tap()
         let dialog = app.sheets.buttons[deleteTitle]
         XCTAssertTrue(dialog.waitForExistence(timeout: 5))

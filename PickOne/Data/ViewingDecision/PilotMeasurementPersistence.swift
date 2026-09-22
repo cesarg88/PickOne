@@ -81,11 +81,14 @@ extension ViewingDecisionEnvelope {
         state.decisions.removeAll { removedDecisions.contains($0.id) }
         state.confirmationOperations.removeAll { removedDecisions.contains($0.decisionID) }
         state.searchEvidence.removeAll { removedSearches.contains($0.id) }
+        let retainedSearchIDs = Set(state.searchEvidence.map(\.id))
         receipts.removeAll {
             $0.sessionID.map(removedSessions.contains) == true
                 || $0.decisionID.map(removedDecisions.contains) == true
                 || removedSearches.contains($0.operationID)
-                || (cutoff == nil && $0.sessionID == nil && $0.decisionID == nil)
+                || ($0.sessionID == nil && $0.decisionID == nil && !retainedSearchIDs.contains($0.operationID)
+                    // Legacy unattributed receipts have neither retained work nor a recoverable timestamp.
+                    && (($0.recordedAt ?? .distantPast) <= (cutoff ?? .distantFuture)))
         }
     }
 

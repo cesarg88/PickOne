@@ -8,33 +8,29 @@ struct PilotInsightsView: View {
     @State private var exportsFile = false
 
     var body: some View {
-        List {
-            Section {
-                Text(
-                    "Local household diagnostics, not a statistical experiment. Completed history is kept for 180 days."
-                )
-            }
-            if model.isUnavailable {
+        VStack(spacing: 0) {
+            List {
                 Section {
-                    Text("Pilot insights are unavailable. Your movies and preferences are unaffected.")
-                    Button("Try again") { Task { await model.load() } }
+                    Text(
+                        "Local household diagnostics, not a statistical experiment. Completed history is kept for 180 days."
+                    )
                 }
-            } else if let summary = model.summary {
-                metrics(summary)
-                Section {
-                    Button("Export local measurement") {
-                        Task {
-                            await model.prepareExport()
-                            exportsFile = model.exportData != nil
-                        }
+                if model.isUnavailable {
+                    Section {
+                        Text("Pilot insights are unavailable. Your movies and preferences are unaffected.")
+                        Button("Try again") { Task { await model.load() } }
                     }
-                    Button("Delete measurement", role: .destructive) { confirmsDeletion = true }
+                } else if let summary = model.summary {
+                    metrics(summary)
                 }
-                .disabled(model.isBusy)
+                if model.isBusy { ProgressView() }
+                if model.actionFailed {
+                    Text("The action could not be completed. Please try again.")
+                }
             }
-            if model.isBusy { ProgressView() }
-            if model.actionFailed {
-                Text("The action could not be completed. Please try again.")
+            .accessibilityIdentifier("pilot-insights-report")
+            if model.summary != nil, !model.isUnavailable {
+                measurementActions
             }
         }
         .navigationTitle("Pilot insights")
@@ -62,6 +58,30 @@ struct PilotInsightsView: View {
             model.discardExport()
         }
         .onDisappear { model.discardExport() }
+    }
+
+    private var measurementActions: some View {
+        VStack(spacing: 8) {
+            Button {
+                Task {
+                    await model.prepareExport()
+                    exportsFile = model.exportData != nil
+                }
+            } label: {
+                Text("Export local measurement")
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: .infinity)
+            }
+            Button(role: .destructive) { confirmsDeletion = true } label: {
+                Text("Delete measurement")
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: .infinity)
+            }
+        }
+        .buttonStyle(.bordered)
+        .disabled(model.isBusy)
+        .padding()
+        .background(.bar)
     }
 
     @ViewBuilder

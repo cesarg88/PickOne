@@ -34,13 +34,13 @@ actor LocalViewingDecisionRepository: ViewingDecisionRepository, PilotMeasuremen
         let receipt = ViewingDecisionReceipt(
             operationID: operation.id,
             sessionID: candidate.state.openSession?.id,
-            decisionID: candidate.state.activeDecision?.id
+            decisionID: candidate.state.activeDecision?.id, recordedAt: operation.moment.wall
         )
         candidate.receipts.append(receipt)
         try candidate.validate()
         let original = candidate
         candidate.removeMeasurement(before: operation.moment.wall.addingTimeInterval(-180 * 86400))
-        let pruned = original.state != candidate.state
+        let pruned = original.state != candidate.state || original.receipts != candidate.receipts
         try commit(candidate, sanitizingPrevious: pruned)
         timingWasInterrupted = false
         return receipt
@@ -69,7 +69,9 @@ actor LocalViewingDecisionRepository: ViewingDecisionRepository, PilotMeasuremen
     func measurementSummary(at date: Date) throws -> PilotMeasurementSummary {
         var candidate = try load()
         candidate.removeMeasurement(before: date.addingTimeInterval(-180 * 86400))
-        if candidate.state != envelope?.state { try commit(candidate, sanitizingPrevious: true) }
+        if candidate.state != envelope?.state || candidate.receipts != envelope?.receipts {
+            try commit(candidate, sanitizingPrevious: true)
+        }
         return PilotMeasurementSummary(state: candidate.state)
     }
 
