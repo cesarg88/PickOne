@@ -179,6 +179,42 @@ make verify
   complete action labels fit, with report and footer in separate layout regions.
 - GitHub CI and physical-device validation remain pending at handoff.
 
+## Hosted CI export synchronization fix
+
+The CI run [35798986224](https://github.com/cesarg88/PickOne/actions/runs/35798986224)
+on `1483163` passed all unit tests but failed the Spanish XXXL UI assertion after
+export. Its accessibility snapshot proves the Delete button was within the
+screen at `y=635.7`, while `Browse View (Picker)` remained above it. Files had
+replaced Save with an `En curso` activity indicator after confirming replacement.
+The test incorrectly equated disappearance of Save with dismissal of the picker.
+This evidence supersedes the earlier unconfirmed explanation based only on local
+scroll screenshots; the fixed footer was present and correctly laid out in CI.
+
+The test now checks that the underlying Delete action is not hittable while Files
+is open, waits for the actual picker to disappear, then waits for Delete to become
+hittable before retaining the screenshot and tapping. Both waits are bounded by
+10 seconds and observe UI state; there is no sleep, swipe-count increase, skipped
+assertion, or production behavior change.
+
+Validation on `2026-09-23`, Xcode 26.6 (17F113), iOS 26.5, iPhone 17 Pro:
+
+```sh
+xcodebuild test -project PickOne.xcodeproj -scheme PickOne \
+  -destination 'platform=iOS Simulator,name=iPhone 17 Pro' \
+  -parallel-testing-enabled NO -derivedDataPath .derivedData/Tests \
+  -only-testing:PickOneUITests/PilotInsightsInteractionTests
+make verify
+```
+
+- Both focused UI journeys passed, including replacement of an existing export
+  and Spanish Accessibility XXXL. Result:
+  `Test-PickOne-2026.09.23_09-54-41-+0200.xcresult`.
+- Full gate passed: 633 unit tests in 121 suites, all 10 UI tests, formatting,
+  strict lint, secret scan, static analysis, Release and bundle inspection.
+  Result: `Test-PickOne-2026.09.23_09-56-37-+0200.xcresult`.
+- The hosted-runner failure provides the failing evidence. Local runtime 26.5
+  passes the corrected synchronization; the new hosted CI result is pending.
+
 ## Physical checks requested from the Product Owner
 
 Use retained installed data, without deleting app storage. Record device, iOS,

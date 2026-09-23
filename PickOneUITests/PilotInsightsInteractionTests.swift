@@ -52,15 +52,22 @@ final class PilotInsightsInteractionTests: XCTestCase {
         let export = app.buttons[language == "es" ? "Exportar medición local" : "Export local measurement"]
         XCTAssertTrue(export.isHittable)
         export.tap()
+        let picker = app.otherElements["Browse View (Picker)"]
+        let deleteTitle = language == "es" ? "Eliminar medición" : "Delete measurement"
+        let deleteButton = app.buttons[deleteTitle]
         let save = app.buttons.matching(NSPredicate(format: "label == 'Save' OR label == 'Guardar'")).firstMatch
         XCTAssertTrue(save.waitForExistence(timeout: 10))
+        XCTAssertTrue(picker.exists)
+        XCTAssertFalse(deleteButton.isHittable)
         save.tap()
         let replace = app.buttons.matching(NSPredicate(format: "label == 'Replace' OR label == 'Reemplazar'"))
             .firstMatch
         if replace.waitForExistence(timeout: 2) { replace.tap() }
         XCTAssertTrue(save.waitForNonExistence(timeout: 10))
-        let deleteTitle = language == "es" ? "Eliminar medición" : "Delete measurement"
-        let deleteButton = app.buttons[deleteTitle]
+        // Files can replace Save with a progress indicator while its modal still covers the app.
+        XCTAssertTrue(picker.waitForNonExistence(timeout: 10), app.debugDescription)
+        let ready = XCTNSPredicateExpectation(predicate: NSPredicate(format: "hittable == true"), object: deleteButton)
+        XCTAssertEqual(XCTWaiter.wait(for: [ready], timeout: 10), .completed, app.debugDescription)
         let returnedScreen = XCTAttachment(screenshot: app.screenshot())
         returnedScreen.name = "After Files export \(language)"
         returnedScreen.lifetime = .keepAlways
