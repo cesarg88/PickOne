@@ -38,6 +38,7 @@ struct SettingsView: View {
                     NavigationLink("Pilot insights") {
                         PilotInsightsView(model: pilotInsightsModel)
                     }
+                    .accessibilityIdentifier("pilot-insights-link")
                     NavigationLink("About") {
                         AboutView(showsDoneButton: false)
                     }

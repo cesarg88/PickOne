@@ -41,6 +41,7 @@ struct PilotInsightsView: View {
             titleVisibility: .visible
         ) {
             Button("Delete measurement", role: .destructive) { Task { await model.delete() } }
+                .accessibilityIdentifier("pilot-insights-confirm-delete")
             Button("Cancel", role: .cancel) {}
         } message: {
             Text("""
@@ -72,11 +73,13 @@ struct PilotInsightsView: View {
                     .fixedSize(horizontal: false, vertical: true)
                     .frame(maxWidth: .infinity)
             }
+            .accessibilityIdentifier("pilot-insights-export")
             Button(role: .destructive) { confirmsDeletion = true } label: {
                 Text("Delete measurement")
                     .fixedSize(horizontal: false, vertical: true)
                     .frame(maxWidth: .infinity)
             }
+            .accessibilityIdentifier("pilot-insights-delete")
         }
         .buttonStyle(.bordered)
         .disabled(model.isBusy)

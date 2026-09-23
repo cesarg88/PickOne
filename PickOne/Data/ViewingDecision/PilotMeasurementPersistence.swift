@@ -35,6 +35,8 @@ struct PilotSearchEvidenceDTO: Codable {
 
 extension ViewingDecisionEnvelope {
     func validateMeasurement() throws {
+        try validateCounterTotal(state.sessions.map(\.refreshCount))
+        try validateCounterTotal(state.decisions.map(\.postponementCount))
         guard Set(deletionOperationIDs).count == deletionOperationIDs.count,
               state.searchEvidence.count <= 1000,
               Set(state.searchEvidence.map(\.id)).count == state.searchEvidence.count
@@ -52,6 +54,18 @@ extension ViewingDecisionEnvelope {
             else {
                 throw ViewingDecisionError.invalidData
             }
+        }
+    }
+
+    private func validateCounterTotal(_ values: [Int]) throws {
+        var total = 0
+        for value in values {
+            let sum = total.addingReportingOverflow(value)
+            // Leave room for a reducer increment before validating the next candidate.
+            guard value >= 0, !sum.overflow, sum.partialValue < Int.max else {
+                throw ViewingDecisionError.invalidData
+            }
+            total = sum.partialValue
         }
     }
 
@@ -82,13 +96,17 @@ extension ViewingDecisionEnvelope {
         state.confirmationOperations.removeAll { removedDecisions.contains($0.decisionID) }
         state.searchEvidence.removeAll { removedSearches.contains($0.id) }
         let retainedSearchIDs = Set(state.searchEvidence.map(\.id))
-        receipts.removeAll {
-            $0.sessionID.map(removedSessions.contains) == true
-                || $0.decisionID.map(removedDecisions.contains) == true
-                || removedSearches.contains($0.operationID)
-                || ($0.sessionID == nil && $0.decisionID == nil && !retainedSearchIDs.contains($0.operationID)
-                    // Legacy unattributed receipts have neither retained work nor a recoverable timestamp.
-                    && (($0.recordedAt ?? .distantPast) <= (cutoff ?? .distantFuture)))
+        // An undated legacy receipt may belong to any retained terminal decision.
+        let canDiscardLegacyReceipt = state.sessions.isEmpty && state.decisions.isEmpty
+            && state.confirmationOperations.isEmpty
+        receipts.removeAll { receipt in
+            let expired = receipt.recordedAt.map { date in cutoff.map { date <= $0 } ?? true }
+                ?? canDiscardLegacyReceipt
+            return receipt.sessionID.map(removedSessions.contains) == true
+                || receipt.decisionID.map(removedDecisions.contains) == true
+                || removedSearches.contains(receipt.operationID)
+                || (receipt.sessionID == nil && receipt.decisionID == nil
+                    && !retainedSearchIDs.contains(receipt.operationID) && expired)
         }
     }
 

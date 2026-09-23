@@ -21,6 +21,7 @@ struct ViewingDecisionEnvelope: Sendable {
         let decoded = try decoder.decode(ViewingDecisionEnvelopeDTO.self, from: data)
         if header.schemaVersion == 3 {
             guard decoded.searchEvidence != nil, decoded.deletionOperationIDs != nil,
+                  decoded.confirmationOperations != nil,
                   decoded.sessions.allSatisfy({ $0.hasObservedMovieIDs && $0.alreadyWatchedMovieIDs != nil })
             else {
                 throw ViewingDecisionError.invalidData

@@ -45,8 +45,9 @@ M8, ADR-015 implementation closure, roadmap, IMP-005 and IMP-023 remain open.
   recovery uses a valid previous copy or reports unavailable.
 - Operation receipts carry their accepted wall timestamp. Timed retention drops
   unattributed receipts at 180 days, inclusive. Legacy unattributed receipts with
-  neither a timestamp nor retained search evidence are reclaimed; they cannot
-  identify retained work. Receipts linked to retained sessions, decisions or
+  neither a timestamp nor attribution are kept while any sessions, decisions or
+  confirmation journals remain; only an empty retained history permits removal.
+  Their missing attribution cannot prove that retained work no longer needs them. Receipts linked to retained sessions, decisions or
   search evidence keep their idempotency protection. Receipt-only pruning is
   persisted and sanitizes the previous envelope, including when triggered by an
   ordinary mutation. Export applies the same projection without writes.
@@ -214,6 +215,67 @@ make verify
   Result: `Test-PickOne-2026.09.23_09-56-37-+0200.xcresult`.
 - The hosted-runner failure provides the failing evidence. Local runtime 26.5
   passes the corrected synchronization; the new hosted CI result is pending.
+
+## Journal, legacy retry and counter integrity follow-up
+
+The review of `ae8ad55` identified three additional persisted-data cases, each
+reproduced by `PilotMeasurementIntegrityTests` before its fix:
+
+| Requirement | Boundary | Regression evidence |
+|---|---|---|
+| Missing/null v3 confirmation journal is unavailable, never silently empty | Envelope v3 decoder | `missingCurrentJournalQuarantinesAndRecoversPendingWork`: exact-byte quarantine, previous-copy recovery retaining the prepared journal, no-overwrite unavailable path |
+| Preserve v1/v2 compatibility and existing pending work | Known-schema migration | `legacyMissingJournalMigratesToExplicitEmptyArray`, `legacyPendingJournalSurvivesMigrationAndRelaunch` |
+| Preserve unattributed undated v2 `notWatched` receipt while its decision remains | Timed retention projection | `legacyNotWatchedReceiptSurvivesSummaryMigrationRelaunchAndRetry`: first summary, v3 write, recreation, same-ID retry, byte stability, export, eventual safe pruning |
+| Malformed persisted counters cannot trap summary/export | Envelope validation before publication | `overflowingPersistedCountersRecoverOrRemainUnavailable`: checked aggregate sums, exact bytes, previous recovery or unavailable for report and export |
+
+Schema v3 now requires a non-null `confirmationOperations` array. Legacy schemas
+retain their supported absent-array interpretation; existing v2 journals are
+preserved on migration. No new schema version or PR4 behavior is introduced.
+
+An unattributed legacy receipt without a timestamp may belong to any retained
+terminal decision. It is conservatively kept while any sessions, decisions or
+confirmation journals remain. Once none remain, the receipt can be pruned safely;
+retained search receipts remain protected by search identity. Dated receipts
+still use the accepted 180-day rule. This supersedes the earlier claim that
+missing attribution alone allowed immediate removal.
+
+The envelope validates refresh and postponement totals using
+`addingReportingOverflow`, rejecting negative values, overflow and exhausted
+integer capacity before publishing state. Invalid active bytes use the existing
+quarantine/previous-copy/unavailable path before either summary or export.
+A representable counter increment remains possible before the next candidate
+validation; malformed persisted `Int.max` cannot reach a reducer increment.
+
+The UI test no longer queries `Browse View (Picker)` or any other Files-internal
+identifier. Export, Delete and confirmation use stable PickOne identifiers;
+localized labels are separate assertions. After export, the test waits for the
+PickOne Delete action to become hittable, retains the explicit hittability
+assertion, and then taps. Native Save/Replace labels are used only to perform the
+system export interaction, not as evidence that the app is interactive again.
+
+Final validation on `2026-09-23`, Xcode 26.6 (17F113), iOS 26.5 Simulator,
+iPhone 17 Pro:
+
+```sh
+xcodebuild test -project PickOne.xcodeproj -scheme PickOne \
+  -destination 'platform=iOS Simulator,name=iPhone 17 Pro' \
+  -parallel-testing-enabled NO -derivedDataPath .derivedData/Tests \
+  -only-testing:PickOneTests/PilotMeasurementIntegrityTests \
+  -only-testing:PickOneTests/PilotMeasurementRecoveryTests \
+  -only-testing:PickOneTests/PilotMeasurementPersistenceTests \
+  -only-testing:PickOneTests/PilotMeasurementLifecycleTests \
+  -only-testing:PickOneUITests/PilotInsightsInteractionTests
+make verify
+```
+
+- Focused: 22 unit tests in 4 persistence suites and both UI journeys passed.
+  Result: `Test-PickOne-2026.09.23_22-08-55-+0200.xcresult`.
+- Complete gate: 638 unit tests in 122 suites, all 10 UI tests, formatting,
+  strict lint, secret scan, static analysis, unsigned Release and bundle
+  inspection passed (exit 0).
+  Result: `Test-PickOne-2026.09.23_22-10-58-+0200.xcresult`.
+- No physical-device or hosted CI result is claimed by this local validation.
+  PR4 and milestone closure remain out of scope.
 
 ## Physical checks requested from the Product Owner
 
