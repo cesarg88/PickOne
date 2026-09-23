@@ -1,6 +1,7 @@
 import Foundation
 
 struct ViewingDecisionState: Equatable, Sendable {
+    var searchEvidence: [PilotSearchEvidence] = []
     var sessions: [RecommendationSession] = []
     var decisions: [ViewingDecision] = []
     var confirmationOperations: [ViewingConfirmationOperation] = []
@@ -24,10 +25,7 @@ struct ViewingDecisionState: Equatable, Sendable {
         else {
             throw ViewingDecisionError.invalidData
         }
-        if case let .confirmation(command) = action {
-            try confirm(command, at: moment.wall)
-            return
-        }
+        if try applyIndependentAction(action, at: moment.wall) { return }
         if case let .pick(selection, snapshot, _) = action,
            !snapshot.recommendations.contains(selection)
         { throw ViewingDecisionError.invalidRecommendation }
@@ -86,10 +84,19 @@ struct ViewingDecisionState: Equatable, Sendable {
                 }
             case let .confirmation(command):
                 try confirm(command, at: moment.wall)
-            case .expire:
+            case .expire, .alreadyWatched, .search:
                 break
         }
         if ordered { lastMoment = moment }
+    }
+
+    private mutating func applyIndependentAction(_ action: ViewingDecisionAction, at date: Date) throws -> Bool {
+        if try recordMeasurement(action) { return true }
+        if case let .confirmation(command) = action {
+            try confirm(command, at: date)
+            return true
+        }
+        return false
     }
 
     private func validateCancellation(_ action: ViewingDecisionAction) throws {
@@ -136,6 +143,11 @@ struct ViewingDecisionState: Equatable, Sendable {
         sessions[index].lastActivityAt = max(sessions[index].lastActivityAt, moment.wall)
         if !sessions[index].observedSetIDs.contains(setID) {
             sessions[index].observedSetIDs.append(setID)
+        }
+        if sessions[index].observedMovieIDs != nil {
+            sessions[index].observedMovieIDs = Array(Set(
+                (sessions[index].observedMovieIDs ?? []) + surface.recommendations.map(\.movieID)
+            )).sorted()
         }
         setAnchor(moment)
     }

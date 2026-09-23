@@ -55,12 +55,14 @@ final class HomePickViewModel {
     }
 
     func showRelatedDetail(movieID: Int) {
-        guard let homeSurface, homeSurface.recommendations.contains(where: { $0.movieID == movieID }) else {
+        guard let recommendation = homeSurface?.recommendations.first(where: { $0.movieID == movieID }),
+              let surface = try? ViewingDecisionSurface(recommendations: [recommendation])
+        else {
             hideSurface()
             return
         }
-        detailSurface = homeSurface
-        if isVisible { enqueue(.observe(homeSurface)) }
+        detailSurface = surface
+        if isVisible { enqueue(.observe(surface)) }
     }
 
     func setVisible(_ visible: Bool) {
@@ -85,6 +87,30 @@ final class HomePickViewModel {
     func refreshRequested() {
         guard isVisible, let currentSurface else { return }
         enqueue(.refresh(currentSurface))
+    }
+
+    func alreadyWatchedRecorder(movieID: Int) -> @MainActor () -> Void {
+        if isVisible, detailSurface == nil, let homeSurface { enqueue(.observe(homeSurface)) }
+        let previous = tail
+        let manage = manage
+        // Capture attribution in the observation queue without delaying the movie-state save.
+        let session = Task {
+            await previous?.value
+            return try? await manage.snapshot().openSession?.id
+        }
+        tail = Task { _ = await session.value }
+        return { [weak self] in
+            guard let self else { return }
+            let preceding = tail
+            let moment = clock()
+            tail = Task {
+                await preceding?.value
+                guard let id = await session.value else { return }
+                _ = try? await manage.apply(ViewingDecisionOperation(
+                    action: .alreadyWatched(id, movieID: movieID), moment: moment
+                ))
+            }
+        }
     }
 
     func pick(movieID: Int) {
