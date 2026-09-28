@@ -246,8 +246,8 @@ quarantine/previous-copy/unavailable path before either summary or export.
 A representable counter increment remains possible before the next candidate
 validation; malformed persisted `Int.max` cannot reach a reducer increment.
 
-The UI test no longer queries `Browse View (Picker)` or any other Files-internal
-identifier. Export, Delete and confirmation use stable PickOne identifiers;
+The 2026-09-23 UI test stopped querying `Browse View (Picker)` or any other
+Files-internal identifier. Export, Delete and confirmation use stable PickOne identifiers;
 localized labels are separate assertions. After export, the test waits for the
 PickOne Delete action to become hittable, retains the explicit hittability
 assertion, and then taps. Native Save/Replace labels are used only to perform the
@@ -276,6 +276,93 @@ make verify
   Result: `Test-PickOne-2026.09.23_22-10-58-+0200.xcresult`.
 - No physical-device or hosted CI result is claimed by this local validation.
   PR4 and milestone closure remain out of scope.
+
+## UI responsibility separation (2026-09-28)
+
+The hosted run [35915267520, job 107365038696](https://github.com/cesarg88/PickOne/actions/runs/35915267520/job/107365038696?pr=53)
+on `7b25e08` passed its Spanish copy assertions and then failed waiting for the
+Delete action at `PilotInsightsInteractionTests.swift:70`. Files still displayed
+its in-progress overlay after Replace. Both language journeys exported the same
+`PickOne-pilot-insights.json` into the shared local destination. Resetting the
+PickOne fixture does not reset Files; inspection also found the existing export
+in the simulator's local provider. Save disappearing did not establish that the
+provider had finished or that the modal had closed. This was not a Spanish-copy
+failure. The previous local green result did not exclude this shared-state path.
+
+This follow-up changes UI tests only, with no production behavior change:
+
+- Independent English and Spanish tests (Spanish at Accessibility XXXL) assert
+  report/action copy, enabled and hittable footer controls, and an interactive localized delete
+  confirmation. Neither enters Files or commits deletion.
+- Exactly one export journey creates a UUID-named folder through Files under
+  On My iPhone, then supplies a UUID filename. It selects the root explicitly,
+  even when Files remembers an earlier folder. The helper resolves the simulator
+  provider only after selecting that local location, so it does not require Files
+  to have been opened previously. Existing exports are left intact; they cannot
+  force the new invocation through Replace.
+- Export completion requires PickOne's own Export action to become hittable and
+  a complete schema-1 JSON report to exist at that exact destination. The test
+  checks report keys, the fixture's session count and the single exported file,
+  and attaches the JSON to its test result. Simulator provider inspection is
+  read-only; all folder/file creation uses the native picker. This fixture is
+  intentionally simulator-specific and does not claim physical-device coverage.
+- Deletion starts with an explicitly completed not-watched decision, verifies
+  confirmation, checks its report count changes from one to zero, then relaunches
+  without resetting storage and checks zero again. It never enters Files.
+
+Own controls use existing accessibility identifiers; the Settings tab is located
+by its symbol identifier. Copy assertions are separate from action lookup. Native
+picker IDs and its trailing Save action are encapsulated in the export helper;
+Save/New Folder labels are explicit copy assertions, not completion signals.
+The flow no longer branches on Save/Replace translations or waits for the
+internal `Browse View (Picker)` label. No sleeps, increased timeouts, additional
+search swipes or automatic retry-until-pass behavior are introduced.
+
+Validation environment: Xcode 26.6 (17F113), iOS 26.5 Simulator, iPhone 17 Pro.
+English, Spanish and deletion each ran in a separate invocation of the command
+below. Export also ran alone, using the fresh-simulator command after the table:
+
+```sh
+xcodebuild test -project PickOne.xcodeproj -scheme PickOne \
+  -destination 'platform=iOS Simulator,name=iPhone 17 Pro' \
+  -parallel-testing-enabled NO -derivedDataPath .derivedData/Tests \
+  -only-testing:PickOneUITests/PilotInsightsInteractionTests/TEST
+```
+
+| `TEST` | Outcome | Result bundle |
+| --- | --- | --- |
+| `testExportCreatesOneFileInAnIsolatedDestination` | Passed on a fresh simulator | `Test-PickOne-2026.09.28_17-28-28-+0200.xcresult` |
+| `testDeletionConfirmsAndRemovesCompletedMeasurementAfterRelaunch` | Passed | `Test-PickOne-2026.09.28_17-18-49-+0200.xcresult` |
+| `testEnglishCopyAndAccessibleControls` | Passed | `Test-PickOne-2026.09.28_17-20-01-+0200.xcresult` |
+| `testSpanishCopyAndAccessibleControlsAtAccessibilityXXXL` | Passed | `Test-PickOne-2026.09.28_17-20-30-+0200.xcresult` |
+
+The export isolation check additionally uses a newly created iPhone 17 Pro:
+
+```sh
+EXPORT_SIMULATOR=$(xcrun simctl create PickOne-Export-Isolation \
+  com.apple.CoreSimulator.SimDeviceType.iPhone-17-Pro \
+  com.apple.CoreSimulator.SimRuntime.iOS-26-5)
+xcodebuild test -project PickOne.xcodeproj -scheme PickOne \
+  -destination "platform=iOS Simulator,id=$EXPORT_SIMULATOR" \
+  -parallel-testing-enabled NO -derivedDataPath .derivedData/FreshExport \
+  -only-testing:PickOneUITests/PilotInsightsInteractionTests/testExportCreatesOneFileInAnIsolatedDestination
+```
+
+The combined run on that simulator uses the same xcodebuild command with
+`-only-testing:PickOneUITests/PilotInsightsInteractionTests`. It retains the file
+from the isolated invocation. `make verify` then uses the repository's usual
+simulator, which retains the earlier shared/default exports as well. The temporary
+simulator was shut down and deleted after the focused checks; its JSON attachment
+and result bundles remain in `.derivedData/FreshExport/Logs/Test`.
+
+- Combined affected suite: all four tests passed, zero failures. Result:
+  `Test-PickOne-2026.09.28_17-30-06-+0200.xcresult`.
+- Full gate: `make verify` passed (exit 0): 638 unit tests in 122 suites, all
+  12 UI tests, formatting/strict lint, secret scan, static analysis, unsigned
+  Release and bundle inspection. Result:
+  `Test-PickOne-2026.09.28_17-32-29-+0200.xcresult`.
+- Hosted CI is not claimed green by these local results. This follow-up is handed
+  off for another review without waiting for CI; PR4 remains out of scope.
 
 ## Physical checks requested from the Product Owner
 
