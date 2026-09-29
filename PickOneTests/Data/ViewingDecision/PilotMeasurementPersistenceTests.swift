@@ -86,7 +86,9 @@ struct PilotMeasurementPersistenceTests {
         let data = try await repository.exportMeasurement(at: ViewingDecisionTestFixtures.moment(1).wall)
         let json = try #require(JSONSerialization.jsonObject(with: data) as? [String: Any])
         #expect(Set(json.keys) == ["schemaVersion", "exportedAt", "summary", "records"])
+        #expect(json["schemaVersion"] as? Int == 1)
         let summary = try #require(json["summary"] as? [String: Any])
+        #expect(summary["sessions"] as? Int == 1)
         #expect(summary["observedMovies"] as? Int == 2)
         let text = try #require(String(data: data, encoding: .utf8))
         for forbidden in ["title", "poster", "provider", "query", "prompt", "token", "device"] {

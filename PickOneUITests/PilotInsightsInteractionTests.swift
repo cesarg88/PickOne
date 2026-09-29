@@ -53,14 +53,6 @@ final class PilotInsightsInteractionTests: XCTestCase {
         XCTAssertTrue(app.buttons["pilot-insights-delete"].isHittable)
     }
 
-    @MainActor func testExportCreatesOneFileInAnIsolatedDestination() throws {
-        let app = launchFixture(language: "en")
-        defer { cleanUp(app) }
-        openInsights(app)
-        // Only this test enters Files. It owns a fresh folder and filename for every invocation.
-        try PilotInsightsExportScenario().export(from: app)
-    }
-
     @MainActor private func verifyCopyAndAccessibility(language: String) {
         let app = launchFixture(language: language)
         defer { cleanUp(app) }

@@ -10,8 +10,13 @@ and [PR2 validation record](confirmation-and-provenance.md).
 
 This delivers only PR3: semantic Home/search evidence, derived pilot summary,
 Settings presentation, local JSON export, retention and measurement-only deletion.
-PR4 integration/physical validation and milestone closure are not authorized.
+PR4 prolonged final-M7 upgrade/integration validation and milestone closure
+are not authorized. The PR3 physical checks below remain pending.
 M8, ADR-015 implementation closure, roadmap, IMP-005 and IMP-023 remain open.
+
+The [current coverage boundary](#current-coverage-boundary-2026-09-29) assigns
+native Files save/cancel to physical checks and preserves app-owned automated
+coverage. Earlier native Files UI results below are historical, not current tests.
 
 ## Implementation and metric definitions
 
@@ -92,7 +97,8 @@ M8, ADR-015 implementation closure, roadmap, IMP-005 and IMP-023 remain open.
 | Pruning write failures and retained-work protection | Previous/active transaction | `failedReceiptOnlyPruningPreservesActiveAndRetriesAfterRelaunch`, `retentionKeepsReceiptsForOpenWorkAndRetainedSearches` |
 | Corrupt report/export/delete remains unavailable; never empty success | Existing recovery boundary | `corruptReportAndExportAreUnavailableWithoutOverwritingBytes`, `missingCurrentSchemaEvidenceIsNotInventedAsEmpty` |
 | Unavailable/empty/retry/export cleanup/delete failure presentation | MainActor model | `PilotInsightsPresentationTests` |
-| English/Spanish, export, deletion, large text reachability | String Catalog and Settings screen | `PilotInsightsInteractionTests` |
+| English/Spanish, deletion/relaunch, large text reachability and export-control accessibility | String Catalog and Settings screen | `PilotInsightsInteractionTests` (three independent tests; no Files navigation) |
+| Native Files save, replacement and cancellation | Physical device/system picker | Explicit physical checks below; pending, not claimed by automation |
 | Existing movie/profile/Watchlist/Search History/Decision Set behavior | Separate authorities | Full `make verify` regression suite; exact Viewer State bytes checked across measurement deletion |
 
 ## Validation
@@ -364,6 +370,87 @@ and result bundles remain in `.derivedData/FreshExport/Logs/Test`.
 - Hosted CI is not claimed green by these local results. This follow-up is handed
   off for another review without waiting for CI; PR4 remains out of scope.
 
+## Current coverage boundary (2026-09-29)
+
+The Product Owner explicitly directed removal of
+`testExportCreatesOneFileInAnIsolatedDestination` and `PilotInsightsExportScenario`.
+Both are deleted, not skipped or disabled. This supersedes the native Files UI
+coverage described in the historical 2026-09-28 section above. No production
+code, other UI tests, or existing unit-test assertions are removed or weakened.
+
+On `944f1d8`, [hosted run 36445593923](https://github.com/cesarg88/PickOne/actions/runs/36445593923/job/109006965691)
+passed 638 unit tests and 11 of 12 UI tests. The isolated export test failed at
+`PilotInsightsExportScenario.swift:83`: after writing the new folder name and
+sending a newline, `DOC.inlineRenameField` remained present beyond the five-second
+nonexistence expectation. The test had not reached Save or Replace. English,
+Spanish Accessibility XXXL and independent deletion passed. CI used Xcode 26.4.1 /
+iOS 26.4; the earlier local green results used Xcode 26.6 / iOS 26.5. The log does
+not establish whether focus, timing or platform behavior caused renaming to remain
+active. There is no new workaround for Files navigation or timeout increase.
+
+Current automated coverage remains at the application-owned boundaries:
+
+- `PilotMeasurementPersistenceTests.exportIsReadOnlyAndContainsAllowlistedRecordsAndDerivedSummary`
+  generates/parses the JSON, checks its exact top-level keys, derived summary,
+  privacy exclusions, and unchanged active/previous persistence bytes. Schema
+  version 1 and the fixture's session count 1 assertions move here from the
+  removed native journey; the prior assertions are retained.
+- Persistence/recovery/integrity tests retain unavailable/corrupt export,
+  exact-byte preservation, receipt retention/relaunch/export and safe counter
+  failure coverage.
+- `PilotInsightsPresentationTests.unavailableIsNeverZeroAndRetryRecovers` retains
+  preparation failure, error state, retry, prepared data and discard cleanup;
+  the existing deletion failure/retry test remains unchanged. Discard cleanup
+  tests the model boundary, not cancellation through the system picker.
+- Three independent UI tests retain deletion confirmation, a completed count
+  changing from one to zero and staying zero after relaunch, English/Spanish copy,
+  enabled/hittable controls, and Spanish Accessibility XXXL. They use existing
+  own-control identifiers and do not navigate Files.
+
+Native saving and cancellation are explicit physical checks below, still pending.
+Automated green results do not claim that either device journey passed.
+
+Focused verification:
+
+```sh
+xcodebuild test -project PickOne.xcodeproj -scheme PickOne \
+  -destination 'platform=iOS Simulator,name=iPhone 17 Pro' \
+  -parallel-testing-enabled NO -derivedDataPath .derivedData/Tests \
+  -only-testing:PickOneTests/PilotMeasurementPersistenceTests \
+  -only-testing:PickOneTests/PilotMeasurementRecoveryTests \
+  -only-testing:PickOneTests/PilotMeasurementIntegrityTests \
+  -only-testing:PickOneTests/PilotInsightsPresentationTests \
+  -only-testing:PickOneUITests/PilotInsightsInteractionTests
+make verify
+```
+
+- Focused checks passed: 20 unit tests in four suites and all three Pilot insights
+  UI tests. Result: `Test-PickOne-2026.09.29_00-05-02-+0200.xcresult`.
+- The first `make verify` passed 638 unit tests and 10/11 UI tests, including all
+  three Pilot insights tests, then failed in the unchanged
+  `ViewingConfirmationInteractionTests.testWatchedAndOptionalReactionInEnglish`
+  at line 42 with an accessibility snapshot query timeout. Result:
+  `Test-PickOne-2026.09.29_00-48-03-+0200.xcresult`. macOS power logs record
+  Maintenance Sleep from 02:38:33 to 02:54:15 (942 seconds), coinciding with that
+  test's jump from 2.93 to 942.47 seconds. Other tests also spanned system sleep.
+  Analysis/Release were not reached in that invocation.
+- After identifying system suspension, the unchanged confirmation test was run
+  with `caffeinate -s xcodebuild test` and the same focused arguments, selecting
+  `PickOneUITests/ViewingConfirmationInteractionTests/testWatchedAndOptionalReactionInEnglish`.
+  The complete gate then uses `caffeinate -s make verify`. This AC-powered,
+  command-scoped system-sleep assertion changes no repository tests, timeouts or
+  permanent power settings. The unchanged focused confirmation test passed:
+  `Test-PickOne-2026.09.29_03-21-25-+0200.xcresult`.
+- Final `make verify` under the command-scoped sleep assertion passed (exit 0):
+  638 unit tests in 122 suites, all 11 UI tests, formatting/strict lint, secret
+  scan, static analysis, unsigned Release and bundle inspection. Result:
+  `Test-PickOne-2026.09.29_03-22-07-+0200.xcresult`. The temporary sleep assertion
+  ended with the command; no power assertion from this task remains.
+
+
+Local environment: Xcode 26.6 (17F113), iOS 26.5 Simulator, iPhone 17 Pro. CI remains a separate merge gate;
+this follow-up is handed off without waiting for CI. PR4 stays out of scope.
+
 ## Physical checks requested from the Product Owner
 
 Use retained installed data, without deleting app storage. Record device, iOS,
@@ -376,9 +463,19 @@ SHA, language, text size, date and outcome.
    postpone a pending Pick. Compare the report with the explicit actions.
 3. Use Home Already watched once; verify a redraw does not inflate counts, and
    rating or watched from another surface does not change the Home metric.
-4. Export JSON to a local Files destination, inspect the report, then cancel an
-   export and verify source history is unchanged.
-5. Delete measurement after confirming a Pick. Verify eligible history is gone
+4. **Native save (pending physical validation):** record the completed report
+   counts, open Export and save to a chosen local Files destination. Wait until
+   PickOne is interactive again, open the saved JSON and compare schema, records
+   and summary with the report. Confirm completed source history is unchanged.
+   Repeat using an existing test export to exercise Replace; record whether the
+   system picker finishes or remains in progress. Record destination/provider,
+   device, iOS, SHA, language and outcome for each attempt.
+5. **Native cancellation (pending physical validation):** open Export and cancel
+   in Files before saving. Confirm return to an interactive report, no new file
+   at the selected destination, unchanged completed source history and no stale
+   export error; reopen Export to check it can be prepared again. Record the same
+   device/environment details. Model discard coverage does not replace this check.
+6. Delete measurement after confirming a Pick. Verify eligible history is gone
    after relaunch while pending confirmations, current watched/reactions,
    PickOne badges, profile, Watchlist, Search History and Home recommendations
    remain intact. Active work may intentionally keep nonzero report counts.
