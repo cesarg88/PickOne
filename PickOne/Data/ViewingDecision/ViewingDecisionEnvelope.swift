@@ -2,6 +2,7 @@ import Foundation
 
 struct ViewingDecisionEnvelope: Sendable {
     var id = UUID()
+    var deletionOperationIDs: [UUID] = []
     var state = ViewingDecisionState()
     var receipts: [ViewingDecisionReceipt] = []
 
@@ -16,8 +17,17 @@ struct ViewingDecisionEnvelope: Sendable {
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .millisecondsSince1970
         let header = try decoder.decode(ViewingDecisionHeaderDTO.self, from: data)
-        guard [1, 2].contains(header.schemaVersion) else { throw ViewingDecisionError.unsupportedSchema }
-        let result = try decoder.decode(ViewingDecisionEnvelopeDTO.self, from: data).domain()
+        guard [1, 2, 3].contains(header.schemaVersion) else { throw ViewingDecisionError.unsupportedSchema }
+        let decoded = try decoder.decode(ViewingDecisionEnvelopeDTO.self, from: data)
+        if header.schemaVersion == 3 {
+            guard decoded.searchEvidence != nil, decoded.deletionOperationIDs != nil,
+                  decoded.confirmationOperations != nil,
+                  decoded.sessions.allSatisfy({ $0.hasObservedMovieIDs && $0.alreadyWatchedMovieIDs != nil })
+            else {
+                throw ViewingDecisionError.invalidData
+            }
+        }
+        let result = try decoded.domain()
         if header.schemaVersion == 1 {
             guard result.state.confirmationOperations.isEmpty,
                   result.state.decisions.allSatisfy({
@@ -68,6 +78,7 @@ struct ViewingDecisionEnvelope: Sendable {
                 else { throw ViewingDecisionError.invalidData }
             } else if decision.timing != .unavailable { throw ViewingDecisionError.invalidData }
         }
+        try validateMeasurement()
         try validateConfirmations()
         for receipt in receipts {
             guard receipt.sessionID.map({ id in sessions.contains { $0.id == id } }) ?? true,
@@ -87,9 +98,13 @@ private struct ViewingDecisionEnvelopeDTO: Codable {
     let receipts: [ViewingDecisionReceiptDTO]
     let lastDecisionMoment: DecisionMomentDTO?
     let confirmationOperations: [ViewingConfirmationOperationDTO]?
+    let searchEvidence: [PilotSearchEvidenceDTO]?
+    let deletionOperationIDs: [UUID]?
 
     init(_ envelope: ViewingDecisionEnvelope) {
-        schemaVersion = 2
+        schemaVersion = 3
+        deletionOperationIDs = envelope.deletionOperationIDs
+        searchEvidence = envelope.state.searchEvidence.map(PilotSearchEvidenceDTO.init)
         confirmationOperations = envelope.state.confirmationOperations.map(ViewingConfirmationOperationDTO.init)
         id = envelope.id
         sessions = envelope.state.sessions.map(RecommendationSessionDTO.init)
@@ -100,8 +115,9 @@ private struct ViewingDecisionEnvelopeDTO: Codable {
 
     func domain() throws -> ViewingDecisionEnvelope {
         try ViewingDecisionEnvelope(
-            id: id,
+            id: id, deletionOperationIDs: deletionOperationIDs ?? [],
             state: ViewingDecisionState(
+                searchEvidence: (searchEvidence ?? []).map { try $0.domain() },
                 sessions: sessions.map { try $0.domain() },
                 decisions: decisions.map { try $0.domain() },
                 confirmationOperations: (confirmationOperations ?? []).map { try $0.domain() },
@@ -136,6 +152,9 @@ private struct RecommendationSessionDTO: Codable {
     let foregroundAnchor: DecisionMomentDTO?
     let observedSetIDs: [UUID]
     let refreshCount: Int
+    let hasObservedMovieIDs: Bool
+    let observedMovieIDs: [Int]?
+    let alreadyWatchedMovieIDs: [Int]?
     let firstPickTiming: DecisionTimingDTO?
     let finalDecisionID: UUID?
 
@@ -150,8 +169,56 @@ private struct RecommendationSessionDTO: Codable {
         foregroundAnchor = session.foregroundAnchor.map(DecisionMomentDTO.init)
         observedSetIDs = session.observedSetIDs
         refreshCount = session.refreshCount
+        hasObservedMovieIDs = true
+        observedMovieIDs = session.observedMovieIDs
+        alreadyWatchedMovieIDs = session.alreadyWatchedMovieIDs
         firstPickTiming = session.firstPickTiming.map(DecisionTimingDTO.init)
         finalDecisionID = session.finalDecisionID?.rawValue
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case id, startedAt, lastActivityAt, endedAt
+        case status, foregroundDuration, timingIsReliable, foregroundAnchor
+        case observedSetIDs, refreshCount, observedMovieIDs, alreadyWatchedMovieIDs
+        case firstPickTiming, finalDecisionID
+    }
+
+    init(from decoder: any Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        hasObservedMovieIDs = values.contains(.observedMovieIDs)
+        id = try values.decode(UUID.self, forKey: .id)
+        startedAt = try values.decode(Date.self, forKey: .startedAt)
+        lastActivityAt = try values.decode(Date.self, forKey: .lastActivityAt)
+        endedAt = try values.decodeIfPresent(Date.self, forKey: .endedAt)
+        status = try values.decode(String.self, forKey: .status)
+        foregroundDuration = try values.decode(Double.self, forKey: .foregroundDuration)
+        timingIsReliable = try values.decode(Bool.self, forKey: .timingIsReliable)
+        foregroundAnchor = try values.decodeIfPresent(DecisionMomentDTO.self, forKey: .foregroundAnchor)
+        observedSetIDs = try values.decode([UUID].self, forKey: .observedSetIDs)
+        refreshCount = try values.decode(Int.self, forKey: .refreshCount)
+        observedMovieIDs = try values.decodeIfPresent([Int].self, forKey: .observedMovieIDs)
+        alreadyWatchedMovieIDs = try values.decodeIfPresent([Int].self, forKey: .alreadyWatchedMovieIDs)
+        firstPickTiming = try values.decodeIfPresent(DecisionTimingDTO.self, forKey: .firstPickTiming)
+        finalDecisionID = try values.decodeIfPresent(UUID.self, forKey: .finalDecisionID)
+    }
+
+    func encode(to encoder: any Encoder) throws {
+        var values = encoder.container(keyedBy: CodingKeys.self)
+        try values.encode(id, forKey: .id)
+        try values.encode(startedAt, forKey: .startedAt)
+        try values.encode(lastActivityAt, forKey: .lastActivityAt)
+        try values.encodeIfPresent(endedAt, forKey: .endedAt)
+        try values.encode(status, forKey: .status)
+        try values.encode(foregroundDuration, forKey: .foregroundDuration)
+        try values.encode(timingIsReliable, forKey: .timingIsReliable)
+        try values.encodeIfPresent(foregroundAnchor, forKey: .foregroundAnchor)
+        try values.encode(observedSetIDs, forKey: .observedSetIDs)
+        try values.encode(refreshCount, forKey: .refreshCount)
+        // Explicit null preserves migrated unknown evidence; omission is invalid in v3.
+        try values.encode(observedMovieIDs, forKey: .observedMovieIDs)
+        try values.encodeIfPresent(alreadyWatchedMovieIDs, forKey: .alreadyWatchedMovieIDs)
+        try values.encodeIfPresent(firstPickTiming, forKey: .firstPickTiming)
+        try values.encodeIfPresent(finalDecisionID, forKey: .finalDecisionID)
     }
 
     func domain() throws -> RecommendationSession {
@@ -162,6 +229,7 @@ private struct RecommendationSessionDTO: Codable {
             endedAt: endedAt, status: status, foregroundDuration: foregroundDuration,
             timingIsReliable: timingIsReliable, foregroundAnchor: foregroundAnchor?.domain(),
             observedSetIDs: observedSetIDs, refreshCount: refreshCount,
+            observedMovieIDs: observedMovieIDs, alreadyWatchedMovieIDs: alreadyWatchedMovieIDs ?? [],
             firstPickTiming: firstPickTiming?.domain(), finalDecisionID: finalDecisionID.map(ViewingDecisionID.init)
         )
     }
@@ -242,10 +310,12 @@ private struct ViewingDecisionDTO: Codable {
 
 private struct ViewingDecisionReceiptDTO: Codable {
     let operationID: UUID
+    let recordedAt: Date?
     let sessionID: UUID?
     let decisionID: UUID?
     init(_ receipt: ViewingDecisionReceipt) {
         operationID = receipt.operationID
+        recordedAt = receipt.recordedAt
         sessionID = receipt.sessionID?.rawValue
         decisionID = receipt.decisionID?.rawValue
     }
@@ -254,7 +324,7 @@ private struct ViewingDecisionReceiptDTO: Codable {
         ViewingDecisionReceipt(
             operationID: operationID,
             sessionID: sessionID.map(DecisionSessionID.init),
-            decisionID: decisionID.map(ViewingDecisionID.init)
+            decisionID: decisionID.map(ViewingDecisionID.init), recordedAt: recordedAt
         )
     }
 }

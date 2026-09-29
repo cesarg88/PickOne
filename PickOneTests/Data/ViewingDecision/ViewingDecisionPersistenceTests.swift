@@ -155,7 +155,9 @@ struct ViewingDecisionPersistenceTests {
             "prompt",
             "query",
             "token",
-            "watched",
+            // The semantic alreadyWatchedMovieIDs evidence is allowed; current movie state is not.
+            "\"watched\"",
+            "watchState",
             "reaction",
             "provenance",
         ] {

@@ -10,6 +10,7 @@ enum HomeQuickFeedbackState: Equatable {
 @MainActor
 @Observable
 final class HomeQuickFeedbackViewModel {
+    private let alreadyWatchedRecorder: @MainActor () -> (@MainActor () -> Void)
     private let movieID: Int
     private let metadata: MovieFeedbackMetadata
     private let updateViewerMovieState: any UpdateViewerMovieStateUseCase
@@ -22,8 +23,10 @@ final class HomeQuickFeedbackViewModel {
         movieID: Int,
         metadata: MovieFeedbackMetadata,
         updateViewerMovieState: any UpdateViewerMovieStateUseCase,
-        viewerStateDidChange: @escaping @MainActor (DecisionViewerStateChange) -> Void
+        viewerStateDidChange: @escaping @MainActor (DecisionViewerStateChange) -> Void,
+        alreadyWatchedRecorder: @escaping @MainActor () -> (@MainActor () -> Void) = { {} }
     ) {
+        self.alreadyWatchedRecorder = alreadyWatchedRecorder
         self.movieID = movieID
         self.metadata = metadata
         self.updateViewerMovieState = updateViewerMovieState
@@ -32,6 +35,9 @@ final class HomeQuickFeedbackViewModel {
 
     func submit(_ action: ViewerMovieStateTransition.Action) async {
         guard state != .saving, state != .submitted else { return }
+        let recordAlreadyWatched: @MainActor () -> Void = if case .markWatched = action {
+            alreadyWatchedRecorder()
+        } else { {} }
         state = .saving
 
         do {
@@ -42,6 +48,7 @@ final class HomeQuickFeedbackViewModel {
                 ),
                 metadata: metadata
             )
+            if case .markWatched = action { recordAlreadyWatched() }
             guard let decisionChange = DecisionViewerStateChange(
                 movieID: movieID,
                 impact: change.impact,

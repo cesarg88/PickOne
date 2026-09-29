@@ -8,7 +8,9 @@ struct QueuedPickOperationTests {
         let harness = try await ConfirmationHarness.make()
         let base = LocalViewingDecisionRepository(store: harness.decisionFiles)
         let repository = SuspendedPickSnapshotRepository(base: base)
-        let model = HomePickViewModel(manage: ManageViewingDecision(repository: repository))
+        let model = HomePickViewModel(
+            manage: ManageViewingDecision(repository: repository), clock: { harness.now }
+        )
         try await model.refreshDecision()
         #expect(model.activeDecision?.id == harness.decisionID)
         _ = try await base.apply(.init(action: .confirmation(.notWatched(harness.decisionID)), moment: harness.now))
@@ -38,7 +40,9 @@ struct QueuedPickOperationTests {
         let harness = try await ConfirmationHarness.make()
         let base = LocalViewingDecisionRepository(store: harness.decisionFiles)
         let repository = SuspendedPickSnapshotRepository(base: base)
-        let model = HomePickViewModel(manage: ManageViewingDecision(repository: repository))
+        let model = HomePickViewModel(
+            manage: ManageViewingDecision(repository: repository), clock: { harness.now }
+        )
         try await model.refreshDecision()
         let recommendation = try #require(model.activeDecision?.recommendation)
         try model.updateSurface(ViewingDecisionSurface(recommendations: [recommendation]))

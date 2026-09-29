@@ -7,12 +7,12 @@
 - Product decisions: **Accepted**.
 - Product Ready: **Yes**.
 - Engineering Ready: **Yes**.
-- Implementation authorized: **PR2 — Confirmation and provenance**, explicitly by the Product Owner on `2026-09-15`. PR3+ is not authorized.
+- Implementation authorized: **PR3 — Pilot insights**, explicitly by the Product Owner on `2026-09-22`. PR4 is not authorized.
 - Product Owner acceptance: `2026-09-14`.
 - Technical Lead acceptance: `2026-09-14`.
 - Milestone 7 is complete.
 - D0 merged in #50 (`c31e39f`). PR1 merged in #51 (`d2a9197`).
-- PR2 starts from that latest `develop`; its evidence is recorded in
+- PR2 merged in #52 (`81fa448`); its evidence is recorded in
   [`confirmation-and-provenance.md`](../engineering/validation/confirmation-and-provenance.md).
   This partial delivery does not close M8.
 
@@ -390,13 +390,17 @@ idempotent cross-repository operation, Viewer Movie State provenance migration,
 
 PR2 implementation and requirement coverage are recorded in
 [`confirmation-and-provenance.md`](../engineering/validation/confirmation-and-provenance.md).
-PR3 metrics/insights and PR4 final integration/closure remain pending.
+PR3 metrics/insights are delivered separately; PR4 final integration/closure remains pending.
 
 ### PR3 — Pilot insights
 
 Add funnel and Home/search evidence, derived summary, Settings presentation,
 local export, 180-day retention, and measurement-only deletion. Do not add
 availability feedback or long-search UI.
+
+PR3 implementation and requirement coverage are recorded in
+[`pilot-insights.md`](../engineering/validation/pilot-insights.md).
+This partial delivery does not authorize PR4 or close the milestone.
 
 ### PR4 — Integration and closure
 

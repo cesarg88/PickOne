@@ -23,7 +23,8 @@ struct HomeDecisionCard: View {
             movieID: item.id,
             metadata: item.feedbackMetadata,
             updateViewerMovieState: updateViewerMovieState,
-            viewerStateDidChange: viewerStateDidChange
+            viewerStateDidChange: viewerStateDidChange,
+            alreadyWatchedRecorder: { pickModel?.alreadyWatchedRecorder(movieID: item.id) ?? {} }
         ))
     }
 

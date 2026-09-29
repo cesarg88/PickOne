@@ -3,6 +3,7 @@ import SwiftUI
 @MainActor
 struct SettingsView: View {
     @Bindable var model: ViewerProfileViewModel
+    let pilotInsightsModel: PilotInsightsViewModel
     let myMoviesModel: MyMoviesViewModel
     let imagePipeline: ImagePipeline
     let movieDetailDependencies: MovieDetailNavigationDependencies
@@ -34,6 +35,10 @@ struct SettingsView: View {
                 }
 
                 Section {
+                    NavigationLink("Pilot insights") {
+                        PilotInsightsView(model: pilotInsightsModel)
+                    }
+                    .accessibilityIdentifier("pilot-insights-link")
                     NavigationLink("About") {
                         AboutView(showsDoneButton: false)
                     }
