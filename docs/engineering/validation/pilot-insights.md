@@ -11,7 +11,8 @@ and [PR2 validation record](confirmation-and-provenance.md).
 This delivers only PR3: semantic Home/search evidence, derived pilot summary,
 Settings presentation, local JSON export, retention and measurement-only deletion.
 PR4 prolonged final-M7 upgrade/integration validation and milestone closure
-are not authorized. The PR3 physical checks below remain pending.
+are not authorized. The PR3 runtime validation reported by the Product Owner
+and the manual-check procedure are recorded below.
 M8, ADR-015 implementation closure, roadmap, IMP-005 and IMP-023 remain open.
 
 The [current coverage boundary](#current-coverage-boundary-2026-09-29) assigns
@@ -98,7 +99,7 @@ coverage. Earlier native Files UI results below are historical, not current test
 | Corrupt report/export/delete remains unavailable; never empty success | Existing recovery boundary | `corruptReportAndExportAreUnavailableWithoutOverwritingBytes`, `missingCurrentSchemaEvidenceIsNotInventedAsEmpty` |
 | Unavailable/empty/retry/export cleanup/delete failure presentation | MainActor model | `PilotInsightsPresentationTests` |
 | English/Spanish, deletion/relaunch, large text reachability and export-control accessibility | String Catalog and Settings screen | `PilotInsightsInteractionTests` (three independent tests; no Files navigation) |
-| Native Files save, replacement and cancellation | Physical device/system picker | Explicit physical checks below; pending, not claimed by automation |
+| Native Files save, replacement and cancellation | Physical device/system picker | Explicit manual checks below; Product Owner runtime result recorded separately from automation |
 | Existing movie/profile/Watchlist/Search History/Decision Set behavior | Separate authorities | Full `make verify` regression suite; exact Viewer State bytes checked across measurement deletion |
 
 ## Validation
@@ -407,8 +408,9 @@ Current automated coverage remains at the application-owned boundaries:
   enabled/hittable controls, and Spanish Accessibility XXXL. They use existing
   own-control identifiers and do not navigate Files.
 
-Native saving and cancellation are explicit physical checks below, still pending.
-Automated green results do not claim that either device journey passed.
+Native saving and cancellation remain explicit manual checks below. The Product
+Owner runtime result is recorded separately; automated green results do not claim
+that either system-picker journey was exercised by a UI test.
 
 Focused verification:
 
@@ -447,14 +449,29 @@ make verify
   `Test-PickOne-2026.09.29_03-22-07-+0200.xcresult`. The temporary sleep assertion
   ended with the command; no power assertion from this task remains.
 
-
 Local environment: Xcode 26.6 (17F113), iOS 26.5 Simulator, iPhone 17 Pro. CI remains a separate merge gate;
 this follow-up is handed off without waiting for CI. PR4 stays out of scope.
 
-## Physical checks requested from the Product Owner
+## Product Owner runtime validation (2026-09-29)
 
-Use retained installed data, without deleting app storage. Record device, iOS,
-SHA, language, text size, date and outcome.
+The Product Owner reports that runtime validation works as expected for the
+implemented functionality. The only reported exceptions are visual issues that
+are unrelated to that functionality. They are deferred to a future milestone
+for visual adjustments; this report does not expand PR3 or authorize visual fixes
+in this pull request.
+
+This is a user-reported functional validation result, separate from the automated
+results above. The report does not identify device, iOS, installed SHA, language,
+text size, destination/provider or individual scenario outcomes. It is an
+aggregate report of functional success; specific visual defect details were not
+supplied.
+
+### Manual-check procedure retained for reference
+
+Native Files saving and cancellation remain manual boundaries. The procedure
+below describes the intended checks, not an additional per-scenario execution
+record. Use retained installed data without deleting app storage; record device,
+iOS, SHA, language, text size, date and outcome when adding detailed evidence.
 
 1. Open Settings → Pilot insights in English and Spanish, with VoiceOver and the
    largest text size. Read all labels, sample counts, unavailable values and
@@ -463,14 +480,14 @@ SHA, language, text size, date and outcome.
    postpone a pending Pick. Compare the report with the explicit actions.
 3. Use Home Already watched once; verify a redraw does not inflate counts, and
    rating or watched from another surface does not change the Home metric.
-4. **Native save (pending physical validation):** record the completed report
+4. **Native save:** record the completed report
    counts, open Export and save to a chosen local Files destination. Wait until
    PickOne is interactive again, open the saved JSON and compare schema, records
    and summary with the report. Confirm completed source history is unchanged.
    Repeat using an existing test export to exercise Replace; record whether the
    system picker finishes or remains in progress. Record destination/provider,
    device, iOS, SHA, language and outcome for each attempt.
-5. **Native cancellation (pending physical validation):** open Export and cancel
+5. **Native cancellation:** open Export and cancel
    in Files before saving. Confirm return to an interactive report, no new file
    at the selected destination, unchanged completed source history and no stale
    export error; reopen Export to check it can be prepared again. Record the same
