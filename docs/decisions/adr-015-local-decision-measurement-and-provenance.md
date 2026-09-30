@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted — PR3 authorized; implementation closure remains pending
+Accepted — PR4 authorized; integration evidence recorded, closure pending
 
 Product behavior and this architecture were accepted by the Product Owner and
 Technical Lead on `2026-09-14`. This ADR and
@@ -13,7 +13,13 @@ The Product Owner authorized PR2 on `2026-09-15`; its implementation record is
 [Confirmation and provenance](../engineering/validation/confirmation-and-provenance.md).
 PR2 merged in #52 (`81fa448`). The Product Owner authorized PR3 on `2026-09-22`;
 its implementation record is [Pilot insights](../engineering/validation/pilot-insights.md).
-PR4 and final implementation closure remain pending.
+PR3 merged in #53 (`60154f4`). The Product Owner authorized PR4 on `2026-09-29`
+and resumed it on `2026-09-30`. [Integration evidence](../engineering/validation/pilot-integration.md)
+distinguishes the controlled final-M7 simulator update from successful physical
+validation on a clean iPhone 18 Pro installation. The former household installation
+is unavailable after a device change; no physical upgrade is claimed.
+Remaining human checks and final Product Owner acceptance keep implementation
+closure pending. This status update changes no architecture or product contract.
 
 ## Context
 

@@ -7,7 +7,7 @@
 - Product decisions: **Accepted**.
 - Product Ready: **Yes**.
 - Engineering Ready: **Yes**.
-- Implementation authorized: **PR3 — Pilot insights**, explicitly by the Product Owner on `2026-09-22`. PR4 is not authorized.
+- Implementation authorized: **PR4 — Integration and closure**, explicitly by the Product Owner on `2026-09-29`, resumed on `2026-09-30`.
 - Product Owner acceptance: `2026-09-14`.
 - Technical Lead acceptance: `2026-09-14`.
 - Milestone 7 is complete.
@@ -15,6 +15,10 @@
 - PR2 merged in #52 (`81fa448`); its evidence is recorded in
   [`confirmation-and-provenance.md`](../engineering/validation/confirmation-and-provenance.md).
   This partial delivery does not close M8.
+- PR3 merged in #53 (`60154f4`). PR4 integration evidence is recorded in
+  [`pilot-integration.md`](../engineering/validation/pilot-integration.md).
+- M8 remains open: pending human checks, technical review/green CI, and final
+  Product Owner acceptance. Clean-install device success is not a retained-M7 upgrade.
 
 ## Authority and purpose
 
@@ -352,11 +356,22 @@ reaction history.
 
 ### Physical-device validation
 
-Install over the retained final-M7 app without deleting data. Verify existing
-state survives, discover and understand Pick without a tutorial, replace and
-cancel choices, relaunch before confirmation, exercise all confirmation paths,
-confirm the badge/reaction separation, inspect/export/delete Pilot insights,
-and verify deletion preserves provenance and all other repositories.
+The original plan required an update over the retained final-M7 installation.
+The Product Owner changed device and no longer has access to that installation;
+that physical update was not performed and cannot be claimed.
+
+The Product Owner reports successful functional validation on a **clean install
+on iPhone 18 Pro**, including export, languages/accessibility, confirmation and
+deletion. `Already watched` preserves the other two movies. Selection-notice
+layout shifts and abrupt transitions are deferred to the visual milestone.
+No iOS version, tested SHA, precise execution date, language/text-size settings,
+Files provider, or separate Replace/cancel outcomes were supplied.
+
+PR4 provides a reproducible controlled simulator update from final M7, plus
+composed persistence/regression tests. That synthetic evidence does not recover
+or validate the unavailable household installation. The concise remaining human
+checklist and final acceptance gate live in
+[`pilot-integration.md`](../engineering/validation/pilot-integration.md).
 
 ## Delivery plan
 
@@ -400,13 +415,16 @@ availability feedback or long-search UI.
 
 PR3 implementation and requirement coverage are recorded in
 [`pilot-insights.md`](../engineering/validation/pilot-insights.md).
-This partial delivery does not authorize PR4 or close the milestone.
+PR3 merged in #53. PR4 is now separately authorized; the milestone remains open.
 
 ### PR4 — Integration and closure
 
-Add no new behavior. Prove final-M7 upgrade, prolonged/relaunch journeys,
-privacy and regression coverage, complete physical validation, and close the
-milestone, ADR, roadmap, and backlog documentation.
+Add no new behavior. Verify a controlled final-M7 upgrade, prolonged/relaunch
+journeys, privacy and regression coverage; reconcile physical evidence and
+update milestone, ADR, PRODUCT, roadmap and backlog. Record unresolved human
+checks and final acceptance explicitly instead of prematurely declaring closure.
+The inaccessible original installation is a documented evidence limitation.
+Native Files UI automation remains removed.
 
 ## Risks
 
