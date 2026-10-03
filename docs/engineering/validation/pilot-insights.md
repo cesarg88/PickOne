@@ -14,7 +14,8 @@ PR4 prolonged final-M7 upgrade/integration validation and milestone closure
 were not authorized within PR3. PR4 is now separately authorized; its current
 status is in [pilot-integration.md](pilot-integration.md). The PR3 runtime validation reported by the Product Owner
 and the manual-check procedure are recorded below.
-M8, ADR-015 implementation closure, roadmap, IMP-005 and IMP-023 remain open.
+At the PR3 handoff M8 remained open. Final Product Owner acceptance was recorded
+on `2026-10-03` in [PR4 integration](pilot-integration.md).
 
 The [current coverage boundary](#current-coverage-boundary-2026-09-29) assigns
 native Files save/cancel to physical checks and preserves app-owned automated
@@ -506,7 +507,7 @@ iOS, SHA, language, text size, date and outcome when adding detailed evidence.
 
 This historical procedure is not a claim that every step was executed. PR4
 [tracks the remaining checks](pilot-integration.md#remaining-human-checklist);
-M8 closure remains pending.
+M8 closure was accepted by the Product Owner on `2026-10-03`.
 
 ## PR4 physical-validation follow-up (report received 2026-10-03)
 
@@ -516,5 +517,7 @@ installed SHA, Files provider or individual Replace/cancel/timing outcomes.
 The clean-install result and controlled M7→M8 upgrade remain distinct from the
 inaccessible former installation. [PR4 evidence](pilot-integration.md) records
 technical approval and verified green CI for `f85804f`, with final-SHA review/CI
-required after this documentation update. Explicit final Product Owner acceptance
-of M8 and the controlled-upgrade substitute is still requested; closure stays open.
+required after this documentation update. César subsequently stated “acepto el
+cierre de M8” on `2026-10-03`, closing M8 with the documented evidence and
+inaccessible-installation limitation. No further device metadata or individual
+results are inferred. PR #54 remains unmerged pending final-SHA review/CI.

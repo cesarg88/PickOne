@@ -14,9 +14,10 @@ Existing tests supply individual failure, recovery, concurrency, presentation
 and metric coverage. Native Files automation remains removed. Visual changes,
 features and unrelated refactors are excluded.
 
-**M8 is not closed.** The remaining physical checks are now reported successful
-in aggregate. Explicit final Product Owner acceptance of M8 and of the controlled
-upgrade as a substitute for the inaccessible installation remain unconfirmed.
+**M8 is complete — accepted by the Product Owner on 2026-10-03.** César
+explicitly stated “acepto el cierre de M8” after the evidence and the inaccessible
+installation limitation were presented. Closure uses the documented controlled
+upgrade evidence; it does not claim a physical upgrade of the former installation.
 Technical approval and green CI apply to `f85804f`; this documentation follow-up
 requires review and CI on its final SHA.
 
@@ -161,9 +162,12 @@ report does not independently document each timing, Replace or Cancel path.
 
 The report does not establish an update of the inaccessible former installation.
 The controlled M7→M8 simulator evidence above remains a separate evidence source.
-“Tests OK” does not explicitly accept M8 closure or the controlled-upgrade
-substitute. A focused confirmation of both has been requested from César;
-M8, ADR-015 implementation closure, roadmap and IMP-005/IMP-023 remain open.
+The aggregate “tests OK” report initially left final acceptance pending.
+César subsequently stated “acepto el cierre de M8” on `2026-10-03`, in response
+to the explicit closure gate and documented controlled-upgrade limitation.
+This is the final Product Owner acceptance for M8, ADR-015 implementation
+closure, roadmap and IMP-005/IMP-023. It supplies no additional execution
+metadata or individual test outcomes.
 
 The reviewing task reports technical approval of PR #54 at `f85804f`.
 GitHub's [quality check](https://github.com/cesarg88/PickOne/actions/runs/36830588289/job/110266040398)
@@ -177,8 +181,8 @@ and CI, without merging.
 
 - [x] Aggregate success of the pending physical checks communicated by César
   through the reviewing task; individual paths and missing metadata are not inferred.
-- [ ] César explicitly accepts final M8 completion and the controlled-upgrade
-  substitute for the inaccessible former installation.
+- [x] César explicitly accepts M8 closure on `2026-10-03`, with the documented
+  controlled-upgrade evidence and inaccessible-installation limitation.
 - [ ] Technical review and green CI on the final documentation SHA before merge.
 
 The previous detailed checklist covered prolonged use/relaunch, confirmation and

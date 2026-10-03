@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted — PR4 authorized; integration evidence recorded, closure pending
+Accepted — implemented; Product Owner accepted M8 closure 2026-10-03
 
 Product behavior and this architecture were accepted by the Product Owner and
 Technical Lead on `2026-09-14`. This ADR and
@@ -20,9 +20,10 @@ validation on a clean iPhone 18 Pro installation. The former household installat
 is unavailable after a device change; no physical upgrade is claimed.
 On `2026-10-03`, the reviewing task relayed aggregate success of the pending
 physical tests and technical approval of `f85804f`; its CI was verified green.
-Explicit Product Owner acceptance of M8 and the controlled-upgrade substitute
-remains unconfirmed, so implementation closure stays pending. Review/CI must
-cover the final documentation SHA. No architecture or product contract changes.
+César then explicitly accepted M8 closure on `2026-10-03` with the documented
+evidence and inaccessible-installation limitation. Implementation closure is
+recorded in PR #54; final documentation SHA review/CI and merge remain separate.
+No architecture or product contract changes, and no physical upgrade is inferred.
 
 ## Context
 

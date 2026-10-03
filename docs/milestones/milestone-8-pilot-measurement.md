@@ -2,13 +2,14 @@
 
 ## Status
 
-`Accepted — Product Ready and Engineering Ready`
+`Complete — Product Owner closure accepted 2026-10-03`
 
 - Product decisions: **Accepted**.
 - Product Ready: **Yes**.
 - Engineering Ready: **Yes**.
 - Implementation authorized: **PR4 — Integration and closure**, explicitly by the Product Owner on `2026-09-29`, resumed on `2026-09-30`.
-- Product Owner acceptance: `2026-09-14`.
+- Product specification acceptance: `2026-09-14`.
+- Final Product Owner acceptance: `2026-10-03` — “acepto el cierre de M8”.
 - Technical Lead acceptance: `2026-09-14`.
 - Milestone 7 is complete.
 - D0 merged in #50 (`c31e39f`). PR1 merged in #51 (`d2a9197`).
@@ -19,9 +20,9 @@
   [`pilot-integration.md`](../engineering/validation/pilot-integration.md).
 - Pending physical checks were reported successful in aggregate on `2026-10-03`.
   Technical approval was communicated and CI verified green for `f85804f`.
-- M8 remains open pending explicit Product Owner acceptance of M8 and the
-  controlled-upgrade substitute; this documentation update needs final-SHA
-  review/CI. Clean-install success is not a retained-M7 physical upgrade.
+- M8 is closed with the documented controlled-upgrade evidence and the
+  inaccessible-installation limitation. No retained-M7 physical upgrade is claimed.
+  PR #54 still requires final-SHA review/CI before merge.
 
 ## Authority and purpose
 
@@ -408,7 +409,7 @@ idempotent cross-repository operation, Viewer Movie State provenance migration,
 
 PR2 implementation and requirement coverage are recorded in
 [`confirmation-and-provenance.md`](../engineering/validation/confirmation-and-provenance.md).
-PR3 metrics/insights are delivered separately; PR4 final integration/closure remains pending.
+PR3 metrics/insights merged in #53; PR4 integration and accepted closure are recorded in #54.
 
 ### PR3 — Pilot insights
 
@@ -418,7 +419,7 @@ availability feedback or long-search UI.
 
 PR3 implementation and requirement coverage are recorded in
 [`pilot-insights.md`](../engineering/validation/pilot-insights.md).
-PR3 merged in #53. PR4 is now separately authorized; the milestone remains open.
+PR3 merged in #53. The Product Owner accepted M8 closure on `2026-10-03`; PR4 documentation is in #54.
 
 ### PR4 — Integration and closure
 

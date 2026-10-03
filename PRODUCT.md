@@ -761,8 +761,9 @@ Controlled upgrade evidence, remaining human checks and acceptance gates are
 recorded in [M8 integration](docs/engineering/validation/pilot-integration.md).
 The pending physical checks were subsequently reported successful in aggregate
 on `2026-10-03`, without additional execution metadata or individual results.
-M8 remains open pending explicit final Product Owner acceptance, including the
-controlled-upgrade substitute for the inaccessible installation; the accepted
+The Product Owner explicitly accepted M8 closure on `2026-10-03`, with the
+controlled-upgrade evidence and inaccessible-installation limitation documented.
+M8 is complete; PR #54 remains subject to final-SHA review/CI before merge. The accepted
 [specification](docs/milestones/milestone-8-pilot-measurement.md) and ADR-015
 continue to bound behavior.
 

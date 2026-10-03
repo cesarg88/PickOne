@@ -254,14 +254,14 @@ enough to proceed to the next product-definition cycle.
 Local Pilot Measurement
 
 Status:
-In progress — PRs #51–#53 merged; PR4 integration and closure authorized.
+Complete — Product Owner accepted closure on `2026-10-03`; PRs #51–#53 merged, PR4 closure recorded in #54.
 [Integration evidence](../engineering/validation/pilot-integration.md) records
 controlled upgrade validation separately from reported clean-install success on
 iPhone 18 Pro. The previous household installation is unavailable. Pending
 physical checks were reported successful in aggregate on `2026-10-03`;
-technical approval and green CI cover `f85804f`. M8 remains open pending explicit
-Product Owner acceptance of M8 and the controlled-upgrade substitute, with
-review/CI still required on the final documentation SHA.
+technical approval and green CI cover `f85804f`. César subsequently accepted M8
+closure with the controlled-upgrade evidence and inaccessible-installation
+limitation documented. Review/CI remain required on the final documentation SHA.
 
 Purpose:
 
@@ -288,7 +288,7 @@ and
 [ADR-015](../decisions/adr-015-local-decision-measurement-and-provenance.md) on
 `2026-09-14`. D0 and PR1–PR3 are merged; PR4 proceeds under explicit Product
 Owner authorization. Technical review and green CI remain merge gates, and
-final milestone acceptance remains pending.
+final milestone acceptance was given on `2026-10-03`.
 
 ### Milestone 9
 

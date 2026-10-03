@@ -12,7 +12,7 @@ It contains only work that remains pending after Milestone 3.3. Completed work
 should remain in this file with its status changed to `Completed` and a link to
 the implementing PR or milestone.
 
-Last targeted review: 2026-10-03, M8 PR4 physical-validation report and acceptance gates.
+Last targeted review: 2026-10-03, M8 final Product Owner acceptance and documentary closure.
 
 ## Product Direction
 
@@ -399,14 +399,14 @@ Priorities:
 
 ### IMP-005 — Define and deliver local pilot measurement
 
-- Status: `In Progress — PR4 integration, final acceptance pending`
+- Status: `Completed — Product Owner accepted M8 closure 2026-10-03; PR #54`
 - Delivery evidence: PRs #51–#53 merged; PR4 is authorized.
   [Integration evidence](../engineering/validation/pilot-integration.md) separates
   the controlled M7 update from clean-install functional success on iPhone 18 Pro.
   Pending physical tests were reported successful in aggregate on `2026-10-03`.
-  The old installation is unavailable; explicit Product Owner acceptance of M8
-  and the controlled-upgrade substitute keep this item open. Technical approval
-  and green CI cover `f85804f`; the documentation SHA still requires review/CI.
+  César explicitly accepted M8 closure with the controlled-upgrade evidence and
+  inaccessible-installation limitation documented. Technical approval and green
+  CI cover `f85804f`; PR #54's final documentation SHA still requires review/CI.
 - Priority: `P0`
 - Roadmap relationship: Milestone 8
 - Why: UI polish and model changes cannot be evaluated without success
@@ -497,14 +497,14 @@ Priorities:
 
 ### IMP-023 — Define explicit decision-outcome actions
 
-- Status: `In Progress — PR4 integration, final acceptance pending`
+- Status: `Completed — Product Owner accepted M8 closure 2026-10-03; PR #54`
 - Delivery evidence: PRs #51–#53 merged; PR4 is authorized.
   [Integration evidence](../engineering/validation/pilot-integration.md) separates
   the controlled M7 update from clean-install functional success on iPhone 18 Pro.
   Pending physical tests were reported successful in aggregate on `2026-10-03`.
-  The old installation is unavailable; explicit Product Owner acceptance of M8
-  and the controlled-upgrade substitute keep this item open. Technical approval
-  and green CI cover `f85804f`; the documentation SHA still requires review/CI.
+  César explicitly accepted M8 closure with the controlled-upgrade evidence and
+  inaccessible-installation limitation documented. Technical approval and green
+  CI cover `f85804f`; PR #54's final documentation SHA still requires review/CI.
 - Priority: `P1`
 - Roadmap relationship: Milestone 8
 - Why:
@@ -779,8 +779,8 @@ the added complexity.
 ## Suggested Sequence
 
 1. Review M8 PR4 integration evidence after merged D0 and PRs #51–#53.
-2. Resolve the brief remaining human checklist and obtain final Product Owner
-   acceptance before closing M8, IMP-005 or IMP-023.
+2. Final Product Owner acceptance has closed M8, IMP-005 and IMP-023; complete
+   final-SHA review/CI for the PR #54 documentary closure before merge.
 3. Introduce trailers, a coach mark, or visual search feedback only if observed
    use demonstrates that confidence or discoverability needs them.
 4. Introduce a backend or AI provider only if product validation demonstrates
