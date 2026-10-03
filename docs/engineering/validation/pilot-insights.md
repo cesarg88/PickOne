@@ -11,9 +11,11 @@ and [PR2 validation record](confirmation-and-provenance.md).
 This delivers only PR3: semantic Home/search evidence, derived pilot summary,
 Settings presentation, local JSON export, retention and measurement-only deletion.
 PR4 prolonged final-M7 upgrade/integration validation and milestone closure
-are not authorized. The PR3 runtime validation reported by the Product Owner
+were not authorized within PR3. PR4 is now separately authorized; its current
+status is in [pilot-integration.md](pilot-integration.md). The PR3 runtime validation reported by the Product Owner
 and the manual-check procedure are recorded below.
-M8, ADR-015 implementation closure, roadmap, IMP-005 and IMP-023 remain open.
+At the PR3 handoff M8 remained open. Final Product Owner acceptance was recorded
+on `2026-10-03` in [PR4 integration](pilot-integration.md).
 
 The [current coverage boundary](#current-coverage-boundary-2026-09-29) assigns
 native Files save/cancel to physical checks and preserves app-owned automated
@@ -454,23 +456,29 @@ this follow-up is handed off without waiting for CI. PR4 stays out of scope.
 
 ## Product Owner runtime validation (2026-09-29)
 
-The Product Owner reports that runtime validation works as expected for the
-implemented functionality. The only reported exceptions are visual issues that
-are unrelated to that functionality. They are deferred to a future milestone
-for visual adjustments; this report does not expand PR3 or authorize visual fixes
-in this pull request.
+The Product Owner reports successful functional validation on a **clean install
+on iPhone 18 Pro**, including export, languages/accessibility, confirmation and
+deletion. `Already watched` preserves the other two movies. Selection-notice
+layout shifts and abrupt transitions are deferred to the visual milestone.
+This clarification supersedes the earlier unspecified-device account.
 
-This is a user-reported functional validation result, separate from the automated
-results above. The report does not identify device, iOS, installed SHA, language,
-text size, destination/provider or individual scenario outcomes. It is an
-aggregate report of functional success; specific visual defect details were not
-supplied.
+The Product Owner changed device and no longer has access to the previous
+installation. No update over the retained final-M7 household installation was
+performed. iOS version, installed SHA, precise execution date, language/text-size
+settings, Files destination/provider and separate Replace/cancel outcomes were
+not supplied; do not infer them from this aggregate report. The heading date is
+the report record date, not verified execution metadata.
+
+[PR4 integration](pilot-integration.md) records the controlled simulator update,
+its limitations and the short remaining human checklist. Native Files UI
+automation stays removed; reported export success is physical evidence, while
+individual unreported picker paths remain unverified.
 
 ### Manual-check procedure retained for reference
 
 Native Files saving and cancellation remain manual boundaries. The procedure
 below describes the intended checks, not an additional per-scenario execution
-record. Use retained installed data without deleting app storage; record device,
+record. The old installation is unavailable; use current test data and record device,
 iOS, SHA, language, text size, date and outcome when adding detailed evidence.
 
 1. Open Settings → Pilot insights in English and Spanish, with VoiceOver and the
@@ -497,4 +505,19 @@ iOS, SHA, language, text size, date and outcome when adding detailed evidence.
    PickOne badges, profile, Watchlist, Search History and Home recommendations
    remain intact. Active work may intentionally keep nonzero report counts.
 
-Final-M7 prolonged upgrade validation and closure remain PR4 work.
+This historical procedure is not a claim that every step was executed. PR4
+[tracks the remaining checks](pilot-integration.md#remaining-human-checklist);
+M8 closure was accepted by the Product Owner on `2026-10-03`.
+
+## PR4 physical-validation follow-up (report received 2026-10-03)
+
+The reviewing task relays César's report that the pending PR4 tests went well.
+This is aggregate physical-validation evidence; it adds no verified iOS version,
+installed SHA, Files provider or individual Replace/cancel/timing outcomes.
+The clean-install result and controlled M7→M8 upgrade remain distinct from the
+inaccessible former installation. [PR4 evidence](pilot-integration.md) records
+technical approval and verified green CI for `f85804f`, with final-SHA review/CI
+required after this documentation update. César subsequently stated “acepto el
+cierre de M8” on `2026-10-03`, closing M8 with the documented evidence and
+inaccessible-installation limitation. No further device metadata or individual
+results are inferred. PR #54 remains unmerged pending final-SHA review/CI.

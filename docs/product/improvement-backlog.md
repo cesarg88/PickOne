@@ -12,7 +12,7 @@ It contains only work that remains pending after Milestone 3.3. Completed work
 should remain in this file with its status changed to `Completed` and a link to
 the implementing PR or milestone.
 
-Last reviewed: 2026-09-14, during Milestone 8 documentation-only D0.
+Last targeted review: 2026-10-03, M8 final Product Owner acceptance and documentary closure.
 
 ## Product Direction
 
@@ -399,10 +399,14 @@ Priorities:
 
 ### IMP-005 — Define and deliver local pilot measurement
 
-- Status: `Accepted — Engineering Ready`
-- Delivery evidence: PR1 merged in #51; PR2 confirmation/provenance is recorded
-  in [its validation record](../engineering/validation/confirmation-and-provenance.md).
-  This item remains open until the remaining M8 slices and device closure.
+- Status: `Completed — Product Owner accepted M8 closure 2026-10-03; PR #54`
+- Delivery evidence: PRs #51–#53 merged; PR4 is authorized.
+  [Integration evidence](../engineering/validation/pilot-integration.md) separates
+  the controlled M7 update from clean-install functional success on iPhone 18 Pro.
+  Pending physical tests were reported successful in aggregate on `2026-10-03`.
+  César explicitly accepted M8 closure with the controlled-upgrade evidence and
+  inaccessible-installation limitation documented. Technical approval and green
+  CI cover `f85804f`; PR #54's final documentation SHA still requires review/CI.
 - Priority: `P0`
 - Roadmap relationship: Milestone 8
 - Why: UI polish and model changes cannot be evaluated without success
@@ -493,10 +497,14 @@ Priorities:
 
 ### IMP-023 — Define explicit decision-outcome actions
 
-- Status: `Accepted — Engineering Ready`
-- Delivery evidence: PR1 merged in #51; PR2 confirmation/provenance is recorded
-  in [its validation record](../engineering/validation/confirmation-and-provenance.md).
-  This item remains open until the remaining M8 slices and device closure.
+- Status: `Completed — Product Owner accepted M8 closure 2026-10-03; PR #54`
+- Delivery evidence: PRs #51–#53 merged; PR4 is authorized.
+  [Integration evidence](../engineering/validation/pilot-integration.md) separates
+  the controlled M7 update from clean-install functional success on iPhone 18 Pro.
+  Pending physical tests were reported successful in aggregate on `2026-10-03`.
+  César explicitly accepted M8 closure with the controlled-upgrade evidence and
+  inaccessible-installation limitation documented. Technical approval and green
+  CI cover `f85804f`; PR #54's final documentation SHA still requires review/CI.
 - Priority: `P1`
 - Roadmap relationship: Milestone 8
 - Why:
@@ -513,6 +521,9 @@ Priorities:
   - make confirmed viewing establish watched plus durable PickOne provenance
   - offer an optional four-reaction satisfaction step without making
     provenance depend on it
+- Deferred visual follow-up: the Product Owner reports selection-notice layout
+  shifts and abrupt transitions. Their design and fixes belong to the visual
+  milestone, outside PR4.
 - Constraint:
   Pick changes no Taste, watched, Watchlist, eligibility, availability, score,
   or Decision Set state. Never infer Pick, viewing, or satisfaction from Detail
@@ -767,10 +778,9 @@ the added complexity.
 
 ## Suggested Sequence
 
-1. Review and merge Milestone 8 D0: Pick/session, viewing confirmation,
-   provenance, local measurement, and ADR-015.
-2. Deliver Milestone 8 through four ordered slices and repeat physical pilot
-   validation before closing it.
+1. Review M8 PR4 integration evidence after merged D0 and PRs #51–#53.
+2. Final Product Owner acceptance has closed M8, IMP-005 and IMP-023; complete
+   final-SHA review/CI for the PR #54 documentary closure before merge.
 3. Introduce trailers, a coach mark, or visual search feedback only if observed
    use demonstrates that confidence or discoverability needs them.
 4. Introduce a backend or AI provider only if product validation demonstrates

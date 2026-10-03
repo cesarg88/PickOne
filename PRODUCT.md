@@ -749,17 +749,29 @@ remained coherent, the extreme `5.683 s` recovery wait was accepted, and the
 household utility checkpoint passed. The exact recovery policy is defined in
 [Milestone 7 P0 — Home Exhaustion Recovery](docs/milestones/milestone-7-p0-home-exhaustion-recovery.md).
 
-Milestone 8 is defined but not implemented. It adds explicit Pick, bounded
-recommendation sessions, later non-blocking viewing confirmation, durable
-PickOne provenance, English/Spanish localization for affected surfaces, and
-local `Pilot insights`. The Product Owner and Technical Lead accepted the
-[Milestone 8 specification](docs/milestones/milestone-8-pilot-measurement.md)
-and ADR-015 on `2026-09-14`. Implementation remains gated on merge of the
-documentation-only D0 PR and explicit authorization of PR1.
+Milestone 8 functionality is implemented through PRs #51–#53: explicit Pick,
+bounded recommendation sessions, later non-blocking viewing confirmation,
+durable PickOne provenance, English/Spanish localization for affected surfaces,
+and local `Pilot insights`. PR4 integration and closure is authorized. The
+Product Owner reports functional success on a clean iPhone 18 Pro installation,
+including export, languages/accessibility, confirmation and deletion;
+`Already watched` retains the other two movies. The prior installation is no
+longer accessible following a device change, so no physical M7 upgrade is claimed.
+Controlled upgrade evidence, remaining human checks and acceptance gates are
+recorded in [M8 integration](docs/engineering/validation/pilot-integration.md).
+The pending physical checks were subsequently reported successful in aggregate
+on `2026-10-03`, without additional execution metadata or individual results.
+The Product Owner explicitly accepted M8 closure on `2026-10-03`, with the
+controlled-upgrade evidence and inaccessible-installation limitation documented.
+M8 is complete; PR #54 remains subject to final-SHA review/CI before merge. The accepted
+[specification](docs/milestones/milestone-8-pilot-measurement.md) and ADR-015
+continue to bound behavior.
 
 Trailers, coach marks, visual long-search feedback, and explicit incorrect-
 availability feedback remain future work. Whole-app localization is planned
 for Milestone 9; Milestone 8 localizes only its new and modified surfaces.
+Reported selection-notice layout shifts and abrupt transitions also belong to
+the visual milestone, with no visual adjustments in PR4.
 
 ## Explicit Non-Goals for the First Product Version
 

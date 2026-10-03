@@ -254,9 +254,14 @@ enough to proceed to the next product-definition cycle.
 Local Pilot Measurement
 
 Status:
-In progress — PR1 merged in #51; PR2 authorized on `2026-09-15`.
-[Confirmation/provenance evidence](../engineering/validation/confirmation-and-provenance.md)
-records this partial delivery. PR3 insights and PR4 closure remain pending.
+Complete — Product Owner accepted closure on `2026-10-03`; PRs #51–#53 merged, PR4 closure recorded in #54.
+[Integration evidence](../engineering/validation/pilot-integration.md) records
+controlled upgrade validation separately from reported clean-install success on
+iPhone 18 Pro. The previous household installation is unavailable. Pending
+physical checks were reported successful in aggregate on `2026-10-03`;
+technical approval and green CI cover `f85804f`. César subsequently accepted M8
+closure with the controlled-upgrade evidence and inaccessible-installation
+limitation documented. Review/CI remain required on the final documentation SHA.
 
 Purpose:
 
@@ -281,8 +286,9 @@ The Product Owner and Technical Lead accepted
 [the executable specification](../milestones/milestone-8-pilot-measurement.md)
 and
 [ADR-015](../decisions/adr-015-local-decision-measurement-and-provenance.md) on
-`2026-09-14`. D0 and PR1 are merged; PR2 proceeds under explicit Product Owner
-authorization. The milestone remains open.
+`2026-09-14`. D0 and PR1–PR3 are merged; PR4 proceeds under explicit Product
+Owner authorization. Technical review and green CI remain merge gates, and
+final milestone acceptance was given on `2026-10-03`.
 
 ### Milestone 9
 
@@ -296,7 +302,9 @@ Purpose:
 Complete English/Spanish localization beyond the M8 surfaces and address
 evidence-backed visual improvements. Evaluate Pick coach marks or spotlights
 and visual long-search feedback only if M8 physical validation demonstrates a
-discoverability or waiting-state problem.
+discoverability or waiting-state problem. The Product Owner also reports
+selection-notice layout shifts and abrupt transitions; their design and fixes
+belong here, outside M8 PR4.
 
 ## Deferred Intelligence Infrastructure
 
