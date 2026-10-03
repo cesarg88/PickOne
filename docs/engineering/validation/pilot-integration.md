@@ -173,9 +173,10 @@ The reviewing task reports technical approval of PR #54 at `f85804f`.
 GitHub's [quality check](https://github.com/cesarg88/PickOne/actions/runs/36830588289/job/110266040398)
 was independently verified successful for full SHA
 `f85804fc3899270496362081f578fefd478b2bf8`. No formal GitHub review was present
-when checked. Neither that technical approval nor that CI result is automatically
-attributed to the new documentation commit; leave the PR for final-SHA review
-and CI, without merging.
+when checked. Neither that technical approval nor that CI result was automatically
+attributed to the later documentation commit. PR #54's final head `10077ff`
+subsequently passed [quality CI](https://github.com/cesarg88/PickOne/actions/runs/37104637780/job/111150946767)
+and merged as `a53067d`.
 
 ## Remaining human checklist
 
@@ -183,7 +184,7 @@ and CI, without merging.
   through the reviewing task; individual paths and missing metadata are not inferred.
 - [x] César explicitly accepts M8 closure on `2026-10-03`, with the documented
   controlled-upgrade evidence and inaccessible-installation limitation.
-- [ ] Technical review and green CI on the final documentation SHA before merge.
+- [x] Technical review and green CI on the final documentation SHA before merge.
 
 The previous detailed checklist covered prolonged use/relaunch, confirmation and
 postponement timing, report comparison, conservation after deletion, and native
@@ -192,4 +193,4 @@ invented item-by-item execution record. Do not repeat those tests merely to
 manufacture missing historical metadata.
 
 Selection-notice motion/layout and abrupt transitions remain visual-milestone
-work. This follow-up changes documentation only and does not merge the PR.
+work. PR #54 changed no production behavior.

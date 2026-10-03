@@ -516,8 +516,8 @@ This is aggregate physical-validation evidence; it adds no verified iOS version,
 installed SHA, Files provider or individual Replace/cancel/timing outcomes.
 The clean-install result and controlled M7→M8 upgrade remain distinct from the
 inaccessible former installation. [PR4 evidence](pilot-integration.md) records
-technical approval and verified green CI for `f85804f`, with final-SHA review/CI
-required after this documentation update. César subsequently stated “acepto el
+technical approval and verified green CI for `f85804f`; PR #54's final
+documentation SHA subsequently passed CI and merged. César stated “acepto el
 cierre de M8” on `2026-10-03`, closing M8 with the documented evidence and
 inaccessible-installation limitation. No further device metadata or individual
-results are inferred. PR #54 remains unmerged pending final-SHA review/CI.
+results are inferred.

@@ -33,8 +33,23 @@ SwiftFormat and SwiftLint environments declared in `.pre-commit-config.yaml`.
 
 GitHub Actions initializes CoreSimulator with
 `Scripts/prepare-ci-simulator.sh`, resolves the iOS runtime matching the active
-Xcode SDK, and targets the resulting booted device by identifier. This avoids
-depending on an intermittently missing hosted-runner device registration.
+Xcode SDK, and targets the resulting booted device by identifier. The full
+suite runs on iPhone; a focused iPad smoke runs on iPad (A16) in portrait and
+landscape. This avoids depending on an intermittently missing hosted-runner
+device registration without duplicating the full test suite.
+
+The equivalent focused local iPad check is:
+
+```sh
+xcodebuild test -project PickOne.xcodeproj -scheme PickOne \
+  -destination 'platform=iOS Simulator,name=iPad (A16),OS=latest' \
+  -parallel-testing-enabled NO -derivedDataPath .derivedData/IPadFocused \
+  -only-testing:PickOneUITests/PickOneSmokeTests/testIPadNavigationInPortraitAndLandscape \
+  CODE_SIGNING_ALLOWED=NO
+```
+
+This is a functional navigation baseline, not approval of every iPad layout or
+accessibility state. Milestone 9 must define and validate those separately.
 
 PickOne deliberately checks the complete repository rather than only changed
 Swift files. The codebase is small enough that full checks are fast and avoid

@@ -13,7 +13,7 @@ concurrency:
 jobs:
   quality:
     runs-on: macos-26
-    timeout-minutes: 30
+    timeout-minutes: 45
     env:
       DEVELOPER_DIR: /Applications/Xcode_26.4.1.app/Contents/Developer
 
@@ -59,6 +59,23 @@ jobs:
             -destination 'platform=iOS Simulator,id=${{ steps.simulator.outputs.udid }}' \
             -parallel-testing-enabled NO \
             -derivedDataPath "$RUNNER_TEMP/PickOneTests" \
+            CODE_SIGNING_ALLOWED=NO
+
+      - name: Prepare iPad simulator
+        id: ipad_simulator
+        run: |
+          simulator_udid="$(Scripts/prepare-ci-simulator.sh 'iPad (A16)')"
+          echo "udid=$simulator_udid" >> "$GITHUB_OUTPUT"
+
+      - name: iPad navigation smoke
+        run: |
+          xcodebuild test \
+            -project PickOne.xcodeproj \
+            -scheme PickOne \
+            -destination 'platform=iOS Simulator,id=${{ steps.ipad_simulator.outputs.udid }}' \
+            -parallel-testing-enabled NO \
+            -derivedDataPath "$RUNNER_TEMP/PickOneTests" \
+            -only-testing:PickOneUITests/PickOneSmokeTests/testIPadNavigationInPortraitAndLandscape \
             CODE_SIGNING_ALLOWED=NO
 
       - name: Analyze

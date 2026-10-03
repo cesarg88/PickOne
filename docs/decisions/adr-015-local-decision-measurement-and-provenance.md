@@ -22,7 +22,8 @@ On `2026-10-03`, the reviewing task relayed aggregate success of the pending
 physical tests and technical approval of `f85804f`; its CI was verified green.
 César then explicitly accepted M8 closure on `2026-10-03` with the documented
 evidence and inaccessible-installation limitation. Implementation closure is
-recorded in PR #54; final documentation SHA review/CI and merge remain separate.
+recorded in PR #54; its final documentation SHA passed CI and merged as
+`a53067d`.
 No architecture or product contract changes, and no physical upgrade is inferred.
 
 ## Context
