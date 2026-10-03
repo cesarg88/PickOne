@@ -759,7 +759,10 @@ including export, languages/accessibility, confirmation and deletion;
 longer accessible following a device change, so no physical M7 upgrade is claimed.
 Controlled upgrade evidence, remaining human checks and acceptance gates are
 recorded in [M8 integration](docs/engineering/validation/pilot-integration.md).
-M8 remains open pending those checks and final acceptance; the accepted
+The pending physical checks were subsequently reported successful in aggregate
+on `2026-10-03`, without additional execution metadata or individual results.
+M8 remains open pending explicit final Product Owner acceptance, including the
+controlled-upgrade substitute for the inaccessible installation; the accepted
 [specification](docs/milestones/milestone-8-pilot-measurement.md) and ADR-015
 continue to bound behavior.
 

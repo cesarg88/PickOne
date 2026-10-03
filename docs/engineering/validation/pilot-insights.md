@@ -507,3 +507,14 @@ iOS, SHA, language, text size, date and outcome when adding detailed evidence.
 This historical procedure is not a claim that every step was executed. PR4
 [tracks the remaining checks](pilot-integration.md#remaining-human-checklist);
 M8 closure remains pending.
+
+## PR4 physical-validation follow-up (report received 2026-10-03)
+
+The reviewing task relays César's report that the pending PR4 tests went well.
+This is aggregate physical-validation evidence; it adds no verified iOS version,
+installed SHA, Files provider or individual Replace/cancel/timing outcomes.
+The clean-install result and controlled M7→M8 upgrade remain distinct from the
+inaccessible former installation. [PR4 evidence](pilot-integration.md) records
+technical approval and verified green CI for `f85804f`, with final-SHA review/CI
+required after this documentation update. Explicit final Product Owner acceptance
+of M8 and the controlled-upgrade substitute is still requested; closure stays open.

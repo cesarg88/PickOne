@@ -257,8 +257,11 @@ Status:
 In progress — PRs #51–#53 merged; PR4 integration and closure authorized.
 [Integration evidence](../engineering/validation/pilot-integration.md) records
 controlled upgrade validation separately from reported clean-install success on
-iPhone 18 Pro. The previous household installation is unavailable. Remaining
-human checks and final Product Owner acceptance keep M8 open.
+iPhone 18 Pro. The previous household installation is unavailable. Pending
+physical checks were reported successful in aggregate on `2026-10-03`;
+technical approval and green CI cover `f85804f`. M8 remains open pending explicit
+Product Owner acceptance of M8 and the controlled-upgrade substitute, with
+review/CI still required on the final documentation SHA.
 
 Purpose:
 

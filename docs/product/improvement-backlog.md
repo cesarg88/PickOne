@@ -12,7 +12,7 @@ It contains only work that remains pending after Milestone 3.3. Completed work
 should remain in this file with its status changed to `Completed` and a link to
 the implementing PR or milestone.
 
-Last targeted review: 2026-09-30, M8 PR4 evidence and closure status.
+Last targeted review: 2026-10-03, M8 PR4 physical-validation report and acceptance gates.
 
 ## Product Direction
 
@@ -403,8 +403,10 @@ Priorities:
 - Delivery evidence: PRs #51–#53 merged; PR4 is authorized.
   [Integration evidence](../engineering/validation/pilot-integration.md) separates
   the controlled M7 update from clean-install functional success on iPhone 18 Pro.
-  The old installation is unavailable; remaining human checks and final
-  Product Owner acceptance keep this item open.
+  Pending physical tests were reported successful in aggregate on `2026-10-03`.
+  The old installation is unavailable; explicit Product Owner acceptance of M8
+  and the controlled-upgrade substitute keep this item open. Technical approval
+  and green CI cover `f85804f`; the documentation SHA still requires review/CI.
 - Priority: `P0`
 - Roadmap relationship: Milestone 8
 - Why: UI polish and model changes cannot be evaluated without success
@@ -499,8 +501,10 @@ Priorities:
 - Delivery evidence: PRs #51–#53 merged; PR4 is authorized.
   [Integration evidence](../engineering/validation/pilot-integration.md) separates
   the controlled M7 update from clean-install functional success on iPhone 18 Pro.
-  The old installation is unavailable; remaining human checks and final
-  Product Owner acceptance keep this item open.
+  Pending physical tests were reported successful in aggregate on `2026-10-03`.
+  The old installation is unavailable; explicit Product Owner acceptance of M8
+  and the controlled-upgrade substitute keep this item open. Technical approval
+  and green CI cover `f85804f`; the documentation SHA still requires review/CI.
 - Priority: `P1`
 - Roadmap relationship: Milestone 8
 - Why:

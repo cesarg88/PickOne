@@ -14,9 +14,11 @@ Existing tests supply individual failure, recovery, concurrency, presentation
 and metric coverage. Native Files automation remains removed. Visual changes,
 features and unrelated refactors are excluded.
 
-**M8 is not closed.** Remaining human checks and final Product Owner acceptance
-are open. Technical review and green CI on the final SHA remain merge gates;
-local validation does not imply either approval.
+**M8 is not closed.** The remaining physical checks are now reported successful
+in aggregate. Explicit final Product Owner acceptance of M8 and of the controlled
+upgrade as a substitute for the inaccessible installation remain unconfirmed.
+Technical approval and green CI apply to `f85804f`; this documentation follow-up
+requires review and CI on its final SHA.
 
 ## Physical evidence and its limits
 
@@ -148,25 +150,42 @@ caffeinate -s make verify SIMULATOR_OS=26.5
   matching the focused test runtime. A missing nested `try` in the new test was
   corrected before its successful run. No production fix was made.
 
+## Physical-validation follow-up (reported 2026-10-03)
+
+The coordinating review task relays César's report that the pending PR4 tests
+went well. Record this as an aggregate successful physical-validation report,
+additional to the earlier clean-install iPhone 18 Pro result. No new device,
+iOS version, installed SHA, execution date, Files provider or individual scenario
+results were supplied. The date above is the report date. In particular, this
+report does not independently document each timing, Replace or Cancel path.
+
+The report does not establish an update of the inaccessible former installation.
+The controlled M7→M8 simulator evidence above remains a separate evidence source.
+“Tests OK” does not explicitly accept M8 closure or the controlled-upgrade
+substitute. A focused confirmation of both has been requested from César;
+M8, ADR-015 implementation closure, roadmap and IMP-005/IMP-023 remain open.
+
+The reviewing task reports technical approval of PR #54 at `f85804f`.
+GitHub's [quality check](https://github.com/cesarg88/PickOne/actions/runs/36830588289/job/110266040398)
+was independently verified successful for full SHA
+`f85804fc3899270496362081f578fefd478b2bf8`. No formal GitHub review was present
+when checked. Neither that technical approval nor that CI result is automatically
+attributed to the new documentation commit; leave the PR for final-SHA review
+and CI, without merging.
+
 ## Remaining human checklist
 
-Do not repeat the already reported clean-install functional checks solely to
-recreate missing historical metadata. For new checks, record actual device,
-iOS, SHA, date, configuration and result at execution time.
+- [x] Aggregate success of the pending physical checks communicated by César
+  through the reviewing task; individual paths and missing metadata are not inferred.
+- [ ] César explicitly accepts final M8 completion and the controlled-upgrade
+  substitute for the inaccessible former installation.
+- [ ] Technical review and green CI on the final documentation SHA before merge.
 
-- [ ] On current test data, finish a prolonged real-use/relaunch checkpoint:
-  before/after 12-hour confirmation, 24-hour postponement through manual pending,
-  compare report to explicit actions, then verify pending work, badges and other
-  repositories after measurement deletion/relaunch. Mark individual paths already
-  exercised only if the Product Owner can attest to them.
-- [ ] If not already exercised, test native export **Replace** and **Cancel**:
-  return to an interactive report, no source-history change; cancellation creates
-  no file and permits another export. Record provider and actual outcomes. General
-  export success does not establish these unreported paths.
-- [ ] Technical Lead reviews evidence and final-SHA green CI; Product Owner
-  accepts the controlled-upgrade substitute and its inaccessible-installation
-  limitation, resolves remaining checks and explicitly accepts M8 before closure.
+The previous detailed checklist covered prolonged use/relaunch, confirmation and
+postponement timing, report comparison, conservation after deletion, and native
+Files Replace/Cancel. It is retained here as the scope of the request, not as an
+invented item-by-item execution record. Do not repeat those tests merely to
+manufacture missing historical metadata.
 
-Selection-notice motion/layout and abrupt transitions are visual-milestone work,
-not functional blockers or additions to this PR. This checklist does not request
-access to an installation the Product Owner no longer has.
+Selection-notice motion/layout and abrupt transitions remain visual-milestone
+work. This follow-up changes documentation only and does not merge the PR.

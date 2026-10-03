@@ -18,8 +18,11 @@ and resumed it on `2026-09-30`. [Integration evidence](../engineering/validation
 distinguishes the controlled final-M7 simulator update from successful physical
 validation on a clean iPhone 18 Pro installation. The former household installation
 is unavailable after a device change; no physical upgrade is claimed.
-Remaining human checks and final Product Owner acceptance keep implementation
-closure pending. This status update changes no architecture or product contract.
+On `2026-10-03`, the reviewing task relayed aggregate success of the pending
+physical tests and technical approval of `f85804f`; its CI was verified green.
+Explicit Product Owner acceptance of M8 and the controlled-upgrade substitute
+remains unconfirmed, so implementation closure stays pending. Review/CI must
+cover the final documentation SHA. No architecture or product contract changes.
 
 ## Context
 

@@ -17,8 +17,11 @@
   This partial delivery does not close M8.
 - PR3 merged in #53 (`60154f4`). PR4 integration evidence is recorded in
   [`pilot-integration.md`](../engineering/validation/pilot-integration.md).
-- M8 remains open: pending human checks, technical review/green CI, and final
-  Product Owner acceptance. Clean-install device success is not a retained-M7 upgrade.
+- Pending physical checks were reported successful in aggregate on `2026-10-03`.
+  Technical approval was communicated and CI verified green for `f85804f`.
+- M8 remains open pending explicit Product Owner acceptance of M8 and the
+  controlled-upgrade substitute; this documentation update needs final-SHA
+  review/CI. Clean-install success is not a retained-M7 physical upgrade.
 
 ## Authority and purpose
 
@@ -369,8 +372,8 @@ Files provider, or separate Replace/cancel outcomes were supplied.
 
 PR4 provides a reproducible controlled simulator update from final M7, plus
 composed persistence/regression tests. That synthetic evidence does not recover
-or validate the unavailable household installation. The concise remaining human
-checklist and final acceptance gate live in
+or validate the unavailable household installation. The aggregate successful follow-up report adds no individual execution details.
+The concise remaining human checklist and explicit final acceptance gate live in
 [`pilot-integration.md`](../engineering/validation/pilot-integration.md).
 
 ## Delivery plan
