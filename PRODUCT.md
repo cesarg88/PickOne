@@ -3,7 +3,7 @@
 ## Document Status
 
 - Status: `Canonical`
-- Last product review: `2026-09-14`
+- Last product review: `2026-10-04`
 - Product name: `PickOne` is a codename until the decision experience is
   validated.
 
@@ -33,6 +33,10 @@ separate partner preferences or attempt to combine household profiles. External
 user validation, monetization, and public distribution are intentionally
 postponed until the household pilot demonstrates utility. They are deferred,
 not rejected as future product directions.
+
+The household pilot supports iPhone and iPad running iOS/iPadOS 26 or later.
+New PickOne builds no longer support iOS/iPadOS 18. This platform decision does
+not change the decision experience or authorize Milestone 9 design work.
 
 ## One-Sentence Definition
 

@@ -33,6 +33,12 @@ if [ ! -f "$app_path/Assets.car" ]; then
     exit 1
 fi
 
+minimum_os_version="$(plutil -extract MinimumOSVersion raw -o - "$app_path/Info.plist")"
+if [ "$minimum_os_version" != '26.0' ]; then
+    echo "error: app bundle minimum OS is $minimum_os_version; expected 26.0."
+    exit 1
+fi
+
 aws_frameworks="$(find "$app_path" -type d \( \
     -iname 'AWS*.framework' -o \
     -iname '*AWSSDK*.framework' \

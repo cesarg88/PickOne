@@ -695,6 +695,9 @@ Priorities:
   English/Spanish String Catalog for only its affected surfaces. Supported-
   device decision: the Product Owner confirmed iPhone and iPad support on
   `2026-10-03` and has access to a physical iPad for Milestone 9 validation.
+  The minimum supported platform is iOS/iPadOS 26.0, accepted separately in
+  [ADR-016](../decisions/adr-016-ios-26-platform-baseline.md); this does not
+  resolve the pending M9 layout and accessibility quality bar.
 - Why: the target declares iPhone and iPad support. This engineering slice adds
   a focused iPad functional check to the scheduled/manual UI workflow without
   extending every PR's required CI; the full iPad layout and accessibility
