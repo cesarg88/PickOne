@@ -41,6 +41,11 @@ Statuses are `Observed`, `Planned`, `Monitoring`, `Resolved`, or `Accepted`.
   boundary violation, new dependency, or production module. Focused boundaries
   remain reviewable; keep monitoring, and require a separate accepted ADR and
   PR for any future module.
+- Post-Milestone 8 checkpoint (`2026-10-03`): M8 added local decision
+  measurement and a composed upgrade test within the existing layers. No
+  independently owned module contract, repeated cross-layer conflict, or
+  measured build/test benefit for extraction has been established. The
+  compiler-boundary trigger has not fired; keep monitoring.
 
 ### TD-002 — Viewer-profile orchestration has concentrated files
 
@@ -67,6 +72,13 @@ Statuses are `Observed`, `Planned`, `Monitoring`, `Resolved`, or `Accepted`.
   repositories and coordinator contracts, and the device evidence path is
   isolated behind DEBUG with transient state. Neither hotspot required an
   unrelated refactor, so no extraction trigger fired; keep monitoring.
+- Post-Milestone 8 checkpoint (`2026-10-03`): relative to final M7,
+  `ViewerProfileViewModel` was unchanged and the profile repository extension
+  changed by only five added and three removed lines. PR4's composed recovery
+  test reused existing repository and coordinator contracts. The concentrated
+  files remain review hotspots; no unrelated state-transition setup or new
+  cohesive extraction boundary was demonstrated. Do not split them by line
+  count alone. Re-evaluate only if accepted M9 work exercises the trigger above.
 
 ## Resolved Items
 

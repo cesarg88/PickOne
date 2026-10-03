@@ -1,3 +1,4 @@
+import UIKit
 import XCTest
 
 final class PickOneSmokeTests: XCTestCase {
@@ -24,6 +25,19 @@ final class PickOneSmokeTests: XCTestCase {
         verifyFeedbackSurfaces(in: app)
         verifyAttribution(in: app)
         verifyRecalibration(in: app)
+    }
+
+    @MainActor
+    func testIPadNavigationInPortraitAndLandscape() throws {
+        try XCTSkipUnless(UIDevice.current.userInterfaceIdiom == .pad, "iPad-only navigation baseline")
+        XCUIDevice.shared.orientation = .portrait
+        defer { XCUIDevice.shared.orientation = .portrait }
+
+        let app = launchReadyApp()
+        verifySupportedIPadNavigation(in: app)
+
+        XCUIDevice.shared.orientation = .landscapeLeft
+        verifySupportedIPadNavigation(in: app)
     }
 
     @MainActor
@@ -147,6 +161,36 @@ final class PickOneSmokeTests: XCTestCase {
 
         app.tabBars.buttons["Search"].tap()
         XCTAssertTrue(app.staticTexts["Sanitized Query"].waitForExistence(timeout: 15))
+    }
+
+    @MainActor
+    private func verifySupportedIPadNavigation(in app: XCUIApplication) {
+        for tab in ["Home", "Search", "Discover", "Watchlist", "Settings"] {
+            let button = iPadTabButton(tab, in: app)
+            XCTAssertTrue(button.waitForExistence(timeout: 15), "\(tab) tab is missing")
+            XCTAssertTrue(button.isHittable, "\(tab) tab is not reachable")
+            button.tap()
+            XCTAssertTrue(button.isSelected, "\(tab) tab did not become selected")
+        }
+
+        iPadTabButton("Home", in: app).tap()
+        let recommendation = app.buttons["home-recommendation-101"]
+        XCTAssertTrue(recommendation.waitForExistence(timeout: 15))
+        XCTAssertTrue(recommendation.isHittable)
+        recommendation.tap()
+        XCTAssertTrue(app.navigationBars["Details"].waitForExistence(timeout: 15))
+        app.navigationBars["Details"].buttons["Home"].tap()
+
+        iPadTabButton("Settings", in: app).tap()
+        XCTAssertTrue(app.navigationBars["Settings"].waitForExistence(timeout: 15))
+        let pilotInsights = app.buttons["pilot-insights-link"]
+        XCTAssertTrue(pilotInsights.waitForExistence(timeout: 15))
+        XCTAssertTrue(pilotInsights.isHittable)
+    }
+
+    @MainActor
+    private func iPadTabButton(_ label: String, in app: XCUIApplication) -> XCUIElement {
+        app.buttons.matching(NSPredicate(format: "label == %@", label)).firstMatch
     }
 
     @MainActor

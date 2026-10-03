@@ -261,7 +261,7 @@ iPhone 18 Pro. The previous household installation is unavailable. Pending
 physical checks were reported successful in aggregate on `2026-10-03`;
 technical approval and green CI cover `f85804f`. César subsequently accepted M8
 closure with the controlled-upgrade evidence and inaccessible-installation
-limitation documented. Review/CI remain required on the final documentation SHA.
+limitation documented. PR #54's final documentation SHA passed CI before merge.
 
 Purpose:
 
@@ -286,9 +286,8 @@ The Product Owner and Technical Lead accepted
 [the executable specification](../milestones/milestone-8-pilot-measurement.md)
 and
 [ADR-015](../decisions/adr-015-local-decision-measurement-and-provenance.md) on
-`2026-09-14`. D0 and PR1–PR3 are merged; PR4 proceeds under explicit Product
-Owner authorization. Technical review and green CI remain merge gates, and
-final milestone acceptance was given on `2026-10-03`.
+`2026-09-14`. D0 and PR1–PR4 are merged. Technical review and green CI were
+merge gates, and final milestone acceptance was given on `2026-10-03`.
 
 ### Milestone 9
 

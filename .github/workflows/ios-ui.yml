@@ -1,0 +1,58 @@
+name: iOS UI journeys
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 3 * * 1-5"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ios-ui-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  journeys:
+    name: ${{ matrix.device }}
+    runs-on: macos-26
+    timeout-minutes: 35
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_26.4.1.app/Contents/Developer
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - device: iPhone 17 Pro
+            test_selector: PickOneUITests
+          - device: iPad (A16)
+            test_selector: PickOneUITests/PickOneSmokeTests/testIPadNavigationInPortraitAndLandscape
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Prepare non-secret CI configuration
+        run: |
+          printf 'TMDB_API_KEY = CI_NOT_A_REAL_KEY\n' > Config/Debug.xcconfig
+          printf 'TMDB_API_KEY = CI_NOT_A_REAL_KEY\n' > Config/Release.xcconfig
+
+      - name: Prepare simulator
+        id: simulator
+        env:
+          DEVICE_NAME: ${{ matrix.device }}
+        run: |
+          simulator_udid="$(Scripts/prepare-ci-simulator.sh "$DEVICE_NAME")"
+          echo "udid=$simulator_udid" >> "$GITHUB_OUTPUT"
+
+      - name: Run UI journeys
+        env:
+          TEST_SELECTOR: ${{ matrix.test_selector }}
+        run: |
+          xcodebuild test \
+            -project PickOne.xcodeproj \
+            -scheme PickOne \
+            -destination 'platform=iOS Simulator,id=${{ steps.simulator.outputs.udid }}' \
+            -parallel-testing-enabled NO \
+            -derivedDataPath "$RUNNER_TEMP/PickOneUITests" \
+            "-only-testing:$TEST_SELECTOR" \
+            CODE_SIGNING_ALLOWED=NO

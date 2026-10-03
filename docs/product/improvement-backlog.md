@@ -400,13 +400,13 @@ Priorities:
 ### IMP-005 — Define and deliver local pilot measurement
 
 - Status: `Completed — Product Owner accepted M8 closure 2026-10-03; PR #54`
-- Delivery evidence: PRs #51–#53 merged; PR4 is authorized.
+- Delivery evidence: PRs #51–#54 merged.
   [Integration evidence](../engineering/validation/pilot-integration.md) separates
   the controlled M7 update from clean-install functional success on iPhone 18 Pro.
   Pending physical tests were reported successful in aggregate on `2026-10-03`.
   César explicitly accepted M8 closure with the controlled-upgrade evidence and
   inaccessible-installation limitation documented. Technical approval and green
-  CI cover `f85804f`; PR #54's final documentation SHA still requires review/CI.
+  CI cover `f85804f`; PR #54's final documentation SHA passed CI before merge.
 - Priority: `P0`
 - Roadmap relationship: Milestone 8
 - Why: UI polish and model changes cannot be evaluated without success
@@ -450,16 +450,18 @@ Priorities:
   Milestone 5 removes the redundant completion confirmation without adding a
   new progress indicator or prescribing these treatments.
 - Done when:
-  the Product Owner and CTO accept an executable UX specification grounded in
+  the Product Owner and Technical Lead accept an executable UX specification grounded in
   physical-device use.
 
-### IMP-006 — Use real Watchlist state in recommendation cards
+### IMP-006 — Use real Watchlist state in the future Ask cards
 
-- Status: `Proposed`
+- Status: `Deferred until Ask is reintroduced`
 - Priority: `P1`
-- Proposed roadmap relationship: Milestone 7
+- Roadmap relationship: future Ask milestone, not active Home
 - Verified gap:
-  `RecommendationCard` still keeps `didAddToWatchlist` as local UI state.
+  The preserved but unexposed Ask `RecommendationCard` still keeps
+  `didAddToWatchlist` as local UI state. `MainTabView` exposes Home, Search,
+  Discover, Watchlist and Settings, not Ask. This is not a Home-card defect.
 - Why:
   - an already-saved movie can still show `Add to Watchlist`
   - state can become stale after changes from Detail or Watchlist
@@ -498,13 +500,13 @@ Priorities:
 ### IMP-023 — Define explicit decision-outcome actions
 
 - Status: `Completed — Product Owner accepted M8 closure 2026-10-03; PR #54`
-- Delivery evidence: PRs #51–#53 merged; PR4 is authorized.
+- Delivery evidence: PRs #51–#54 merged.
   [Integration evidence](../engineering/validation/pilot-integration.md) separates
   the controlled M7 update from clean-install functional success on iPhone 18 Pro.
   Pending physical tests were reported successful in aggregate on `2026-10-03`.
   César explicitly accepted M8 closure with the controlled-upgrade evidence and
   inaccessible-installation limitation documented. Technical approval and green
-  CI cover `f85804f`; PR #54's final documentation SHA still requires review/CI.
+  CI cover `f85804f`; PR #54's final documentation SHA passed CI before merge.
 - Priority: `P1`
 - Roadmap relationship: Milestone 8
 - Why:
@@ -687,15 +689,18 @@ Priorities:
 
 ### IMP-014 — Decide supported devices, accessibility, and localization
 
-- Status: `Proposed`
+- Status: `In Progress — scheduled/manual iPad functional baseline; M9 quality bar pending`
 - Priority: `P2`
 - Localization relationship: Milestone 9; Milestone 8 first establishes the
   English/Spanish String Catalog for only its affected surfaces. Supported-
-  device decisions remain unaccepted.
-- Why: the target currently declares iPhone and iPad support without a
-  documented iPad QA commitment.
+  device decision: the Product Owner confirmed iPhone and iPad support on
+  `2026-10-03` and has access to a physical iPad for Milestone 9 validation.
+- Why: the target declares iPhone and iPad support. This engineering slice adds
+  a focused iPad functional check to the scheduled/manual UI workflow without
+  extending every PR's required CI; the full iPad layout and accessibility
+  quality bar remains to be specified for Milestone 9.
 - Implementation:
-  - choose iPhone-only or define supported iPad layouts and test coverage
+  - define supported iPad layouts and test coverage
   - validate Dynamic Type, VoiceOver, contrast, Reduce Motion, and keyboard
     behavior
   - externalize user-facing copy and define the first supported languages
@@ -738,6 +743,10 @@ Priorities:
 
 - Status: `Proposed`
 - Priority: `P2`
+- Security checkpoint (`2026-10-03`): commit `e4d9605` removed the exposed
+  TMDB token from the working tree, but the repository does not record whether
+  the old credential was revoked. Human confirmation remains necessary;
+  removal alone is not evidence of revocation.
 - Implementation:
   - confirm the historically exposed token was revoked, not only removed
   - prune obsolete temporary remote branches
@@ -778,9 +787,10 @@ the added complexity.
 
 ## Suggested Sequence
 
-1. Review M8 PR4 integration evidence after merged D0 and PRs #51–#53.
-2. Final Product Owner acceptance has closed M8, IMP-005 and IMP-023; complete
-   final-SHA review/CI for the PR #54 documentary closure before merge.
+1. M8, IMP-005 and IMP-023 are closed after PR #54's final-SHA review, green CI,
+   merge and Product Owner acceptance.
+2. Use the focused scheduled/manual iPad functional baseline and post-M8
+   technical-debt checkpoint to define Milestone 9 with the Product Owner.
 3. Introduce trailers, a coach mark, or visual search feedback only if observed
    use demonstrates that confidence or discoverability needs them.
 4. Introduce a backend or AI provider only if product validation demonstrates

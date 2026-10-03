@@ -7,7 +7,7 @@ SIMULATOR_OS ?= latest
 TEST_DESTINATION := platform=iOS Simulator,name=$(SIMULATOR_NAME),OS=$(SIMULATOR_OS)
 DERIVED_DATA ?= $(CURDIR)/.derivedData
 
-.PHONY: help setup format lint quality check-secrets test analyze build-release verify simulators devices clean
+.PHONY: help setup format lint quality check-secrets test test-unit test-ui test-ipad-ui analyze build-release verify simulators devices clean
 
 help:
 	@echo "Available commands:"
@@ -15,10 +15,13 @@ help:
 	@echo "  make format         Format all Swift files with the pinned SwiftFormat version"
 	@echo "  make lint           Lint all Swift files with the pinned SwiftLint version"
 	@echo "  make quality        Run every repository pre-commit check"
-	@echo "  make test           Run unit tests and the UI smoke test"
+	@echo "  make test           Run all unit and UI tests on iPhone"
+	@echo "  make test-unit      Run unit tests on iPhone"
+	@echo "  make test-ui        Run UI journeys on iPhone"
+	@echo "  make test-ipad-ui   Run the focused iPad navigation journey"
 	@echo "  make analyze        Run Xcode static analysis"
 	@echo "  make build-release  Build the unsigned Release app"
-	@echo "  make verify         Run the complete local delivery gate"
+	@echo "  make verify         Run the required PR delivery gate (without UI journeys)"
 	@echo "  make simulators     List available iOS simulator runtimes and devices"
 	@echo "  make devices        List connected physical devices"
 
@@ -47,7 +50,18 @@ test:
 		-scheme $(SCHEME) \
 		-destination '$(TEST_DESTINATION)' \
 		-parallel-testing-enabled NO \
-		-derivedDataPath '$(DERIVED_DATA)/Tests'
+		-derivedDataPath '$(DERIVED_DATA)/Tests' \
+		$(if $(TEST_ONLY),-only-testing:$(TEST_ONLY)) \
+		CODE_SIGNING_ALLOWED=NO
+
+test-unit:
+	$(MAKE) test TEST_ONLY=PickOneTests
+
+test-ui:
+	$(MAKE) test TEST_ONLY=PickOneUITests
+
+test-ipad-ui:
+	$(MAKE) test TEST_ONLY=PickOneUITests/PickOneSmokeTests/testIPadNavigationInPortraitAndLandscape SIMULATOR_NAME='iPad (A16)'
 
 analyze:
 	xcodebuild analyze \
@@ -67,7 +81,7 @@ build-release:
 		CODE_SIGNING_ALLOWED=NO
 	Scripts/inspect-app-bundle.sh '$(DERIVED_DATA)/Release/Build/Products/Release-iphoneos/PickOne.app'
 
-verify: format quality check-secrets test analyze build-release
+verify: format quality check-secrets test-unit analyze build-release
 
 simulators:
 	@xcrun simctl list runtimes available

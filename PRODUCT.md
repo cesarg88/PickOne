@@ -749,10 +749,11 @@ remained coherent, the extreme `5.683 s` recovery wait was accepted, and the
 household utility checkpoint passed. The exact recovery policy is defined in
 [Milestone 7 P0 — Home Exhaustion Recovery](docs/milestones/milestone-7-p0-home-exhaustion-recovery.md).
 
-Milestone 8 functionality is implemented through PRs #51–#53: explicit Pick,
+Milestone 8 functionality was implemented through PRs #51–#53: explicit Pick,
 bounded recommendation sessions, later non-blocking viewing confirmation,
 durable PickOne provenance, English/Spanish localization for affected surfaces,
-and local `Pilot insights`. PR4 integration and closure is authorized. The
+and local `Pilot insights`. PR #54 supplied integration evidence and documentary
+closure without changing production behavior. The
 Product Owner reports functional success on a clean iPhone 18 Pro installation,
 including export, languages/accessibility, confirmation and deletion;
 `Already watched` retains the other two movies. The prior installation is no
@@ -763,7 +764,7 @@ The pending physical checks were subsequently reported successful in aggregate
 on `2026-10-03`, without additional execution metadata or individual results.
 The Product Owner explicitly accepted M8 closure on `2026-10-03`, with the
 controlled-upgrade evidence and inaccessible-installation limitation documented.
-M8 is complete; PR #54 remains subject to final-SHA review/CI before merge. The accepted
+M8 is complete; PR #54 merged after final-SHA review and green CI. The accepted
 [specification](docs/milestones/milestone-8-pilot-measurement.md) and ADR-015
 continue to bound behavior.
 

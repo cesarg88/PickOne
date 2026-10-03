@@ -96,6 +96,11 @@ Feature code must not use it as a service locator.
 - Use integration tests for repository and external-boundary behavior and keep UI
   tests for critical end-to-end journeys.
 - Run focused tests while iterating and `make verify` before handoff.
+- The required PR gate runs unit tests, static analysis, and a Release build,
+  without UI journeys. Run the scheduled/manual iPhone and iPad UI workflow on
+  a PR branch before merge when it changes a critical end-to-end journey,
+  onboarding, or supported-device navigation. The same workflow also runs on
+  `develop` on weekdays; it does not replace physical-device validation.
 - Green automation and physical-device validation are complementary; neither
   replaces the other.
 - Ground version-sensitive Apple, Swift, Xcode, and third-party API decisions in

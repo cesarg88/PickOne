@@ -19,6 +19,41 @@ jobs:
 
     steps:
       - uses: actions/checkout@v6
+        with:
+          fetch-depth: 2
+
+      - name: Classify documentation-only changes
+        id: changes
+        shell: bash
+        run: |
+          set -euo pipefail
+          docs_only=true
+          found_change=false
+          if ! git rev-parse --verify 'HEAD^1' >/dev/null 2>&1; then
+            docs_only=false
+          elif [[ "$GITHUB_EVENT_NAME" == pull_request ]] && \
+            ! git rev-parse --verify 'HEAD^2' >/dev/null 2>&1; then
+            # A PR must be checked out at its synthetic merge commit. If not,
+            # a last documentation commit could conceal earlier code changes.
+            docs_only=false
+          else
+            changed_paths_file="$RUNNER_TEMP/ci-changed-paths"
+            if ! git diff --name-only -z 'HEAD^1' HEAD > "$changed_paths_file"; then
+              docs_only=false
+            else
+              while IFS= read -r -d '' changed_path; do
+                found_change=true
+                case "$changed_path" in
+                  *.md) ;;
+                  *) docs_only=false ;;
+                esac
+              done < "$changed_paths_file"
+              if [[ "$found_change" == false ]]; then
+                docs_only=false
+              fi
+            fi
+          fi
+          echo "docs_only=$docs_only" >> "$GITHUB_OUTPUT"
 
       - name: Set up Python
         uses: actions/setup-python@v6
@@ -47,11 +82,13 @@ jobs:
 
       - name: Prepare iOS simulator
         id: simulator
+        if: steps.changes.outputs.docs_only != 'true'
         run: |
           simulator_udid="$(Scripts/prepare-ci-simulator.sh)"
           echo "udid=$simulator_udid" >> "$GITHUB_OUTPUT"
 
-      - name: Test
+      - name: Unit tests
+        if: steps.changes.outputs.docs_only != 'true'
         run: |
           xcodebuild test \
             -project PickOne.xcodeproj \
@@ -59,9 +96,11 @@ jobs:
             -destination 'platform=iOS Simulator,id=${{ steps.simulator.outputs.udid }}' \
             -parallel-testing-enabled NO \
             -derivedDataPath "$RUNNER_TEMP/PickOneTests" \
+            -only-testing:PickOneTests \
             CODE_SIGNING_ALLOWED=NO
 
       - name: Analyze
+        if: steps.changes.outputs.docs_only != 'true'
         run: |
           xcodebuild analyze \
             -project PickOne.xcodeproj \
@@ -71,6 +110,7 @@ jobs:
             CODE_SIGNING_ALLOWED=NO
 
       - name: Build release
+        if: steps.changes.outputs.docs_only != 'true'
         run: |
           xcodebuild build \
             -project PickOne.xcodeproj \
@@ -81,4 +121,5 @@ jobs:
             CODE_SIGNING_ALLOWED=NO
 
       - name: Inspect app bundle
+        if: steps.changes.outputs.docs_only != 'true'
         run: Scripts/inspect-app-bundle.sh "$RUNNER_TEMP/PickOneRelease/Build/Products/Release-iphoneos/PickOne.app"

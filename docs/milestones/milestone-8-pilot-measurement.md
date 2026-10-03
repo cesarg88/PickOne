@@ -7,7 +7,8 @@
 - Product decisions: **Accepted**.
 - Product Ready: **Yes**.
 - Engineering Ready: **Yes**.
-- Implementation authorized: **PR4 — Integration and closure**, explicitly by the Product Owner on `2026-09-29`, resumed on `2026-09-30`.
+- Implementation completed: **PR4 — Integration and closure** merged in #54
+  after Product Owner authorization on `2026-09-29` and resumption on `2026-09-30`.
 - Product specification acceptance: `2026-09-14`.
 - Final Product Owner acceptance: `2026-10-03` — “acepto el cierre de M8”.
 - Technical Lead acceptance: `2026-09-14`.
@@ -22,7 +23,7 @@
   Technical approval was communicated and CI verified green for `f85804f`.
 - M8 is closed with the documented controlled-upgrade evidence and the
   inaccessible-installation limitation. No retained-M7 physical upgrade is claimed.
-  PR #54 still requires final-SHA review/CI before merge.
+  PR #54 passed final-SHA CI and merged as `a53067d`.
 
 ## Authority and purpose
 
