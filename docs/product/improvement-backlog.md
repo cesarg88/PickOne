@@ -689,14 +689,15 @@ Priorities:
 
 ### IMP-014 — Decide supported devices, accessibility, and localization
 
-- Status: `In Progress — iPad functional CI baseline; M9 quality bar pending`
+- Status: `In Progress — scheduled/manual iPad functional baseline; M9 quality bar pending`
 - Priority: `P2`
 - Localization relationship: Milestone 9; Milestone 8 first establishes the
   English/Spanish String Catalog for only its affected surfaces. Supported-
   device decision: the Product Owner confirmed iPhone and iPad support on
   `2026-10-03` and has access to a physical iPad for Milestone 9 validation.
 - Why: the target declares iPhone and iPad support. This engineering slice adds
-  a focused iPad functional CI baseline; the full iPad layout and accessibility
+  a focused iPad functional check to the scheduled/manual UI workflow without
+  extending every PR's required CI; the full iPad layout and accessibility
   quality bar remains to be specified for Milestone 9.
 - Implementation:
   - define supported iPad layouts and test coverage
@@ -788,8 +789,8 @@ the added complexity.
 
 1. M8, IMP-005 and IMP-023 are closed after PR #54's final-SHA review, green CI,
    merge and Product Owner acceptance.
-2. Use the focused iPad functional CI baseline and post-M8 technical-debt
-   checkpoint to define Milestone 9 with the Product Owner.
+2. Use the focused scheduled/manual iPad functional baseline and post-M8
+   technical-debt checkpoint to define Milestone 9 with the Product Owner.
 3. Introduce trailers, a coach mark, or visual search feedback only if observed
    use demonstrates that confidence or discoverability needs them.
 4. Introduce a backend or AI provider only if product validation demonstrates
