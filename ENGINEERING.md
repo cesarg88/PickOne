@@ -3,7 +3,7 @@
 ## Document Status
 
 - Status: `Canonical`
-- Last engineering review: `2026-08-24`
+- Last engineering review: `2026-10-04`
 
 This document is the single current source of truth for PickOne's technical
 invariants and engineering quality bar. Accepted ADRs preserve the reasoning for
@@ -60,6 +60,13 @@ Presentation view models in order to construct and inject the object graph.
 Feature code must not use it as a service locator.
 
 ## Swift 6 and Concurrency
+
+The minimum deployment target is iOS/iPadOS 26.0 for the app and its test
+targets. This is distinct from the Xcode SDK version and does not itself
+authorize new system UI APIs or a visual redesign. Preserve iPhone and iPad
+support and verify the effective minimum OS in the Release bundle. The
+decision and upgrade-validation boundary are recorded in
+[ADR-016](docs/decisions/adr-016-ios-26-platform-baseline.md).
 
 - Use Swift 6 language mode with complete strict-concurrency checking.
 - Keep UI and observable presentation state on `MainActor`.
