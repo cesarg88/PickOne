@@ -52,10 +52,80 @@ struct GetMovieDisplayMetadataTests {
             _ = try await sut.execute(movieID: 12, contentLocale: .english)
         }
     }
+
+    @Test("stale localized metadata is replaced by a successful refresh")
+    func refreshesStaleMetadata() async throws {
+        let cached = movie(title: "Old title", genreName: "Old genre")
+        let refreshed = movie(title: "New title", genreName: "New genre")
+        let sut = GetMovieDisplayMetadata(repository: DisplayMovieRepository(
+            movie: cached, isStale: true, refreshedMovie: refreshed
+        ))
+
+        let metadata = try await sut.execute(movieID: 12, contentLocale: .spanish)
+
+        #expect(metadata.title == "New title")
+        #expect(metadata.genreNames[18] == "New genre")
+    }
+
+    @Test("stale matching-locale metadata survives a failed refresh")
+    func retainsStaleMetadataOffline() async throws {
+        let cached = movie(title: "Cached title", genreName: "Cached genre")
+        let sut = GetMovieDisplayMetadata(repository: DisplayMovieRepository(
+            movie: cached, isStale: true, refreshFails: true
+        ))
+
+        let metadata = try await sut.execute(movieID: 12, contentLocale: .spanish)
+
+        #expect(metadata.title == "Cached title")
+        #expect(metadata.genreNames[18] == "Cached genre")
+    }
+
+    @Test("invalid refreshed metadata retains the valid cached value")
+    func retainsStaleMetadataAfterInvalidRefresh() async throws {
+        let cached = movie(title: "Cached title", genreName: "Cached genre")
+        let invalid = Movie(
+            id: 99, title: "Wrong movie", originalTitle: "Wrong movie", overview: "",
+            releaseDate: nil, runtime: nil, rating: 0, voteCount: 0,
+            posterPath: nil, backdropPath: nil, genres: [], tagline: nil
+        )
+        let sut = GetMovieDisplayMetadata(repository: DisplayMovieRepository(
+            movie: cached, isStale: true, refreshedMovie: invalid
+        ))
+
+        let metadata = try await sut.execute(movieID: 12, contentLocale: .english)
+
+        #expect(metadata.title == "Cached title")
+    }
+
+    @Test("cancelled refresh does not publish stale metadata")
+    func propagatesRefreshCancellation() async {
+        let sut = GetMovieDisplayMetadata(repository: DisplayMovieRepository(
+            movie: movie(title: "Cached title", genreName: "Drama"),
+            isStale: true,
+            refreshCancels: true
+        ))
+
+        await #expect(throws: CancellationError.self) {
+            _ = try await sut.execute(movieID: 12, contentLocale: .english)
+        }
+    }
+
+    private func movie(title: String, genreName: String) -> Movie {
+        Movie(
+            id: 12, title: title, originalTitle: title, overview: "",
+            releaseDate: nil, runtime: nil, rating: 0, voteCount: 0,
+            posterPath: nil, backdropPath: nil,
+            genres: [Genre(id: 18, name: genreName)], tagline: nil
+        )
+    }
 }
 
 private struct DisplayMovieRepository: MovieRepository {
     let movie: Movie
+    var isStale = false
+    var refreshedMovie: Movie?
+    var refreshFails = false
+    var refreshCancels = false
 
     func getMovieDetail(id _: Int, policy _: CachePolicy) -> CacheResult<Movie> {
         CacheResult(value: movie, isStale: false)
@@ -64,9 +134,14 @@ private struct DisplayMovieRepository: MovieRepository {
     func getMovieDetail(
         id _: Int,
         contentLocale _: MovieContentLocale,
-        policy _: CachePolicy
-    ) -> CacheResult<Movie> {
-        CacheResult(value: movie, isStale: false)
+        policy: CachePolicy
+    ) throws -> CacheResult<Movie> {
+        if policy == .refresh {
+            if refreshCancels { throw CancellationError() }
+            if refreshFails { throw DisplayRepositoryError.unavailable }
+            return CacheResult(value: refreshedMovie ?? movie, isStale: false)
+        }
+        return CacheResult(value: movie, isStale: isStale)
     }
 
     func getTopRated(page _: Int, policy _: CachePolicy) throws -> CacheResult<MoviePage> {
@@ -88,4 +163,5 @@ private struct DisplayMovieRepository: MovieRepository {
 
 private enum DisplayRepositoryError: Error {
     case unused
+    case unavailable
 }
