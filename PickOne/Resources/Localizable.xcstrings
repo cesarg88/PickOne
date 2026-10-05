@@ -1079,6 +1079,40 @@
         }
       }
     },
+    "home.reason.generic.sentence": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Based on movies you liked."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Basada en películas que te gustaron."
+          }
+        }
+      }
+    },
+    "home.reason.generic.embedded": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "based on movies you liked."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "basada en películas que te gustaron."
+          }
+        }
+      }
+    },
     "home.reason.similar.sentence": {
       "extractionState": "manual",
       "localizations": {

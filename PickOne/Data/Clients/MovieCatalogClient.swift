@@ -3,6 +3,7 @@ import Foundation
 protocol MovieCatalogClient: Sendable {
     func getTopRated(page: Int) async throws -> MovieListResponseDTO
     func getMovieDetail(id: Int) async throws -> MovieDetailDTO
+    func getMovieDetail(id: Int, contentLocale: MovieContentLocale) async throws -> MovieDetailDTO
     func getSimilarMovies(id: Int, page: Int) async throws -> MovieListResponseDTO
     func searchMovies(query: String, page: Int) async throws -> SearchResponseDTO
     func getMovieCredits(id: Int) async throws -> CreditsResponseDTO
@@ -56,10 +57,18 @@ extension TMDBMovieCatalogClient: MovieCatalogClient {
     }
 
     func getMovieDetail(id: Int) async throws -> MovieDetailDTO {
+        try await requestMovieDetail(id: id, language: language)
+    }
+
+    func getMovieDetail(id: Int, contentLocale: MovieContentLocale) async throws -> MovieDetailDTO {
+        try await requestMovieDetail(id: id, language: contentLocale.rawValue)
+    }
+
+    private func requestMovieDetail(id: Int, language: String) async throws -> MovieDetailDTO {
         try await httpClient.request(
             endpoint: Endpoint.movieDetail(id: id).path,
             method: .get,
-            parameters: buildParameters(),
+            parameters: buildParameters(language: language),
             headers: authHeaders,
             timeout: nil,
             body: nil
@@ -103,10 +112,14 @@ extension TMDBMovieCatalogClient: MovieCatalogClient {
         ["Authorization": "Bearer \(apiKey)"]
     }
 
-    private func buildParameters(query: String? = nil, page: Int? = nil) -> [String: String] {
+    private func buildParameters(
+        query: String? = nil,
+        page: Int? = nil,
+        language: String? = nil
+    ) -> [String: String] {
         var params: [String: String] = [:]
 
-        params["language"] = language
+        params["language"] = language ?? self.language
 
         if let query {
             params["query"] = query

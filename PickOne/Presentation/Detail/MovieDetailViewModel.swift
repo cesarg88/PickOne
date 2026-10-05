@@ -12,6 +12,7 @@ enum MovieDetailViewState: Equatable {
 @Observable
 final class MovieDetailViewModel {
     let movieId: Int
+    private var contentLocale: MovieContentLocale?
     private let getMovieDetail: any GetMovieDetailUseCase
     private let getViewerMovieState: any GetViewerMovieStateUseCase
     private let updateViewerMovieState: any UpdateViewerMovieStateUseCase
@@ -36,6 +37,7 @@ final class MovieDetailViewModel {
 
     init(
         movieId: Int,
+        contentLocale: MovieContentLocale? = nil,
         getMovieDetail: any GetMovieDetailUseCase,
         getViewerMovieState: any GetViewerMovieStateUseCase,
         updateViewerMovieState: any UpdateViewerMovieStateUseCase,
@@ -45,6 +47,7 @@ final class MovieDetailViewModel {
         eligibilityDidChange: @escaping @MainActor (DecisionEligibilityChange) -> Void = { _ in }
     ) {
         self.movieId = movieId
+        self.contentLocale = contentLocale
         self.getMovieDetail = getMovieDetail
         self.getViewerMovieState = getViewerMovieState
         self.updateViewerMovieState = updateViewerMovieState
@@ -70,6 +73,12 @@ final class MovieDetailViewModel {
         _ = await (detailLoad, availabilityLoad, feedbackLoad)
     }
 
+    func changeContentLocale(_ locale: MovieContentLocale) async {
+        guard contentLocale != locale else { return }
+        contentLocale = locale
+        await load()
+    }
+
     func retryFeedback() async {
         guard !isFeedbackSaving else { return }
         feedbackState = .loading
@@ -78,18 +87,34 @@ final class MovieDetailViewModel {
 
     private func loadDetail(loadID: UUID) async {
         do {
-            let cached = try await getMovieDetail.execute(
-                id: movieId,
-                policy: .returnCacheElseLoad
-            )
+            let cached: CacheResult<MovieDetailSnapshot> = if let contentLocale {
+                try await getMovieDetail.execute(
+                    id: movieId,
+                    policy: .returnCacheElseLoad,
+                    contentLocale: contentLocale
+                )
+            } else {
+                try await getMovieDetail.execute(
+                    id: movieId,
+                    policy: .returnCacheElseLoad
+                )
+            }
             try Task.checkCancellation()
             guard activeLoadID == loadID else { return }
             publishDetail(cached.value)
             if cached.isStale {
-                let refreshed = try await getMovieDetail.execute(
-                    id: movieId,
-                    policy: .refresh
-                )
+                let refreshed: CacheResult<MovieDetailSnapshot> = if let contentLocale {
+                    try await getMovieDetail.execute(
+                        id: movieId,
+                        policy: .refresh,
+                        contentLocale: contentLocale
+                    )
+                } else {
+                    try await getMovieDetail.execute(
+                        id: movieId,
+                        policy: .refresh
+                    )
+                }
                 try Task.checkCancellation()
                 guard activeLoadID == loadID else { return }
                 publishDetail(refreshed.value)

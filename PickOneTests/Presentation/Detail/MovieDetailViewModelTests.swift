@@ -108,6 +108,14 @@ private struct UnavailablePlaybackOptions: PreparePlaybackOptionsUseCase {
 }
 
 private actor MockGetMovieDetailUseCase: GetMovieDetailUseCase {
+    func execute(
+        id: Int,
+        policy: CachePolicy,
+        contentLocale _: MovieContentLocale
+    ) async throws -> CacheResult<MovieDetailSnapshot> {
+        try await execute(id: id, policy: policy)
+    }
+
     private let results: [Result<CacheResult<MovieDetailSnapshot>, Error>]
     private var callIndex = 0
 

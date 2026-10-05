@@ -84,6 +84,92 @@ struct MovieRepositoryTests {
         #expect(result2.value == TestFixtures.topRatedPage)
         #expect(await client.topRatedCallCount == 1)
     }
+
+    @Test("movie details are cached per content locale")
+    func isolatesMovieDetailLocales() async throws {
+        let (sut, client, _) = makeSUT()
+
+        let english = try await sut.getMovieDetail(
+            id: 1, contentLocale: .english, policy: .returnCacheElseLoad
+        )
+        let spanish = try await sut.getMovieDetail(
+            id: 1, contentLocale: .spanish, policy: .returnCacheElseLoad
+        )
+        let englishAgain = try await sut.getMovieDetail(
+            id: 1, contentLocale: .english, policy: .returnCacheElseLoad
+        )
+
+        #expect(english.value.title == "Movie A")
+        #expect(spanish.value.title == "Película A")
+        #expect(englishAgain.value.title == english.value.title)
+        #expect(await client.requestedLocales == [.english, .spanish])
+    }
+
+    @Test("concurrent movie detail reads deduplicate within, but not across, locales")
+    func deduplicatesMovieDetailWithinLocale() async throws {
+        let (sut, client, _) = makeSUT()
+        await client.setDelay(nanoseconds: 150_000_000)
+
+        async let englishFirst = sut.getMovieDetail(id: 1, contentLocale: .english, policy: .refresh)
+        async let englishSecond = sut.getMovieDetail(id: 1, contentLocale: .english, policy: .refresh)
+        async let spanish = sut.getMovieDetail(id: 1, contentLocale: .spanish, policy: .refresh)
+
+        let first = try await englishFirst
+        let second = try await englishSecond
+        let third = try await spanish
+
+        #expect(first.value.title == "Movie A")
+        #expect(second.value.title == "Movie A")
+        #expect(third.value.title == "Película A")
+        #expect(await client.detailCallCount == 2)
+        #expect(await Set(client.requestedLocales) == Set(MovieContentLocale.allCases))
+    }
+
+    @Test("empty localized title falls back to nonempty original title")
+    func originalTitleFallback() async throws {
+        let (sut, client, _) = makeSUT()
+        await client.useEmptyLocalizedTitle()
+
+        let result = try await sut.getMovieDetail(
+            id: 1, contentLocale: .spanish, policy: .refresh
+        )
+
+        #expect(result.value.title == "Movie A")
+    }
+
+    @Test("Home metadata and Detail share the same locale-scoped movie title")
+    func homeAndDetailTitleCoherence() async throws {
+        let (repository, client, _) = makeSUT()
+        let display = try await GetMovieDisplayMetadata(repository: repository).execute(
+            movieID: 1, contentLocale: .spanish
+        )
+        let detail = try await GetMovieDetail(repository: repository).execute(
+            id: 1, policy: .returnCacheElseLoad, contentLocale: .spanish
+        )
+
+        #expect(display.title == detail.value.movie.title)
+        #expect(display.title == "Película A")
+        #expect(await client.requestedLocales == [.spanish])
+    }
+
+    @Test("offline metadata read uses a cached value only for the matching locale")
+    func offlineMatchingLocaleCache() async throws {
+        let (repository, client, _) = makeSUT()
+        _ = try await repository.getMovieDetail(
+            id: 1, contentLocale: .spanish, policy: .returnCacheElseLoad
+        )
+        await client.failDetailRequests()
+
+        let spanish = try await repository.getMovieDetail(
+            id: 1, contentLocale: .spanish, policy: .returnCacheElseLoad
+        )
+        #expect(spanish.value.title == "Película A")
+        await #expect(throws: MovieRepositoryTestError.self) {
+            _ = try await repository.getMovieDetail(
+                id: 1, contentLocale: .english, policy: .returnCacheElseLoad
+            )
+        }
+    }
 }
 
 private actor TestCacheStore: CacheStore {
@@ -135,10 +221,21 @@ private actor MockMovieCatalogClient: MovieCatalogClient {
     private(set) var detailCallCount = 0
     private(set) var similarCallCount = 0
     private(set) var creditsCallCount = 0
+    private(set) var requestedLocales: [MovieContentLocale] = []
+    private var emptyLocalizedTitle = false
+    private var detailsUnavailable = false
     private var delay: UInt64 = 0
 
     func setDelay(nanoseconds: UInt64) async {
         delay = nanoseconds
+    }
+
+    func useEmptyLocalizedTitle() {
+        emptyLocalizedTitle = true
+    }
+
+    func failDetailRequests() {
+        detailsUnavailable = true
     }
 
     func getTopRated(page: Int) async throws -> MovieListResponseDTO {
@@ -148,9 +245,17 @@ private actor MockMovieCatalogClient: MovieCatalogClient {
     }
 
     func getMovieDetail(id: Int) async throws -> MovieDetailDTO {
+        try await getMovieDetail(id: id, contentLocale: .english)
+    }
+
+    func getMovieDetail(id _: Int, contentLocale: MovieContentLocale) async throws -> MovieDetailDTO {
         detailCallCount += 1
+        requestedLocales.append(contentLocale)
         try await sleepIfNeeded()
-        return TestFixtures.detailDTO
+        if detailsUnavailable { throw MovieRepositoryTestError.unavailable }
+        return TestFixtures.detailDTO(
+            title: emptyLocalizedTitle ? "  " : (contentLocale == .spanish ? "Película A" : "Movie A")
+        )
     }
 
     func getSimilarMovies(id: Int, page: Int) async throws -> MovieListResponseDTO {
@@ -174,6 +279,10 @@ private actor MockMovieCatalogClient: MovieCatalogClient {
             try await Task.sleep(nanoseconds: delay)
         }
     }
+}
+
+private enum MovieRepositoryTestError: Error {
+    case unavailable
 }
 
 private enum TestFixtures {
@@ -239,29 +348,31 @@ private enum TestFixtures {
         totalResults: 20
     )
 
-    nonisolated static let detailDTO = MovieDetailDTO(
-        adult: false,
-        backdropPath: "/backdrop.jpg",
-        budget: nil,
-        genres: [GenreDTO(id: 18, name: "Drama")],
-        homepage: nil,
-        id: 1,
-        imdbId: nil,
-        originalLanguage: "en",
-        originalTitle: "Movie A",
-        overview: "Overview A",
-        popularity: nil,
-        posterPath: "/posterA.jpg",
-        releaseDate: "2023-06-01",
-        revenue: nil,
-        runtime: 120,
-        status: nil,
-        tagline: nil,
-        title: "Movie A",
-        video: false,
-        voteAverage: 8.1,
-        voteCount: 1200
-    )
+    nonisolated static func detailDTO(title: String = "Movie A") -> MovieDetailDTO {
+        MovieDetailDTO(
+            adult: false,
+            backdropPath: "/backdrop.jpg",
+            budget: nil,
+            genres: [GenreDTO(id: 18, name: "Drama")],
+            homepage: nil,
+            id: 1,
+            imdbId: nil,
+            originalLanguage: "en",
+            originalTitle: "Movie A",
+            overview: "Overview A",
+            popularity: nil,
+            posterPath: "/posterA.jpg",
+            releaseDate: "2023-06-01",
+            revenue: nil,
+            runtime: 120,
+            status: nil,
+            tagline: nil,
+            title: title,
+            video: false,
+            voteAverage: 8.1,
+            voteCount: 1200
+        )
+    }
 
     nonisolated static let creditsDTO = CreditsResponseDTO(
         id: 1,

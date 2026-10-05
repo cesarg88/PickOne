@@ -12,10 +12,12 @@ enum MovieMapper {
     }
 
     static func mapDetail(from dto: MovieDetailDTO) -> Movie {
-        Movie(
+        let localizedTitle = dto.title.trimmingCharacters(in: .whitespacesAndNewlines)
+        let originalTitle = dto.originalTitle?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        return Movie(
             id: dto.id,
-            title: dto.title,
-            originalTitle: dto.originalTitle ?? dto.title,
+            title: localizedTitle.isEmpty ? originalTitle : localizedTitle,
+            originalTitle: originalTitle.isEmpty ? localizedTitle : originalTitle,
             overview: dto.overview ?? "",
             releaseDate: date(from: dto.releaseDate),
             runtime: dto.runtime,

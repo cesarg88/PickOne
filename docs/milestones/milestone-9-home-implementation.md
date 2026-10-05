@@ -2,11 +2,11 @@
 
 ## Status and authority
 
-**Proposed for documentary review.** Product has approved the Home v2 controls,
+**Accepted — Home Engineering Ready after PR #60 merged.** Product has approved the Home v2 controls,
 the direction of the continuous scrim, and the [Design handoff in issue
 #57](https://github.com/cesarg88/PickOne/issues/57#issuecomment-5992956491)
-for implementation. This document becomes **Home Engineering Ready only after its
-documentation PR is reviewed and merged**. It does not make the whole of
+for implementation. PR #60 was reviewed and merged before implementation began.
+This does not make the whole of
 Milestone 9 Product Ready or Engineering Ready, certify contrast/accessibility
 in the app, or close issue #57. Do not begin production implementation before
 that merge.

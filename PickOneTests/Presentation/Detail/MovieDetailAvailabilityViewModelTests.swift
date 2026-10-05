@@ -351,6 +351,14 @@ private actor SequenceAvailabilityUseCase: CheckMovieAvailabilityUseCase {
 private actor ImmediateMovieDetailUseCase: GetMovieDetailUseCase {
     func execute(
         id: Int,
+        policy: CachePolicy,
+        contentLocale _: MovieContentLocale
+    ) async throws -> CacheResult<MovieDetailSnapshot> {
+        try await execute(id: id, policy: policy)
+    }
+
+    func execute(
+        id: Int,
         policy: CachePolicy
     ) async throws -> CacheResult<MovieDetailSnapshot> {
         CacheResult(value: movieDetailSnapshot, isStale: false)
@@ -358,6 +366,14 @@ private actor ImmediateMovieDetailUseCase: GetMovieDetailUseCase {
 }
 
 private actor GatedMovieDetailUseCase: GetMovieDetailUseCase {
+    func execute(
+        id: Int,
+        policy: CachePolicy,
+        contentLocale _: MovieContentLocale
+    ) async throws -> CacheResult<MovieDetailSnapshot> {
+        try await execute(id: id, policy: policy)
+    }
+
     private let gate: AsyncAvailabilityGate
 
     init(gate: AsyncAvailabilityGate) {

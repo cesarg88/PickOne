@@ -24,6 +24,12 @@ struct HomeDecisionExhaustionPresentation: Equatable {
 final class HomeDecisionViewModel {
     let pickModel: HomePickViewModel?
     private let threeForTonight: any ThreeForTonightUseCase
+    private let getMovieDisplayMetadata: (any GetMovieDisplayMetadataUseCase)?
+    @ObservationIgnored private var contentLocale = MovieContentLocale(effectiveLocale: .current)
+    @ObservationIgnored private var activeSnapshot: ThreeForTonightSnapshot?
+    @ObservationIgnored private var displayProjection = HomeMovieDisplayProjection()
+    @ObservationIgnored private var displayTask: Task<Void, Never>?
+    @ObservationIgnored private var displayLoadID = UUID()
     @ObservationIgnored private var activeTask: Task<Void, Never>?
     @ObservationIgnored private var activeOperationID = UUID()
     @ObservationIgnored private var activeOperation: Operation?
@@ -44,6 +50,7 @@ final class HomeDecisionViewModel {
 
     init(
         threeForTonight: any ThreeForTonightUseCase,
+        getMovieDisplayMetadata: (any GetMovieDisplayMetadataUseCase)? = nil,
         pickModel: HomePickViewModel? = nil,
         feedbackDuration: Duration = .seconds(3),
         feedbackSleep: @escaping @Sendable (Duration) async throws -> Void = {
@@ -56,6 +63,7 @@ final class HomeDecisionViewModel {
     ) {
         self.pickModel = pickModel
         self.threeForTonight = threeForTonight
+        self.getMovieDisplayMetadata = getMovieDisplayMetadata
         self.feedbackDuration = feedbackDuration
         self.feedbackSleep = feedbackSleep
         self.now = now
@@ -87,6 +95,19 @@ final class HomeDecisionViewModel {
             return
         }
         start(.load)
+    }
+
+    func setContentLocale(_ effectiveLocale: Locale) {
+        let next = MovieContentLocale(effectiveLocale: effectiveLocale)
+        guard contentLocale != next else { return }
+        contentLocale = next
+        displayTask?.cancel()
+        displayTask = nil
+        displayLoadID = UUID()
+        displayProjection = HomeMovieDisplayProjection()
+        guard let activeSnapshot else { return }
+        publishDisplay(for: activeSnapshot, updatePickSurface: false)
+        hydrateDisplay(for: activeSnapshot)
     }
 
     func refresh() {
@@ -134,6 +155,7 @@ final class HomeDecisionViewModel {
                 return
             } catch {
                 guard activeOperationID == operationID else { return }
+                clearDisplaySnapshot()
                 pickModel?.updateSurface(nil)
                 state = .failure(String(localized: "Tonight's picks couldn't be loaded. Please try again."))
                 finish(operationID: operationID)
@@ -209,6 +231,7 @@ final class HomeDecisionViewModel {
             case let .retryableFailure(reason, retained):
                 guard let retained else {
                     clearExhaustion()
+                    clearDisplaySnapshot()
                     pickModel?.updateSurface(nil)
                     state = .failure(blockingMessage(for: reason))
                     return
@@ -314,28 +337,90 @@ final class HomeDecisionViewModel {
         snapshot: ThreeForTonightSnapshot,
         refreshError: String?
     ) {
-        let model = HomeDecisionPresentationMapper.map(snapshot: snapshot)
+        let priorSetID = activeSnapshot?.decisionSet.id
+        activeSnapshot = snapshot
+        if priorSetID != snapshot.decisionSet.id {
+            displayProjection = HomeMovieDisplayProjection()
+        }
+        publishDisplay(for: snapshot, refreshError: refreshError, updatePickSurface: true)
+        hydrateDisplay(for: snapshot)
+    }
+
+    private func publishDisplay(
+        for snapshot: ThreeForTonightSnapshot,
+        refreshError: String? = nil,
+        updatePickSurface: Bool
+    ) {
+        let presentationStatus: (isRefreshing: Bool, refreshError: String?) = if updatePickSurface {
+            (false, refreshError)
+        } else if case let .loaded(_, isRefreshing, existingError) = state {
+            (isRefreshing, existingError)
+        } else if case let .empty(isRefreshing, existingError) = state {
+            (isRefreshing, existingError)
+        } else {
+            (false, refreshError)
+        }
+        let model = HomeDecisionPresentationMapper.map(
+            snapshot: snapshot,
+            locale: contentLocale.locale,
+            projection: displayProjection
+        )
         let visibleIDs = Set(model.items.map(\.id))
-        pickModel?.updateSurface(try? ViewingDecisionSurface(
-            recommendations: snapshot.decisionSet.recommendations.filter {
-                visibleIDs.contains($0.display.movieID)
-            }.map {
-                PickRecommendation(
-                    movieID: $0.display.movieID,
-                    setID: snapshot.decisionSet.id,
-                    cycleID: snapshot.decisionSet.cycle.id,
-                    role: $0.role
-                )
-            }
-        ))
+        if updatePickSurface {
+            pickModel?.updateSurface(try? ViewingDecisionSurface(
+                recommendations: snapshot.decisionSet.recommendations.filter {
+                    visibleIDs.contains($0.display.movieID)
+                }.map {
+                    PickRecommendation(
+                        movieID: $0.display.movieID,
+                        setID: snapshot.decisionSet.id,
+                        cycleID: snapshot.decisionSet.cycle.id,
+                        role: $0.role
+                    )
+                }
+            ))
+        }
         if model.items.isEmpty {
-            state = .empty(isRefreshing: false, refreshError: refreshError)
+            state = .empty(
+                isRefreshing: presentationStatus.isRefreshing,
+                refreshError: presentationStatus.refreshError
+            )
         } else {
             state = .loaded(
                 model,
-                isRefreshing: false,
-                refreshError: refreshError
+                isRefreshing: presentationStatus.isRefreshing,
+                refreshError: presentationStatus.refreshError
             )
+        }
+    }
+
+    private func clearDisplaySnapshot() {
+        displayTask?.cancel()
+        displayTask = nil
+        displayLoadID = UUID()
+        activeSnapshot = nil
+        displayProjection = HomeMovieDisplayProjection()
+    }
+
+    private func hydrateDisplay(for snapshot: ThreeForTonightSnapshot) {
+        displayTask?.cancel()
+        guard let getMovieDisplayMetadata else { return }
+        let loadID = UUID()
+        displayLoadID = loadID
+        let locale = contentLocale
+        let loader = HomeMovieDisplayLoader(getMovieDisplayMetadata: getMovieDisplayMetadata)
+        displayTask = Task { [weak self] in
+            let projection = await loader.load(snapshot: snapshot, contentLocale: locale)
+            guard let self,
+                  !Task.isCancelled,
+                  displayLoadID == loadID,
+                  contentLocale == locale,
+                  let activeSnapshot,
+                  activeSnapshot.decisionSet.id == snapshot.decisionSet.id
+            else { return }
+            displayProjection = projection
+            publishDisplay(for: activeSnapshot, updatePickSurface: false)
+            displayTask = nil
         }
     }
 

@@ -38,6 +38,17 @@ struct TMDBCalibrationMovieMetadataClientTests {
         #expect(queryValue(named: "language", in: request) == "en-US")
     }
 
+    @Test("display metadata requests the selected language without changing the shared default")
+    func selectedDisplayLanguage() async throws {
+        let httpClient = makeHTTPClient()
+        let sut = TMDBMovieCatalogClient(httpClient: httpClient, apiKey: "test-token")
+
+        _ = try await sut.getMovieDetail(id: 278, contentLocale: .spanish)
+
+        let request = try #require(MockURLProtocol.capturedRequests.first)
+        #expect(queryValue(named: "language", in: request) == "es-ES")
+    }
+
     private func makeHTTPClient() -> URLSessionHTTPClient {
         MockURLProtocol.reset()
         MockURLProtocol.setSuccessResponse(data: TestData.movieDetailResponseJSON)

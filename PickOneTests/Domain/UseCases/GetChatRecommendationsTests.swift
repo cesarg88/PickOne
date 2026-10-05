@@ -194,6 +194,14 @@ private actor MockMovieRepository: MovieRepository {
         return CacheResult(value: movie, isStale: false)
     }
 
+    func getMovieDetail(
+        id: Int,
+        contentLocale _: MovieContentLocale,
+        policy: CachePolicy
+    ) async throws -> CacheResult<Movie> {
+        try await getMovieDetail(id: id, policy: policy)
+    }
+
     func getSimilarMovies(id: Int, page: Int, policy: CachePolicy) async throws -> CacheResult<MoviePage> {
         fatalError("Unused in test")
     }

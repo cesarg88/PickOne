@@ -2,6 +2,11 @@ import Foundation
 
 protocol GetMovieDetailUseCase: Sendable {
     func execute(id: Int, policy: CachePolicy) async throws -> CacheResult<MovieDetailSnapshot>
+    func execute(
+        id: Int,
+        policy: CachePolicy,
+        contentLocale: MovieContentLocale
+    ) async throws -> CacheResult<MovieDetailSnapshot>
 }
 
 final class GetMovieDetail: GetMovieDetailUseCase, Sendable {
@@ -12,11 +17,21 @@ final class GetMovieDetail: GetMovieDetailUseCase, Sendable {
     }
 
     func execute(id: Int, policy: CachePolicy) async throws -> CacheResult<MovieDetailSnapshot> {
+        try await execute(id: id, policy: policy, contentLocale: .english)
+    }
+
+    func execute(
+        id: Int,
+        policy: CachePolicy,
+        contentLocale: MovieContentLocale
+    ) async throws -> CacheResult<MovieDetailSnapshot> {
         let (detailResult, similarOutcome, creditsOutcome) = try await withThrowingTaskGroup(
             of: FetchResult.self
         ) { group in
             group.addTask {
-                try await .detail(self.repository.getMovieDetail(id: id, policy: policy))
+                try await .detail(self.repository.getMovieDetail(
+                    id: id, contentLocale: contentLocale, policy: policy
+                ))
             }
             group.addTask {
                 do {

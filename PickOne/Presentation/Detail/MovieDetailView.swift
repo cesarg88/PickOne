@@ -10,9 +10,13 @@ struct MovieDetailNavigationDependencies {
     let viewerStateDidChange: @MainActor (DecisionViewerStateChange) -> Void
     let eligibilityDidChange: @MainActor (DecisionEligibilityChange) -> Void
 
-    func makeViewModel(movieID: Int) -> MovieDetailViewModel {
+    func makeViewModel(
+        movieID: Int,
+        contentLocale: MovieContentLocale? = nil
+    ) -> MovieDetailViewModel {
         MovieDetailViewModel(
             movieId: movieID,
+            contentLocale: contentLocale,
             getMovieDetail: getMovieDetail,
             getViewerMovieState: getViewerMovieState,
             updateViewerMovieState: updateViewerMovieState,

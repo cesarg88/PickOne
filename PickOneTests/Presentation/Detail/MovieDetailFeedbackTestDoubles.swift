@@ -180,6 +180,14 @@ actor FeedbackOperationGate {
 struct ImmediateFeedbackMovieDetailUseCase: GetMovieDetailUseCase {
     func execute(
         id: Int,
+        policy: CachePolicy,
+        contentLocale _: MovieContentLocale
+    ) throws -> CacheResult<MovieDetailSnapshot> {
+        try execute(id: id, policy: policy)
+    }
+
+    func execute(
+        id: Int,
         policy: CachePolicy
     ) throws -> CacheResult<MovieDetailSnapshot> {
         CacheResult(value: .feedbackFixture, isStale: false)
@@ -187,6 +195,14 @@ struct ImmediateFeedbackMovieDetailUseCase: GetMovieDetailUseCase {
 }
 
 struct FailingMovieDetailUseCase: GetMovieDetailUseCase {
+    func execute(
+        id: Int,
+        policy: CachePolicy,
+        contentLocale _: MovieContentLocale
+    ) throws -> CacheResult<MovieDetailSnapshot> {
+        try execute(id: id, policy: policy)
+    }
+
     func execute(
         id: Int,
         policy: CachePolicy

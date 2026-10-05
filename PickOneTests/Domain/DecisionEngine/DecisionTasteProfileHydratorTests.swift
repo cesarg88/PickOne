@@ -141,6 +141,14 @@ private actor HydrationMovieRepository: MovieRepository {
         return CacheResult(value: movie, isStale: false)
     }
 
+    func getMovieDetail(
+        id: Int,
+        contentLocale _: MovieContentLocale,
+        policy: CachePolicy
+    ) async throws -> CacheResult<Movie> {
+        try await getMovieDetail(id: id, policy: policy)
+    }
+
     func waitUntilRequestCount(_ count: Int) async {
         guard requestedMovieIDs.count < count else { return }
         await withCheckedContinuation { continuation in
