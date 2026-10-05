@@ -294,16 +294,25 @@ merge gates, and final milestone acceptance was given on `2026-10-03`.
 Whole-App Localization & Visual Improvement
 
 Status:
-Deferred — product definition follows Milestone 8 evidence
+In definition — feedback and Pick behavior accepted on `2026-10-05`; visual
+handoff and executable milestone specification pending. Not Product Ready or
+Engineering Ready.
 
 Purpose:
 
 Complete English/Spanish localization beyond the M8 surfaces and address
-evidence-backed visual improvements. Evaluate Pick coach marks or spotlights
-and visual long-search feedback only if M8 physical validation demonstrates a
-discoverability or waiting-state problem. The Product Owner also reports
-selection-notice layout shifts and abrupt transitions; their design and fixes
-belong here, outside M8 PR4.
+evidence-backed visual improvements. The accepted
+[feedback contract](../../PRODUCT.md#5-movie-state-and-feedback),
+[Detail state contract](../../PRODUCT.md#6-movie-detail), and
+[compact Pick control](../../PRODUCT.md#pick-and-decision-sessions) constrain
+future design without approving Home or Detail layouts. The existing Home
+feedback menu remains; the permanent Detail reaction strip and the icon-only
+Pick proposal with its coach mark are superseded. Visual long-search feedback
+still requires evidence of a waiting-state problem. The Product Owner also
+reports selection-notice layout shifts and abrupt transitions; their design
+and fixes belong here, outside M8 PR4. The
+[Home handoff issue](https://github.com/cesarg88/PickOne/issues/57) remains
+open for its separate visual and technical checkpoints.
 
 ## Deferred Intelligence Infrastructure
 
