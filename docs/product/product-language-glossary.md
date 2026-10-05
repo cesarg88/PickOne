@@ -4,7 +4,8 @@
 
 - Status: `Accepted`
 - Product authority: [`PRODUCT.md`](../../PRODUCT.md)
-- Initial scope: Milestones 4–8
+- Scope: Cross-cutting terms through Milestone 8, with the Milestone 9
+  watched-without-rating behavior accepted on `2026-10-05`
 
 This glossary defines the canonical product and engineering meaning of terms
 that cross product specifications, Domain contracts, ADRs, persistence, and
@@ -95,7 +96,9 @@ The factual local state of whether the Viewer has watched a movie. It is
 independent from Watchlist intent and can be changed from any Movie Detail.
 
 A Movie reaction implies watched. Removing a Movie reaction does not remove the
-watched fact. Marking a movie unwatched removes an existing Movie reaction.
+watched fact. Watched does not require a Movie reaction: a direct `Already
+watched` action records the fact without requesting a rating. Marking a movie
+unwatched removes an existing Movie reaction.
 
 ### Watchlist intent
 

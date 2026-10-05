@@ -3,7 +3,7 @@
 ## Document Status
 
 - Status: `Canonical`
-- Last product review: `2026-10-04`
+- Last product review: `2026-10-05`
 - Product name: `PickOne` is a codename until the decision experience is
   validated.
 
@@ -393,11 +393,16 @@ signal as unrenderable; it must not fall back to copy such as `genre 28`.
 
 #### Pick and decision sessions
 
-Every recommendation exposes a visible `Pick` / `Elegir` button with an icon,
-movie-specific accessibility label, and a hint explaining that choosing does
-not mark the movie watched. After durable success the active card shows
-`Picked` / `Elegida`. Pick is a session decision, not watched state, Taste
-evidence, Watchlist intent, or a request to regenerate Home.
+Every recommendation exposes a compact native Liquid Glass pill with visible
+`Pick` / `Elegir` text, an icon, a movie-specific accessibility label, and a
+hint explaining that choosing does not mark the movie watched. The control
+does not use a `+` symbol. While saving, it shows progress and cannot be
+activated again; only after durable success does the active card show a
+checkmark with `Picked` / `Elegida`. System accessibility adaptations, including
+Reduce Transparency, take precedence over decorative transparency and preserve
+legibility. The earlier icon-only Pick proposal and its first-use coach-mark
+requirement are superseded. Pick is a session decision, not watched state,
+Taste evidence, Watchlist intent, or a request to regenerate Home.
 
 One Pick is active at a time. It may be replaced or cancelled while preserving
 the earlier action as `superseded` or `cancelled` history without inferring
@@ -512,10 +517,15 @@ rebuilt as eligible, credible, and explainable under the new snapshot. Home
 communicates a successful update discreetly. A stale generation can never
 replace a result built from newer Viewer Movie State.
 
-Every Home recommendation exposes lightweight explicit feedback without
-requiring navigation to Movie Detail: the four Movie reactions, `Already
-watched` without a reaction, and `Not interested`. Movie Detail and `My movies`
-remain the full editing surfaces. Passive card impressions and navigation never
+Every Home recommendation keeps the existing native per-card feedback menu,
+without requiring navigation to Movie Detail. It separates four ratings
+(`Love it`, `Like it`, `It was okay`, `Didn't like it`) from two different
+actions: `Already watched` and `Not interested`. These are four ratings, not
+six. Rating establishes watched; `Already watched` records viewing without
+inventing a rating and ends without a follow-up rating prompt. `Not interested`
+is available only for unwatched titles and excludes only that title; it is not
+negative Taste evidence. Movie Detail remains the full editing surface, with
+`My movies` routing to it. Passive card impressions and navigation never
 become feedback.
 
 Twelve hours after an active Pick, returning to Home may show a non-blocking
@@ -529,7 +539,9 @@ then offers an optional reaction step. Provenance does not depend on providing
 a reaction. A reaction captured there updates current Taste evidence and also
 becomes an immutable satisfaction snapshot for that decision; later edits do
 not rewrite the historic outcome. A direct rating or `Already watched` action
-without a prior Pick creates no PickOne provenance.
+without a prior Pick creates no PickOne provenance. The direct `Already watched`
+action does not launch the separate post-Pick viewing-confirmation or optional
+satisfaction flow; that Milestone 8 flow and its measurement remain unchanged.
 
 `My movies` shows confirmed provenance as a compact `PickOne` badge with icon
 and accessibility label `Chosen with PickOne` / `Elegida con PickOne`, separate
@@ -550,6 +562,23 @@ prioritize:
 - Watchlist and watched state
 - rating and `Not interested` feedback
 - the optional provider handoff action
+
+For Milestone 9's future presentation, Detail must show the known movie state
+instead of repeatedly asking for feedback:
+
+- An existing reaction is shown in words, with `Change rating` and the
+  existing editing and removal actions.
+- Watched without a reaction is shown as watched, with optional `Rate`; no
+  rating is requested automatically.
+- `Not interested` is shown with an undo action.
+- With no feedback, a `Rate` entry near the title opens the same native menu
+  pattern as Home, offering only actions valid for the current state.
+
+The previously explored permanent strip of four reaction icons in Detail is
+not the accepted direction. These are accepted behavior and interaction
+boundaries, not approval of Detail's final layout or authorization to implement
+Milestone 9. Existing transitions, including removal of a reaction while
+remaining watched and undoing `Not interested`, remain governed by ADR-012.
 
 A trailer is supporting evidence, not an autoplay surface. If no suitable
 trailer exists, omit the section gracefully.
@@ -772,8 +801,9 @@ M8 is complete; PR #54 merged after final-SHA review and green CI. The accepted
 [specification](docs/milestones/milestone-8-pilot-measurement.md) and ADR-015
 continue to bound behavior.
 
-Trailers, coach marks, visual long-search feedback, and explicit incorrect-
-availability feedback remain future work. Whole-app localization is planned
+Trailers, visual long-search feedback, and explicit incorrect-availability
+feedback remain future work. A Pick coach mark is not required by the accepted
+compact-pill direction. Whole-app localization is planned
 for Milestone 9; Milestone 8 localizes only its new and modified surfaces.
 Reported selection-notice layout shifts and abrupt transitions also belong to
 the visual milestone, with no visual adjustments in PR4.
@@ -984,9 +1014,10 @@ As of the last review:
   independent.
 - Milestone 8 localizes every new or modified surface in English and Spanish.
   Whole-app localization is deferred to Milestone 9.
-- Coach marks, trailers, visual long-search feedback, and explicit incorrect-
-  availability feedback are outside Milestone 8. `Didn't like it` remains
-  satisfaction evidence, never provider-data feedback.
+- Trailers, visual long-search feedback, and explicit incorrect-availability
+  feedback are outside Milestone 8. The accepted compact Pick pill replaces
+  the later icon-only proposal and removes its coach-mark requirement.
+  `Didn't like it` remains satisfaction evidence, never provider-data feedback.
 - Future remote analytics may consume typed semantic local events through an
   asynchronous vendor-neutral boundary, but local state remains authoritative
   and Milestone 8 adds no outbox, analytics SDK, or generic tracking API.
