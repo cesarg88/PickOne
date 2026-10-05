@@ -2,14 +2,13 @@
 
 ## Status and authority
 
-**Proposed for documentary review.** Product has approved the Home v2 controls,
+**Accepted — Home Engineering Ready.** Product has approved the Home v2 controls,
 the direction of the continuous scrim, and the [Design handoff in issue
-#57](https://github.com/cesarg88/PickOne/issues/57#issuecomment-5992956491)
-for implementation. This document becomes **Home Engineering Ready only after its
-documentation PR is reviewed and merged**. It does not make the whole of
-Milestone 9 Product Ready or Engineering Ready, certify contrast/accessibility
-in the app, or close issue #57. Do not begin production implementation before
-that merge.
+#57](https://github.com/montunolabs/PickOne/issues/57#issuecomment-5992956491)
+for implementation. The documentation PR has merged; this status applies to
+Home only. It does not make the whole of Milestone 9 Product Ready or
+Engineering Ready, certify contrast/accessibility in the app, or close issue
+#57.
 
 [`PRODUCT.md`](../../PRODUCT.md) governs behavior; [`ENGINEERING.md`](../../ENGINEERING.md)
 governs architecture. Preserve the accepted Decision Engine, bounded recall,
@@ -29,7 +28,7 @@ remain outside this Home contract.
 
 ## Design evidence and interpretation
 
-Use the [Design handoff](https://github.com/cesarg88/PickOne/issues/57#issuecomment-5992956491)
+Use the [Design handoff](https://github.com/montunolabs/PickOne/issues/57#issuecomment-5992956491)
 as the complete state/copy/accessibility reference, not a machine-local file.
 Stable Figma evidence:
 
@@ -128,7 +127,7 @@ Home-to-Detail title for the same ID.
   to meet contrast on light and dark photographs in both themes. System
   Reduce Transparency/Increase Contrast overrides decoration.
 - Preserve accepted H0/H3/H1/HR/HP/HE/HF/HO/HQ/HW/HK behavior in the
-  [handoff](https://github.com/cesarg88/PickOne/issues/57#issuecomment-5992956491).
+  [handoff](https://github.com/montunolabs/PickOne/issues/57#issuecomment-5992956491).
   An exhausted set means **no eligible and credible recommendations after
   the accepted search**, not that the selected services contain no movies.
   Use `No picks available right now` / an approved equivalent, with the
@@ -179,20 +178,25 @@ and Pick/feedback persistence failures. Measure worst text/icon contrast
 against the actual runtime image/material, including the bright iPad example;
 reference thresholds are 4.5:1 normal text and 3:1 large text/essential
 visual controls. Record device, OS, build SHA, settings, evidence, and limits.
-Figma screenshots alone do not satisfy this gate. Physical acceptance and
-issue #57 closure remain separate after implementation.
+Figma screenshots alone do not satisfy this gate. PR4 must provide a versioned
+physical-validation guide linked from its issue and PR, and record satisfactory
+Product Owner validation before merge. Issue #57 remains open until complete
+Home acceptance, independent of any one child issue.
 
 ## Ordered implementation PRs after this D0 merges
 
 | PR | Boundary | Review and merge gate |
 | --- | --- | --- |
-| 1 — localized display metadata | Effective ES/EN content locale, locale-scoped TMDB/detail cache, Home display projection for persisted/new sets, original/legacy fallbacks, Detail title coherence. No visual redesign. | Deterministic repository/mapper/relaunch/locale-race/offline tests. No scoring, Decision Set schema, region, or session change. |
-| 2 — responsive visual composition | Hero/alternatives, available-width reflow, image hierarchy, continuous scrim, scoped semantic styles. No Pick or feedback semantics change. | iPhone portrait and iPad both orientations in focused simulator tests; bright-image contrast evidence; long text and Dynamic Type; all actionable content reachable. |
-| 3 — controls and stable transitions | Native Glass Pick/ellipsis, durable saving/selected/error/retry presentation, per-card feedback state, one-card/refresh animations and no layout-shifting notice. | Pick/cancel/replace failure fixtures, movie-ID slot identity, VoiceOver focus, Reduce Motion/Transparency; no Domain behavior changes. |
-| 4 — Home integration and closure | Reconcile partial/exhausted/offline/error and language/theme edges, regressions, documentation closure **for Home only**. | Full verification, accepted matrix on iPhone and physical iPad, PO/Design/Technical Lead evidence and issue #57 update. Do not claim whole M9 complete. |
+| [1 — localized display metadata](https://github.com/montunolabs/PickOne/issues/62) | Effective ES/EN content locale, locale-scoped TMDB/detail cache, Home display projection for persisted/new sets, original/legacy fallbacks, Detail title coherence. No visual redesign. | Deterministic repository/mapper/relaunch/locale-race/offline tests. No scoring, Decision Set schema, region, or session change. |
+| [2 — responsive visual composition](https://github.com/montunolabs/PickOne/issues/63) | Hero/alternatives, available-width reflow, image hierarchy, continuous scrim, scoped semantic styles. No Pick or feedback semantics change. | iPhone portrait and iPad both orientations in focused simulator tests; bright-image contrast evidence; long text and Dynamic Type; all actionable content reachable. |
+| [3 — controls and stable transitions](https://github.com/montunolabs/PickOne/issues/64) | Native Glass Pick/ellipsis, durable saving/selected/error/retry presentation, per-card feedback state, one-card/refresh animations and no layout-shifting notice. | Pick/cancel/replace failure fixtures, movie-ID slot identity, VoiceOver focus, Reduce Motion/Transparency; no Domain behavior changes. |
+| [4 — Home integration and closure](https://github.com/montunolabs/PickOne/issues/65) | Reconcile partial/exhausted/offline/error and language/theme edges, regressions, documentation closure **for Home only**. | Full verification, accepted matrix on iPhone and physical iPad, PO/Design/Technical Lead evidence and issue #57 update. Do not claim whole M9 complete. |
 
 Each PR starts from merged `develop`, preserves the required PR template, and
 is ready for review without waiting for CI. CI must be green before merge.
+Follow the [issue-driven delivery process](../process/issue-driven-delivery.md),
+including a versioned physical-validation guide and satisfactory Product Owner
+OK before merge when a slice requires device validation.
 Do not combine Home PRs with the separate Detail redesign. Any newly observed
 Domain change or persistence migration must be proposed for review instead of
 being hidden in a visual PR.

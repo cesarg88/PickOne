@@ -28,6 +28,8 @@ linked authority or workflow for the task instead of duplicating it here.
 
 ## Delivery Requirements
 
+- Read [`docs/process/issue-driven-delivery.md`](docs/process/issue-driven-delivery.md)
+  before creating or handing off an implementation issue or PR.
 - Read [`docs/process/agent-delivery-model.md`](docs/process/agent-delivery-model.md)
   before implementation work.
 - Read [`docs/process/repository-verification.md`](docs/process/repository-verification.md)
