@@ -394,13 +394,13 @@ signal as unrenderable; it must not fall back to copy such as `genre 28`.
 #### Pick and decision sessions
 
 Every recommendation exposes a compact native Liquid Glass pill with visible
-`Pick` / `Elegir` text, an icon, a movie-specific accessibility label, and a
-hint explaining that choosing does not mark the movie watched. The control
-does not use a `+` symbol. While saving, it shows progress and cannot be
-activated again; only after durable success does the active card show a
-checkmark with `Picked` / `Elegida`. System accessibility adaptations, including
-Reduce Transparency, take precedence over decorative transparency and preserve
-legibility. The earlier icon-only Pick proposal and its first-use coach-mark
+`Pick` / `Elegir` text and no icon in its normal state, a movie-specific
+accessibility label, and a hint explaining that choosing does not mark the
+movie watched. While saving, it shows progress and cannot be activated again;
+only after durable success does the active card show a checkmark with `Picked` /
+`Elegida`. System accessibility adaptations, including Reduce Transparency,
+take precedence over decorative transparency and preserve legibility. The
+earlier icon-only Pick proposal and its first-use coach-mark
 requirement are superseded. Pick is a session decision, not watched state,
 Taste evidence, Watchlist intent, or a request to regenerate Home.
 

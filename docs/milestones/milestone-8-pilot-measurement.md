@@ -92,6 +92,10 @@ No reaction never implies neutral or negative satisfaction.
 
 - Every Home recommendation has a visible, compact button with icon and
   `Pick` in English or `Elegir` in Spanish. It is not icon-only.
+- This records the delivered M8 control. The accepted M9 Home direction
+  supersedes its normal-state icon: `Pick` / `Elegir` remains visible without
+  an icon; the checkmark appears only after durable success (see
+  [PRODUCT.md](../../PRODUCT.md#pick-and-decision-sessions)).
 - After durable success, the active recommendation shows `Picked` / `Elegida`.
   The success notice dismisses automatically after three seconds; dismissal
   preserves the active Pick. Tapping `Picked` / `Elegida` again cancels it;
