@@ -345,6 +345,12 @@ generic catalog and not an empty text composer. It should feel as if PickOne has
 already done the difficult filtering rather than asking the viewer to search a
 database.
 
+The Product-approved Milestone 9 Home visual direction and Design evidence are
+tracked in [issue #57](https://github.com/cesarg88/PickOne/issues/57). Its
+[scoped implementation specification](docs/milestones/milestone-9-home-implementation.md)
+defines the technical handoff for Home; it does not declare the whole milestone
+accepted or replace the behavior in this document.
+
 The set should contain:
 
 1. **Safe Choice** — the highest-confidence option based on the available
