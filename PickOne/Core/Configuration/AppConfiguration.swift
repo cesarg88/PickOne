@@ -23,6 +23,21 @@ struct AppConfiguration {
     static let usesHomeRecoveryScenarioForUITests = ProcessInfo.processInfo.arguments.contains(
         "-ui-testing-home-recovery"
     )
+    static let usesHomeCompositionScenarioForUITests = ProcessInfo.processInfo.arguments.contains(
+        "-ui-testing-home-composition"
+    )
+    static let usesHomeTwoCardsForUITests = ProcessInfo.processInfo.arguments.contains(
+        "-ui-testing-home-two-cards"
+    )
+    static let usesHomePosterScenarioForUITests = ProcessInfo.processInfo.arguments.contains(
+        "-ui-testing-home-poster"
+    )
+    static let usesHomeBrightBackdropForUITests = ProcessInfo.processInfo.arguments.contains(
+        "-ui-testing-home-bright-backdrop"
+    )
+    static let usesHomeDarkBackdropForUITests = ProcessInfo.processInfo.arguments.contains(
+        "-ui-testing-home-dark-backdrop"
+    )
     static let resetsHomeRecoveryScenarioForUITests = ProcessInfo.processInfo.arguments.contains(
         "-ui-testing-home-recovery-reset"
     )
