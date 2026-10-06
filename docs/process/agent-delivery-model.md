@@ -76,6 +76,8 @@ as durable decisions.
 
 All GitHub operations must also follow the mandatory
 [GitHub App Authentication Policy](github-app-authentication.md).
+Executable work and acceptance follow the
+[issue-driven delivery process](issue-driven-delivery.md).
 
 ## Definition of Ready for Autonomous Implementation
 
@@ -113,7 +115,8 @@ If one of these is intentionally irrelevant, the specification should say so.
 3. The Technical Lead reviews feasibility and defines the technical contracts,
    ADRs, risks, verification, and delivery slices.
 4. Product Ready and Engineering Ready are recorded before implementation.
-5. A new implementation task and branch are created for one bounded outcome.
+5. Create or confirm one bounded implementation issue with an owner, acceptance,
+   dependencies, and authorization. Then create its task and branch.
 6. The implementation agent works from repository documents, not from the full
    steering-chat history.
 7. The agent opens a ready-for-review PR using
@@ -122,10 +125,14 @@ If one of these is intentionally irrelevant, the specification should say so.
 8. The Technical Lead reviews correctness, architecture, scope, tests,
    failure behavior, and documentation independently of whether CI is pending,
    successful, or failed.
-9. The Product Owner performs the specified physical-device validation.
+9. When required, the PR includes a versioned device-validation guide linked
+   from the issue and PR; the Product Owner records satisfactory physical
+   validation against the final relevant code before merge.
 10. Required changes are returned to the implementation task.
-11. Before merge, the implementation PR records final validation and closes the
+11. Before merge, the implementation PR records final validation and updates
     milestone, roadmap, backlog, and ADR status required by its specification.
+    The linked issue remains In Progress until the authorized merge closes it;
+    partial child delivery does not close its parent.
 
 ## Pull Request Handoff Requirements
 
@@ -136,12 +143,14 @@ content must state:
 - what changed
 - why it changed
 - specification and backlog identifiers
+- the linked executable issue and its closing keyword when targeting `develop`
 - base branch, dependent PRs, and merge order when stacked
 - important architecture decisions
 - tests and commands executed
 - CI status or result when available; `pending` is valid at handoff and review
 - known limitations
 - device checks requested from the Product Owner
+- the versioned physical-validation guide and satisfactory result when required
 - follow-up work intentionally excluded
 
 Implementation PRs are always opened ready for review and never as drafts. CI

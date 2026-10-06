@@ -2,7 +2,7 @@
 
 ## Context
 
-<!-- Link the active milestone, specification, ADR, backlog item, or issue. Explain why this change exists. -->
+<!-- Link the executable issue and accepted milestone/specification. For a PR targeting develop, include Closes #N for its own issue, not an unfinished parent. Explain why this change exists. -->
 
 ## Dependency and merge order
 
@@ -25,7 +25,7 @@
 
 ## Device validation
 
-<!-- State the physical-device checks requested from the Product Owner, or explain why none are required. -->
+<!-- If physical validation is required, link the versioned .md guide from this PR and its issue, and record the Product Owner's satisfactory OK before merge. Otherwise explain why none is required. See docs/process/issue-driven-delivery.md. -->
 
 ## Out of scope
 

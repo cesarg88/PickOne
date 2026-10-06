@@ -296,10 +296,10 @@ Whole-App Localization & Visual Improvement
 Status:
 In definition — feedback and Pick behavior accepted on `2026-10-05`; Product
 has approved the Home v2 visual direction and
-[Design handoff](https://github.com/cesarg88/PickOne/issues/57#issuecomment-5992956491).
+[Design handoff](https://github.com/montunolabs/PickOne/issues/57#issuecomment-5992956491).
 The [Home-only executable specification](../milestones/milestone-9-home-implementation.md)
-is in documentary review. Home is not Engineering Ready until that review
-merges; the whole of M9 is neither Product Ready nor Engineering Ready.
+is accepted and Home Engineering Ready after its documentation PR merged. The
+whole of M9 is neither Product Ready nor Engineering Ready.
 
 Purpose:
 
@@ -314,8 +314,8 @@ Pick proposal with its coach mark are superseded. Visual long-search feedback
 still requires evidence of a waiting-state problem. The Product Owner also
 reports selection-notice layout shifts and abrupt transitions; their design
 and fixes belong here, outside M8 PR4. The
-[Home handoff issue](https://github.com/cesarg88/PickOne/issues/57) remains
-open for implementation and physical acceptance. Home implementation includes
+[Home implementation and acceptance issue](https://github.com/montunolabs/PickOne/issues/57)
+remains open for implementation and physical acceptance. Home implementation includes
 an explicit ES/EN movie-metadata projection and persisted-set recovery slice;
 Spain availability and the decision history remain independent of language.
 Detail's visual redesign is not a dependency for Home.

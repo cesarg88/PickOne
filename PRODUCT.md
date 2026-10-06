@@ -346,7 +346,7 @@ already done the difficult filtering rather than asking the viewer to search a
 database.
 
 The Product-approved Milestone 9 Home visual direction and Design evidence are
-tracked in [issue #57](https://github.com/cesarg88/PickOne/issues/57). Its
+tracked in [issue #57](https://github.com/montunolabs/PickOne/issues/57). Its
 [scoped implementation specification](docs/milestones/milestone-9-home-implementation.md)
 defines the technical handoff for Home; it does not declare the whole milestone
 accepted or replace the behavior in this document.

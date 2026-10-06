@@ -709,10 +709,11 @@ Priorities:
   - externalize user-facing copy and define the first supported languages
   - localize dates, ratings, region, and availability correctly
 - Home v2 has a Product-approved
-  [Design handoff](https://github.com/cesarg88/PickOne/issues/57#issuecomment-5992956491)
+  [Design handoff](https://github.com/montunolabs/PickOne/issues/57#issuecomment-5992956491)
   and a [scoped executable specification](../milestones/milestone-9-home-implementation.md)
-  in review. Its ES/EN metadata and restored-set behavior are part of Home's
-  implementation gate, not evidence that whole-app M9 localization is done.
+  accepted for Home implementation. Its ES/EN metadata and restored-set
+  behavior are part of Home's implementation gate, not evidence that whole-app
+  M9 localization is done.
 - Done when:
   - every declared platform, orientation, and language has an explicit quality
     bar
