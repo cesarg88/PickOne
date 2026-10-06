@@ -16,6 +16,20 @@ struct HomeDecisionMovieItem: Identifiable, Equatable {
     let providers: [HomeDecisionProviderItem]
     let isSaved: Bool
     let feedbackMetadata: MovieFeedbackMetadata
+
+    var slot: HomeDecisionSlot {
+        switch decisionRole {
+            case .safeChoice: .safe
+            case .stretchChoice: .stretch
+            case .discoveryChoice: .discovery
+        }
+    }
+}
+
+enum HomeDecisionSlot: Hashable {
+    case safe
+    case stretch
+    case discovery
 }
 
 struct HomeDecisionProviderItem: Identifiable, Equatable, Hashable {

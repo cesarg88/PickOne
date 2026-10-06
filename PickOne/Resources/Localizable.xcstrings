@@ -52,6 +52,13 @@
         }
       }
     },
+    "Saving...": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Saving..." } },
+        "es": { "stringUnit": { "state": "translated", "value": "Guardando…" } }
+      }
+    },
     "Pick": {
       "extractionState": "manual",
       "localizations": {
@@ -154,6 +161,48 @@
         }
       }
     },
+    "Saving your choice of %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Saving your choice of %@" } },
+        "es": { "stringUnit": { "state": "translated", "value": "Guardando la elección de %@" } }
+      }
+    },
+    "Saving %@ as your choice instead of %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Saving %@ as your choice instead of %@" } },
+        "es": { "stringUnit": { "state": "translated", "value": "Guardando %@ como elección en lugar de %@" } }
+      }
+    },
+    "Saving cancellation of %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Saving cancellation of %@" } },
+        "es": { "stringUnit": { "state": "translated", "value": "Guardando la cancelación de %@" } }
+      }
+    },
+    "Your choice couldn't be cancelled. Please try again.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Your choice couldn't be cancelled. Please try again." } },
+        "es": { "stringUnit": { "state": "translated", "value": "No se pudo cancelar tu elección. Inténtalo de nuevo." } }
+      }
+    },
+    "Retry saving your choice of %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Retry saving your choice of %@" } },
+        "es": { "stringUnit": { "state": "translated", "value": "Reintentar guardar la elección de %@" } }
+      }
+    },
+    "Retry cancelling your choice of %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Retry cancelling your choice of %@" } },
+        "es": { "stringUnit": { "state": "translated", "value": "Reintentar cancelar la elección de %@" } }
+      }
+    },
     "Your choice couldn't be saved. Please try again.": {
       "extractionState": "manual",
       "localizations": {
@@ -169,6 +218,27 @@
             "value": "No se ha podido guardar tu elección. Inténtalo de nuevo."
           }
         }
+      }
+    },
+    "You picked %@.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "You picked %@." } },
+        "es": { "stringUnit": { "state": "translated", "value": "Has elegido %@." } }
+      }
+    },
+    "You picked %@ instead of %@.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "You picked %@ instead of %@." } },
+        "es": { "stringUnit": { "state": "translated", "value": "Has elegido %@ en lugar de %@." } }
+      }
+    },
+    "Choice cancelled.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Choice cancelled." } },
+        "es": { "stringUnit": { "state": "translated", "value": "Elección cancelada." } }
       }
     },
     "You have a Pick": {
@@ -594,6 +664,20 @@
             "value": "Guardando opinión sobre %@"
           }
         }
+      }
+    },
+    "More options for %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "More options for %@" } },
+        "es": { "stringUnit": { "state": "translated", "value": "Más opciones para %@" } }
+      }
+    },
+    "Updating recommendations for %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Updating recommendations for %@" } },
+        "es": { "stringUnit": { "state": "translated", "value": "Actualizando las recomendaciones de %@" } }
       }
     },
     "Feedback for %@": {

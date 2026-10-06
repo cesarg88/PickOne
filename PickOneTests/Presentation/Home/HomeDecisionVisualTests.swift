@@ -13,6 +13,12 @@ struct HomeDecisionVisualTests {
         #expect(!HomeDecisionLayout.usesColumns(availableWidth: 1130, dynamicTypeSize: .accessibility5))
     }
 
+    @Test("Reduce Motion removes nonessential set transitions without removing content")
+    func reducedMotionTransition() {
+        #expect(HomeDecisionTransition.animation(reduceMotion: true) == nil)
+        #expect(HomeDecisionTransition.animation(reduceMotion: false) != nil)
+    }
+
     @Test("image hierarchy falls through actual loading failures")
     func imageFallback() async {
         let backdropURL = URL(string: "https://example.com/backdrop.jpg")

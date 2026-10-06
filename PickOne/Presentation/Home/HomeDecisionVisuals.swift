@@ -9,6 +9,12 @@ enum HomeDecisionLayout {
     }
 }
 
+enum HomeDecisionTransition {
+    static func animation(reduceMotion: Bool) -> Animation? {
+        reduceMotion ? nil : .easeInOut(duration: 0.2)
+    }
+}
+
 enum HomeDecisionScrim {
     // Even a white photograph remains behind dark enough pixels for white labels.
     static let topOpacity = 0.72

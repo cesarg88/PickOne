@@ -59,17 +59,28 @@ final class HomePickInteractionTests: XCTestCase {
         screenshot.lifetime = .keepAlways
         add(screenshot)
         XCTAssertTrue(pick.isHittable)
+        XCTAssertGreaterThanOrEqual(pick.frame.width, 44)
+        XCTAssertGreaterThanOrEqual(pick.frame.height, 44)
         XCTAssertTrue(pick.label.hasPrefix(pickPrefix))
         let movieTitle = String(pick.label.dropFirst(pickPrefix.count))
         XCTAssertFalse(movieTitle.isEmpty)
         let label = pickPrefix + movieTitle
         let pickedLabel = pickedPrefix + movieTitle
+        let originalFrame = pick.frame
         pick.tap()
         let picked = XCTNSPredicateExpectation(predicate: NSPredicate(format: "label == %@", pickedLabel), object: pick)
         XCTAssertEqual(XCTWaiter.wait(for: [picked], timeout: 15), .completed)
         XCTAssertEqual(pick.label, pickedLabel)
+        XCTAssertEqual(
+            pick.frame.minY,
+            originalFrame.minY,
+            accuracy: 1,
+            "The success notice must not move the selected control"
+        )
         XCTAssertTrue(app.buttons["home-recommendation-101"].exists, "Pick must preserve the recommendation")
-        let notice = app.staticTexts[language == "es" ? "Tienes una película elegida" : "You have a Pick"]
+        let notice = app.staticTexts[language == "es"
+            ? "Has elegido \(movieTitle)." : "You picked \(movieTitle)."]
+        XCTAssertTrue(notice.waitForExistence(timeout: 3), "Success feedback names the committed movie")
         XCTAssertTrue(notice.waitForNonExistence(timeout: 8), "Pick feedback must dismiss automatically")
         XCTAssertEqual(pick.label, pickedLabel, "Dismissing feedback must preserve the choice")
         app.terminate()
@@ -90,6 +101,7 @@ final class HomePickInteractionTests: XCTestCase {
         for _ in 0 ..< 6 where !pick.isHittable {
             app.swipeUp()
         }
+        let beforeCancellationFrame = pick.frame
         pick.tap()
         if failsCancellation {
             verifyFailedCancellation(app: app, pick: pick, pickedLabel: pickedLabel, notice: notice)
@@ -97,6 +109,19 @@ final class HomePickInteractionTests: XCTestCase {
         let cleared = XCTNSPredicateExpectation(predicate: NSPredicate(format: "label == %@", label), object: pick)
         XCTAssertEqual(XCTWaiter.wait(for: [cleared], timeout: 15), .completed)
         XCTAssertEqual(pick.label, label)
+        XCTAssertEqual(
+            pick.frame.minY,
+            beforeCancellationFrame.minY,
+            accuracy: 1,
+            "Durable cancellation must not shift the card"
+        )
+        let cancellationNotice = app.staticTexts[
+            language == "es" ? "Elección cancelada." : "Choice cancelled."
+        ]
+        XCTAssertTrue(
+            cancellationNotice.waitForExistence(timeout: 3),
+            "Durable cancellation must announce its result"
+        )
     }
 
     @MainActor
@@ -106,11 +131,12 @@ final class HomePickInteractionTests: XCTestCase {
         let retry = app.buttons["home-pick-retry-101"]
         XCTAssertTrue(retry.waitForExistence(timeout: 15))
         XCTAssertEqual(pick.label, pickedLabel, "Failed cancellation must preserve the committed choice")
-        XCTAssertEqual(app.buttons.matching(NSPredicate(format: "label == %@", "Try again")).count, 1)
+        XCTAssertTrue(retry.label.hasPrefix("Retry cancelling your choice of "))
+        XCTAssertEqual(app.buttons.matching(identifier: "home-pick-retry-101").count, 1)
         XCTAssertEqual(
             app.staticTexts.matching(NSPredicate(
                 format: "label == %@",
-                "Your choice couldn't be saved. Please try again."
+                "Your choice couldn't be cancelled. Please try again."
             )).count,
             1
         )

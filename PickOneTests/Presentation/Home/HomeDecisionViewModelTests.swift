@@ -5,6 +5,47 @@ import Testing
 @MainActor
 @Suite("HomeDecisionViewModel Tests", .serialized)
 struct HomeDecisionViewModelTests {
+    @Test("one-card reconciliation preserves eligible role slots; explicit refresh replaces the set")
+    func oneCardReplacementAndExplicitRefreshStayDistinct() async throws {
+        func snapshot(_ movies: [(Int, DecisionRole)]) throws -> ThreeForTonightSnapshot {
+            try HomeDecisionTestFixtures.snapshot(
+                recommendations: movies.map { try HomeDecisionTestFixtures.recommendation(movieID: $0.0, role: $0.1) },
+                setID: UUID()
+            )
+        }
+        let initial = try snapshot([(101, .safeChoice), (202, .stretchChoice), (303, .discoveryChoice)])
+        let replaced = try snapshot([(101, .safeChoice), (404, .stretchChoice), (303, .discoveryChoice)])
+        let refreshed = try snapshot([(501, .safeChoice), (502, .stretchChoice), (503, .discoveryChoice)])
+        let useCase = HomeDecisionUseCase(results: [
+            .success(.usable(initial)), .success(.usable(replaced)), .success(.usable(refreshed)),
+        ])
+        let sut = HomeDecisionViewModel(threeForTonight: useCase)
+
+        sut.load()
+        await waitForItems([101, 202, 303], in: sut)
+        let change = try #require(DecisionViewerStateChange(
+            movieID: 202,
+            impact: .eligibilityChanged,
+            snapshotID: ViewerStateSnapshotID(rawValue: UUID())
+        ))
+        sut.reconcile(after: change)
+        await waitForItems([101, 404, 303], in: sut)
+        guard case let .loaded(afterFeedback, _, _) = sut.state else {
+            Issue.record("Expected replacement set")
+            return
+        }
+        #expect(afterFeedback.items.map(\.slot) == [.safe, .stretch, .discovery])
+        #expect(afterFeedback.items.map(\.id) == [101, 404, 303])
+
+        sut.refresh()
+        await waitForItems([501, 502, 503], in: sut)
+        guard case let .loaded(afterRefresh, _, _) = sut.state else {
+            Issue.record("Expected explicit refresh set")
+            return
+        }
+        #expect(afterRefresh.items.map(\.id) == [501, 502, 503])
+    }
+
     @Test("load maps a usable set and an honest empty set")
     func loadMapsUsableStates() async throws {
         let populated = try HomeDecisionTestFixtures.snapshot()

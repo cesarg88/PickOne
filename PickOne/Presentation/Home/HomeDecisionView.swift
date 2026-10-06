@@ -45,6 +45,7 @@ struct HomeDecisionView: View {
             }
             .onChange(of: locale.identifier) {
                 model.setContentLocale(locale)
+                model.pickModel?.dismissPickFeedback()
             }
             .navigationTitle("Home")
             .navigationDestination(for: HomeDecisionRoute.self) { route in
@@ -127,24 +128,7 @@ private struct HomeDecisionContent: View {
     let reviewStreamingServices: () -> Void
 
     var body: some View {
-        VStack(spacing: 0) {
-            if pickModel?.isShowingPickFeedback == true {
-                HomePickSuccessNotice()
-            }
-            content
-        }
-        .overlay(alignment: .top) {
-            if let updateFeedback {
-                Label(updateFeedback, systemImage: "checkmark.circle")
-                    .font(.footnote.weight(.medium))
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 10)
-                    .background(.regularMaterial, in: .capsule)
-                    .padding(.top, 8)
-                    .allowsHitTesting(false)
-                    .accessibilityIdentifier("home-recommendations-updated")
-            }
-        }
+        content
     }
 
     @ViewBuilder
@@ -157,6 +141,7 @@ private struct HomeDecisionContent: View {
                 HomeDecisionLoadedView(
                     set: set,
                     pickModel: pickModel,
+                    updateFeedback: updateFeedback,
                     isRefreshing: isRefreshing,
                     refreshError: refreshError,
                     exhaustion: exhaustion,
@@ -190,9 +175,12 @@ private struct HomeDecisionContent: View {
 @MainActor
 private struct HomeDecisionLoadedView: View {
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @AccessibilityFocusState private var focusedSlot: HomeDecisionSlot?
 
     let set: HomeDecisionSetPresentationModel
     let pickModel: HomePickViewModel?
+    let updateFeedback: String?
     let isRefreshing: Bool
     let refreshError: String?
     let exhaustion: HomeDecisionExhaustionPresentation?
@@ -229,7 +217,7 @@ private struct HomeDecisionLoadedView: View {
                             VStack(alignment: .leading, spacing: 12) {
                                 Text(alternativesHeading)
                                     .font(.system(.title2, design: .serif))
-                                ForEach(alternatives) { item in
+                                ForEach(alternatives, id: \.slot) { item in
                                     card(for: item, isHero: false)
                                 }
                             }
@@ -257,6 +245,21 @@ private struct HomeDecisionLoadedView: View {
                 .padding(.horizontal, horizontalPadding)
                 .padding(.vertical, 20)
                 .frame(maxWidth: .infinity)
+                .animation(HomeDecisionTransition.animation(reduceMotion: reduceMotion), value: set.items.map(\.id))
+            }
+        }
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            HomeDecisionStatusRegion(
+                pickFeedback: pickModel?.pickFeedback,
+                updateFeedback: updateFeedback
+            )
+        }
+        .onChange(of: set.items.map(\.id)) { oldIDs, newIDs in
+            guard oldIDs != newIDs, let slot = focusedSlot else { return }
+            focusedSlot = nil
+            Task { @MainActor in
+                await Task.yield()
+                focusedSlot = slot
             }
         }
     }
@@ -282,9 +285,44 @@ private struct HomeDecisionLoadedView: View {
             pickModel: pickModel,
             imagePipeline: imagePipeline,
             updateViewerMovieState: updateViewerMovieState,
-            viewerStateDidChange: viewerStateDidChange
+            viewerStateDidChange: viewerStateDidChange,
+            feedbackDidCommit: { focusedSlot = item.slot }
         )
         .id(item.id)
+        .accessibilityElement(children: .contain)
+        .accessibilityFocused($focusedSlot, equals: item.slot)
+    }
+}
+
+@MainActor
+private struct HomeDecisionStatusRegion: View {
+    @ScaledMetric(relativeTo: .subheadline) private var reservedHeight = 72.0
+
+    let pickFeedback: HomePickAcknowledgement?
+    let updateFeedback: String?
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 8) {
+                if let pickFeedback {
+                    HomePickSuccessNotice(feedback: pickFeedback)
+                }
+                if let updateFeedback {
+                    Label(updateFeedback, systemImage: "checkmark.circle")
+                        .font(.footnote.weight(.medium))
+                        .accessibilityIdentifier("home-recommendations-updated")
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .scrollIndicators(.hidden)
+        .frame(height: reservedHeight)
+        .background {
+            if pickFeedback != nil || updateFeedback != nil {
+                Rectangle().fill(.regularMaterial)
+            }
+        }
+        .accessibilityAddTraits(.updatesFrequently)
     }
 }
 

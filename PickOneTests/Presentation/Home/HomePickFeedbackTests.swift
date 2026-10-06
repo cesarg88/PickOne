@@ -16,10 +16,11 @@ struct HomePickFeedbackTests {
         try model.updateSurface(ViewingDecisionTestFixtures.surface())
         model.showHome()
         model.setActive(true)
-        model.pick(movieID: 1)
+        model.pick(movieID: 1, title: "First movie")
         await model.waitForPendingOperations()
         let decision = try #require(model.activeDecision)
         #expect(model.isShowingPickFeedback)
+        #expect(model.pickFeedback == .picked(title: "First movie", replacedTitle: nil))
         await delay.waitForRequestCount(1)
         #expect(await delay.requestedDurations() == [.seconds(3)])
         await delay.resumeAll()
@@ -59,7 +60,7 @@ struct HomePickFeedbackTests {
         model.setActive(true)
         await model.waitForPendingOperations()
         store.failure = "active"
-        model.pick(movieID: 1)
+        model.pick(movieID: 1, title: "First movie")
         await model.waitForPendingOperations()
         #expect(!model.isShowingPickFeedback)
         #expect(await delay.requestedDurations().isEmpty)
@@ -67,6 +68,7 @@ struct HomePickFeedbackTests {
         model.retry(movieID: 1)
         await model.waitForPendingOperations()
         #expect(model.isShowingPickFeedback)
+        #expect(model.pickFeedback == .picked(title: "First movie", replacedTitle: nil))
         await delay.waitForRequestCount(1)
         await delay.resumeAll()
         await waitForDismissal(model)
@@ -74,7 +76,7 @@ struct HomePickFeedbackTests {
         #expect(model.activeDecision?.recommendation.movieID == 1)
     }
 
-    @Test func replacingPickGetsFreshNoticeAndCancellationClearsItImmediately() async throws {
+    @Test func replacementAndCancellationGetDistinctDurableNotices() async throws {
         let delay = PickFeedbackTestDelay()
         let model = HomePickViewModel(
             manage: ManageViewingDecision(
@@ -85,12 +87,13 @@ struct HomePickFeedbackTests {
         try model.updateSurface(ViewingDecisionTestFixtures.surface())
         model.showHome()
         model.setActive(true)
-        model.pick(movieID: 1)
+        model.pick(movieID: 1, title: "First movie")
         await model.waitForPendingOperations()
         await delay.waitForRequestCount(1)
-        model.pick(movieID: 2)
+        model.pick(movieID: 2, title: "Second movie")
         await model.waitForPendingOperations()
         await delay.waitForRequestCount(2)
+        #expect(model.pickFeedback == .picked(title: "Second movie", replacedTitle: "First movie"))
         await delay.resumeFirst()
         for _ in 0 ..< 200 {
             await Task.yield()
@@ -99,8 +102,14 @@ struct HomePickFeedbackTests {
         #expect(model.activeDecision?.recommendation.movieID == 2)
         model.cancel()
         await model.waitForPendingOperations()
-        #expect(!model.isShowingPickFeedback)
+        #expect(model.pickFeedback == .cancelled)
         #expect(model.activeDecision == nil)
+        model.showHome()
+        await model.waitForPendingOperations()
+        #expect(
+            model.pickFeedback == .cancelled,
+            "A later empty-state observation must preserve the cancellation notice"
+        )
         await delay.resumeFirst()
     }
 

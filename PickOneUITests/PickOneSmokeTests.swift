@@ -48,7 +48,7 @@ final class PickOneSmokeTests: XCTestCase {
             "UICTContentSizeCategoryAccessibilityXXXL",
         ])
         let recommendation = app.buttons["home-recommendation-101"]
-        let feedbackMenu = app.buttons["Feedback for Tonight's Movie"]
+        let feedbackMenu = app.buttons["More options for Tonight's Movie"]
         XCTAssertTrue(recommendation.waitForExistence(timeout: 15))
         XCTAssertTrue(feedbackMenu.waitForExistence(timeout: 15))
         XCTAssertTrue(feedbackMenu.isHittable)
@@ -79,7 +79,7 @@ final class PickOneSmokeTests: XCTestCase {
         verifyHomeRecoveryPreservedSurfaces(in: app)
 
         app.tabBars.buttons["Home"].tap()
-        let feedbackMenu = app.buttons["Feedback for Tonight's Movie"]
+        let feedbackMenu = app.buttons["More options for Tonight's Movie"]
         XCTAssertTrue(feedbackMenu.waitForExistence(timeout: 15))
         feedbackMenu.tap()
         tapButton("Already watched", in: app)
@@ -197,7 +197,7 @@ final class PickOneSmokeTests: XCTestCase {
     private func verifyHomeQuickFeedback(in app: XCUIApplication) {
         app.tabBars.buttons["Home"].tap()
         let recommendation = app.buttons["home-recommendation-101"]
-        let feedbackMenu = app.buttons["Feedback for Tonight's Movie"]
+        let feedbackMenu = app.buttons["More options for Tonight's Movie"]
         XCTAssertTrue(recommendation.waitForExistence(timeout: 15))
         XCTAssertTrue(feedbackMenu.waitForExistence(timeout: 15))
 
