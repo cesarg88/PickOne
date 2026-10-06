@@ -23,7 +23,15 @@ struct PickOneApp: App {
                     container: container,
                     profileModel: container.viewerProfileViewModel
                 )
+                .environment(
+                    \.homeAccessibilityReductionForUITests,
+                    AppConfiguration.usesReducedHomeAccessibilityForUITests
+                )
             }
         }
     }
+}
+
+extension EnvironmentValues {
+    @Entry var homeAccessibilityReductionForUITests = false
 }

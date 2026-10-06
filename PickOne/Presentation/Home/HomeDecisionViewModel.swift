@@ -100,6 +100,7 @@ final class HomeDecisionViewModel {
     func setContentLocale(_ effectiveLocale: Locale) {
         let next = MovieContentLocale(effectiveLocale: effectiveLocale)
         guard contentLocale != next else { return }
+        pickModel?.invalidateTitlesForLocaleChange()
         contentLocale = next
         displayTask?.cancel()
         displayTask = nil
@@ -132,6 +133,7 @@ final class HomeDecisionViewModel {
 
     func reconcile(after change: DecisionViewerStateChange) {
         guard change.impact != .none else { return }
+        pickModel?.holdPickUntilSafeSet(movieID: change.movieID)
         enqueueReconciliation(.viewerState(change))
     }
 
@@ -213,6 +215,7 @@ final class HomeDecisionViewModel {
                     )
                     enqueueUpdateFeedback()
                 }
+                releasePickHoldsIfSafe()
             case let .exhausted(exhausted):
                 apply(snapshot: exhausted.snapshot, refreshError: nil)
                 exhaustion = HomeDecisionExhaustionPresentation(
@@ -228,6 +231,7 @@ final class HomeDecisionViewModel {
                     )
                     enqueueUpdateFeedback()
                 }
+                releasePickHoldsIfSafe()
             case let .retryableFailure(reason, retained):
                 guard let retained else {
                     clearExhaustion()
@@ -365,6 +369,9 @@ final class HomeDecisionViewModel {
             locale: contentLocale.locale,
             projection: displayProjection
         )
+        for item in model.items where item.hasCurrentLocaleTitle {
+            pickModel?.rememberProjectedTitle(item.title, movieID: item.id)
+        }
         let visibleIDs = Set(model.items.map(\.id))
         if updatePickSurface {
             pickModel?.updateSurface(try? ViewingDecisionSurface(
@@ -442,6 +449,11 @@ final class HomeDecisionViewModel {
 }
 
 private extension HomeDecisionViewModel {
+    func releasePickHoldsIfSafe() {
+        guard pendingReconciliations.isEmpty, !isReconciliationPending else { return }
+        pickModel?.safeSetDidPublish()
+    }
+
     enum Operation: Equatable {
         case load
         case refresh

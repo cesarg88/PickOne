@@ -5,6 +5,67 @@ import Testing
 @MainActor
 @Suite("Home display localization", .serialized)
 struct HomeDisplayLocalizationViewModelTests {
+    @Test("A Pick committed after ES to EN re-projection never announces a stale Spanish title")
+    func pendingPickUsesCurrentVisibleLanguage() async throws {
+        let snapshot = try HomeDecisionTestFixtures.snapshot()
+        let useCase = LocalizedHomeUseCase(results: [.usable(snapshot)])
+        let repository = GatedLocalizedPickRepository()
+        let pick = HomePickViewModel(manage: ManageViewingDecision(repository: repository))
+        let home = HomeDecisionViewModel(
+            threeForTonight: useCase,
+            getMovieDisplayMetadata: LocalizedHomeMetadata(),
+            pickModel: pick
+        )
+        home.setContentLocale(MovieContentLocale.spanish.locale)
+        home.load()
+        await waitForTitle("Español 101", in: home)
+        pick.showHome()
+        pick.setActive(true)
+        await pick.waitForPendingOperations()
+
+        pick.pick(movieID: 101, title: "Español 101")
+        await repository.waitForPickStart()
+        home.setContentLocale(MovieContentLocale.english.locale)
+        await waitForTitle("English 101", in: home)
+        await repository.release()
+        await pick.waitForPendingOperations()
+
+        #expect(pick.pickFeedback == .picked(title: "English 101", replacedTitle: nil))
+        #expect(try await repository.snapshot().activeDecision?.recommendation.movieID == 101)
+        #expect(await useCase.callCount == 1)
+    }
+
+    @Test("If new-language metadata is not visible yet, a pending Pick omits the stale title")
+    func pendingPickDoesNotGuessUnresolvedTitle() async throws {
+        let snapshot = try HomeDecisionTestFixtures.snapshot()
+        let repository = GatedLocalizedPickRepository()
+        let pick = HomePickViewModel(manage: ManageViewingDecision(repository: repository))
+        let metadataGate = LocalizedHomeGate()
+        let metadata = LocalizedHomeMetadata(englishGate: metadataGate)
+        let home = HomeDecisionViewModel(
+            threeForTonight: LocalizedHomeUseCase(results: [.usable(snapshot)]),
+            getMovieDisplayMetadata: metadata,
+            pickModel: pick
+        )
+        home.setContentLocale(MovieContentLocale.spanish.locale)
+        home.load()
+        await waitForTitle("Español 101", in: home)
+        pick.showHome()
+        pick.setActive(true)
+        await pick.waitForPendingOperations()
+
+        pick.pick(movieID: 101, title: "Español 101")
+        await repository.waitForPickStart()
+        home.setContentLocale(MovieContentLocale.english.locale)
+        await metadata.waitForEnglishRequest()
+        await repository.release()
+        await pick.waitForPendingOperations()
+
+        #expect(pick.pickFeedback == .picked(title: nil, replacedTitle: nil))
+        await metadataGate.open()
+        await waitForTitle("English 101", in: home)
+    }
+
     @Test("Changing language reprojects the same set without a new Pick observation")
     func languageChangePreservesPickAndSession() async throws {
         let snapshot = try HomeDecisionTestFixtures.snapshot()
@@ -147,13 +208,21 @@ private actor LocalizedHomeUseCase: ThreeForTonightUseCase {
 
 private actor LocalizedHomeMetadata: GetMovieDisplayMetadataUseCase {
     private let spanishGate: LocalizedHomeGate?
+    private let englishGate: LocalizedHomeGate?
     private let blockedMovieID: Int?
     private let movieGate: LocalizedHomeGate?
     private var spanishRequested = false
+    private var englishRequested = false
     private var blockedMovieRequested = false
 
-    init(spanishGate: LocalizedHomeGate? = nil, blockedMovieID: Int? = nil, movieGate: LocalizedHomeGate? = nil) {
+    init(
+        spanishGate: LocalizedHomeGate? = nil,
+        englishGate: LocalizedHomeGate? = nil,
+        blockedMovieID: Int? = nil,
+        movieGate: LocalizedHomeGate? = nil
+    ) {
         self.spanishGate = spanishGate
+        self.englishGate = englishGate
         self.blockedMovieID = blockedMovieID
         self.movieGate = movieGate
     }
@@ -162,6 +231,10 @@ private actor LocalizedHomeMetadata: GetMovieDisplayMetadataUseCase {
         if contentLocale == .spanish, let spanishGate {
             spanishRequested = true
             await spanishGate.wait()
+        }
+        if contentLocale == .english, let englishGate {
+            englishRequested = true
+            await englishGate.wait()
         }
         if movieID == blockedMovieID, let movieGate {
             blockedMovieRequested = true
@@ -173,6 +246,12 @@ private actor LocalizedHomeMetadata: GetMovieDisplayMetadataUseCase {
 
     func waitForSpanishRequest() async {
         while !spanishRequested {
+            await Task.yield()
+        }
+    }
+
+    func waitForEnglishRequest() async {
+        while !englishRequested {
             await Task.yield()
         }
     }
@@ -204,3 +283,32 @@ private actor LocalizedHomeGate {
 }
 
 private enum LocalizedHomeError: Error { case missingResult }
+
+private actor GatedLocalizedPickRepository: ViewingDecisionRepository {
+    private let base = LocalViewingDecisionRepository(store: MemoryViewingDecisionStore())
+    private var gate: CheckedContinuation<Void, Never>?
+    private var pickStarted = false
+
+    func snapshot() async throws -> ViewingDecisionState {
+        try await base.snapshot()
+    }
+
+    func apply(_ operation: ViewingDecisionOperation) async throws -> ViewingDecisionReceipt {
+        if case .pick = operation.action {
+            pickStarted = true
+            await withCheckedContinuation { gate = $0 }
+        }
+        return try await base.apply(operation)
+    }
+
+    func waitForPickStart() async {
+        while !pickStarted {
+            await Task.yield()
+        }
+    }
+
+    func release() {
+        gate?.resume()
+        gate = nil
+    }
+}

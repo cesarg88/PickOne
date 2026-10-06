@@ -70,11 +70,23 @@ struct HomePickViewModelTests {
         #expect(model.activeDecision?.recommendation.movieID == 1)
         #expect(model.failedMovieIDs.isEmpty)
         clock.seconds = 20
+        store.failure = "active"
         model.pick(movieID: 2)
+        await model.waitForPendingOperations()
+        #expect(model.activeDecision?.recommendation.movieID == 1)
+        #expect(model.failedMovieIDs == [2])
+        store.failure = nil
+        model.retry(movieID: 2)
         await model.waitForPendingOperations()
         #expect(model.activeDecision?.recommendation.movieID == 2)
         #expect(try await repository.snapshot().decisions.first?.status == .superseded)
+        store.failure = "active"
         model.cancel()
+        await model.waitForPendingOperations()
+        #expect(model.activeDecision?.recommendation.movieID == 2)
+        #expect(model.failedMovieIDs == [2])
+        store.failure = nil
+        model.retry(movieID: 2)
         await model.waitForPendingOperations()
         #expect(model.activeDecision == nil)
         #expect(try await LocalViewingDecisionRepository(store: store).snapshot().decisions.last?.status == .cancelled)
@@ -99,6 +111,42 @@ struct HomePickViewModelTests {
         await model.waitForPendingOperations()
         #expect(model.activeDecision?.recommendation.movieID == 2)
         #expect(try await repository.snapshot().decisions.map(\.status) == [.superseded, .active])
+    }
+
+    @Test func committedPickRemainsSelectedDuringReplacementAndCancellation() async throws {
+        let repository = GatedViewingDecisionRepository()
+        let model = HomePickViewModel(manage: ManageViewingDecision(repository: repository))
+        try model.updateSurface(ViewingDecisionTestFixtures.surface())
+        model.showHome()
+        model.setActive(true)
+        await model.waitForPendingOperations()
+
+        model.pick(movieID: 1)
+        await repository.waitForPick()
+        await repository.release()
+        await model.waitForPendingOperations()
+        let first = try #require(model.activeDecision)
+
+        await repository.arm()
+        model.pick(movieID: 2)
+        await repository.waitForPick()
+        #expect(model.activeDecision == first)
+        #expect(model.savingMovieIDs == [2])
+        #expect(try await repository.snapshot().activeDecision == first)
+        await repository.release()
+        await model.waitForPendingOperations()
+        let second = try #require(model.activeDecision)
+        #expect(second.recommendation.movieID == 2)
+
+        await repository.arm()
+        model.cancel()
+        await repository.waitForPick()
+        #expect(model.activeDecision == second)
+        #expect(model.savingMovieIDs == [2])
+        #expect(try await repository.snapshot().activeDecision == second)
+        await repository.release()
+        await model.waitForPendingOperations()
+        #expect(model.activeDecision == nil)
     }
 
     @Test func oldFailedRetryCannotUndoLaterPickOrCancellation() async throws {
@@ -207,7 +255,11 @@ private actor GatedViewingDecisionRepository: ViewingDecisionRepository {
     }
 
     func apply(_ operation: ViewingDecisionOperation) async throws -> ViewingDecisionReceipt {
-        if case .pick = operation.action, shouldGate {
+        let isDecisionMutation: Bool = switch operation.action {
+            case .pick, .cancel: true
+            default: false
+        }
+        if isDecisionMutation, shouldGate {
             shouldGate = false
             didStartPick = true
             await withCheckedContinuation { gate = $0 }
@@ -223,6 +275,11 @@ private actor GatedViewingDecisionRepository: ViewingDecisionRepository {
 
     func release() {
         gate?.resume(); gate = nil
+    }
+
+    func arm() {
+        shouldGate = true
+        didStartPick = false
     }
 }
 

@@ -4,6 +4,7 @@ import SwiftUI
 struct HomeDecisionCard: View {
     @Environment(\.colorSchemeContrast) private var colorSchemeContrast
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+    @Environment(\.homeAccessibilityReductionForUITests) private var testAccessibilityReduction
 
     @State private var artwork: HomeDecisionArtwork = .surface
     @State private var quickFeedbackTask: Task<Void, Never>?
@@ -13,6 +14,7 @@ struct HomeDecisionCard: View {
     let pickModel: HomePickViewModel?
     let item: HomeDecisionMovieItem
     let imagePipeline: ImagePipeline
+    let feedbackDidCommit: @MainActor () -> Void
 
     init(
         item: HomeDecisionMovieItem,
@@ -20,105 +22,107 @@ struct HomeDecisionCard: View {
         pickModel: HomePickViewModel? = nil,
         imagePipeline: ImagePipeline,
         updateViewerMovieState: any UpdateViewerMovieStateUseCase,
-        viewerStateDidChange: @escaping @MainActor (DecisionViewerStateChange) -> Void
+        viewerStateDidChange: @escaping @MainActor (DecisionViewerStateChange) -> Void,
+        feedbackDidCommit: @escaping @MainActor () -> Void = {}
     ) {
         self.isHero = isHero
         self.pickModel = pickModel
         self.item = item
         self.imagePipeline = imagePipeline
+        self.feedbackDidCommit = feedbackDidCommit
         _quickFeedbackModel = State(initialValue: HomeQuickFeedbackViewModel(
             movieID: item.id,
             metadata: item.feedbackMetadata,
             updateViewerMovieState: updateViewerMovieState,
-            viewerStateDidChange: viewerStateDidChange,
+            viewerStateDidChange: { change in
+                feedbackDidCommit()
+                viewerStateDidChange(change)
+            },
             alreadyWatchedRecorder: { pickModel?.alreadyWatchedRecorder(movieID: item.id) ?? {} }
         ))
     }
 
     var body: some View {
-        if quickFeedbackModel.state != .submitted {
-            VStack(spacing: 0) {
-                if case let .poster(image) = artwork {
-                    NavigationLink(value: HomeDecisionRoute(movieID: item.id)) {
-                        Image(uiImage: image)
-                            .resizable()
-                            .scaledToFit()
-                            .frame(maxWidth: .infinity)
-                            .frame(height: isHero ? 290 : 190)
-                            .background(.black)
-                            .overlay(HomeDecisionScrim.gradient)
-                            .accessibilityHidden(true)
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel("Open movie details for \(item.title)")
-                    .accessibilityIdentifier("home-poster-link-\(item.id)")
+        VStack(spacing: 0) {
+            if case let .poster(image) = artwork {
+                NavigationLink(value: HomeDecisionRoute(movieID: item.id)) {
+                    Image(uiImage: image)
+                        .resizable()
+                        .scaledToFit()
+                        .frame(maxWidth: .infinity)
+                        .frame(height: isHero ? 160 : 110)
+                        .background(.black)
+                        .overlay(HomeDecisionScrim.gradient)
+                        .accessibilityHidden(true)
                 }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Open movie details for \(item.title)")
+                .accessibilityIdentifier("home-poster-link-\(item.id)")
+            }
 
-                VStack(alignment: .leading, spacing: 12) {
-                    NavigationLink(value: HomeDecisionRoute(movieID: item.id)) {
-                        HomeDecisionCardContent(
-                            item: item,
-                            imagePipeline: imagePipeline,
-                            photoBackground: showsBackdrop,
-                            isHero: isHero
-                        )
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityIdentifier("home-recommendation-\(item.id)")
+            VStack(alignment: .leading, spacing: 12) {
+                NavigationLink(value: HomeDecisionRoute(movieID: item.id)) {
+                    HomeDecisionCardContent(
+                        item: item,
+                        photoBackground: showsBackdrop,
+                        isHero: isHero
+                    )
+                }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("home-recommendation-\(item.id)")
 
-                    if let pickModel {
-                        HomePickControl(model: pickModel, movieID: item.id, title: item.title)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                    }
-                }
-                .padding(isHero ? 24 : 18)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .frame(minHeight: showsBackdrop ? (isHero ? 380 : 240) : 0, alignment: .bottomLeading)
-                .background {
-                    if showsBackdrop {
-                        backdropBackground
-                    } else {
-                        Color(.secondarySystemBackground)
-                    }
-                }
-                .foregroundStyle(showsBackdrop ? .white : .primary)
-                .overlay(alignment: .topTrailing) {
-                    quickFeedbackControl
-                        .foregroundStyle(showsBackdrop ? Color.white : Color.primary)
-                        .padding(12)
-                }
-            }
-            .clipShape(.rect(cornerRadius: 18))
-            .alert(
-                "Couldn't save feedback",
-                isPresented: Binding(
-                    get: { quickFeedbackModel.state == .failed },
-                    set: { _ in }
+                HomeDecisionAvailabilityAndPick(
+                    item: item,
+                    imagePipeline: imagePipeline,
+                    pickModel: pickModel
                 )
-            ) {
-                Button("Try again") {
-                    performQuickFeedback(quickFeedbackModel.retry)
+            }
+            .padding(isHero ? 24 : 18)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background {
+                if showsBackdrop {
+                    backdropBackground
+                } else {
+                    Color(.secondarySystemBackground)
                 }
-                Button("Cancel", role: .cancel) {
-                    quickFeedbackModel.cancelFailure()
-                }
-            } message: {
-                Text("Your feedback wasn't saved. Please try again.")
             }
-            .onDisappear {
-                quickFeedbackTask?.cancel()
-                quickFeedbackTask = nil
+            .foregroundStyle(showsBackdrop ? .white : .primary)
+            .overlay(alignment: .topTrailing) {
+                quickFeedbackControl
+                    .foregroundStyle(showsBackdrop ? Color.white : Color.primary)
+                    .padding(12)
             }
-            .task(id: artworkIdentity) {
-                artwork = .surface
-                let loaded = await HomeDecisionArtworkLoader.load(
-                    backdropURL: item.backdropURL,
-                    posterURL: item.posterURL,
-                    using: imagePipeline
-                )
-                guard !Task.isCancelled else { return }
-                artwork = loaded
+        }
+        .clipShape(.rect(cornerRadius: 18))
+        .alert(
+            "Couldn't save feedback",
+            isPresented: Binding(
+                get: { quickFeedbackModel.state == .failed },
+                set: { _ in }
+            )
+        ) {
+            Button("Try again") {
+                performQuickFeedback(quickFeedbackModel.retry)
             }
+            Button("Cancel", role: .cancel) {
+                quickFeedbackModel.cancelFailure()
+            }
+        } message: {
+            Text("Your feedback wasn't saved. Please try again.")
+        }
+        .onDisappear {
+            quickFeedbackTask?.cancel()
+            quickFeedbackTask = nil
+        }
+        .task(id: artworkIdentity) {
+            artwork = .surface
+            let loaded = await HomeDecisionArtworkLoader.load(
+                backdropURL: item.backdropURL,
+                posterURL: item.posterURL,
+                using: imagePipeline
+            )
+            guard !Task.isCancelled else { return }
+            artwork = loaded
         }
     }
 
@@ -127,7 +131,8 @@ struct HomeDecisionCard: View {
     }
 
     private var showsBackdrop: Bool {
-        artwork.isBackdrop && !reduceTransparency && colorSchemeContrast != .increased
+        artwork.isBackdrop && !reduceTransparency && !testAccessibilityReduction
+            && colorSchemeContrast != .increased
     }
 
     private var backdropBackground: some View {
@@ -146,12 +151,15 @@ struct HomeDecisionCard: View {
 
     @ViewBuilder
     private var quickFeedbackControl: some View {
-        if quickFeedbackModel.state == .saving {
+        if quickFeedbackModel.state == .saving || quickFeedbackModel.state == .submitted {
             ProgressView()
                 .controlSize(.small)
                 .frame(minWidth: 44, minHeight: 44)
-                .accessibilityLabel("Saving feedback for \(item.title)")
-                .accessibilityIdentifier("home-feedback-saving-\(item.id)")
+                .accessibilityLabel(quickFeedbackModel.state == .saving
+                    ? Text("Saving feedback for \(item.title)")
+                    : Text("Updating recommendations for \(item.title)"))
+                .accessibilityIdentifier(quickFeedbackModel.state == .saving
+                    ? "home-feedback-saving-\(item.id)" : "home-feedback-updating-\(item.id)")
         } else {
             Menu {
                 Section("Rate") {
@@ -189,10 +197,13 @@ struct HomeDecisionCard: View {
                 )
             } label: {
                 Image(systemName: "ellipsis")
-                    .frame(minWidth: 44, minHeight: 44)
+                    .frame(width: 30, height: 30)
                     .contentShape(.rect)
             }
-            .accessibilityLabel("Feedback for \(item.title)")
+            .buttonStyle(.glass)
+            .buttonBorderShape(.circle)
+            .frame(minWidth: 44, minHeight: 44)
+            .accessibilityLabel("More options for \(item.title)")
             .accessibilityIdentifier("home-feedback-menu-\(item.id)")
         }
     }
@@ -225,7 +236,6 @@ struct HomeDecisionCard: View {
 @MainActor
 private struct HomeDecisionCardContent: View {
     let item: HomeDecisionMovieItem
-    let imagePipeline: ImagePipeline
     let photoBackground: Bool
     let isHero: Bool
 
@@ -235,10 +245,15 @@ private struct HomeDecisionCardContent: View {
                 .font(.caption.bold())
                 .padding(.trailing, 56)
 
-            Spacer(minLength: photoBackground ? (isHero ? 88 : 20) : 0)
+            if photoBackground {
+                Color.clear
+                    .frame(height: isHero ? 108 : 20)
+                    .accessibilityHidden(true)
+            }
 
             Text(item.title)
                 .font(isHero ? .system(.largeTitle, design: .serif) : .system(.title3, design: .serif))
+                .fixedSize(horizontal: false, vertical: true)
 
             if !item.details.isEmpty {
                 Text(item.details)
@@ -247,8 +262,7 @@ private struct HomeDecisionCardContent: View {
 
             Text(item.reason)
                 .font(.subheadline)
-
-            HomeDecisionProviderRow(providers: item.providers, imagePipeline: imagePipeline)
+                .fixedSize(horizontal: false, vertical: true)
 
             if item.isSaved {
                 Label("Saved", systemImage: "bookmark.fill")
@@ -262,23 +276,67 @@ private struct HomeDecisionCardContent: View {
 }
 
 @MainActor
+private struct HomeDecisionAvailabilityAndPick: View {
+    let item: HomeDecisionMovieItem
+    let imagePipeline: ImagePipeline
+    let pickModel: HomePickViewModel?
+
+    var body: some View {
+        HomeDecisionAvailabilityPickLayout(spacing: 12) {
+            providers
+            pick
+        }
+    }
+
+    private var providers: some View {
+        HomeDecisionProviderRow(providers: item.providers, imagePipeline: imagePipeline, movieID: item.id)
+    }
+
+    @ViewBuilder
+    private var pick: some View {
+        if let pickModel {
+            HomePickControl(
+                model: pickModel,
+                movieID: item.id,
+                title: item.title,
+                hasCurrentLocaleTitle: item.hasCurrentLocaleTitle
+            )
+        }
+    }
+}
+
+@MainActor
 private struct HomeDecisionProviderRow: View {
     let providers: [HomeDecisionProviderItem]
     let imagePipeline: ImagePipeline
+    let movieID: Int
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             Text("Included with your subscription")
                 .font(.caption2)
-            ForEach(providers) { provider in
-                HomeDecisionProviderLogo(
-                    provider: provider,
-                    imagePipeline: imagePipeline
-                )
+                .fixedSize(horizontal: false, vertical: true)
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 8) {
+                    providerMarks
+                }
+                .fixedSize(horizontal: true, vertical: false)
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 8) {
+                        providerMarks
+                    }
+                }
             }
         }
-        .accessibilityElement(children: .ignore)
+        .accessibilityElement(children: .contain)
         .accessibilityLabel("Included with \(providers.map(\.name).formatted())")
+        .accessibilityIdentifier("home-providers-\(movieID)")
+    }
+
+    private var providerMarks: some View {
+        ForEach(providers) { provider in
+            HomeDecisionProviderLogo(provider: provider, imagePipeline: imagePipeline)
+        }
     }
 }
 
@@ -286,30 +344,43 @@ private struct HomeDecisionProviderRow: View {
 private struct HomeDecisionProviderLogo: View {
     @ScaledMetric(relativeTo: .caption) private var logoSize = 32.0
     @State private var logo: UIImage?
+    @State private var didFailToLoad = false
 
     let provider: HomeDecisionProviderItem
     let imagePipeline: ImagePipeline
 
     var body: some View {
-        HStack(spacing: 8) {
+        Group {
             if let logo {
                 Image(uiImage: logo)
                     .resizable()
                     .scaledToFit()
                     .frame(width: min(logoSize, 48), height: min(logoSize, 48))
                     .clipShape(.rect(cornerRadius: 6))
+                    .accessibilityLabel(provider.name)
+            } else if provider.logoURL != nil, !didFailToLoad {
+                RoundedRectangle(cornerRadius: 6)
+                    .fill(.quaternary)
+                    .frame(width: min(logoSize, 48), height: min(logoSize, 48))
                     .accessibilityHidden(true)
+            } else {
+                Text(provider.name)
+                    .font(.caption)
+                    .fixedSize(horizontal: false, vertical: true)
             }
-            Text(provider.name)
-                .font(.caption)
-                .fixedSize(horizontal: false, vertical: true)
         }
+        .accessibilityIdentifier("home-provider-\(provider.id)")
         .task(id: provider.logoURL) {
             logo = nil
-            guard let logoURL = provider.logoURL else { return }
+            didFailToLoad = false
+            guard let logoURL = provider.logoURL else {
+                didFailToLoad = true
+                return
+            }
             let loaded = try? await imagePipeline.loadImage(from: logoURL)
             guard !Task.isCancelled else { return }
             logo = loaded
+            didFailToLoad = loaded == nil
         }
     }
 }

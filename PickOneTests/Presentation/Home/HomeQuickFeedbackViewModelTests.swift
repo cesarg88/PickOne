@@ -5,6 +5,28 @@ import Testing
 @MainActor
 @Suite("Home quick feedback", .serialized)
 struct HomeQuickFeedbackViewModelTests {
+    @Test("An idempotent durable feedback result restores the menu instead of leaving a spinner")
+    func noOpFeedbackRestoresIdleState() async throws {
+        let update = RecordingHomeQuickFeedbackUpdate(outcomes: [
+            .success(change(impact: .none)), .success(change(impact: .none)),
+        ])
+        var receivedChanges: [DecisionViewerStateChange] = []
+        var recordedAlreadyWatched = 0
+        let sut = try HomeQuickFeedbackViewModel(
+            movieID: 101, metadata: metadata(), updateViewerMovieState: update,
+            viewerStateDidChange: { receivedChanges.append($0) },
+            alreadyWatchedRecorder: { { recordedAlreadyWatched += 1 } }
+        )
+
+        await sut.submit(.markWatched)
+        #expect(sut.state == .idle)
+        #expect(receivedChanges.isEmpty)
+        #expect(recordedAlreadyWatched == 0)
+        await sut.submit(.markWatched)
+        #expect(sut.state == .idle)
+        #expect(await update.transitions.count == 2)
+    }
+
     @Test func onlySuccessfulAlreadyWatchedContributesEvidence() async throws {
         let update = RecordingHomeQuickFeedbackUpdate(outcomes: [
             .failure, .success(change(impact: .eligibilityChanged)),

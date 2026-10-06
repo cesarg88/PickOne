@@ -48,6 +48,11 @@ final class HomeQuickFeedbackViewModel {
                 ),
                 metadata: metadata
             )
+            guard change.impact != .none else {
+                failedAction = nil
+                state = .idle
+                return
+            }
             if case .markWatched = action { recordAlreadyWatched() }
             guard let decisionChange = DecisionViewerStateChange(
                 movieID: movieID,

@@ -1,6 +1,17 @@
 import Foundation
 import Observation
 
+enum HomePickAcknowledgement: Equatable {
+    case picked(title: String?, replacedTitle: String?)
+    case cancelled
+}
+
+private struct PendingPickCopy {
+    var title: String?
+    var replacedTitle: String?
+    let replacedMovieID: Int?
+}
+
 @MainActor
 @Observable
 final class HomePickViewModel {
@@ -9,7 +20,11 @@ final class HomePickViewModel {
     private let sleep: @Sendable (Duration) async throws -> Void
     private let feedbackSleep: @Sendable (Duration) async throws -> Void
     @ObservationIgnored private var feedbackTask: Task<Void, Never>?
-    private(set) var isShowingPickFeedback = false
+    private(set) var pickFeedback: HomePickAcknowledgement?
+    var isShowingPickFeedback: Bool {
+        pickFeedback != nil
+    }
+
     @ObservationIgnored private var tail: Task<Void, Never>?
     @ObservationIgnored private var deadlineTask: Task<Void, Never>?
     private var homeSurface: ViewingDecisionSurface?
@@ -19,7 +34,11 @@ final class HomePickViewModel {
     private(set) var activeDecision: ViewingDecision?
     private(set) var savingMovieIDs: Set<Int> = []
     private(set) var failedMovieIDs: Set<Int> = []
+    private(set) var awaitingSafeSetMovieIDs: Set<Int> = []
     private var pendingOperations: [Int: ViewingDecisionOperation] = [:]
+    @ObservationIgnored private var pendingPickCopy: [Int: PendingPickCopy] = [:]
+    @ObservationIgnored private var requiresCurrentLocaleTitle = false
+    private(set) var activePickTitle: String?
 
     init(
         manage: ManageViewingDecision,
@@ -113,10 +132,15 @@ final class HomePickViewModel {
         }
     }
 
-    func pick(movieID: Int) {
-        guard !savingMovieIDs.contains(movieID), let homeSurface,
+    func pick(movieID: Int, title: String? = nil, hasCurrentLocaleTitle: Bool = true) {
+        guard !savingMovieIDs.contains(movieID), !awaitingSafeSetMovieIDs.contains(movieID), let homeSurface,
               let recommendation = homeSurface.recommendations.first(where: { $0.movieID == movieID })
         else { return }
+        pendingPickCopy[movieID] = PendingPickCopy(
+            title: requiresCurrentLocaleTitle && !hasCurrentLocaleTitle ? nil : title,
+            replacedTitle: activePickTitle,
+            replacedMovieID: activeDecision?.recommendation.movieID
+        )
         submit(
             .pick(recommendation, snapshot: homeSurface, isVisible: isVisible && detailSurface == nil),
             movieID: movieID
@@ -124,12 +148,59 @@ final class HomePickViewModel {
     }
 
     func cancel() {
-        guard let activeDecision, !savingMovieIDs.contains(activeDecision.recommendation.movieID) else { return }
+        guard let activeDecision,
+              !savingMovieIDs.contains(activeDecision.recommendation.movieID),
+              !awaitingSafeSetMovieIDs.contains(activeDecision.recommendation.movieID)
+        else { return }
         submit(.cancel(activeDecision.id), movieID: activeDecision.recommendation.movieID)
     }
 
+    func rememberVisibleTitle(_ title: String, movieID: Int, hasCurrentLocaleTitle: Bool = true) {
+        guard !requiresCurrentLocaleTitle || hasCurrentLocaleTitle else { return }
+        guard activeDecision?.recommendation.movieID == movieID else { return }
+        activePickTitle = title
+    }
+
+    func rememberProjectedTitle(_ title: String, movieID: Int) {
+        if activeDecision?.recommendation.movieID == movieID {
+            activePickTitle = title
+        }
+        if pendingPickCopy[movieID] != nil {
+            pendingPickCopy[movieID]?.title = title
+        }
+        for pendingID in Array(pendingPickCopy.keys) where pendingPickCopy[pendingID]?.replacedMovieID == movieID {
+            pendingPickCopy[pendingID]?.replacedTitle = title
+        }
+    }
+
+    func invalidateTitlesForLocaleChange() {
+        requiresCurrentLocaleTitle = true
+        activePickTitle = nil
+        for movieID in Array(pendingPickCopy.keys) {
+            pendingPickCopy[movieID]?.title = nil
+            pendingPickCopy[movieID]?.replacedTitle = nil
+        }
+    }
+
+    func holdPickUntilSafeSet(movieID: Int) {
+        awaitingSafeSetMovieIDs.insert(movieID)
+    }
+
+    func safeSetDidPublish() {
+        awaitingSafeSetMovieIDs.removeAll()
+    }
+
+    func dismissPickFeedback() {
+        feedbackTask?.cancel()
+        feedbackTask = nil
+        pickFeedback = nil
+    }
+
     func retry(movieID: Int) {
-        guard !savingMovieIDs.contains(movieID), let operation = pendingOperations[movieID] else { return }
+        guard !savingMovieIDs.contains(movieID),
+              !awaitingSafeSetMovieIDs.contains(movieID),
+              let operation = pendingOperations[movieID]
+        else { return }
         savingMovieIDs.insert(movieID)
         failedMovieIDs.remove(movieID)
         enqueue(operation, movieID: movieID)
@@ -155,8 +226,10 @@ final class HomePickViewModel {
     private func publish(_ snapshot: ViewingDecisionState) {
         activeDecision = snapshot.activeDecision
         if activeDecision == nil {
-            feedbackTask?.cancel()
-            isShowingPickFeedback = false
+            activePickTitle = nil
+            if pickFeedback != .cancelled {
+                dismissPickFeedback()
+            }
         }
         for (movieID, operation) in pendingOperations {
             if case let .cancel(id) = operation.action, id != activeDecision?.id {
@@ -190,6 +263,7 @@ final class HomePickViewModel {
     private func clearPendingOperation(_ operation: ViewingDecisionOperation, movieID: Int) {
         guard isCurrent(operation, movieID: movieID) else { return }
         pendingOperations[movieID] = nil
+        pendingPickCopy[movieID] = nil
         savingMovieIDs.remove(movieID)
         failedMovieIDs.remove(movieID)
     }
@@ -211,8 +285,15 @@ final class HomePickViewModel {
                 guard isCurrent(operation, movieID: movieID) else { return }
                 let previousDecisionID = activeDecision?.id
                 publish(snapshot)
-                if case .pick = operation.action, activeDecision != nil, activeDecision?.id != previousDecisionID {
-                    showPickFeedback()
+                switch operation.action {
+                    case .pick where activeDecision != nil && activeDecision?.id != previousDecisionID:
+                        let copy = movieID.flatMap { pendingPickCopy[$0] }
+                        activePickTitle = copy?.title
+                        showPickFeedback(.picked(title: copy?.title, replacedTitle: copy?.replacedTitle))
+                    case .cancel where previousDecisionID != nil && activeDecision == nil:
+                        showPickFeedback(.cancelled)
+                    default:
+                        break
                 }
                 if let movieID {
                     clearPendingOperation(operation, movieID: movieID)
@@ -227,15 +308,15 @@ final class HomePickViewModel {
         }
     }
 
-    private func showPickFeedback() {
+    private func showPickFeedback(_ feedback: HomePickAcknowledgement) {
         feedbackTask?.cancel()
-        isShowingPickFeedback = true
+        pickFeedback = feedback
         let feedbackSleep = feedbackSleep
         feedbackTask = Task { [weak self] in
             do {
                 try await feedbackSleep(.seconds(3))
                 try Task.checkCancellation()
-                self?.isShowingPickFeedback = false
+                self?.pickFeedback = nil
             } catch { return }
         }
     }

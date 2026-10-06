@@ -45,6 +45,7 @@ struct HomeDecisionView: View {
             }
             .onChange(of: locale.identifier) {
                 model.setContentLocale(locale)
+                model.pickModel?.dismissPickFeedback()
             }
             .navigationTitle("Home")
             .navigationDestination(for: HomeDecisionRoute.self) { route in
@@ -127,24 +128,7 @@ private struct HomeDecisionContent: View {
     let reviewStreamingServices: () -> Void
 
     var body: some View {
-        VStack(spacing: 0) {
-            if pickModel?.isShowingPickFeedback == true {
-                HomePickSuccessNotice()
-            }
-            content
-        }
-        .overlay(alignment: .top) {
-            if let updateFeedback {
-                Label(updateFeedback, systemImage: "checkmark.circle")
-                    .font(.footnote.weight(.medium))
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 10)
-                    .background(.regularMaterial, in: .capsule)
-                    .padding(.top, 8)
-                    .allowsHitTesting(false)
-                    .accessibilityIdentifier("home-recommendations-updated")
-            }
-        }
+        content
     }
 
     @ViewBuilder
@@ -157,6 +141,7 @@ private struct HomeDecisionContent: View {
                 HomeDecisionLoadedView(
                     set: set,
                     pickModel: pickModel,
+                    updateFeedback: updateFeedback,
                     isRefreshing: isRefreshing,
                     refreshError: refreshError,
                     exhaustion: exhaustion,
@@ -190,9 +175,14 @@ private struct HomeDecisionContent: View {
 @MainActor
 private struct HomeDecisionLoadedView: View {
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.homeAccessibilityReductionForUITests) private var testAccessibilityReduction
+    @AccessibilityFocusState private var focusedSlot: HomeDecisionSlot?
+    @State private var focusAnchorSlot: HomeDecisionSlot?
 
     let set: HomeDecisionSetPresentationModel
     let pickModel: HomePickViewModel?
+    let updateFeedback: String?
     let isRefreshing: Bool
     let refreshError: String?
     let exhaustion: HomeDecisionExhaustionPresentation?
@@ -229,7 +219,7 @@ private struct HomeDecisionLoadedView: View {
                             VStack(alignment: .leading, spacing: 12) {
                                 Text(alternativesHeading)
                                     .font(.system(.title2, design: .serif))
-                                ForEach(alternatives) { item in
+                                ForEach(alternatives, id: \.slot) { item in
                                     card(for: item, isHero: false)
                                 }
                             }
@@ -257,7 +247,28 @@ private struct HomeDecisionLoadedView: View {
                 .padding(.horizontal, horizontalPadding)
                 .padding(.vertical, 20)
                 .frame(maxWidth: .infinity)
+                .animation(
+                    HomeDecisionTransition.animation(reduceMotion: reduceMotion || testAccessibilityReduction),
+                    value: set.items.map(\.id)
+                )
             }
+            .safeAreaInset(edge: .bottom, spacing: 0) {
+                HomeDecisionStatusRegion(
+                    pickFeedback: pickModel?.pickFeedback,
+                    updateFeedback: updateFeedback
+                )
+            }
+        }
+        .onChange(of: set.items.map(\.id)) { oldIDs, newIDs in
+            guard oldIDs != newIDs, let slot = focusAnchorSlot else { return }
+            focusedSlot = nil
+            Task { @MainActor in
+                await Task.yield()
+                focusedSlot = slot
+            }
+        }
+        .onChange(of: focusedSlot) { _, newSlot in
+            if let newSlot { focusAnchorSlot = newSlot }
         }
     }
 
@@ -282,9 +293,58 @@ private struct HomeDecisionLoadedView: View {
             pickModel: pickModel,
             imagePipeline: imagePipeline,
             updateViewerMovieState: updateViewerMovieState,
-            viewerStateDidChange: viewerStateDidChange
+            viewerStateDidChange: viewerStateDidChange,
+            feedbackDidCommit: {
+                focusAnchorSlot = item.slot
+                focusedSlot = item.slot
+            }
         )
         .id(item.id)
+        .accessibilityElement(children: .contain)
+        .accessibilityFocused($focusedSlot, equals: item.slot)
+        .accessibilityIdentifier(focusAnchorSlot == item.slot
+            ? "home-focus-target-slot-\(item.slot.rawValue)" : "home-slot-\(item.slot.rawValue)")
+    }
+}
+
+@MainActor
+private struct HomeDecisionStatusRegion: View {
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+    @Environment(\.homeAccessibilityReductionForUITests) private var testAccessibilityReduction
+    @ScaledMetric(relativeTo: .subheadline) private var reservedHeight = 72.0
+    @ScaledMetric(relativeTo: .subheadline) private var scrollClearance = 24.0
+
+    let pickFeedback: HomePickAcknowledgement?
+    let updateFeedback: String?
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 8) {
+                if let pickFeedback {
+                    HomePickSuccessNotice(feedback: pickFeedback)
+                }
+                if let updateFeedback {
+                    Label(updateFeedback, systemImage: "checkmark.circle")
+                        .font(.footnote.weight(.medium))
+                        .accessibilityIdentifier("home-recommendations-updated")
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.bottom, scrollClearance)
+        }
+        .scrollIndicators(.hidden)
+        .frame(height: reservedHeight)
+        .accessibilityIdentifier("home-decision-status")
+        .background {
+            if pickFeedback != nil || updateFeedback != nil {
+                if reduceTransparency || testAccessibilityReduction {
+                    Color(.systemBackground)
+                } else {
+                    Rectangle().fill(.regularMaterial)
+                }
+            }
+        }
+        .accessibilityAddTraits(.updatesFrequently)
     }
 }
 

@@ -29,6 +29,15 @@ struct AppConfiguration {
     static let usesHomeTwoCardsForUITests = ProcessInfo.processInfo.arguments.contains(
         "-ui-testing-home-two-cards"
     )
+    static let usesHomeTwoProvidersForUITests = isUITesting && ProcessInfo.processInfo.arguments.contains(
+        "-ui-testing-home-two-providers"
+    )
+    static let usesHomeFourProvidersForUITests = isUITesting && ProcessInfo.processInfo.arguments.contains(
+        "-ui-testing-home-four-providers"
+    )
+    static let usesHomeReferenceCopyForUITests = isUITesting && ProcessInfo.processInfo.arguments.contains(
+        "-ui-testing-home-reference-copy"
+    )
     static let usesHomePosterScenarioForUITests = ProcessInfo.processInfo.arguments.contains(
         "-ui-testing-home-poster"
     )
@@ -37,6 +46,12 @@ struct AppConfiguration {
     )
     static let usesHomeDarkBackdropForUITests = ProcessInfo.processInfo.arguments.contains(
         "-ui-testing-home-dark-backdrop"
+    )
+    static let holdsHomePickNoticeForUITests = isUITesting && ProcessInfo.processInfo.arguments.contains(
+        "-ui-testing-hold-home-pick-notice"
+    )
+    static let usesReducedHomeAccessibilityForUITests = isUITesting && ProcessInfo.processInfo.arguments.contains(
+        "-ui-testing-home-reduced-accessibility"
     )
     static let resetsHomeRecoveryScenarioForUITests = ProcessInfo.processInfo.arguments.contains(
         "-ui-testing-home-recovery-reset"

@@ -150,6 +150,9 @@ final class AppContainer {
 private extension AppContainer {
     static func makeImagePipeline() -> ImagePipeline {
         let imageCache = ImageCache()
+        if AppConfiguration.usesHomeTwoProvidersForUITests || AppConfiguration.usesHomeFourProvidersForUITests {
+            UITestingHomeArtwork.primeProviderLogos(in: imageCache)
+        }
         if AppConfiguration.usesHomePosterScenarioForUITests {
             UITestingHomeArtwork.primePoster(in: imageCache)
         }
@@ -167,11 +170,20 @@ private extension AppContainer {
         homeUseCase: any ThreeForTonightUseCase,
         viewingDecisions: any ViewingDecisionRepository
     ) -> HomeDecisionViewModel {
-        HomeDecisionViewModel(
+        let pickFeedbackSleep: @Sendable (Duration) async throws -> Void = { duration in
+            try await Task.sleep(for: AppConfiguration.holdsHomePickNoticeForUITests
+                ? .seconds(20) : duration)
+        }
+        return HomeDecisionViewModel(
             threeForTonight: homeUseCase,
             getMovieDisplayMetadata: AppConfiguration.usesHomeCompositionScenarioForUITests
                 ? nil : useCases.getMovieDisplayMetadata,
-            pickModel: HomePickViewModel(manage: ManageViewingDecision(repository: viewingDecisions))
+            pickModel: HomePickViewModel(
+                manage: ManageViewingDecision(repository: viewingDecisions),
+                feedbackSleep: pickFeedbackSleep
+            ),
+            feedbackDuration: AppConfiguration.holdsHomePickNoticeForUITests
+                ? .seconds(20) : .seconds(3)
         )
     }
 
