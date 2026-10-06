@@ -119,6 +119,14 @@ Home-to-Detail title for the same ID.
   can grow in Dynamic Type; none may be elided to force an arbitrary card
   height. Keep the movie/role association stable when a replacement changes
   one slot. Restore focus and scroll on Detail return.
+- For one through four included services, show their logos visually in a
+  horizontal group without a visible service name beside each successful
+  logo. Keep each service name available to VoiceOver; if a logo cannot load,
+  show that service name as text. At normal width, place the service group at
+  the leading side of the card's lower row and Pick at the trailing side.
+  Reflow when available width or Dynamic Type cannot fit both without clipping
+  either providers or the action. This clarification applies to the Safe card
+  and alternatives, without changing availability eligibility.
 - Use backdrop where available, then a complete poster thumbnail, then a
   semantic text surface. Provider logo failure falls back to its name. The
   existing `DecisionDisplaySnapshot.backdropPath` can support the image
