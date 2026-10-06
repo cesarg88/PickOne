@@ -51,6 +51,7 @@ struct HomeDecisionPresentationMapperTests {
 
         let item = try #require(model.items.first)
         #expect(item.id == 101)
+        #expect(item.decisionRole == .safeChoice)
         #expect(item.role == "Safe Choice")
         #expect(item.reason.contains("Arrival"))
         #expect(item.reason.contains("Drama"))
@@ -87,6 +88,24 @@ struct HomeDecisionPresentationMapperTests {
         #expect(item.reason.contains("Drama"))
         #expect(!item.reason.contains("2020s"))
         #expect(!item.reason.contains("Science Fiction"))
+    }
+
+    @Test("display mapper preserves artwork paths and stable roles by movie ID")
+    func mapsArtworkAndRoles() throws {
+        let recommendations = try [
+            HomeDecisionTestFixtures.recommendation(movieID: 101, role: .safeChoice, backdropPath: "/bright.jpg"),
+            HomeDecisionTestFixtures.recommendation(movieID: 202, role: .stretchChoice),
+            HomeDecisionTestFixtures.recommendation(movieID: 303, role: .discoveryChoice),
+        ]
+        let snapshot = try HomeDecisionTestFixtures.snapshot(recommendations: recommendations)
+
+        let items = HomeDecisionPresentationMapper.map(
+            snapshot: snapshot, projection: englishProjection
+        ).items
+
+        #expect(items.map(\.id) == [101, 202, 303])
+        #expect(items.map(\.decisionRole) == [.safeChoice, .stretchChoice, .discoveryChoice])
+        #expect(items.first(where: { $0.id == 101 })?.backdropURL?.absoluteString.contains("bright.jpg") == true)
     }
 
     @Test("direct anchor reason adds supported era reinforcement")
@@ -238,7 +257,8 @@ enum HomeDecisionTestFixtures {
         watchlistWrapped: Bool = true,
         reaction: PositiveAnchorReaction = .loved,
         sharedGenreIDs: Set<Int> = [18, 878],
-        eraMatch: RecommendationEraMatch? = nil
+        eraMatch: RecommendationEraMatch? = nil,
+        backdropPath: String? = nil
     ) throws -> PersistedDecisionRecommendation {
         let drama = DecisionGenre(id: 18, name: "Drama")
         let scienceFiction = DecisionGenre(id: 878, name: "Science Fiction")
@@ -269,7 +289,7 @@ enum HomeDecisionTestFixtures {
                 movieID: movieID,
                 localizedTitle: "Tonight's Movie",
                 posterPath: "/poster.jpg",
-                backdropPath: nil,
+                backdropPath: backdropPath,
                 runtimeMinutes: 123,
                 releaseYear: 2024,
                 genres: genres

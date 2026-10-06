@@ -8,6 +8,8 @@ struct HomeDecisionMovieItem: Identifiable, Equatable {
     let id: Int
     let title: String
     let posterURL: URL?
+    let backdropURL: URL?
+    let decisionRole: DecisionRole
     let role: String
     let reason: String
     let details: String
@@ -86,6 +88,8 @@ enum HomeDecisionPresentationMapper {
                 path: recommendation.display.posterPath,
                 size: .posterLarge
             ),
+            backdropURL: ImageURLBuilder.backdropURL(path: recommendation.display.backdropPath),
+            decisionRole: recommendation.role,
             role: roleTitle(recommendation.role, locale: locale),
             reason: reason,
             details: details(recommendation.display, locale: locale, projection: projection),

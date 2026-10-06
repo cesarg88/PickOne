@@ -2,20 +2,27 @@ import SwiftUI
 
 @MainActor
 struct HomeDecisionCard: View {
+    @Environment(\.colorSchemeContrast) private var colorSchemeContrast
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+
+    @State private var artwork: HomeDecisionArtwork = .surface
     @State private var quickFeedbackTask: Task<Void, Never>?
     @State private var quickFeedbackModel: HomeQuickFeedbackViewModel
 
+    let isHero: Bool
     let pickModel: HomePickViewModel?
     let item: HomeDecisionMovieItem
     let imagePipeline: ImagePipeline
 
     init(
         item: HomeDecisionMovieItem,
+        isHero: Bool = false,
         pickModel: HomePickViewModel? = nil,
         imagePipeline: ImagePipeline,
         updateViewerMovieState: any UpdateViewerMovieStateUseCase,
         viewerStateDidChange: @escaping @MainActor (DecisionViewerStateChange) -> Void
     ) {
+        self.isHero = isHero
         self.pickModel = pickModel
         self.item = item
         self.imagePipeline = imagePipeline
@@ -30,24 +37,58 @@ struct HomeDecisionCard: View {
 
     var body: some View {
         if quickFeedbackModel.state != .submitted {
-            VStack(alignment: .leading, spacing: 10) {
-                HStack(alignment: .top, spacing: 8) {
+            VStack(spacing: 0) {
+                if case let .poster(image) = artwork {
+                    NavigationLink(value: HomeDecisionRoute(movieID: item.id)) {
+                        Image(uiImage: image)
+                            .resizable()
+                            .scaledToFit()
+                            .frame(maxWidth: .infinity)
+                            .frame(height: isHero ? 290 : 190)
+                            .background(.black)
+                            .overlay(HomeDecisionScrim.gradient)
+                            .accessibilityHidden(true)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Open movie details")
+                    .accessibilityIdentifier("home-poster-link-\(item.id)")
+                }
+
+                VStack(alignment: .leading, spacing: 12) {
                     NavigationLink(value: HomeDecisionRoute(movieID: item.id)) {
                         HomeDecisionCardContent(
                             item: item,
-                            imagePipeline: imagePipeline
+                            imagePipeline: imagePipeline,
+                            photoBackground: showsBackdrop,
+                            isHero: isHero
                         )
                     }
                     .buttonStyle(.plain)
                     .accessibilityIdentifier("home-recommendation-\(item.id)")
 
-                    quickFeedbackControl
+                    if let pickModel {
+                        HomePickControl(model: pickModel, movieID: item.id, title: item.title)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
                 }
-                if let pickModel { HomePickControl(model: pickModel, movieID: item.id, title: item.title) }
+                .padding(isHero ? 24 : 18)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .frame(minHeight: showsBackdrop ? (isHero ? 380 : 240) : 0, alignment: .bottomLeading)
+                .background {
+                    if showsBackdrop {
+                        backdropBackground
+                    } else {
+                        Color(.secondarySystemBackground)
+                    }
+                }
+                .foregroundStyle(showsBackdrop ? .white : .primary)
+                .overlay(alignment: .topTrailing) {
+                    quickFeedbackControl
+                        .foregroundStyle(showsBackdrop ? Color.white : Color.primary)
+                        .padding(12)
+                }
             }
-            .padding(14)
-            .background(Color(.secondarySystemBackground))
-            .clipShape(.rect(cornerRadius: 14))
+            .clipShape(.rect(cornerRadius: 18))
             .alert(
                 "Couldn't save feedback",
                 isPresented: Binding(
@@ -67,6 +108,38 @@ struct HomeDecisionCard: View {
             .onDisappear {
                 quickFeedbackTask?.cancel()
                 quickFeedbackTask = nil
+            }
+            .task(id: artworkIdentity) {
+                artwork = .surface
+                let loaded = await HomeDecisionArtworkLoader.load(
+                    backdropURL: item.backdropURL,
+                    posterURL: item.posterURL,
+                    using: imagePipeline
+                )
+                guard !Task.isCancelled else { return }
+                artwork = loaded
+            }
+        }
+    }
+
+    private var artworkIdentity: String {
+        "\(item.id)|\(item.backdropURL?.absoluteString ?? "")|\(item.posterURL?.absoluteString ?? "")"
+    }
+
+    private var showsBackdrop: Bool {
+        artwork.isBackdrop && !reduceTransparency && colorSchemeContrast != .increased
+    }
+
+    private var backdropBackground: some View {
+        GeometryReader { geometry in
+            if case let .backdrop(image) = artwork {
+                Image(uiImage: image)
+                    .resizable()
+                    .scaledToFill()
+                    .frame(width: geometry.size.width, height: geometry.size.height)
+                    .clipped()
+                    .overlay(HomeDecisionScrim.gradient)
+                    .accessibilityHidden(true)
             }
         }
     }
@@ -151,87 +224,52 @@ struct HomeDecisionCard: View {
 
 @MainActor
 private struct HomeDecisionCardContent: View {
-    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
-    @ScaledMetric(relativeTo: .body) private var scaledPosterWidth = 112.0
-
     let item: HomeDecisionMovieItem
     let imagePipeline: ImagePipeline
+    let photoBackground: Bool
+    let isHero: Bool
 
     var body: some View {
-        cardLayout {
-            RemoteImageView(
-                url: item.posterURL,
-                loader: imagePipeline,
-                contentMode: .fill,
-                accessibilityLabel: item.title
-            )
-            .frame(width: posterWidth, height: posterWidth * 1.5)
-            .clipped()
-            .clipShape(.rect(cornerRadius: 10))
-            .accessibilityHidden(true)
-
-            content
-        }
-        .accessibilityElement(children: .combine)
-        .accessibilityHint("Open movie details")
-    }
-
-    private var cardLayout: AnyLayout {
-        if dynamicTypeSize.isAccessibilitySize {
-            AnyLayout(VStackLayout(alignment: .leading, spacing: 14))
-        } else {
-            AnyLayout(HStackLayout(alignment: .top, spacing: 14))
-        }
-    }
-
-    private var posterWidth: CGFloat {
-        min(scaledPosterWidth, 180)
-    }
-
-    private var content: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 10) {
             Text(item.role)
                 .font(.caption.bold())
-                .foregroundStyle(.tint)
+                .padding(.trailing, 56)
+
+            Spacer(minLength: photoBackground ? (isHero ? 88 : 20) : 0)
 
             Text(item.title)
-                .font(.headline)
-                .foregroundStyle(.primary)
+                .font(isHero ? .system(.largeTitle, design: .serif) : .system(.title3, design: .serif))
 
             if !item.details.isEmpty {
                 Text(item.details)
                     .font(.caption)
-                    .foregroundStyle(.secondary)
             }
 
             Text(item.reason)
                 .font(.subheadline)
-                .foregroundStyle(.primary)
 
-            HomeDecisionProviderRow(
-                providers: item.providers,
-                imagePipeline: imagePipeline
-            )
+            HomeDecisionProviderRow(providers: item.providers, imagePipeline: imagePipeline)
 
             if item.isSaved {
                 Label("Saved", systemImage: "bookmark.fill")
                     .font(.caption)
-                    .foregroundStyle(.secondary)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityElement(children: .combine)
+        .accessibilityHint("Open movie details")
     }
 }
 
 @MainActor
 private struct HomeDecisionProviderRow: View {
-    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
-
     let providers: [HomeDecisionProviderItem]
     let imagePipeline: ImagePipeline
 
     var body: some View {
-        providerLayout {
+        VStack(alignment: .leading, spacing: 6) {
+            Text("Included with your subscription")
+                .font(.caption2)
             ForEach(providers) { provider in
                 HomeDecisionProviderLogo(
                     provider: provider,
@@ -242,37 +280,36 @@ private struct HomeDecisionProviderRow: View {
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Included with \(providers.map(\.name).formatted())")
     }
-
-    private var providerLayout: AnyLayout {
-        if dynamicTypeSize.isAccessibilitySize {
-            AnyLayout(VStackLayout(alignment: .leading, spacing: 8))
-        } else {
-            AnyLayout(HStackLayout(spacing: 8))
-        }
-    }
 }
 
 @MainActor
 private struct HomeDecisionProviderLogo: View {
     @ScaledMetric(relativeTo: .caption) private var logoSize = 32.0
+    @State private var logo: UIImage?
 
     let provider: HomeDecisionProviderItem
     let imagePipeline: ImagePipeline
 
     var body: some View {
-        if let logoURL = provider.logoURL {
-            RemoteImageView(
-                url: logoURL,
-                loader: imagePipeline,
-                contentMode: .fit,
-                accessibilityLabel: provider.name
-            )
-            .frame(width: min(logoSize, 48), height: min(logoSize, 48))
-            .clipShape(.rect(cornerRadius: 6))
-        } else {
+        HStack(spacing: 8) {
+            if let logo {
+                Image(uiImage: logo)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: min(logoSize, 48), height: min(logoSize, 48))
+                    .clipShape(.rect(cornerRadius: 6))
+                    .accessibilityHidden(true)
+            }
             Text(provider.name)
-                .font(.caption2)
-                .lineLimit(1)
+                .font(.caption)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .task(id: provider.logoURL) {
+            logo = nil
+            guard let logoURL = provider.logoURL else { return }
+            let loaded = try? await imagePipeline.loadImage(from: logoURL)
+            guard !Task.isCancelled else { return }
+            logo = loaded
         }
     }
 }

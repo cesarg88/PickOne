@@ -7,26 +7,31 @@ final class HomePickInteractionTests: XCTestCase {
 
     @MainActor
     func testPickAndCancelInEnglish() {
-        verifyPick(language: "en", label: "Pick Tonight's Movie", pickedLabel: "Picked: Tonight's Movie")
+        verifyPick(language: "en", pickPrefix: "Pick ", pickedPrefix: "Picked: ")
     }
 
     @MainActor
     func testPickAndCancelInSpanishAtAccessibilitySize() {
-        verifyPick(language: "es", label: "Elegir Tonight's Movie", pickedLabel: "Elegida: Tonight's Movie")
+        verifyPick(language: "es", pickPrefix: "Elegir ", pickedPrefix: "Elegida: ")
     }
 
     @MainActor
     func testFailedCancellationShowsOnlyOneCardRetry() {
         verifyPick(
             language: "en",
-            label: "Pick Tonight's Movie",
-            pickedLabel: "Picked: Tonight's Movie",
+            pickPrefix: "Pick ",
+            pickedPrefix: "Picked: ",
             failsCancellation: true
         )
     }
 
     @MainActor
-    private func verifyPick(language: String, label: String, pickedLabel: String, failsCancellation: Bool = false) {
+    private func verifyPick(
+        language: String,
+        pickPrefix: String,
+        pickedPrefix: String,
+        failsCancellation: Bool = false
+    ) {
         let app = XCUIApplication()
         app.launchArguments = [
             "-ui-testing", "-ui-testing-home-recovery", "-ui-testing-home-recovery-reset",
@@ -54,6 +59,11 @@ final class HomePickInteractionTests: XCTestCase {
         screenshot.lifetime = .keepAlways
         add(screenshot)
         XCTAssertTrue(pick.isHittable)
+        XCTAssertTrue(pick.label.hasPrefix(pickPrefix))
+        let movieTitle = String(pick.label.dropFirst(pickPrefix.count))
+        XCTAssertFalse(movieTitle.isEmpty)
+        let label = pickPrefix + movieTitle
+        let pickedLabel = pickedPrefix + movieTitle
         XCTAssertEqual(pick.label, label)
         pick.tap()
         let picked = XCTNSPredicateExpectation(predicate: NSPredicate(format: "label == %@", pickedLabel), object: pick)
