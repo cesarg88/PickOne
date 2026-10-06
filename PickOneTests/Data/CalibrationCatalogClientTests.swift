@@ -109,6 +109,8 @@ struct CalibrationCatalogRemoteSourceTests {
 
 @Suite("HTTPS calibration catalog client", .serialized)
 struct HTTPSCalibrationCatalogClientTests {
+    private let transport = MockHTTPTransport()
+
     @Test("only credential-free HTTPS endpoints are accepted")
     func endpointSecurity() throws {
         let insecure = try #require(URL(string: "http://catalog.example/catalog.json"))
@@ -126,17 +128,16 @@ struct HTTPSCalibrationCatalogClientTests {
 
     @Test("request is read-only and sends no credentials or viewer state")
     func requestIsReadOnly() async throws {
-        MockURLProtocol.reset()
-        MockURLProtocol.setSuccessResponse(data: Data("{}".utf8))
+        transport.setSuccessResponse(data: Data("{}".utf8))
         let endpoint = try #require(URL(string: "https://catalog.example/catalog.json"))
         let sut = try HTTPSCalibrationCatalogClient(
             endpoint: endpoint,
-            session: MockURLProtocol.createMockSession()
+            session: transport.createMockSession()
         )
 
         _ = try await sut.get()
 
-        let request = try #require(MockURLProtocol.capturedRequests.last)
+        let request = try #require(transport.capturedRequests.last)
         #expect(request.httpMethod == "GET")
         #expect(request.httpBody == nil)
         #expect(request.url == endpoint)
@@ -147,12 +148,11 @@ struct HTTPSCalibrationCatalogClientTests {
 
     @Test("streaming response enforces the byte limit")
     func responseLimit() async throws {
-        MockURLProtocol.reset()
-        MockURLProtocol.setSuccessResponse(data: Data(repeating: 1, count: 9))
+        transport.setSuccessResponse(data: Data(repeating: 1, count: 9))
         let endpoint = try #require(URL(string: "https://catalog.example/catalog.json"))
         let sut = try HTTPSCalibrationCatalogClient(
             endpoint: endpoint,
-            session: MockURLProtocol.createMockSession(),
+            session: transport.createMockSession(),
             maximumResponseBytes: 8
         )
 
@@ -163,8 +163,7 @@ struct HTTPSCalibrationCatalogClientTests {
 
     @Test("a response redirected outside the configured trust boundary is rejected")
     func redirectTrustBoundary() async throws {
-        MockURLProtocol.reset()
-        MockURLProtocol.requestHandler = { _ in
+        transport.requestHandler = { _ in
             guard let redirected = URL(string: "https://other.example/catalog.json"),
                   let response = HTTPURLResponse(
                       url: redirected,
@@ -180,7 +179,7 @@ struct HTTPSCalibrationCatalogClientTests {
         let endpoint = try #require(URL(string: "https://catalog.example/catalog.json"))
         let sut = try HTTPSCalibrationCatalogClient(
             endpoint: endpoint,
-            session: MockURLProtocol.createMockSession()
+            session: transport.createMockSession()
         )
 
         await #expect(throws: CalibrationCatalogHTTPClientError.untrustedRedirect) {

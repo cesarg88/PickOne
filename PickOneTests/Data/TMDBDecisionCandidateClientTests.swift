@@ -2,17 +2,17 @@ import Foundation
 @testable import PickOne
 import Testing
 
-@Suite("TMDB decision candidate client tests", .serialized)
+@Suite("TMDB decision candidate client tests")
 struct TMDBDecisionCandidateClientTests {
+    private let transport = MockHTTPTransport()
+
     @Test("Discover uses accepted Spanish region and provider recall filters")
     func requestsAcceptedRecallFilters() async throws {
-        MockURLProtocol.reset()
-        defer { MockURLProtocol.reset() }
-        MockURLProtocol.setSuccessResponse(data: responseData)
+        transport.setSuccessResponse(data: responseData)
         let sut = TMDBDecisionCandidateClient(
             httpClient: URLSessionHTTPClient(
                 baseURL: "https://api.themoviedb.org/3",
-                session: MockURLProtocol.createMockSession()
+                session: transport.createMockSession()
             ),
             apiKey: "test-token"
         )
@@ -25,7 +25,7 @@ struct TMDBDecisionCandidateClientTests {
 
         #expect(response.results.first?.id == 42)
         #expect(response.results.first?.popularity == 999)
-        let request = try #require(MockURLProtocol.capturedRequests.first)
+        let request = try #require(transport.capturedRequests.first)
         let requestURL = try #require(request.url)
         let query = try #require(
             URLComponents(url: requestURL, resolvingAgainstBaseURL: false)?

@@ -3,8 +3,10 @@ import Foundation
 import Testing
 import UIKit
 
-@Suite("ImagePipeline Tests", .serialized)
+@Suite("ImagePipeline Tests")
 struct ImagePipelineTests {
+    private let transport = MockHTTPTransport()
+
     @Test("rejects unsuccessful HTTP responses")
     func rejectsHTTPFailure() async throws {
         let sut = try makeSUT(
@@ -54,8 +56,7 @@ struct ImagePipelineTests {
         contentType: String,
         data: Data
     ) -> ImagePipeline {
-        MockURLProtocol.reset()
-        MockURLProtocol.requestHandler = { request in
+        transport.requestHandler = { request in
             guard let url = request.url else {
                 throw URLError(.badURL)
             }
@@ -71,8 +72,7 @@ struct ImagePipelineTests {
             return (response, data)
         }
 
-        let configuration = URLSessionConfiguration.ephemeral
-        configuration.protocolClasses = [MockURLProtocol.self]
+        let configuration = transport.makeConfiguration()
         return ImagePipeline(
             urlCache: URLCache(
                 memoryCapacity: 1024 * 1024,

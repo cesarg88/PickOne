@@ -2,8 +2,10 @@ import Foundation
 @testable import PickOne
 import Testing
 
-@Suite("TMDB calibration metadata client tests", .serialized)
+@Suite("TMDB calibration metadata client tests")
 struct TMDBCalibrationMovieMetadataClientTests {
+    private let transport = MockHTTPTransport()
+
     @Test("calibration metadata requests Spanish localization")
     func calibrationUsesSpanishLocalization() async throws {
         let httpClient = makeHTTPClient()
@@ -15,7 +17,7 @@ struct TMDBCalibrationMovieMetadataClientTests {
         let response = try await sut.getMovieDetail(id: 278)
 
         #expect(response.id == 278)
-        let request = try #require(MockURLProtocol.capturedRequests.first)
+        let request = try #require(transport.capturedRequests.first)
         #expect(request.url?.path == "/3/movie/278")
         #expect(queryValue(named: "language", in: request) == "es-ES")
         #expect(
@@ -34,7 +36,7 @@ struct TMDBCalibrationMovieMetadataClientTests {
 
         _ = try await sut.getMovieDetail(id: 278)
 
-        let request = try #require(MockURLProtocol.capturedRequests.first)
+        let request = try #require(transport.capturedRequests.first)
         #expect(queryValue(named: "language", in: request) == "en-US")
     }
 
@@ -45,16 +47,15 @@ struct TMDBCalibrationMovieMetadataClientTests {
 
         _ = try await sut.getMovieDetail(id: 278, contentLocale: .spanish)
 
-        let request = try #require(MockURLProtocol.capturedRequests.first)
+        let request = try #require(transport.capturedRequests.first)
         #expect(queryValue(named: "language", in: request) == "es-ES")
     }
 
     private func makeHTTPClient() -> URLSessionHTTPClient {
-        MockURLProtocol.reset()
-        MockURLProtocol.setSuccessResponse(data: TestData.movieDetailResponseJSON)
+        transport.setSuccessResponse(data: TestData.movieDetailResponseJSON)
         return URLSessionHTTPClient(
             baseURL: "https://api.themoviedb.org/3",
-            session: MockURLProtocol.createMockSession()
+            session: transport.createMockSession()
         )
     }
 

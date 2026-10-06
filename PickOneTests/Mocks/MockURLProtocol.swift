@@ -1,113 +1,58 @@
-//
-//  MockURLProtocol.swift
-//  PickOneTests
-//
-//  A URLProtocol subclass that intercepts network requests for testing.
-//  This allows us to test URLSessionHTTPClient without making real network calls.
-//
-
 import Foundation
 import Synchronization
 
-final class MockURLProtocol: URLProtocol {
-    typealias RequestHandler =
-        @Sendable (URLRequest) throws -> (HTTPURLResponse, Data)
+/// Owns one fixture's handlers and request history. Keep it alive while using its sessions.
+final class MockHTTPTransport: Sendable {
+    typealias RequestHandler = @Sendable (URLRequest) throws -> (HTTPURLResponse, Data)
 
-    private struct State: Sendable {
+    fileprivate struct State: Sendable {
         var requestHandler: RequestHandler?
         var capturedRequests: [URLRequest] = []
     }
 
-    private static let state = Mutex(
-        State(requestHandler: nil)
-    )
-
-    // MARK: - Mock Configuration
-
-    /// The handler that processes intercepted requests and returns mock responses.
-    /// Set this before running tests to define expected behavior.
-    static var requestHandler: RequestHandler? {
-        get {
-            state.withLock { $0.requestHandler }
-        }
-        set {
-            state.withLock { $0.requestHandler = newValue }
-        }
+    fileprivate final class Context: Sendable {
+        let state = Mutex(State())
     }
 
-    /// Tracks all requests made during tests for verification.
-    static var capturedRequests: [URLRequest] {
-        state.withLock { $0.capturedRequests }
+    private let identifier = UUID().uuidString
+    private let context = Context()
+
+    init() {
+        MockURLProtocol.contexts.withLock { $0[identifier] = context }
     }
 
-    /// Resets all mock state. Call this in test teardown.
-    static func reset() {
-        state.withLock {
-            $0.requestHandler = nil
-            $0.capturedRequests = []
-        }
+    deinit {
+        MockURLProtocol.contexts.withLock { $0[identifier] = nil }
     }
 
-    // MARK: - URLProtocol Overrides
-
-    // swiftlint:disable:next static_over_final_class - URLProtocol requires this class override point
-    override class func canInit(with request: URLRequest) -> Bool {
-        // Intercept all requests
-        true
+    var requestHandler: RequestHandler? {
+        get { context.state.withLock { $0.requestHandler } }
+        set { context.state.withLock { $0.requestHandler = newValue } }
     }
 
-    // swiftlint:disable:next static_over_final_class - URLProtocol requires this class override point
-    override class func canonicalRequest(for request: URLRequest) -> URLRequest {
-        request
+    var capturedRequests: [URLRequest] {
+        context.state.withLock { $0.capturedRequests }
     }
 
-    override func startLoading() {
-        let handler = MockURLProtocol.state.withLock { state in
-            state.capturedRequests.append(request)
-            return state.requestHandler
-        }
-
-        guard let handler else {
-            fatalError("MockURLProtocol.requestHandler not set. Set it before running tests.")
-        }
-
-        do {
-            let (response, data) = try handler(request)
-
-            // Send response to client
-            client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
-            client?.urlProtocol(self, didLoad: data)
-            client?.urlProtocolDidFinishLoading(self)
-
-        } catch {
-            // Send error to client
-            client?.urlProtocol(self, didFailWithError: error)
-        }
-    }
-
-    override func stopLoading() {
-        // Required override, but nothing to do here
-    }
-}
-
-// MARK: - Test Helpers
-
-extension MockURLProtocol {
-    /// Creates a URLSession configured to use this mock protocol.
-    static func createMockSession() -> URLSession {
+    func makeConfiguration() -> URLSessionConfiguration {
         let configuration = URLSessionConfiguration.ephemeral
         configuration.protocolClasses = [MockURLProtocol.self]
-        return URLSession(configuration: configuration)
+        configuration.httpAdditionalHeaders = [MockURLProtocol.contextHeader: identifier]
+        return configuration
+    }
+
+    func createMockSession() -> URLSession {
+        URLSession(configuration: makeConfiguration())
     }
 
     /// Convenience method to set up a successful JSON response.
-    static func setSuccessResponse(
+    func setSuccessResponse(
         data: Data,
         statusCode: Int = 200,
         headers: [String: String] = ["Content-Type": "application/json"]
     ) {
         requestHandler = { request in
-            let response = try makeResponse(
+            let response = try Self.makeResponse(
                 for: request,
                 statusCode: statusCode,
                 headers: headers
@@ -117,16 +62,16 @@ extension MockURLProtocol {
     }
 
     /// Convenience method to set up an error response.
-    static func setErrorResponse(_ error: any Error & Sendable) {
+    func setErrorResponse(_ error: any Error & Sendable) {
         requestHandler = { _ in
             throw error
         }
     }
 
     /// Convenience method to set up an HTTP error response.
-    static func setHTTPErrorResponse(statusCode: Int, data: Data = Data()) {
+    func setHTTPErrorResponse(statusCode: Int, data: Data = Data()) {
         requestHandler = { request in
-            let response = try makeResponse(
+            let response = try Self.makeResponse(
                 for: request,
                 statusCode: statusCode,
                 headers: ["Content-Type": "application/json"]
@@ -153,4 +98,68 @@ extension MockURLProtocol {
         }
         return response
     }
+}
+
+/// Routes every intercepted request to its fixture, including callbacks from older sessions.
+final class MockURLProtocol: URLProtocol {
+    fileprivate static let contextHeader = "X-PickOne-Test-Transport"
+    fileprivate static let contexts = Mutex([String: MockHTTPTransport.Context]())
+
+    private let context: MockHTTPTransport.Context?
+    private let stopped = Mutex(false)
+
+    override init(request: URLRequest, cachedResponse: CachedURLResponse?, client: (any URLProtocolClient)?) {
+        let identifier = request.value(forHTTPHeaderField: Self.contextHeader)
+        context = Self.contexts.withLock { contexts in
+            identifier.flatMap { contexts[$0] }
+        }
+        super.init(request: request, cachedResponse: cachedResponse, client: client)
+    }
+
+    // swiftlint:disable:next static_over_final_class - URLProtocol requires this class override point
+    override class func canInit(with request: URLRequest) -> Bool {
+        // Fail closed even when a fixture has not registered its context.
+        true
+    }
+
+    // swiftlint:disable:next static_over_final_class - URLProtocol requires this class override point
+    override class func canonicalRequest(for request: URLRequest) -> URLRequest {
+        request
+    }
+
+    override func startLoading() {
+        guard !stopped.withLock({ $0 }) else { return }
+        guard let context else {
+            client?.urlProtocol(self, didFailWithError: MockHTTPTransportError.missingContext)
+            return
+        }
+        let handler = context.state.withLock { state in
+            state.capturedRequests.append(request)
+            return state.requestHandler
+        }
+        guard let handler else {
+            client?.urlProtocol(self, didFailWithError: MockHTTPTransportError.missingHandler)
+            return
+        }
+
+        do {
+            let (response, data) = try handler(request)
+            guard !stopped.withLock({ $0 }) else { return }
+            client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
+            client?.urlProtocol(self, didLoad: data)
+            client?.urlProtocolDidFinishLoading(self)
+        } catch {
+            guard !stopped.withLock({ $0 }) else { return }
+            client?.urlProtocol(self, didFailWithError: error)
+        }
+    }
+
+    override func stopLoading() {
+        stopped.withLock { $0 = true }
+    }
+}
+
+enum MockHTTPTransportError: Error, Equatable {
+    case missingContext
+    case missingHandler
 }

@@ -11,19 +11,42 @@ import Testing
 
 // MARK: - Test Suite
 
-/// Tests run serially because MockURLProtocol uses shared static state.
-/// This prevents race conditions between tests.
-@Suite("HTTPClient Tests", .serialized)
+@Suite("HTTPClient Tests")
 struct HTTPClientTests {
+    private let transport = MockHTTPTransport()
+
     // MARK: - Helper
 
     /// Creates a System Under Test with a mock URLSession.
-    /// Resets MockURLProtocol state before each test to ensure isolation.
     private func makeSUT(baseURL: String = TestData.testBaseURL) -> URLSessionHTTPClient {
-        MockURLProtocol.reset()
-
-        let session = MockURLProtocol.createMockSession()
+        let session = transport.createMockSession()
         return URLSessionHTTPClient(baseURL: baseURL, session: session)
+    }
+
+    @Test("independent sessions retain their own responses")
+    func independentSessionsRetainResponses() async throws {
+        let first = MockHTTPTransport()
+        first.setSuccessResponse(data: Data("first".utf8), statusCode: 201)
+        let firstSession = first.createMockSession()
+        defer { firstSession.invalidateAndCancel() }
+
+        let second = MockHTTPTransport()
+        second.setSuccessResponse(data: Data("second".utf8), statusCode: 202)
+        let secondSession = second.createMockSession()
+        defer { secondSession.invalidateAndCancel() }
+        let url = try #require(URL(string: "https://api.test.com/isolation"))
+
+        async let firstResult = firstSession.data(from: url)
+        async let secondResult = secondSession.data(from: url)
+        let (firstData, firstResponse) = try await firstResult
+        let (secondData, secondResponse) = try await secondResult
+
+        #expect(firstData == Data("first".utf8))
+        #expect((firstResponse as? HTTPURLResponse)?.statusCode == 201)
+        #expect(secondData == Data("second".utf8))
+        #expect((secondResponse as? HTTPURLResponse)?.statusCode == 202)
+        #expect(first.capturedRequests.count == 1)
+        #expect(second.capturedRequests.count == 1)
     }
 
     // MARK: - Successful Request Tests
@@ -32,7 +55,7 @@ struct HTTPClientTests {
     func successfulRequestReturnsDecodedResponse() async throws {
         // Given
         let sut = makeSUT()
-        MockURLProtocol.setSuccessResponse(data: TestData.simpleResponseJSON)
+        transport.setSuccessResponse(data: TestData.simpleResponseJSON)
 
         // When
         let result: TestData.SimpleResponse = try await sut.request(
@@ -54,7 +77,7 @@ struct HTTPClientTests {
     func snakeCaseConversion() async throws {
         // Given
         let sut = makeSUT()
-        MockURLProtocol.setSuccessResponse(data: TestData.simpleResponseJSON)
+        transport.setSuccessResponse(data: TestData.simpleResponseJSON)
 
         // When
         let result: TestData.SimpleResponse = try await sut.request(
@@ -76,7 +99,7 @@ struct HTTPClientTests {
     func urlBuiltWithEndpoint() async throws {
         // Given
         let sut = makeSUT(baseURL: "https://api.example.com")
-        MockURLProtocol.setSuccessResponse(data: TestData.simpleResponseJSON)
+        transport.setSuccessResponse(data: TestData.simpleResponseJSON)
 
         // When
         let _: TestData.SimpleResponse = try await sut.request(
@@ -89,7 +112,7 @@ struct HTTPClientTests {
         )
 
         // Then
-        let capturedRequest = try #require(MockURLProtocol.capturedRequests.last)
+        let capturedRequest = try #require(transport.capturedRequests.last)
         let url = try #require(capturedRequest.url)
 
         #expect(url.absoluteString.contains("api.example.com"))
@@ -100,7 +123,7 @@ struct HTTPClientTests {
     func queryParametersAppended() async throws {
         // Given
         let sut = makeSUT()
-        MockURLProtocol.setSuccessResponse(data: TestData.simpleResponseJSON)
+        transport.setSuccessResponse(data: TestData.simpleResponseJSON)
 
         // When
         let _: TestData.SimpleResponse = try await sut.request(
@@ -113,7 +136,7 @@ struct HTTPClientTests {
         )
 
         // Then
-        let capturedRequest = try #require(MockURLProtocol.capturedRequests.last)
+        let capturedRequest = try #require(transport.capturedRequests.last)
         let url = try #require(capturedRequest.url)
         let urlString = url.absoluteString
 
@@ -127,7 +150,7 @@ struct HTTPClientTests {
     func customHeadersApplied() async throws {
         // Given
         let sut = makeSUT()
-        MockURLProtocol.setSuccessResponse(data: TestData.simpleResponseJSON)
+        transport.setSuccessResponse(data: TestData.simpleResponseJSON)
 
         // When
         let _: TestData.SimpleResponse = try await sut.request(
@@ -140,7 +163,7 @@ struct HTTPClientTests {
         )
 
         // Then
-        let capturedRequest = try #require(MockURLProtocol.capturedRequests.last)
+        let capturedRequest = try #require(transport.capturedRequests.last)
         let authHeader = capturedRequest.value(forHTTPHeaderField: "Authorization")
 
         #expect(authHeader == "Bearer test-token")
@@ -150,7 +173,7 @@ struct HTTPClientTests {
     func defaultContentTypeIsJSON() async throws {
         // Given
         let sut = makeSUT()
-        MockURLProtocol.setSuccessResponse(data: TestData.simpleResponseJSON)
+        transport.setSuccessResponse(data: TestData.simpleResponseJSON)
 
         // When
         let _: TestData.SimpleResponse = try await sut.request(
@@ -163,7 +186,7 @@ struct HTTPClientTests {
         )
 
         // Then
-        let capturedRequest = try #require(MockURLProtocol.capturedRequests.last)
+        let capturedRequest = try #require(transport.capturedRequests.last)
         let contentType = capturedRequest.value(forHTTPHeaderField: "Content-Type")
 
         #expect(contentType == "application/json")
@@ -173,7 +196,7 @@ struct HTTPClientTests {
     func defaultAcceptIsJSON() async throws {
         // Given
         let sut = makeSUT()
-        MockURLProtocol.setSuccessResponse(data: TestData.simpleResponseJSON)
+        transport.setSuccessResponse(data: TestData.simpleResponseJSON)
 
         // When
         let _: TestData.SimpleResponse = try await sut.request(
@@ -186,7 +209,7 @@ struct HTTPClientTests {
         )
 
         // Then
-        let capturedRequest = try #require(MockURLProtocol.capturedRequests.last)
+        let capturedRequest = try #require(transport.capturedRequests.last)
         let accept = capturedRequest.value(forHTTPHeaderField: "Accept")
 
         #expect(accept == "application/json")
@@ -203,7 +226,7 @@ struct HTTPClientTests {
     func httpMethodIsSetCorrectly(method: HTTPMethod) async throws {
         // Given
         let sut = makeSUT()
-        MockURLProtocol.setSuccessResponse(data: TestData.simpleResponseJSON)
+        transport.setSuccessResponse(data: TestData.simpleResponseJSON)
 
         // When
         let _: TestData.SimpleResponse = try await sut.request(
@@ -216,7 +239,7 @@ struct HTTPClientTests {
         )
 
         // Then - use .last to get the most recent request from this test
-        let capturedRequest = try #require(MockURLProtocol.capturedRequests.last)
+        let capturedRequest = try #require(transport.capturedRequests.last)
         #expect(capturedRequest.httpMethod == method.rawValue)
     }
 
@@ -226,7 +249,7 @@ struct HTTPClientTests {
     func http401ThrowsError() async throws {
         // Given
         let sut = makeSUT()
-        MockURLProtocol.setHTTPErrorResponse(statusCode: 401)
+        transport.setHTTPErrorResponse(statusCode: 401)
 
         // When/Then
         await #expect(throws: NetworkError.self) {
@@ -245,7 +268,7 @@ struct HTTPClientTests {
     func http404ThrowsError() async throws {
         // Given
         let sut = makeSUT()
-        MockURLProtocol.setHTTPErrorResponse(statusCode: 404)
+        transport.setHTTPErrorResponse(statusCode: 404)
 
         // When/Then
         await #expect(throws: NetworkError.self) {
@@ -264,7 +287,7 @@ struct HTTPClientTests {
     func http500ThrowsError() async throws {
         // Given
         let sut = makeSUT()
-        MockURLProtocol.setHTTPErrorResponse(statusCode: 500)
+        transport.setHTTPErrorResponse(statusCode: 500)
 
         // When/Then
         await #expect(throws: NetworkError.self) {
@@ -283,7 +306,7 @@ struct HTTPClientTests {
     func emptyResponseThrowsNoDataError() async throws {
         // Given
         let sut = makeSUT()
-        MockURLProtocol.setSuccessResponse(data: TestData.emptyData)
+        transport.setSuccessResponse(data: TestData.emptyData)
 
         // When/Then
         await #expect(throws: NetworkError.self) {
@@ -302,7 +325,7 @@ struct HTTPClientTests {
     func invalidJSONThrowsDecodingError() async throws {
         // Given
         let sut = makeSUT()
-        MockURLProtocol.setSuccessResponse(data: TestData.invalidJSON)
+        transport.setSuccessResponse(data: TestData.invalidJSON)
 
         // When/Then
         await #expect(throws: NetworkError.self) {
@@ -322,7 +345,7 @@ struct HTTPClientTests {
         // Given
         let sut = makeSUT()
         let networkError = URLError(.notConnectedToInternet)
-        MockURLProtocol.setErrorResponse(networkError)
+        transport.setErrorResponse(networkError)
 
         // When/Then
         await #expect(throws: NetworkError.self) {
@@ -340,7 +363,7 @@ struct HTTPClientTests {
     @Test("task cancellation remains cancellation instead of becoming a network error")
     func taskCancellationRemainsCancellation() async throws {
         let sut = makeSUT()
-        MockURLProtocol.setErrorResponse(URLError(.cancelled))
+        transport.setErrorResponse(URLError(.cancelled))
         let task = Task {
             withUnsafeCurrentTask { $0?.cancel() }
             let _: TestData.SimpleResponse = try await sut.request(
@@ -364,7 +387,7 @@ struct HTTPClientTests {
     func endpointWithLeadingSlashNormalized() async throws {
         // Given
         let sut = makeSUT(baseURL: "https://api.example.com")
-        MockURLProtocol.setSuccessResponse(data: TestData.simpleResponseJSON)
+        transport.setSuccessResponse(data: TestData.simpleResponseJSON)
 
         // When - endpoint WITH leading slash
         let _: TestData.SimpleResponse = try await sut.request(
@@ -377,7 +400,7 @@ struct HTTPClientTests {
         )
 
         // Then - should NOT have double slash
-        let capturedRequest = try #require(MockURLProtocol.capturedRequests.last)
+        let capturedRequest = try #require(transport.capturedRequests.last)
         let url = try #require(capturedRequest.url)
 
         #expect(!url.absoluteString.contains("//movies"))
@@ -388,7 +411,7 @@ struct HTTPClientTests {
     func endpointWithoutLeadingSlashWorks() async throws {
         // Given
         let sut = makeSUT(baseURL: "https://api.example.com")
-        MockURLProtocol.setSuccessResponse(data: TestData.simpleResponseJSON)
+        transport.setSuccessResponse(data: TestData.simpleResponseJSON)
 
         // When - endpoint WITHOUT leading slash
         let _: TestData.SimpleResponse = try await sut.request(
@@ -401,7 +424,7 @@ struct HTTPClientTests {
         )
 
         // Then
-        let capturedRequest = try #require(MockURLProtocol.capturedRequests.last)
+        let capturedRequest = try #require(transport.capturedRequests.last)
         let url = try #require(capturedRequest.url)
 
         #expect(url.absoluteString.contains("/movies/top_rated"))
@@ -412,7 +435,7 @@ struct HTTPClientTests {
         // Given
         let sut1 = makeSUT(baseURL: "https://api.example.com")
         let sut2 = makeSUT(baseURL: "https://api.example.com")
-        MockURLProtocol.setSuccessResponse(data: TestData.simpleResponseJSON)
+        transport.setSuccessResponse(data: TestData.simpleResponseJSON)
 
         // When - with leading slash
         let _: TestData.SimpleResponse = try await sut1.request(
@@ -423,11 +446,10 @@ struct HTTPClientTests {
             timeout: nil,
             body: nil
         )
-        let url1 = MockURLProtocol.capturedRequests.last?.url?.absoluteString
+        let url1 = transport.capturedRequests.last?.url?.absoluteString
 
-        // Reset and test without leading slash
-        MockURLProtocol.reset()
-        MockURLProtocol.setSuccessResponse(data: TestData.simpleResponseJSON)
+        // Test without leading slash
+        transport.setSuccessResponse(data: TestData.simpleResponseJSON)
 
         let _: TestData.SimpleResponse = try await sut2.request(
             endpoint: "movies/top_rated",
@@ -437,7 +459,7 @@ struct HTTPClientTests {
             timeout: nil,
             body: nil
         )
-        let url2 = MockURLProtocol.capturedRequests.last?.url?.absoluteString
+        let url2 = transport.capturedRequests.last?.url?.absoluteString
 
         // Then - both should produce the same URL
         #expect(url1 == url2)
@@ -449,7 +471,7 @@ struct HTTPClientTests {
     func queryParamsWithSpacesAreEncoded() async throws {
         // Given
         let sut = makeSUT()
-        MockURLProtocol.setSuccessResponse(data: TestData.simpleResponseJSON)
+        transport.setSuccessResponse(data: TestData.simpleResponseJSON)
 
         // When
         let _: TestData.SimpleResponse = try await sut.request(
@@ -462,7 +484,7 @@ struct HTTPClientTests {
         )
 
         // Then
-        let capturedRequest = try #require(MockURLProtocol.capturedRequests.last)
+        let capturedRequest = try #require(transport.capturedRequests.last)
         let urlString = try #require(capturedRequest.url?.absoluteString)
 
         // Space should be encoded as %20 or +
@@ -473,7 +495,7 @@ struct HTTPClientTests {
     func queryParamsWithSpecialCharsAreEncoded() async throws {
         // Given
         let sut = makeSUT()
-        MockURLProtocol.setSuccessResponse(data: TestData.simpleResponseJSON)
+        transport.setSuccessResponse(data: TestData.simpleResponseJSON)
 
         // When
         let _: TestData.SimpleResponse = try await sut.request(
@@ -486,7 +508,7 @@ struct HTTPClientTests {
         )
 
         // Then
-        let capturedRequest = try #require(MockURLProtocol.capturedRequests.last)
+        let capturedRequest = try #require(transport.capturedRequests.last)
         let url = try #require(capturedRequest.url)
 
         // Parse query items to verify encoding worked correctly
@@ -511,7 +533,7 @@ struct HTTPClientTests {
     func defaultTimeoutIsApplied() async throws {
         // Given
         let sut = makeSUT()
-        MockURLProtocol.setSuccessResponse(data: TestData.simpleResponseJSON)
+        transport.setSuccessResponse(data: TestData.simpleResponseJSON)
 
         // When
         let _: TestData.SimpleResponse = try await sut.request(
@@ -524,7 +546,7 @@ struct HTTPClientTests {
         )
 
         // Then
-        let capturedRequest = try #require(MockURLProtocol.capturedRequests.last)
+        let capturedRequest = try #require(transport.capturedRequests.last)
         #expect(capturedRequest.timeoutInterval == 10)
     }
 
@@ -532,7 +554,7 @@ struct HTTPClientTests {
     func customTimeoutIsApplied() async throws {
         // Given
         let sut = makeSUT()
-        MockURLProtocol.setSuccessResponse(data: TestData.simpleResponseJSON)
+        transport.setSuccessResponse(data: TestData.simpleResponseJSON)
         let customTimeout: TimeInterval = 5.0
 
         // When
@@ -546,7 +568,7 @@ struct HTTPClientTests {
         )
 
         // Then
-        let capturedRequest = try #require(MockURLProtocol.capturedRequests.last)
+        let capturedRequest = try #require(transport.capturedRequests.last)
         #expect(capturedRequest.timeoutInterval == customTimeout)
     }
 }
