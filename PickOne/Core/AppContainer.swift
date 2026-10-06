@@ -4,7 +4,7 @@ import Foundation
 final class AppContainer {
     // MARK: - Infrastructure
 
-    let imagePipeline = ImagePipeline()
+    let imagePipeline = AppContainer.makeImagePipeline()
 
     // MARK: - Use Cases - Discovery
 
@@ -68,6 +68,7 @@ final class AppContainer {
             availabilityUseCase = UITestingAvailabilityUseCase()
             playbackOptionsUseCase = UITestingPreparePlaybackOptionsUseCase()
             homeUseCase = AppConfiguration.usesHomeRecoveryScenarioForUITests
+                && !AppConfiguration.usesHomeCompositionScenarioForUITests
                 ? HomeRecoveryUITestingScenario.makeHomeUseCase()
                 : UITestingThreeForTonightUseCase()
         } else {
@@ -147,6 +148,20 @@ final class AppContainer {
 }
 
 private extension AppContainer {
+    static func makeImagePipeline() -> ImagePipeline {
+        let imageCache = ImageCache()
+        if AppConfiguration.usesHomePosterScenarioForUITests {
+            UITestingHomeArtwork.primePoster(in: imageCache)
+        }
+        if AppConfiguration.usesHomeBrightBackdropForUITests {
+            UITestingHomeArtwork.primeBackdrop(in: imageCache, bright: true)
+        }
+        if AppConfiguration.usesHomeDarkBackdropForUITests {
+            UITestingHomeArtwork.primeBackdrop(in: imageCache, bright: false)
+        }
+        return ImagePipeline(cache: imageCache)
+    }
+
     static func makeHomeDecisionModel(
         useCases: UseCases,
         homeUseCase: any ThreeForTonightUseCase,
@@ -154,7 +169,8 @@ private extension AppContainer {
     ) -> HomeDecisionViewModel {
         HomeDecisionViewModel(
             threeForTonight: homeUseCase,
-            getMovieDisplayMetadata: useCases.getMovieDisplayMetadata,
+            getMovieDisplayMetadata: AppConfiguration.usesHomeCompositionScenarioForUITests
+                ? nil : useCases.getMovieDisplayMetadata,
             pickModel: HomePickViewModel(manage: ManageViewingDecision(repository: viewingDecisions))
         )
     }

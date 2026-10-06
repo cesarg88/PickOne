@@ -189,6 +189,8 @@ private struct HomeDecisionContent: View {
 
 @MainActor
 private struct HomeDecisionLoadedView: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
     let set: HomeDecisionSetPresentationModel
     let pickModel: HomePickViewModel?
     let isRefreshing: Bool
@@ -202,46 +204,87 @@ private struct HomeDecisionLoadedView: View {
     let reviewStreamingServices: () -> Void
 
     var body: some View {
-        ScrollView {
-            // Home contains at most three cards. Eager layout keeps a scrolled card
-            // stable when Pick progress and the active-choice controls change height.
-            VStack(alignment: .leading, spacing: 16) {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Three for Tonight")
-                        .font(.title2.bold())
-                    Text("A small set of movies included with your services in Spain.")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                }
+        GeometryReader { geometry in
+            let availableWidth = max(0, min(geometry.size.width - 2 * horizontalPadding, 1280))
+            let usesColumns = HomeDecisionLayout.usesColumns(
+                availableWidth: availableWidth,
+                dynamicTypeSize: dynamicTypeSize
+            )
 
-                ForEach(set.items) { item in
-                    HomeDecisionCard(
-                        item: item,
-                        pickModel: pickModel,
-                        imagePipeline: imagePipeline,
-                        updateViewerMovieState: updateViewerMovieState,
-                        viewerStateDidChange: viewerStateDidChange
-                    )
-                }
+            ScrollView {
+                // At most three eager cards retain their movie-ID state during reflow.
+                VStack(alignment: .leading, spacing: 20) {
+                    let layout = usesColumns
+                        ? AnyLayout(HStackLayout(alignment: .top, spacing: 28))
+                        : AnyLayout(VStackLayout(alignment: .leading, spacing: 16))
+                    layout {
+                        if let hero = set.items.first(where: { $0.decisionRole == .safeChoice })
+                            ?? set.items.first
+                        {
+                            card(for: hero, isHero: true)
+                                .frame(maxWidth: usesColumns ? availableWidth * 0.53 : .infinity)
+                        }
 
-                if let exhaustion {
-                    HomeDecisionExhaustionControls(
-                        exhaustion: exhaustion,
-                        isRefreshing: isRefreshing,
-                        refresh: refresh,
-                        reviewMyMovies: reviewMyMovies,
-                        reviewStreamingServices: reviewStreamingServices
-                    )
-                } else {
-                    HomeDecisionRefreshControls(
-                        isRefreshing: isRefreshing,
-                        refreshError: refreshError,
-                        refresh: refresh
-                    )
+                        if !alternatives.isEmpty {
+                            VStack(alignment: .leading, spacing: 12) {
+                                Text(alternativesHeading)
+                                    .font(.system(.title2, design: .serif))
+                                ForEach(alternatives) { item in
+                                    card(for: item, isHero: false)
+                                }
+                            }
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                        }
+                    }
+
+                    if let exhaustion {
+                        HomeDecisionExhaustionControls(
+                            exhaustion: exhaustion,
+                            isRefreshing: isRefreshing,
+                            refresh: refresh,
+                            reviewMyMovies: reviewMyMovies,
+                            reviewStreamingServices: reviewStreamingServices
+                        )
+                    } else {
+                        HomeDecisionRefreshControls(
+                            isRefreshing: isRefreshing,
+                            refreshError: refreshError,
+                            refresh: refresh
+                        )
+                    }
                 }
+                .frame(maxWidth: 1280, alignment: .leading)
+                .padding(.horizontal, horizontalPadding)
+                .padding(.vertical, 20)
+                .frame(maxWidth: .infinity)
             }
-            .padding()
         }
+    }
+
+    private var horizontalPadding: CGFloat {
+        dynamicTypeSize.isAccessibilitySize ? 16 : 24
+    }
+
+    private var alternatives: [HomeDecisionMovieItem] {
+        guard let heroID = (set.items.first(where: { $0.decisionRole == .safeChoice })
+            ?? set.items.first)?.id else { return [] }
+        return set.items.filter { $0.id != heroID }
+    }
+
+    private var alternativesHeading: LocalizedStringKey {
+        alternatives.count == 1 ? "Another path." : "Two other paths."
+    }
+
+    private func card(for item: HomeDecisionMovieItem, isHero: Bool) -> some View {
+        HomeDecisionCard(
+            item: item,
+            isHero: isHero,
+            pickModel: pickModel,
+            imagePipeline: imagePipeline,
+            updateViewerMovieState: updateViewerMovieState,
+            viewerStateDidChange: viewerStateDidChange
+        )
+        .id(item.id)
     }
 }
 

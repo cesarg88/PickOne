@@ -1,26 +1,67 @@
 import Foundation
 import Synchronization
+import UIKit
+
+enum UITestingHomeArtwork {
+    static let posterPath = "/home-poster-fixture.png"
+    static let brightBackdropPath = "/home-bright-backdrop-fixture.png"
+    static let darkBackdropPath = "/home-dark-backdrop-fixture.png"
+
+    @MainActor
+    static func primePoster(in cache: ImageCache) {
+        guard let url = ImageURLBuilder.posterURL(path: posterPath, size: .posterLarge) else { return }
+        cache.insert(image(color: .white, size: CGSize(width: 200, height: 300)), for: url)
+    }
+
+    @MainActor
+    static func primeBackdrop(in cache: ImageCache, bright: Bool) {
+        let path = bright ? brightBackdropPath : darkBackdropPath
+        guard let url = ImageURLBuilder.backdropURL(path: path) else { return }
+        let color: UIColor = bright ? .white : .black
+        cache.insert(image(color: color, size: CGSize(width: 600, height: 400)), for: url)
+    }
+
+    @MainActor
+    private static func image(color: UIColor, size: CGSize) -> UIImage {
+        UIGraphicsImageRenderer(size: size).image { context in
+            color.setFill()
+            context.fill(CGRect(origin: .zero, size: size))
+        }
+    }
+}
 
 actor UITestingThreeForTonightUseCase: ThreeForTonightUseCase {
     private var currentMovieID = 101
 
     func load() async throws -> ThreeForTonightResult {
-        try .usable(Self.snapshot(movieID: currentMovieID))
+        if AppConfiguration.usesHomeCompositionScenarioForUITests {
+            return try .usable(Self.compositionSnapshot())
+        }
+        return try .usable(Self.snapshot(movieID: currentMovieID))
     }
 
     func refresh() async throws -> ThreeForTonightResult {
-        try .usable(Self.snapshot(movieID: currentMovieID))
+        if AppConfiguration.usesHomeCompositionScenarioForUITests {
+            return try .usable(Self.compositionSnapshot())
+        }
+        return try .usable(Self.snapshot(movieID: currentMovieID))
     }
 
     func repairAfterEligibilityChange(
         _ change: DecisionEligibilityChange
     ) async throws -> ThreeForTonightResult {
-        try .usable(Self.snapshot(movieID: currentMovieID))
+        if AppConfiguration.usesHomeCompositionScenarioForUITests {
+            return try .usable(Self.compositionSnapshot())
+        }
+        return try .usable(Self.snapshot(movieID: currentMovieID))
     }
 
     func reconcileAfterViewerStateChange(
         _ change: DecisionViewerStateChange
     ) async throws -> ThreeForTonightResult {
+        if AppConfiguration.usesHomeCompositionScenarioForUITests {
+            return try .usable(Self.compositionSnapshot())
+        }
         if change.impact != .none, change.movieID == currentMovieID {
             currentMovieID = currentMovieID == 101 ? 202 : 101
         }
@@ -82,6 +123,75 @@ actor UITestingThreeForTonightUseCase: ThreeForTonightUseCase {
             recommendations: [recommendation]
         )
         return ThreeForTonightSnapshot(decisionSet: set, savedMovieIDs: [])
+    }
+
+    static func compositionSnapshot() throws -> ThreeForTonightSnapshot {
+        let base = try snapshot(movieID: 101).decisionSet
+        guard let baseAvailability = base.recommendations.first?.availability,
+              let baseProvider = baseAvailability.matchingProviders.first
+        else {
+            throw UITestingHomeScenarioError.invalidFixture
+        }
+        let providerEvidence = try DecisionAvailabilitySnapshot(
+            matchingProviders: [DecisionProviderSnapshot(
+                providerID: baseProvider.providerID,
+                name: baseProvider.name,
+                logoPath: "/missing-provider-logo.png",
+                productOrder: baseProvider.productOrder
+            )],
+            verifiedAt: baseAvailability.verifiedAt,
+            regionalWatchURL: baseAvailability.regionalWatchURL
+        )
+        let allMovies: [(Int, DecisionRole, String)] = [
+            (101, .safeChoice, "An Extremely Long Movie Title That Wraps Across Several Lines"),
+            (202, .stretchChoice, "Another Long Movie Title for Tonight"),
+            (303, .discoveryChoice, "A Less Obvious Movie Worth Considering"),
+        ]
+        let movies = AppConfiguration.usesHomeTwoCardsForUITests
+            ? Array(allMovies.prefix(2)) : allMovies
+        let recommendations = try movies.map { movie in
+            try PersistedDecisionRecommendation(
+                role: movie.1,
+                evidence: RecommendationEvidence(primary: .sparseQuality, diversity: nil),
+                display: DecisionDisplaySnapshot(
+                    movieID: movie.0,
+                    localizedTitle: movie.2,
+                    posterPath: movie.0 == 101 && AppConfiguration.usesHomePosterScenarioForUITests
+                        ? UITestingHomeArtwork.posterPath : nil,
+                    backdropPath: movie.0 == 101 ? compositionBackdropPath : nil,
+                    runtimeMinutes: 112,
+                    releaseYear: 2024,
+                    genres: []
+                ),
+                availability: providerEvidence
+            )
+        }
+        let cycle = try DecisionCycle(
+            id: base.cycle.id,
+            identitySignature: base.cycle.identitySignature,
+            shownMovieIDs: Set(movies.map(\.0))
+        )
+        let set = try PersistedDecisionSet(
+            id: base.id,
+            generatedAt: base.generatedAt,
+            engineModelVersion: base.engineModelVersion,
+            cycle: cycle,
+            sourceViewerStateSnapshotID: base.sourceViewerStateSnapshotID,
+            region: base.region,
+            selectedProviderIDs: base.selectedProviderIDs,
+            recommendations: recommendations
+        )
+        return ThreeForTonightSnapshot(decisionSet: set, savedMovieIDs: [])
+    }
+
+    private static var compositionBackdropPath: String? {
+        if AppConfiguration.usesHomeBrightBackdropForUITests {
+            return UITestingHomeArtwork.brightBackdropPath
+        }
+        if AppConfiguration.usesHomeDarkBackdropForUITests {
+            return UITestingHomeArtwork.darkBackdropPath
+        }
+        return nil
     }
 }
 
