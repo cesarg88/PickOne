@@ -371,6 +371,14 @@ actor CoordinatorMovieRepository: MovieRepository {
         return CacheResult(value: movie, isStale: false)
     }
 
+    func getMovieDetail(
+        id: Int,
+        contentLocale _: MovieContentLocale,
+        policy: CachePolicy
+    ) throws -> CacheResult<Movie> {
+        try getMovieDetail(id: id, policy: policy)
+    }
+
     func getTopRated(page _: Int, policy _: CachePolicy) throws -> CacheResult<MoviePage> {
         throw error
     }

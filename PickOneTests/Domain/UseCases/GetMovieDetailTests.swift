@@ -101,6 +101,14 @@ private struct MockMovieRepository: MovieRepository {
         try detail.get()
     }
 
+    func getMovieDetail(
+        id: Int,
+        contentLocale _: MovieContentLocale,
+        policy: CachePolicy
+    ) async throws -> CacheResult<Movie> {
+        try await getMovieDetail(id: id, policy: policy)
+    }
+
     func getSimilarMovies(id: Int, page: Int, policy: CachePolicy) async throws -> CacheResult<MoviePage> {
         try similar.get()
     }

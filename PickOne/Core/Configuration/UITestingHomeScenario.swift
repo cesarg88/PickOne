@@ -88,6 +88,14 @@ actor UITestingThreeForTonightUseCase: ThreeForTonightUseCase {
 struct UITestingMovieDetailUseCase: GetMovieDetailUseCase {
     func execute(
         id: Int,
+        policy: CachePolicy,
+        contentLocale _: MovieContentLocale
+    ) async throws -> CacheResult<MovieDetailSnapshot> {
+        try await execute(id: id, policy: policy)
+    }
+
+    func execute(
+        id: Int,
         policy: CachePolicy
     ) async throws -> CacheResult<MovieDetailSnapshot> {
         let movie = Movie(

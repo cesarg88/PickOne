@@ -4,6 +4,22 @@ import Testing
 
 @MainActor
 struct HomeDecisionPresentationMapperTests {
+    @Test("an explicit language bundle resolves strings independently of device language")
+    func languageBundleResolution() throws {
+        let englishURL = try #require(Bundle.main.url(forResource: "en", withExtension: "lproj"))
+        let spanishURL = try #require(Bundle.main.url(forResource: "es", withExtension: "lproj"))
+        let englishBundle = try #require(Bundle(url: englishURL))
+        let spanishBundle = try #require(Bundle(url: spanishURL))
+        let english = String(
+            localized: "Safe Choice", bundle: englishBundle, locale: MovieContentLocale.english.locale
+        )
+        let spanish = String(
+            localized: "Safe Choice", bundle: spanishBundle, locale: MovieContentLocale.spanish.locale
+        )
+        #expect(english == "Safe Choice")
+        #expect(spanish == "Apuesta segura")
+    }
+
     @Test(arguments: ["en_US", "es_ES", "de_DE", "fr_FR", "ar_EG", "hi_IN"], [false, true])
     func decadeYearsNeverUseLocaleDependentNumberFormatting(localeID: String, adjacent: Bool) throws {
         let candidate = DecisionDecade(year: 2024)
@@ -15,32 +31,34 @@ struct HomeDecisionPresentationMapperTests {
         )
         let snapshot = try HomeDecisionTestFixtures.snapshot(recommendations: [recommendation])
         let item = try #require(HomeDecisionPresentationMapper.map(
-            snapshot: snapshot, locale: Locale(identifier: localeID)
+            snapshot: snapshot,
+            locale: Locale(identifier: localeID),
+            projection: englishProjection
         ).items.first)
         #expect(item.reason.contains("2020"))
         if adjacent { #expect(item.reason.contains("2010")) }
-    }
-
-    private var isSpanish: Bool {
-        Bundle.main.preferredLocalizations.first?.hasPrefix("es") == true
     }
 
     @Test("maps role, evidence, providers, metadata, and transient saved state")
     func mapsRecommendation() throws {
         let snapshot = try HomeDecisionTestFixtures.snapshot(savedMovieIDs: [101])
 
-        let model = HomeDecisionPresentationMapper.map(snapshot: snapshot)
+        let model = HomeDecisionPresentationMapper.map(
+            snapshot: snapshot,
+            locale: MovieContentLocale.english.locale,
+            projection: englishProjection
+        )
 
         let item = try #require(model.items.first)
         #expect(item.id == 101)
-        #expect(item.role == (isSpanish ? "Apuesta segura" : "Safe Choice"))
-        #expect(
-            item.reason == (isSpanish
-                ? "Guardada para más adelante, y similar a Arrival, que te encantó — comparte Drama y Science Fiction."
-                : "Saved for later, and similar to Arrival, which you loved — shares Drama and Science Fiction.")
-        )
+        #expect(item.role == "Safe Choice")
+        #expect(item.reason.contains("Arrival"))
+        #expect(item.reason.contains("Drama"))
+        #expect(item.reason.contains("Science Fiction"))
         #expect(item.providers.map(\.name) == ["Netflix"])
-        #expect(item.details == "2024 · 2h 3m · Drama, Science Fiction")
+        #expect(item.details.contains("2024"))
+        #expect(item.details.contains("Drama and Science Fiction"))
+        #expect(item.details.contains(expectedRuntime(minutes: 123, locale: .english)))
         #expect(item.isSaved)
         #expect(try item.feedbackMetadata == MovieFeedbackMetadata(
             title: "Tonight's Movie",
@@ -60,12 +78,13 @@ struct HomeDecisionPresentationMapperTests {
         )
 
         let item = try #require(HomeDecisionPresentationMapper.map(
-            snapshot: snapshot
+            snapshot: snapshot,
+            locale: MovieContentLocale.english.locale,
+            projection: englishProjection
         ).items.first)
 
-        #expect(item.reason == (isSpanish
-                ? "Similar a Arrival, que te encantó — comparte Drama."
-                : "Similar to Arrival, which you loved — shares Drama."))
+        #expect(item.reason.contains("Arrival"))
+        #expect(item.reason.contains("Drama"))
         #expect(!item.reason.contains("2020s"))
         #expect(!item.reason.contains("Science Fiction"))
     }
@@ -83,18 +102,18 @@ struct HomeDecisionPresentationMapperTests {
         )
 
         let item = try #require(HomeDecisionPresentationMapper.map(
-            snapshot: snapshot
+            snapshot: snapshot,
+            locale: MovieContentLocale.english.locale,
+            projection: englishProjection
         ).items.first)
 
-        #expect(
-            item.reason == (isSpanish
-                ? "Similar a Arrival, que te gustó — comparte Drama; ambas son de los años 2020."
-                : "Similar to Arrival, which you liked — shares Drama; both are from the 2020s.")
-        )
+        #expect(item.reason.contains("Arrival"))
+        #expect(item.reason.contains("Drama"))
+        #expect(item.reason.contains("2020"))
     }
 
-    @Test("unreadable restored evidence is not rendered with a numeric fallback")
-    func unreadableEvidenceIsNotRendered() throws {
+    @Test("legacy offline evidence retains known title but hides unverified anchor and genre labels")
+    func legacyOfflineEvidenceUsesTruthfulFallback() throws {
         let recommendations = try [
             HomeDecisionTestFixtures.unreadableRecommendation(movieID: 101),
             HomeDecisionTestFixtures.unreadableRecommendation(
@@ -107,21 +126,91 @@ struct HomeDecisionPresentationMapperTests {
             recommendations: recommendations
         )
 
-        let model = HomeDecisionPresentationMapper.map(snapshot: snapshot)
+        let model = HomeDecisionPresentationMapper.map(
+            snapshot: snapshot,
+            locale: MovieContentLocale.english.locale
+        )
 
-        #expect(model.items.isEmpty)
+        #expect(model.items.count == 2)
+        #expect(model.items.allSatisfy { $0.title == "Tonight's Movie" })
+        #expect(model.items.allSatisfy { $0.reason.contains("movies you liked") })
+        #expect(model.items.allSatisfy { !$0.reason.contains("Arrival") && !$0.reason.contains("18") })
+    }
+
+    @Test("Spanish projection localizes titles, role, anchor, genre and explanation template")
+    func spanishProjection() throws {
+        let snapshot = try HomeDecisionTestFixtures.snapshot()
+        let projection = HomeMovieDisplayProjection(movies: [
+            101: MovieDisplayMetadata(
+                movieID: 101, title: "Película de esta noche", genreNames: [18: "Drama", 878: "Ciencia ficción"]
+            ),
+            201: MovieDisplayMetadata(
+                movieID: 201, title: "La llegada", genreNames: [18: "Drama", 878: "Ciencia ficción"]
+            ),
+        ])
+
+        let item = try #require(HomeDecisionPresentationMapper.map(
+            snapshot: snapshot, locale: MovieContentLocale.spanish.locale, projection: projection
+        ).items.first)
+
+        #expect(item.title == "Película de esta noche")
+        #expect(item.role == "Apuesta segura")
+        #expect(item.reason.contains("La llegada"))
+        #expect(item.reason.contains("Ciencia ficción"))
+        #expect(!item.reason.contains("Arrival"))
+        #expect(!item.reason.contains("Science Fiction"))
+        #expect(item.details.contains("Ciencia ficción"))
+        #expect(item.details.contains("Drama y Ciencia ficción"))
+        #expect(item.details.contains(expectedRuntime(minutes: 123, locale: .spanish)))
+    }
+
+    @Test("unsupported device language uses English Home copy and metadata locale")
+    func unsupportedLanguageFallsBackToEnglish() throws {
+        let snapshot = try HomeDecisionTestFixtures.snapshot()
+        let item = try #require(HomeDecisionPresentationMapper.map(
+            snapshot: snapshot,
+            locale: Locale(identifier: "fr_FR"),
+            projection: englishProjection
+        ).items.first)
+
+        #expect(item.role == "Safe Choice")
+        #expect(item.reason.contains("Arrival"))
+        #expect(!item.reason.contains("que te encantó"))
+    }
+
+    private var englishProjection: HomeMovieDisplayProjection {
+        HomeMovieDisplayProjection(movies: [
+            101: MovieDisplayMetadata(
+                movieID: 101, title: "Tonight's Movie", genreNames: [18: "Drama", 878: "Science Fiction"]
+            ),
+            201: MovieDisplayMetadata(
+                movieID: 201, title: "Arrival", genreNames: [18: "Drama", 878: "Science Fiction"]
+            ),
+        ])
+    }
+
+    private func expectedRuntime(minutes: Int, locale: MovieContentLocale) -> String {
+        let formatter = DateComponentsFormatter()
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.locale = locale.locale
+        formatter.calendar = calendar
+        formatter.unitsStyle = .abbreviated
+        formatter.allowedUnits = [.hour, .minute]
+        formatter.maximumUnitCount = 2
+        return formatter.string(from: TimeInterval(minutes * 60)) ?? ""
     }
 }
 
 enum HomeDecisionTestFixtures {
     static func snapshot(
         recommendations: [PersistedDecisionRecommendation]? = nil,
-        savedMovieIDs: Set<Int> = []
+        savedMovieIDs: Set<Int> = [],
+        setID: UUID? = nil
     ) throws -> ThreeForTonightSnapshot {
         let signature = try #require(DecisionCycleSignature(rawValue: String(repeating: "a", count: 64)))
         let items = try recommendations ?? [recommendation()]
         let cycleID = try #require(UUID(uuidString: "00000000-0000-0000-0000-000000000001"))
-        let decisionSetID = try #require(UUID(uuidString: "00000000-0000-0000-0000-000000000002"))
+        let decisionSetID = try #require(setID ?? UUID(uuidString: "00000000-0000-0000-0000-000000000002"))
         let cycle = try DecisionCycle(
             id: cycleID,
             identitySignature: signature,

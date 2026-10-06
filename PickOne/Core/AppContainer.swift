@@ -117,9 +117,8 @@ final class AppContainer {
         discoveryViewModel = DiscoveryViewModel(
             getDiscoveryFeed: useCases.getDiscoveryFeed
         )
-        let homeDecisionViewModel = HomeDecisionViewModel(
-            threeForTonight: homeUseCase,
-            pickModel: HomePickViewModel(manage: ManageViewingDecision(repository: viewingDecisions))
+        let homeDecisionViewModel = Self.makeHomeDecisionModel(
+            useCases: useCases, homeUseCase: homeUseCase, viewingDecisions: viewingDecisions
         )
         self.homeDecisionViewModel = homeDecisionViewModel
         watchlistViewModel = WatchlistViewModel(
@@ -148,6 +147,18 @@ final class AppContainer {
 }
 
 private extension AppContainer {
+    static func makeHomeDecisionModel(
+        useCases: UseCases,
+        homeUseCase: any ThreeForTonightUseCase,
+        viewingDecisions: any ViewingDecisionRepository
+    ) -> HomeDecisionViewModel {
+        HomeDecisionViewModel(
+            threeForTonight: homeUseCase,
+            getMovieDisplayMetadata: useCases.getMovieDisplayMetadata,
+            pickModel: HomePickViewModel(manage: ManageViewingDecision(repository: viewingDecisions))
+        )
+    }
+
     struct Repositories {
         let movie: DefaultMovieRepository
         let calibrationMovieMetadata: DefaultCalibrationMetadataRepository
@@ -166,6 +177,7 @@ private extension AppContainer {
     struct UseCases {
         let getDiscoveryFeed: GetDiscoveryFeed
         let getMovieDetail: GetMovieDetail
+        let getMovieDisplayMetadata: GetMovieDisplayMetadata
         let checkMovieAvailability: CheckMovieAvailability
         let preparePlaybackOptions: PreparePlaybackOptions
         let getWatchlist: GetWatchlist
@@ -401,6 +413,7 @@ private extension AppContainer {
         return UseCases(
             getDiscoveryFeed: GetDiscoveryFeed(repository: repositories.movie),
             getMovieDetail: GetMovieDetail(repository: repositories.movie),
+            getMovieDisplayMetadata: GetMovieDisplayMetadata(repository: repositories.movie),
             checkMovieAvailability: checkAvailability,
             preparePlaybackOptions: PreparePlaybackOptions(
                 checkAvailability: checkAvailability,

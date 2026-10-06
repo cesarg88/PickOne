@@ -2,6 +2,7 @@ import SwiftUI
 
 @MainActor
 struct HomeDecisionView: View {
+    @Environment(\.locale) private var locale
     let model: HomeDecisionViewModel
     var confirmationModel: ViewingConfirmationViewModel?
     let getMovieDetail: GetMovieDetailUseCase
@@ -35,11 +36,15 @@ struct HomeDecisionView: View {
             }
             .task(id: model.pickModel?.activeDecision?.id) { await confirmationModel?.refresh() }
             .onAppear {
+                model.setContentLocale(locale)
                 model.homeDidAppear()
                 model.pickModel?.showHome()
             }
             .onDisappear {
                 model.homeDidDisappear()
+            }
+            .onChange(of: locale.identifier) {
+                model.setContentLocale(locale)
             }
             .navigationTitle("Home")
             .navigationDestination(for: HomeDecisionRoute.self) { route in
@@ -65,6 +70,7 @@ struct HomeDecisionView: View {
         )
         return HomeMovieDetailDestination(
             movieID: movieID,
+            contentLocale: MovieContentLocale(effectiveLocale: locale),
             imagePipeline: imagePipeline,
             navigationDependencies: dependencies
         )
@@ -73,16 +79,21 @@ struct HomeDecisionView: View {
 
 @MainActor
 private struct HomeMovieDetailDestination: View {
+    @Environment(\.locale) private var locale
     @State private var model: MovieDetailViewModel
     let imagePipeline: ImagePipeline
     let navigationDependencies: MovieDetailNavigationDependencies
 
     init(
         movieID: Int,
+        contentLocale: MovieContentLocale,
         imagePipeline: ImagePipeline,
         navigationDependencies: MovieDetailNavigationDependencies
     ) {
-        _model = State(initialValue: navigationDependencies.makeViewModel(movieID: movieID))
+        _model = State(initialValue: navigationDependencies.makeViewModel(
+            movieID: movieID,
+            contentLocale: contentLocale
+        ))
         self.imagePipeline = imagePipeline
         self.navigationDependencies = navigationDependencies
     }
@@ -93,6 +104,11 @@ private struct HomeMovieDetailDestination: View {
             imagePipeline: imagePipeline,
             navigationDependencies: navigationDependencies
         )
+        .onChange(of: locale.identifier) {
+            Task {
+                await model.changeContentLocale(MovieContentLocale(effectiveLocale: locale))
+            }
+        }
     }
 }
 

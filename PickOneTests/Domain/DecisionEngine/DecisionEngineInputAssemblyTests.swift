@@ -289,6 +289,14 @@ private actor InputAssemblyMovieRepository: MovieRepository {
         return CacheResult(value: movie, isStale: false)
     }
 
+    func getMovieDetail(
+        id: Int,
+        contentLocale _: MovieContentLocale,
+        policy: CachePolicy
+    ) async throws -> CacheResult<Movie> {
+        try await getMovieDetail(id: id, policy: policy)
+    }
+
     func getTopRated(page _: Int, policy _: CachePolicy) async throws -> CacheResult<MoviePage> {
         throw InputAssemblyTestError.failed
     }
