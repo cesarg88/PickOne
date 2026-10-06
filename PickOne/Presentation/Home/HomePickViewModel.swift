@@ -6,6 +6,12 @@ enum HomePickAcknowledgement: Equatable {
     case cancelled
 }
 
+private struct PendingPickCopy {
+    var title: String?
+    var replacedTitle: String?
+    let replacedMovieID: Int?
+}
+
 @MainActor
 @Observable
 final class HomePickViewModel {
@@ -28,8 +34,10 @@ final class HomePickViewModel {
     private(set) var activeDecision: ViewingDecision?
     private(set) var savingMovieIDs: Set<Int> = []
     private(set) var failedMovieIDs: Set<Int> = []
+    private(set) var awaitingSafeSetMovieIDs: Set<Int> = []
     private var pendingOperations: [Int: ViewingDecisionOperation] = [:]
-    @ObservationIgnored private var pendingPickCopy: [Int: (title: String?, replacedTitle: String?)] = [:]
+    @ObservationIgnored private var pendingPickCopy: [Int: PendingPickCopy] = [:]
+    @ObservationIgnored private var requiresCurrentLocaleTitle = false
     private(set) var activePickTitle: String?
 
     init(
@@ -124,11 +132,15 @@ final class HomePickViewModel {
         }
     }
 
-    func pick(movieID: Int, title: String? = nil) {
-        guard !savingMovieIDs.contains(movieID), let homeSurface,
+    func pick(movieID: Int, title: String? = nil, hasCurrentLocaleTitle: Bool = true) {
+        guard !savingMovieIDs.contains(movieID), !awaitingSafeSetMovieIDs.contains(movieID), let homeSurface,
               let recommendation = homeSurface.recommendations.first(where: { $0.movieID == movieID })
         else { return }
-        pendingPickCopy[movieID] = (title, activePickTitle)
+        pendingPickCopy[movieID] = PendingPickCopy(
+            title: requiresCurrentLocaleTitle && !hasCurrentLocaleTitle ? nil : title,
+            replacedTitle: activePickTitle,
+            replacedMovieID: activeDecision?.recommendation.movieID
+        )
         submit(
             .pick(recommendation, snapshot: homeSurface, isVisible: isVisible && detailSurface == nil),
             movieID: movieID
@@ -136,13 +148,46 @@ final class HomePickViewModel {
     }
 
     func cancel() {
-        guard let activeDecision, !savingMovieIDs.contains(activeDecision.recommendation.movieID) else { return }
+        guard let activeDecision,
+              !savingMovieIDs.contains(activeDecision.recommendation.movieID),
+              !awaitingSafeSetMovieIDs.contains(activeDecision.recommendation.movieID)
+        else { return }
         submit(.cancel(activeDecision.id), movieID: activeDecision.recommendation.movieID)
     }
 
-    func rememberVisibleTitle(_ title: String, movieID: Int) {
+    func rememberVisibleTitle(_ title: String, movieID: Int, hasCurrentLocaleTitle: Bool = true) {
+        guard !requiresCurrentLocaleTitle || hasCurrentLocaleTitle else { return }
         guard activeDecision?.recommendation.movieID == movieID else { return }
         activePickTitle = title
+    }
+
+    func rememberProjectedTitle(_ title: String, movieID: Int) {
+        if activeDecision?.recommendation.movieID == movieID {
+            activePickTitle = title
+        }
+        if pendingPickCopy[movieID] != nil {
+            pendingPickCopy[movieID]?.title = title
+        }
+        for pendingID in Array(pendingPickCopy.keys) where pendingPickCopy[pendingID]?.replacedMovieID == movieID {
+            pendingPickCopy[pendingID]?.replacedTitle = title
+        }
+    }
+
+    func invalidateTitlesForLocaleChange() {
+        requiresCurrentLocaleTitle = true
+        activePickTitle = nil
+        for movieID in Array(pendingPickCopy.keys) {
+            pendingPickCopy[movieID]?.title = nil
+            pendingPickCopy[movieID]?.replacedTitle = nil
+        }
+    }
+
+    func holdPickUntilSafeSet(movieID: Int) {
+        awaitingSafeSetMovieIDs.insert(movieID)
+    }
+
+    func safeSetDidPublish() {
+        awaitingSafeSetMovieIDs.removeAll()
     }
 
     func dismissPickFeedback() {
@@ -152,7 +197,10 @@ final class HomePickViewModel {
     }
 
     func retry(movieID: Int) {
-        guard !savingMovieIDs.contains(movieID), let operation = pendingOperations[movieID] else { return }
+        guard !savingMovieIDs.contains(movieID),
+              !awaitingSafeSetMovieIDs.contains(movieID),
+              let operation = pendingOperations[movieID]
+        else { return }
         savingMovieIDs.insert(movieID)
         failedMovieIDs.remove(movieID)
         enqueue(operation, movieID: movieID)

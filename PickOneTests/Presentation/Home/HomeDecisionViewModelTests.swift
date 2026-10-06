@@ -405,7 +405,7 @@ struct HomeDecisionViewModelTests {
     }
 }
 
-private actor HomeDecisionOperationGate {
+actor HomeDecisionOperationGate {
     private var isOpen = false
     private var waiters: [CheckedContinuation<Void, Never>] = []
 
@@ -428,7 +428,7 @@ private actor HomeDecisionOperationGate {
     }
 }
 
-private actor GatedHomeDecisionUseCase: ThreeForTonightUseCase {
+actor GatedHomeDecisionUseCase: ThreeForTonightUseCase {
     private let loadResult: ThreeForTonightResult
     private let refreshResult: ThreeForTonightResult?
     private let repairResult: ThreeForTonightResult
@@ -519,7 +519,7 @@ private actor GatedHomeDecisionUseCase: ThreeForTonightUseCase {
     }
 }
 
-private actor HomeDecisionUseCase: ThreeForTonightUseCase {
+actor HomeDecisionUseCase: ThreeForTonightUseCase {
     private var results: [Result<ThreeForTonightResult, Error>]
     private var callCount = 0
     private var repairs: [DecisionEligibilityChange] = []

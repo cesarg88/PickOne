@@ -167,11 +167,20 @@ private extension AppContainer {
         homeUseCase: any ThreeForTonightUseCase,
         viewingDecisions: any ViewingDecisionRepository
     ) -> HomeDecisionViewModel {
-        HomeDecisionViewModel(
+        let pickFeedbackSleep: @Sendable (Duration) async throws -> Void = { duration in
+            try await Task.sleep(for: AppConfiguration.holdsHomePickNoticeForUITests
+                ? .seconds(20) : duration)
+        }
+        return HomeDecisionViewModel(
             threeForTonight: homeUseCase,
             getMovieDisplayMetadata: AppConfiguration.usesHomeCompositionScenarioForUITests
                 ? nil : useCases.getMovieDisplayMetadata,
-            pickModel: HomePickViewModel(manage: ManageViewingDecision(repository: viewingDecisions))
+            pickModel: HomePickViewModel(
+                manage: ManageViewingDecision(repository: viewingDecisions),
+                feedbackSleep: pickFeedbackSleep
+            ),
+            feedbackDuration: AppConfiguration.holdsHomePickNoticeForUITests
+                ? .seconds(20) : .seconds(3)
         )
     }
 

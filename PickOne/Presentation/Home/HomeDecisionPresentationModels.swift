@@ -7,6 +7,7 @@ struct HomeDecisionSetPresentationModel: Equatable {
 struct HomeDecisionMovieItem: Identifiable, Equatable {
     let id: Int
     let title: String
+    let hasCurrentLocaleTitle: Bool
     let posterURL: URL?
     let backdropURL: URL?
     let decisionRole: DecisionRole
@@ -26,7 +27,7 @@ struct HomeDecisionMovieItem: Identifiable, Equatable {
     }
 }
 
-enum HomeDecisionSlot: Hashable {
+enum HomeDecisionSlot: String, Hashable {
     case safe
     case stretch
     case discovery
@@ -98,6 +99,7 @@ enum HomeDecisionPresentationMapper {
         return HomeDecisionMovieItem(
             id: recommendation.display.movieID,
             title: title,
+            hasCurrentLocaleTitle: projection.movies[recommendation.display.movieID] != nil,
             posterURL: ImageURLBuilder.posterURL(
                 path: recommendation.display.posterPath,
                 size: .posterLarge

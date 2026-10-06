@@ -5,6 +5,7 @@ struct HomePickControl: View {
     let model: HomePickViewModel
     let movieID: Int
     let title: String
+    let hasCurrentLocaleTitle: Bool
 
     private var isPicked: Bool {
         model.activeDecision?.recommendation.movieID == movieID
@@ -17,7 +18,11 @@ struct HomePickControl: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             Button {
-                if isPicked { model.cancel() } else { model.pick(movieID: movieID, title: title) }
+                if isPicked {
+                    model.cancel()
+                } else {
+                    model.pick(movieID: movieID, title: title, hasCurrentLocaleTitle: hasCurrentLocaleTitle)
+                }
             } label: {
                 HStack(spacing: 8) {
                     if isSaving {
@@ -34,7 +39,7 @@ struct HomePickControl: View {
                 .frame(minWidth: 124, minHeight: 44)
             }
             .buttonStyle(.glass)
-            .disabled(isSaving)
+            .disabled(isSaving || model.awaitingSafeSetMovieIDs.contains(movieID))
             .accessibilityLabel(isSaving
                 ? (isPicked ? Text("Saving cancellation of \(title)") : savingPickLabel)
                 : (isPicked ? Text("Picked: \(title)") : Text("Pick \(title)")))
@@ -42,9 +47,10 @@ struct HomePickControl: View {
                 ? Text("Cancels this choice without changing watched status.")
                 : Text("Records your choice without marking the movie watched."))
             .accessibilityIdentifier("home-pick-\(movieID)")
-            .onAppear { model.rememberVisibleTitle(title, movieID: movieID) }
-            .onChange(of: title) { model.rememberVisibleTitle(title, movieID: movieID) }
-            .onChange(of: isPicked) { model.rememberVisibleTitle(title, movieID: movieID) }
+            .onAppear { rememberVisibleTitle() }
+            .onChange(of: title) { rememberVisibleTitle() }
+            .onChange(of: hasCurrentLocaleTitle) { rememberVisibleTitle() }
+            .onChange(of: isPicked) { rememberVisibleTitle() }
 
             if model.failedMovieIDs.contains(movieID) {
                 Text(isPicked
@@ -53,7 +59,7 @@ struct HomePickControl: View {
                     .font(.footnote)
                     .foregroundStyle(.secondary)
                 Button("Try again") { model.retry(movieID: movieID) }
-                    .disabled(isSaving)
+                    .disabled(isSaving || model.awaitingSafeSetMovieIDs.contains(movieID))
                     .accessibilityLabel(isPicked
                         ? Text("Retry cancelling your choice of \(title)")
                         : Text("Retry saving your choice of \(title)"))
@@ -68,6 +74,12 @@ struct HomePickControl: View {
         } else {
             Text("Saving your choice of \(title)")
         }
+    }
+
+    private func rememberVisibleTitle() {
+        model.rememberVisibleTitle(
+            title, movieID: movieID, hasCurrentLocaleTitle: hasCurrentLocaleTitle
+        )
     }
 }
 

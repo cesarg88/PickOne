@@ -26,6 +26,79 @@ final class HomePickInteractionTests: XCTestCase {
     }
 
     @MainActor
+    func testNoticesCoexistAtMaximumTextWithReducedMotionAndTransparency() {
+        let app = launchHomeForTransitionEvidence(extraArguments: [
+            "-ui-testing-hold-home-pick-notice",
+            "-ui-testing-home-reduced-accessibility",
+            "-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL",
+        ])
+        defer { cleanHomeScenario(app) }
+        let pick = app.buttons["home-pick-101"]
+        let menu = app.buttons["home-feedback-menu-101"]
+        let status = app.descendants(matching: .any)["home-decision-status"]
+        XCTAssertTrue(pick.waitForExistence(timeout: 15))
+        XCTAssertTrue(menu.exists)
+        XCTAssertGreaterThanOrEqual(pick.frame.height, 44)
+        XCTAssertGreaterThanOrEqual(menu.frame.height, 44)
+        XCTAssertTrue(status.exists)
+        let reservedHeight = status.frame.height
+
+        pick.tap()
+        XCTAssertTrue(app.staticTexts["You picked Tonight's Movie."].waitForExistence(timeout: 15))
+        menu.tap()
+        app.buttons["Not interested"].tap()
+        XCTAssertTrue(app.buttons["home-recommendation-202"].waitForExistence(timeout: 15))
+        XCTAssertTrue(app.staticTexts["Recommendations updated."].waitForExistence(timeout: 15))
+        XCTAssertTrue(app.staticTexts["You picked Tonight's Movie."].exists)
+        XCTAssertEqual(status.frame.height, reservedHeight, accuracy: 1)
+        XCTAssertTrue(app.staticTexts["You picked Tonight's Movie."].isHittable)
+        let statusStart = status.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+        let statusEnd = status.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.1))
+        statusStart.press(forDuration: 0.05, thenDragTo: statusEnd)
+        XCTAssertTrue(app.buttons["home-recommendation-202"].exists, "Scrolling the notice must not switch tabs")
+        let screenshot = XCTAttachment(screenshot: app.screenshot())
+        screenshot.name = "Home simultaneous notices, XXXL, reduced motion and transparency"
+        screenshot.lifetime = .keepAlways
+        add(screenshot)
+        let updated = app.staticTexts["Recommendations updated."]
+        XCTAssertTrue(updated.isHittable, "Status: \(status.frame), update: \(updated.frame)")
+        XCTAssertLessThan(updated.frame.maxY, app.tabBars.firstMatch.frame.minY)
+    }
+
+    @MainActor
+    func testFeedbackReplacementRestoresAccessibilityFocusToRoleSlot() {
+        let app = launchHomeForTransitionEvidence(extraArguments: ["-ui-testing-home-reduced-accessibility"])
+        defer { cleanHomeScenario(app) }
+        let menu = app.buttons["home-feedback-menu-101"]
+        XCTAssertTrue(menu.waitForExistence(timeout: 15))
+        menu.tap()
+        app.buttons["Already watched"].tap()
+        XCTAssertTrue(app.buttons["home-recommendation-202"].waitForExistence(timeout: 15))
+        XCTAssertFalse(app.buttons["home-recommendation-101"].exists)
+        XCTAssertTrue(app.otherElements["home-focus-target-slot-safe"].waitForExistence(timeout: 5))
+    }
+
+    @MainActor
+    private func launchHomeForTransitionEvidence(extraArguments: [String]) -> XCUIApplication {
+        let app = XCUIApplication()
+        app.launchArguments = [
+            "-ui-testing", "-ui-testing-home-recovery", "-ui-testing-home-recovery-reset",
+            "-AppleLanguages", "(en)", "-AppleLocale", "en_US",
+        ] + extraArguments
+        app.launch()
+        return app
+    }
+
+    @MainActor
+    private func cleanHomeScenario(_ app: XCUIApplication) {
+        app.terminate()
+        let cleanup = XCUIApplication()
+        cleanup.launchArguments = ["-ui-testing", "-ui-testing-home-recovery", "-ui-testing-home-recovery-cleanup"]
+        cleanup.launch()
+        cleanup.terminate()
+    }
+
+    @MainActor
     private func verifyPick(
         language: String,
         pickPrefix: String,

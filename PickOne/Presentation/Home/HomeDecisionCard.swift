@@ -4,6 +4,7 @@ import SwiftUI
 struct HomeDecisionCard: View {
     @Environment(\.colorSchemeContrast) private var colorSchemeContrast
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+    @Environment(\.homeAccessibilityReductionForUITests) private var testAccessibilityReduction
 
     @State private var artwork: HomeDecisionArtwork = .surface
     @State private var quickFeedbackTask: Task<Void, Never>?
@@ -33,7 +34,10 @@ struct HomeDecisionCard: View {
             movieID: item.id,
             metadata: item.feedbackMetadata,
             updateViewerMovieState: updateViewerMovieState,
-            viewerStateDidChange: viewerStateDidChange,
+            viewerStateDidChange: { change in
+                feedbackDidCommit()
+                viewerStateDidChange(change)
+            },
             alreadyWatchedRecorder: { pickModel?.alreadyWatchedRecorder(movieID: item.id) ?? {} }
         ))
     }
@@ -69,8 +73,13 @@ struct HomeDecisionCard: View {
                 .accessibilityIdentifier("home-recommendation-\(item.id)")
 
                 if let pickModel {
-                    HomePickControl(model: pickModel, movieID: item.id, title: item.title)
-                        .frame(maxWidth: .infinity, alignment: .leading)
+                    HomePickControl(
+                        model: pickModel,
+                        movieID: item.id,
+                        title: item.title,
+                        hasCurrentLocaleTitle: item.hasCurrentLocaleTitle
+                    )
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 }
             }
             .padding(isHero ? 24 : 18)
@@ -128,7 +137,8 @@ struct HomeDecisionCard: View {
     }
 
     private var showsBackdrop: Bool {
-        artwork.isBackdrop && !reduceTransparency && colorSchemeContrast != .increased
+        artwork.isBackdrop && !reduceTransparency && !testAccessibilityReduction
+            && colorSchemeContrast != .increased
     }
 
     private var backdropBackground: some View {
@@ -224,9 +234,6 @@ struct HomeDecisionCard: View {
         quickFeedbackTask?.cancel()
         quickFeedbackTask = Task {
             await action()
-            if quickFeedbackModel.state == .submitted {
-                feedbackDidCommit()
-            }
         }
     }
 }

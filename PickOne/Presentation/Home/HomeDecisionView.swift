@@ -176,7 +176,9 @@ private struct HomeDecisionContent: View {
 private struct HomeDecisionLoadedView: View {
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.homeAccessibilityReductionForUITests) private var testAccessibilityReduction
     @AccessibilityFocusState private var focusedSlot: HomeDecisionSlot?
+    @State private var focusAnchorSlot: HomeDecisionSlot?
 
     let set: HomeDecisionSetPresentationModel
     let pickModel: HomePickViewModel?
@@ -245,22 +247,28 @@ private struct HomeDecisionLoadedView: View {
                 .padding(.horizontal, horizontalPadding)
                 .padding(.vertical, 20)
                 .frame(maxWidth: .infinity)
-                .animation(HomeDecisionTransition.animation(reduceMotion: reduceMotion), value: set.items.map(\.id))
+                .animation(
+                    HomeDecisionTransition.animation(reduceMotion: reduceMotion || testAccessibilityReduction),
+                    value: set.items.map(\.id)
+                )
+            }
+            .safeAreaInset(edge: .bottom, spacing: 0) {
+                HomeDecisionStatusRegion(
+                    pickFeedback: pickModel?.pickFeedback,
+                    updateFeedback: updateFeedback
+                )
             }
         }
-        .safeAreaInset(edge: .bottom, spacing: 0) {
-            HomeDecisionStatusRegion(
-                pickFeedback: pickModel?.pickFeedback,
-                updateFeedback: updateFeedback
-            )
-        }
         .onChange(of: set.items.map(\.id)) { oldIDs, newIDs in
-            guard oldIDs != newIDs, let slot = focusedSlot else { return }
+            guard oldIDs != newIDs, let slot = focusAnchorSlot else { return }
             focusedSlot = nil
             Task { @MainActor in
                 await Task.yield()
                 focusedSlot = slot
             }
+        }
+        .onChange(of: focusedSlot) { _, newSlot in
+            if let newSlot { focusAnchorSlot = newSlot }
         }
     }
 
@@ -286,17 +294,25 @@ private struct HomeDecisionLoadedView: View {
             imagePipeline: imagePipeline,
             updateViewerMovieState: updateViewerMovieState,
             viewerStateDidChange: viewerStateDidChange,
-            feedbackDidCommit: { focusedSlot = item.slot }
+            feedbackDidCommit: {
+                focusAnchorSlot = item.slot
+                focusedSlot = item.slot
+            }
         )
         .id(item.id)
         .accessibilityElement(children: .contain)
         .accessibilityFocused($focusedSlot, equals: item.slot)
+        .accessibilityIdentifier(focusAnchorSlot == item.slot
+            ? "home-focus-target-slot-\(item.slot.rawValue)" : "home-slot-\(item.slot.rawValue)")
     }
 }
 
 @MainActor
 private struct HomeDecisionStatusRegion: View {
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+    @Environment(\.homeAccessibilityReductionForUITests) private var testAccessibilityReduction
     @ScaledMetric(relativeTo: .subheadline) private var reservedHeight = 72.0
+    @ScaledMetric(relativeTo: .subheadline) private var scrollClearance = 24.0
 
     let pickFeedback: HomePickAcknowledgement?
     let updateFeedback: String?
@@ -314,12 +330,18 @@ private struct HomeDecisionStatusRegion: View {
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.bottom, scrollClearance)
         }
         .scrollIndicators(.hidden)
         .frame(height: reservedHeight)
+        .accessibilityIdentifier("home-decision-status")
         .background {
             if pickFeedback != nil || updateFeedback != nil {
-                Rectangle().fill(.regularMaterial)
+                if reduceTransparency || testAccessibilityReduction {
+                    Color(.systemBackground)
+                } else {
+                    Rectangle().fill(.regularMaterial)
+                }
             }
         }
         .accessibilityAddTraits(.updatesFrequently)
