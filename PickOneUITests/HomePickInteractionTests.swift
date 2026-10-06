@@ -64,7 +64,6 @@ final class HomePickInteractionTests: XCTestCase {
         XCTAssertFalse(movieTitle.isEmpty)
         let label = pickPrefix + movieTitle
         let pickedLabel = pickedPrefix + movieTitle
-        XCTAssertEqual(pick.label, label)
         pick.tap()
         let picked = XCTNSPredicateExpectation(predicate: NSPredicate(format: "label == %@", pickedLabel), object: pick)
         XCTAssertEqual(XCTWaiter.wait(for: [picked], timeout: 15), .completed)

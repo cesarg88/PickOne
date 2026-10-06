@@ -3,9 +3,9 @@ import Synchronization
 import UIKit
 
 enum UITestingHomeArtwork {
-    static let posterPath = "/m9-home-poster-fixture.png"
-    static let brightBackdropPath = "/m9-home-bright-backdrop-fixture.png"
-    static let darkBackdropPath = "/m9-home-dark-backdrop-fixture.png"
+    static let posterPath = "/home-poster-fixture.png"
+    static let brightBackdropPath = "/home-bright-backdrop-fixture.png"
+    static let darkBackdropPath = "/home-dark-backdrop-fixture.png"
 
     @MainActor
     static func primePoster(in cache: ImageCache) {

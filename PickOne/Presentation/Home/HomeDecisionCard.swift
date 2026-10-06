@@ -50,7 +50,7 @@ struct HomeDecisionCard: View {
                             .accessibilityHidden(true)
                     }
                     .buttonStyle(.plain)
-                    .accessibilityLabel("Open movie details")
+                    .accessibilityLabel("Open movie details for \(item.title)")
                     .accessibilityIdentifier("home-poster-link-\(item.id)")
                 }
 

@@ -477,6 +477,23 @@
         }
       }
     },
+    "Open movie details for %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open movie details for %@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abrir detalles de %@"
+          }
+        }
+      }
+    },
     "Saved": {
       "extractionState": "manual",
       "localizations": {

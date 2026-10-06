@@ -70,6 +70,10 @@ final class HomeCompositionInteractionTests: XCTestCase {
         let poster = app.buttons["home-poster-link-101"]
         let menu = app.buttons["home-feedback-menu-101"]
         XCTAssertTrue(poster.waitForExistence(timeout: 15))
+        XCTAssertEqual(
+            poster.label,
+            "Open movie details for An Extremely Long Movie Title That Wraps Across Several Lines"
+        )
         XCTAssertTrue(menu.exists)
         XCTAssertGreaterThanOrEqual(menu.frame.minY, poster.frame.maxY)
         attachScreenshot(app, name: "Home bright poster fallback")
