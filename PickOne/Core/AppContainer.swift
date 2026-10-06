@@ -150,6 +150,9 @@ final class AppContainer {
 private extension AppContainer {
     static func makeImagePipeline() -> ImagePipeline {
         let imageCache = ImageCache()
+        if AppConfiguration.usesHomeTwoProvidersForUITests || AppConfiguration.usesHomeFourProvidersForUITests {
+            UITestingHomeArtwork.primeProviderLogos(in: imageCache)
+        }
         if AppConfiguration.usesHomePosterScenarioForUITests {
             UITestingHomeArtwork.primePoster(in: imageCache)
         }

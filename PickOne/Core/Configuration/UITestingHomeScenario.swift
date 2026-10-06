@@ -6,6 +6,19 @@ enum UITestingHomeArtwork {
     static let posterPath = "/home-poster-fixture.png"
     static let brightBackdropPath = "/home-bright-backdrop-fixture.png"
     static let darkBackdropPath = "/home-dark-backdrop-fixture.png"
+    static let providerLogoPaths = [
+        "/home-netflix-logo.png", "/home-prime-logo.png",
+        "/home-disney-logo.png", "/home-max-logo.png",
+    ]
+
+    @MainActor
+    static func primeProviderLogos(in cache: ImageCache) {
+        let colors: [UIColor] = [.systemRed, .systemBlue, .systemTeal, .systemPurple]
+        for (path, color) in zip(providerLogoPaths, colors) {
+            guard let url = ImageURLBuilder.providerLogoURL(path: path) else { continue }
+            cache.insert(image(color: color, size: CGSize(width: 64, height: 64)), for: url)
+        }
+    }
 
     @MainActor
     static func primePoster(in cache: ImageCache) {
@@ -17,7 +30,8 @@ enum UITestingHomeArtwork {
     static func primeBackdrop(in cache: ImageCache, bright: Bool) {
         let path = bright ? brightBackdropPath : darkBackdropPath
         guard let url = ImageURLBuilder.backdropURL(path: path) else { return }
-        let color: UIColor = bright ? .white : .black
+        let color: UIColor = bright ? .white
+            : UIColor(red: 0.2, green: 0.38, blue: 0.48, alpha: 1)
         cache.insert(image(color: color, size: CGSize(width: 600, height: 400)), for: url)
     }
 
@@ -127,26 +141,45 @@ actor UITestingThreeForTonightUseCase: ThreeForTonightUseCase {
 
     static func compositionSnapshot() throws -> ThreeForTonightSnapshot {
         let base = try snapshot(movieID: 101).decisionSet
-        guard let baseAvailability = base.recommendations.first?.availability,
-              let baseProvider = baseAvailability.matchingProviders.first
-        else {
+        guard let baseAvailability = base.recommendations.first?.availability else {
             throw UITestingHomeScenarioError.invalidFixture
         }
+        let services = AppConfiguration.usesHomeFourProvidersForUITests
+            ? PilotStreamingService.allowlist
+            : AppConfiguration.usesHomeTwoProvidersForUITests
+            ? Array(PilotStreamingService.allowlist.prefix(2)) : [PilotStreamingService.netflix]
         let providerEvidence = try DecisionAvailabilitySnapshot(
-            matchingProviders: [DecisionProviderSnapshot(
-                providerID: baseProvider.providerID,
-                name: baseProvider.name,
-                logoPath: "/missing-provider-logo.png",
-                productOrder: baseProvider.productOrder
-            )],
+            matchingProviders: services.enumerated().map { index, service in
+                try DecisionProviderSnapshot(
+                    providerID: service.providerID,
+                    name: service.name,
+                    logoPath: services.count == 1 ? "/missing-provider-logo.png"
+                        : UITestingHomeArtwork.providerLogoPaths[index],
+                    productOrder: service.productOrder
+                )
+            },
             verifiedAt: baseAvailability.verifiedAt,
             regionalWatchURL: baseAvailability.regionalWatchURL
         )
-        let allMovies: [(Int, DecisionRole, String)] = [
-            (101, .safeChoice, "An Extremely Long Movie Title That Wraps Across Several Lines"),
-            (202, .stretchChoice, "Another Long Movie Title for Tonight"),
-            (303, .discoveryChoice, "A Less Obvious Movie Worth Considering"),
-        ]
+        let allMovies: [(Int, DecisionRole, String)] = if AppConfiguration.usesHomeReferenceCopyForUITests {
+            Locale.current.language.languageCode?.identifier == "es"
+                ? [
+                    (101, .safeChoice, "La llegada"),
+                    (202, .stretchChoice, "Puñales por la espalda"),
+                    (303, .discoveryChoice, "Ex Machina"),
+                ]
+                : [
+                    (101, .safeChoice, "Arrival"),
+                    (202, .stretchChoice, "Knives Out"),
+                    (303, .discoveryChoice, "Ex Machina"),
+                ]
+        } else {
+            [
+                (101, .safeChoice, "An Extremely Long Movie Title That Wraps Across Several Lines"),
+                (202, .stretchChoice, "Another Long Movie Title for Tonight"),
+                (303, .discoveryChoice, "A Less Obvious Movie Worth Considering"),
+            ]
+        }
         let movies = AppConfiguration.usesHomeTwoCardsForUITests
             ? Array(allMovies.prefix(2)) : allMovies
         let recommendations = try movies.map { movie in
@@ -178,7 +211,7 @@ actor UITestingThreeForTonightUseCase: ThreeForTonightUseCase {
             cycle: cycle,
             sourceViewerStateSnapshotID: base.sourceViewerStateSnapshotID,
             region: base.region,
-            selectedProviderIDs: base.selectedProviderIDs,
+            selectedProviderIDs: services.map(\.providerID),
             recommendations: recommendations
         )
         return ThreeForTonightSnapshot(decisionSet: set, savedMovieIDs: [])

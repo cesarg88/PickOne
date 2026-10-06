@@ -36,7 +36,8 @@ struct HomePickControl: View {
                         Text("Pick")
                     }
                 }
-                .frame(minWidth: 124, minHeight: 44)
+                // Glass adds its own horizontal inset; the visible pill stays near the design's width.
+                .frame(minWidth: 96, minHeight: 44)
             }
             .buttonStyle(.glass)
             .disabled(isSaving || model.awaitingSafeSetMovieIDs.contains(movieID))

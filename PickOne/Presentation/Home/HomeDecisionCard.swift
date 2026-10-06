@@ -50,7 +50,7 @@ struct HomeDecisionCard: View {
                         .resizable()
                         .scaledToFit()
                         .frame(maxWidth: .infinity)
-                        .frame(height: isHero ? 290 : 190)
+                        .frame(height: isHero ? 160 : 110)
                         .background(.black)
                         .overlay(HomeDecisionScrim.gradient)
                         .accessibilityHidden(true)
@@ -64,7 +64,6 @@ struct HomeDecisionCard: View {
                 NavigationLink(value: HomeDecisionRoute(movieID: item.id)) {
                     HomeDecisionCardContent(
                         item: item,
-                        imagePipeline: imagePipeline,
                         photoBackground: showsBackdrop,
                         isHero: isHero
                     )
@@ -72,19 +71,14 @@ struct HomeDecisionCard: View {
                 .buttonStyle(.plain)
                 .accessibilityIdentifier("home-recommendation-\(item.id)")
 
-                if let pickModel {
-                    HomePickControl(
-                        model: pickModel,
-                        movieID: item.id,
-                        title: item.title,
-                        hasCurrentLocaleTitle: item.hasCurrentLocaleTitle
-                    )
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                }
+                HomeDecisionAvailabilityAndPick(
+                    item: item,
+                    imagePipeline: imagePipeline,
+                    pickModel: pickModel
+                )
             }
             .padding(isHero ? 24 : 18)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .frame(minHeight: showsBackdrop ? (isHero ? 380 : 240) : 0, alignment: .bottomLeading)
             .background {
                 if showsBackdrop {
                     backdropBackground
@@ -203,11 +197,12 @@ struct HomeDecisionCard: View {
                 )
             } label: {
                 Image(systemName: "ellipsis")
-                    .frame(minWidth: 44, minHeight: 44)
+                    .frame(width: 30, height: 30)
                     .contentShape(.rect)
             }
             .buttonStyle(.glass)
             .buttonBorderShape(.circle)
+            .frame(minWidth: 44, minHeight: 44)
             .accessibilityLabel("More options for \(item.title)")
             .accessibilityIdentifier("home-feedback-menu-\(item.id)")
         }
@@ -241,7 +236,6 @@ struct HomeDecisionCard: View {
 @MainActor
 private struct HomeDecisionCardContent: View {
     let item: HomeDecisionMovieItem
-    let imagePipeline: ImagePipeline
     let photoBackground: Bool
     let isHero: Bool
 
@@ -251,10 +245,15 @@ private struct HomeDecisionCardContent: View {
                 .font(.caption.bold())
                 .padding(.trailing, 56)
 
-            Spacer(minLength: photoBackground ? (isHero ? 88 : 20) : 0)
+            if photoBackground {
+                Color.clear
+                    .frame(height: isHero ? 108 : 20)
+                    .accessibilityHidden(true)
+            }
 
             Text(item.title)
                 .font(isHero ? .system(.largeTitle, design: .serif) : .system(.title3, design: .serif))
+                .fixedSize(horizontal: false, vertical: true)
 
             if !item.details.isEmpty {
                 Text(item.details)
@@ -263,8 +262,7 @@ private struct HomeDecisionCardContent: View {
 
             Text(item.reason)
                 .font(.subheadline)
-
-            HomeDecisionProviderRow(providers: item.providers, imagePipeline: imagePipeline)
+                .fixedSize(horizontal: false, vertical: true)
 
             if item.isSaved {
                 Label("Saved", systemImage: "bookmark.fill")
@@ -278,23 +276,67 @@ private struct HomeDecisionCardContent: View {
 }
 
 @MainActor
+private struct HomeDecisionAvailabilityAndPick: View {
+    let item: HomeDecisionMovieItem
+    let imagePipeline: ImagePipeline
+    let pickModel: HomePickViewModel?
+
+    var body: some View {
+        HomeDecisionAvailabilityPickLayout(spacing: 12) {
+            providers
+            pick
+        }
+    }
+
+    private var providers: some View {
+        HomeDecisionProviderRow(providers: item.providers, imagePipeline: imagePipeline, movieID: item.id)
+    }
+
+    @ViewBuilder
+    private var pick: some View {
+        if let pickModel {
+            HomePickControl(
+                model: pickModel,
+                movieID: item.id,
+                title: item.title,
+                hasCurrentLocaleTitle: item.hasCurrentLocaleTitle
+            )
+        }
+    }
+}
+
+@MainActor
 private struct HomeDecisionProviderRow: View {
     let providers: [HomeDecisionProviderItem]
     let imagePipeline: ImagePipeline
+    let movieID: Int
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             Text("Included with your subscription")
                 .font(.caption2)
-            ForEach(providers) { provider in
-                HomeDecisionProviderLogo(
-                    provider: provider,
-                    imagePipeline: imagePipeline
-                )
+                .fixedSize(horizontal: false, vertical: true)
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 8) {
+                    providerMarks
+                }
+                .fixedSize(horizontal: true, vertical: false)
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 8) {
+                        providerMarks
+                    }
+                }
             }
         }
-        .accessibilityElement(children: .ignore)
+        .accessibilityElement(children: .contain)
         .accessibilityLabel("Included with \(providers.map(\.name).formatted())")
+        .accessibilityIdentifier("home-providers-\(movieID)")
+    }
+
+    private var providerMarks: some View {
+        ForEach(providers) { provider in
+            HomeDecisionProviderLogo(provider: provider, imagePipeline: imagePipeline)
+        }
     }
 }
 
@@ -302,30 +344,43 @@ private struct HomeDecisionProviderRow: View {
 private struct HomeDecisionProviderLogo: View {
     @ScaledMetric(relativeTo: .caption) private var logoSize = 32.0
     @State private var logo: UIImage?
+    @State private var didFailToLoad = false
 
     let provider: HomeDecisionProviderItem
     let imagePipeline: ImagePipeline
 
     var body: some View {
-        HStack(spacing: 8) {
+        Group {
             if let logo {
                 Image(uiImage: logo)
                     .resizable()
                     .scaledToFit()
                     .frame(width: min(logoSize, 48), height: min(logoSize, 48))
                     .clipShape(.rect(cornerRadius: 6))
+                    .accessibilityLabel(provider.name)
+            } else if provider.logoURL != nil, !didFailToLoad {
+                RoundedRectangle(cornerRadius: 6)
+                    .fill(.quaternary)
+                    .frame(width: min(logoSize, 48), height: min(logoSize, 48))
                     .accessibilityHidden(true)
+            } else {
+                Text(provider.name)
+                    .font(.caption)
+                    .fixedSize(horizontal: false, vertical: true)
             }
-            Text(provider.name)
-                .font(.caption)
-                .fixedSize(horizontal: false, vertical: true)
         }
+        .accessibilityIdentifier("home-provider-\(provider.id)")
         .task(id: provider.logoURL) {
             logo = nil
-            guard let logoURL = provider.logoURL else { return }
+            didFailToLoad = false
+            guard let logoURL = provider.logoURL else {
+                didFailToLoad = true
+                return
+            }
             let loaded = try? await imagePipeline.loadImage(from: logoURL)
             guard !Task.isCancelled else { return }
             logo = loaded
+            didFailToLoad = loaded == nil
         }
     }
 }
