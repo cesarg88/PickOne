@@ -118,6 +118,8 @@ The executable verification contract lives in
 
 ## Reviewability and Delivery
 
+- Track bounded implementation work and its acceptance in the
+  [issue-driven delivery process](docs/process/issue-driven-delivery.md).
 - One PR delivers one coherent outcome and remains buildable and green.
 - Open implementation PRs as ready for review, never as drafts, after the local
   handoff checks pass. Do not wait for CI before handing the PR to the reviewer.
